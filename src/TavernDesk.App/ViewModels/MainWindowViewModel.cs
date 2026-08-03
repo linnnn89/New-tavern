@@ -1,0 +1,344 @@
+using System.Windows;
+using TavernDesk.App.Presentation;
+using TavernDesk.App.Services;
+using TavernDesk.Core.Abstractions;
+using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure;
+
+namespace TavernDesk.App.ViewModels;
+
+public sealed class MainWindowViewModel : ViewModelBase
+{
+    private readonly IConversationGenerationCoordinator _generationCoordinator;
+    private readonly HashSet<string> _activeGenerationIds = new(StringComparer.Ordinal);
+    private object _currentPage;
+    private bool _isGenerationActive;
+    private bool _isStoppingAll;
+    private string _currentSection = "仪表盘";
+    private string _runtimeStatusText = "本地数据已就绪 · 当前无生成请求";
+
+    public MainWindowViewModel(
+        InfrastructureServices services,
+        IFileDialogService fileDialog,
+        IUserInteractionService interaction,
+        ChatViewModel? chat = null)
+    {
+        _generationCoordinator = services.GenerationCoordinator;
+        Dashboard = new DashboardViewModel(
+            services.Characters,
+            services.Conversations,
+            services.Providers,
+            OpenRecentConversationAsync);
+        // Chat owns application-lifetime generation sessions. Navigation only swaps
+        // presentation pages; it must never recreate or dispose this instance.
+        Chat = chat ?? new ChatViewModel(
+            services.Conversations,
+            services.Characters,
+            services.MemoryBanks,
+            services.MemoryWorkflow,
+            services.MemoryPrompts,
+            services.GroupChats,
+            services.GroupRelay,
+            services.Retrieval,
+            services.Presets,
+            services.PresetResolver,
+            services.ContextAssembler,
+            services.ContextBudget,
+            services.GenerationCoordinator,
+            services.GenerationSessions,
+            services.ModelAssignments,
+            services.ProviderGateway,
+            services.Settings,
+            services.GlobalPrompts,
+            interaction,
+            services.ChatArchives,
+            fileDialog);
+        Characters = new CharactersViewModel(
+            services.Characters,
+            services.CharacterShelves,
+            services.Conversations,
+            services.CharacterCards,
+            services.Settings,
+            fileDialog,
+            interaction,
+            OpenCharacterChatAsync,
+            CreateNewCharacterChatAsync,
+            OpenRecentConversationAsync);
+        Settings = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            interaction,
+            services.GlobalPrompts,
+            fileDialog);
+        Campaigns = new CampaignsViewModel(
+            services.CampaignScenarios,
+            services.CampaignScenarioCards,
+            services.Campaigns,
+            services.CampaignRunner,
+            services.Characters,
+            services.CampaignCharacterSnapshots,
+            services.MemoryBanks,
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Settings,
+            fileDialog);
+        Chat.OpenPromptSettings = OpenPromptSettingsAsync;
+        Campaigns.OpenPromptSettings = OpenPromptSettingsAsync;
+        services.GenerationCoordinator.StateChanged += OnGenerationStateChanged;
+
+        _currentPage = Dashboard;
+
+        ShowDashboardCommand = new AsyncRelayCommand(ShowDashboardAsync);
+        ShowCharactersCommand = new AsyncRelayCommand(ShowCharactersAsync);
+        ShowChatCommand = new AsyncRelayCommand(ShowChatAsync);
+        ShowCampaignsCommand = new AsyncRelayCommand(ShowCampaignsAsync);
+        ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync);
+        StopAllGenerationCommand = new AsyncRelayCommand(
+            StopAllGenerationAsync,
+            () => IsGenerationActive && !IsStoppingAll);
+    }
+
+    public DashboardViewModel Dashboard { get; }
+    public CharactersViewModel Characters { get; }
+    public ChatViewModel Chat { get; }
+    public CampaignsViewModel Campaigns { get; }
+    public ProviderSettingsViewModel Settings { get; }
+    public bool IsGenerationActive
+    {
+        get => _isGenerationActive;
+        private set
+        {
+            if (SetProperty(ref _isGenerationActive, value))
+            {
+                StopAllGenerationCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsStoppingAll
+    {
+        get => _isStoppingAll;
+        private set
+        {
+            if (SetProperty(ref _isStoppingAll, value))
+            {
+                StopAllGenerationCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string RuntimeStatusText
+    {
+        get => _runtimeStatusText;
+        private set => SetProperty(ref _runtimeStatusText, value);
+    }
+
+    public AsyncRelayCommand ShowDashboardCommand { get; }
+    public AsyncRelayCommand ShowCharactersCommand { get; }
+    public AsyncRelayCommand ShowChatCommand { get; }
+    public AsyncRelayCommand ShowCampaignsCommand { get; }
+    public AsyncRelayCommand ShowSettingsCommand { get; }
+    public AsyncRelayCommand StopAllGenerationCommand { get; }
+
+    public object CurrentPage
+    {
+        get => _currentPage;
+        private set => SetProperty(ref _currentPage, value);
+    }
+
+    public string CurrentSection
+    {
+        get => _currentSection;
+        private set => SetProperty(ref _currentSection, value);
+    }
+
+    public async Task InitializeAsync()
+    {
+        await Dashboard.LoadAsync();
+        await Characters.LoadAsync();
+        await Chat.LoadAsync();
+        await Campaigns.LoadAsync();
+        await Settings.LoadAsync();
+    }
+
+    private void OnGenerationStateChanged(
+        object? sender,
+        ConversationGenerationState state)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(() => ApplyGenerationState(state));
+            return;
+        }
+
+        ApplyGenerationState(state);
+    }
+
+    private void ApplyGenerationState(ConversationGenerationState state)
+    {
+        int activeCount;
+        lock (_activeGenerationIds)
+        {
+            if (state.Status is ConversationGenerationStatus.Queued
+                or ConversationGenerationStatus.Streaming
+                or ConversationGenerationStatus.Stopping)
+            {
+                _activeGenerationIds.Add(state.ConversationId);
+            }
+            else
+            {
+                _activeGenerationIds.Remove(state.ConversationId);
+            }
+
+            activeCount = _activeGenerationIds.Count;
+        }
+
+        IsGenerationActive = activeCount > 0;
+        RuntimeStatusText = activeCount switch
+        {
+            0 => "本地数据已就绪 · 当前无生成请求",
+            1 => "本地数据已就绪 · 正在接收模型响应",
+            _ => $"本地数据已就绪 · 正在接收 {activeCount} 个模型响应"
+        };
+    }
+
+    private async Task StopAllGenerationAsync()
+    {
+        IsStoppingAll = true;
+        RuntimeStatusText = "正在停止全部模型请求…";
+        try
+        {
+            var stopped = await _generationCoordinator.CancelAllAsync();
+            RuntimeStatusText = stopped == 0
+                ? "本地数据已就绪 · 当前无生成请求"
+                : $"已停止 {stopped} 个模型请求";
+        }
+        finally
+        {
+            IsStoppingAll = false;
+        }
+    }
+
+    private async Task ShowDashboardAsync()
+    {
+        if (!await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Dashboard.LoadAsync();
+        CurrentPage = Dashboard;
+        CurrentSection = "仪表盘";
+    }
+
+    private async Task ShowCharactersAsync()
+    {
+        if (ReferenceEquals(CurrentPage, Characters))
+        {
+            return;
+        }
+
+        if (!await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Characters.LoadAsync();
+        CurrentPage = Characters;
+        CurrentSection = "角色书架";
+    }
+
+    private async Task ShowChatAsync()
+    {
+        if (!await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Chat.LoadAsync();
+        CurrentPage = Chat;
+        CurrentSection = "聊天";
+    }
+
+    private async Task ShowCampaignsAsync()
+    {
+        if (!await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Campaigns.LoadAsync();
+        CurrentPage = Campaigns;
+        CurrentSection = "跑团";
+    }
+
+    private async Task ShowSettingsAsync()
+    {
+        if (ReferenceEquals(CurrentPage, Settings))
+        {
+            return;
+        }
+
+        if (!await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Settings.LoadAsync();
+        CurrentPage = Settings;
+        CurrentSection = "设置";
+    }
+
+    public async Task OpenPromptSettingsAsync(GlobalPromptKey key)
+    {
+        if (!ReferenceEquals(CurrentPage, Settings)
+            && !await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Settings.LoadAsync();
+        Settings.OpenPrompt(key);
+        CurrentPage = Settings;
+        CurrentSection = "设置 · 提示词管理";
+    }
+
+    private async Task OpenCharacterChatAsync(Character character)
+    {
+        await Chat.OpenCharacterChatAsync(character);
+        CurrentPage = Chat;
+        CurrentSection = $"聊天 · {character.Name}";
+    }
+
+    private async Task CreateNewCharacterChatAsync(Character character)
+    {
+        await Chat.CreateNewCharacterChatAsync(character);
+        CurrentPage = Chat;
+        CurrentSection = $"聊天 · {character.Name} · 新对话";
+    }
+
+    private async Task OpenRecentConversationAsync(ConversationSummary conversation)
+    {
+        await Chat.OpenConversationAsync(conversation.Id);
+        CurrentPage = Chat;
+        CurrentSection = $"聊天 · {conversation.Title}";
+    }
+
+    private Task<bool> ConfirmPageChangeAsync()
+    {
+        if (ReferenceEquals(CurrentPage, Characters))
+        {
+            return Characters.ConfirmCanLeaveAsync();
+        }
+
+        return ReferenceEquals(CurrentPage, Settings)
+            ? Settings.ConfirmCanLeaveAsync()
+            : Task.FromResult(true);
+    }
+}
