@@ -792,3 +792,19 @@
 - 在 `D:\Documents\女主角搜索器\TavernDesk` 内建立独立 Git 仓库，正式本地分支为 `main`，不配置远端。TavernDesk 提交范围不包含父目录 `.codex/`、女主角索引或 APP 反编码目录；项目内构建输出、依赖缓存、`user-data/` 和 `work/` 继续由 `.gitignore` 排除。
 - README 与交接文档的工作路径修正为当前真实目录；交接文档明确三个项目边界和 TavernDesk 无远端状态；架构页将过期的 `77/77` 摘要同步为工作日志已记录的 `92/92` 最新基线。
 - 按用户此前“不进行复跑”的要求，本轮未重新运行测试、构建或 GUI，也未读取 API Key、刷新模型目录或调用 Provider。提交前暂存范围为 161 个 TavernDesk 文件，`git diff --cached --check` 通过；常见真实密钥前缀扫描未发现异常，命中项仅为 DPAPI 测试常量和临时目录名称片段。
+
+## 2026-08-03 — 回收箱遗留源码、干净构建与 Provider 白名单
+
+### 实现
+
+- 删除已无入口但仍被 WPF SDK 默认编译的 `RecycleBinWindow.xaml` 与 `RecycleBinWindow.xaml.cs`。产品仍保持 schema v10 的永久删除语义，不恢复软删除、回收或恢复接口。
+- 第一次隔离干净构建暴露出旧增量产物掩盖的编译错误：`HeuristicTokenEstimator` 未实现 `ITokenEstimator` 新增的可选 `modelId` 参数。仅补齐接口签名；该启发式实现仍忽略模型 ID，模型感知实现及其测试行为不变。
+- Provider 目录升级为 v2：新数据根正好预置 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio 五项。OpenRouter、硅基流动与 DeepSeek 地址分别按官方 OpenAI-compatible 文档使用 `https://openrouter.ai/api/v1`、`https://api.siliconflow.cn/v1` 和 `https://api.deepseek.com`；LM Studio 使用用户指定的 `http://127.0.0.1:6543`。
+- 升级旧数据根时只补齐缺失的五个稳定 ID。历史/自定义 Provider 记录会停用并从设置及跑团模型选项中隐藏，其密钥、模型和功能分配不自动删除，避免以迁移名义静默销毁用户配置。
+- 适配器下拉只保留生产代码实际支持的 `OpenAiCompatible` 与 `GrokCli`；移除新增自定义 Provider 的入口。LM Studio 不写死模型，用户切换本机模型后继续通过现有“刷新模型目录”与功能分配流程更新。
+
+### TDD、构建与边界
+
+- 默认目录测试先得到 RED：期望 5 项、实际 4 项；实现新目录后转为 GREEN。设置页测试先证明旧 Provider 仍显示且适配器枚举包含未实现项，白名单与适配器收敛后转为 GREEN。
+- 首次还原在受限沙盒内因无法读取本机 Windows SDK 目录失败；获准只读访问后还原成功。第一次干净构建因上述 `HeuristicTokenEstimator` 签名错误失败；在新的 `artifacts/clean-main-20260803-r2` 目录重新还原和构建，最终 0 个警告、0 个错误。
+- 最终 Release 全量自动化测试 `93/93` 通过，0 失败、0 跳过。本轮没有启动 GUI、读取 API Key、刷新模型目录或调用真实 Provider；五个后端的账号、网络、取消和当前 LM Studio 端口仍需按需做短链路人工验收。

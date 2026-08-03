@@ -48,7 +48,7 @@ R1 当前行为：
 
 - 角色卡、书架、Persona 与世界书；
 - 群聊成员和接力顺序；
-- OpenRouter、xAI 与 Grok CLI ACP 的统一 Provider 边界；
+- Grok CLI ACP，以及 OpenRouter、硅基流动、DeepSeek 官方 API、LM Studio 共用的 OpenAI-compatible Provider 边界；
 - 可并行的会话级生成、流式事件和取消；
 - SQLite、稳定消息顺序、记忆草稿与上下文检查；
 - 上下文超限时阻止发送，不静默裁剪；

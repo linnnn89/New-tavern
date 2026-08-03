@@ -69,7 +69,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         ];
         _selectedFunction = FunctionOptions[0];
 
-        AddCustomCommand = new AsyncRelayCommand(AddCustomAsync);
         DeleteProviderCommand = new AsyncRelayCommand(
             DeleteProviderAsync,
             parameter => parameter is ProviderProfile);
@@ -122,9 +121,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
     }
     public IReadOnlyList<ProviderAdapterKind> AdapterKinds { get; } =
-        Enum.GetValues<ProviderAdapterKind>();
+        [ProviderAdapterKind.OpenAiCompatible, ProviderAdapterKind.GrokCli];
     public IReadOnlyList<ModelFunctionOption> FunctionOptions { get; }
-    public AsyncRelayCommand AddCustomCommand { get; }
     public AsyncRelayCommand DeleteProviderCommand { get; }
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand ClearKeyCommand { get; }
@@ -379,30 +377,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         Profiles.Clear();
         _persistedProfileIds.Clear();
-        foreach (var profile in await _repository.ListAsync())
+        foreach (var profile in (await _repository.ListAsync())
+                     .Where(profile => ProviderProfileIds.IsSupported(profile.Id)))
         {
             Profiles.Add(profile);
             _persistedProfileIds.Add(profile.Id);
         }
-    }
-
-    private async Task AddCustomAsync()
-    {
-        if (!await ConfirmCanLeaveAsync())
-        {
-            return;
-        }
-
-        var profile = new ProviderProfile
-        {
-            Name = "自定义接入商",
-            AdapterKind = ProviderAdapterKind.OpenAiCompatible,
-            BaseUrl = "http://127.0.0.1:1234/v1"
-        };
-        Profiles.Add(profile);
-        SelectProfile(profile);
-        Editor.MarkDirty();
-        Status = "新接入商尚未保存。";
     }
 
     private async Task DeleteProviderAsync(object? parameter)

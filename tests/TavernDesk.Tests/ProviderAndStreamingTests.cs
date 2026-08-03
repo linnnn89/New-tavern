@@ -358,30 +358,91 @@ public sealed class ProviderAndStreamingTests
     }
 
     [Fact]
-    public async Task DefaultProvidersPrepareOpenRouterAndXaiWithoutLocalPresets()
+    public async Task DefaultProvidersExposeOnlyTheFiveSupportedBackends()
     {
         using var workspace = new TestWorkspace();
         var services = new InfrastructureServices(workspace.Root);
         await services.InitializeAsync();
 
         var profiles = await services.Providers.ListAsync();
-        Assert.Contains(
-            profiles,
-            profile => profile.Id == "builtin-openrouter"
-                       && profile.BaseUrl == "https://openrouter.ai/api/v1");
-        Assert.Contains(
-            profiles,
-            profile => profile.Id == "builtin-xai"
-                       && profile.BaseUrl == "https://api.x.ai/v1");
-        Assert.Contains(
-            profiles,
-            profile => profile.Id == "builtin-grok-cli"
-                       && profile.AdapterKind == ProviderAdapterKind.GrokCli
-                       && profile.BaseUrl == "grok://local");
-        Assert.DoesNotContain(profiles, profile => profile.Id == "builtin-ollama");
-        Assert.DoesNotContain(profiles, profile => profile.Id == "builtin-lm-studio");
+        var profilesById = profiles.ToDictionary(profile => profile.Id);
+        Assert.Equal(5, profilesById.Count);
+        Assert.Equal(
+            ("OpenRouter", ProviderAdapterKind.OpenAiCompatible, "https://openrouter.ai/api/v1"),
+            (
+                profilesById["builtin-openrouter"].Name,
+                profilesById["builtin-openrouter"].AdapterKind,
+                profilesById["builtin-openrouter"].BaseUrl));
+        Assert.Equal(
+            ("硅基流动", ProviderAdapterKind.OpenAiCompatible, "https://api.siliconflow.cn/v1"),
+            (
+                profilesById["builtin-siliconflow"].Name,
+                profilesById["builtin-siliconflow"].AdapterKind,
+                profilesById["builtin-siliconflow"].BaseUrl));
+        Assert.Equal(
+            ("DeepSeek 官方 API", ProviderAdapterKind.OpenAiCompatible, "https://api.deepseek.com"),
+            (
+                profilesById["builtin-deepseek"].Name,
+                profilesById["builtin-deepseek"].AdapterKind,
+                profilesById["builtin-deepseek"].BaseUrl));
+        Assert.Equal(
+            ("LM Studio（本地）", ProviderAdapterKind.OpenAiCompatible, "http://127.0.0.1:6543"),
+            (
+                profilesById["builtin-lm-studio"].Name,
+                profilesById["builtin-lm-studio"].AdapterKind,
+                profilesById["builtin-lm-studio"].BaseUrl));
+        Assert.Equal(
+            ("Grok CLI（订阅登录）", ProviderAdapterKind.GrokCli, "grok://local"),
+            (
+                profilesById["builtin-grok-cli"].Name,
+                profilesById["builtin-grok-cli"].AdapterKind,
+                profilesById["builtin-grok-cli"].BaseUrl));
         Assert.True(Directory.Exists(services.Paths.SecretsDirectory));
         Assert.True(Directory.Exists(services.Paths.GrokCliRuntimeDirectory));
+    }
+
+    [Fact]
+    public async Task ProviderSettingsOnlyOffersSupportedProvidersAndAdapterKinds()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.Database.InitializeAsync();
+        await services.Providers.UpsertAsync(new ProviderProfile
+        {
+            Id = "legacy-provider",
+            Name = "旧接入商",
+            AdapterKind = ProviderAdapterKind.Anthropic,
+            BaseUrl = "https://legacy.invalid"
+        });
+        await services.InitializeAsync();
+        var viewModel = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(),
+            services.GlobalPrompts,
+            new NoOpFileDialogService());
+        await viewModel.LoadAsync();
+
+        Assert.False(Assert.IsType<ProviderProfile>(
+            await services.Providers.GetAsync("legacy-provider")).IsEnabled);
+        Assert.Equal(
+            [ProviderAdapterKind.OpenAiCompatible, ProviderAdapterKind.GrokCli],
+            viewModel.AdapterKinds);
+        Assert.Equal(
+            [
+                "builtin-deepseek",
+                "builtin-grok-cli",
+                "builtin-lm-studio",
+                "builtin-openrouter",
+                "builtin-siliconflow"
+            ],
+            viewModel.Profiles
+                .Select(profile => profile.Id)
+                .Order(StringComparer.Ordinal));
     }
 
     [Fact]

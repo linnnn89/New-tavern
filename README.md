@@ -33,13 +33,15 @@ TavernDesk 是面向 Windows 10/11 的本地酒馆角色聊天客户端，使用
 
 ### Provider 与上下文
 
-- 本地保存多个接入商；新数据根预置 OpenRouter、xAI API、Grok CLI（订阅登录）和其他 OpenAI-compatible；
+- Provider 页面只保留 Grok CLI（订阅登录）、OpenRouter、硅基流动、DeepSeek 官方 API 和本地 LM Studio 五项；升级数据根会补齐缺失项，旧/自定义记录为避免静默销毁密钥和模型分配而停用并保留在数据库中，但不再显示；
+- API 类接入统一使用已实现的 OpenAI-compatible 适配器，另一可选适配器仅为 Grok CLI；不再提供未实现的 OpenAI、Anthropic、Google、Ollama、Custom 枚举或新增自定义接入商入口；
+- LM Studio 默认地址为 `http://127.0.0.1:6543`，不硬编码模型；本机切换模型后主动刷新模型目录并重新选择或分配即可；
 - API Key 独立保存在数据根的 `secrets/`，使用 Windows DPAPI 当前用户范围保护；SQLite 只保存随机文件引用；
 - 接入商可从列表右键删除；删除时同步清除其本地模型目录、功能分配和 TavernDesk 保存的 Key，已删除的默认项不会在下次启动时自动恢复；
 - 模型目录只在用户主动刷新时请求；先选供应商，再搜索模型并设置上下文/输出上限和功能分配；
 - 功能分配总览中的 OpenRouter DeepSeek 模型可展开快速设置，以 OFF/ON 胶囊显式关闭或开启推理；模型 ID 必须包含完整 `deepseek` 词段，其他模型和接入商不会收到该参数；
 - OpenAI Chat Completions 兼容适配器支持 SSE 和非流式 JSON，裸服务根地址自动补全 `/v1`；
-- OpenRouter/xAI 等模型目录中的上下文与最大输出元数据会在存在时写入本地目录；常见鉴权、额度、限流和上游错误会转换为可操作提示；
+- OpenRouter、硅基流动、DeepSeek 和 LM Studio 模型目录中的上下文与最大输出元数据会在存在时写入本地目录；常见鉴权、额度、限流和上游错误会转换为可操作提示；
 - Grok CLI 通过官方 ACP `agent stdio` 接入，使用本机 `grok login` 的订阅凭据，不读取 TavernDesk API Key；每次生成使用新会话和独立工作目录，不向 CLI 开放终端、文件、MCP、网页、子代理或跨会话记忆；
 - 上下文按缓存友好的顺序统一组装：精炼全局规则、USER Persona、角色卡、世界资料和长期记忆在前，原生 role 历史按序追加，检索结果、post-history 与群聊接力等当轮内容靠后，当前用户原文最后；不再插入会随轮次移动的历史起止或当前输入标记，世界书仍尊重既有 before/after/depth 语义；
 - USER Persona 以独立 system 分区说明“USER 正在扮演谁”；单聊作者由原生 `role` 区分，群聊历史使用单行 JSON 的 `speaker.kind/name` 与 `content` 分离作者和正文，正文中的姓名、冒号或伪标题不能改变记录作者；
@@ -153,7 +155,7 @@ dotnet build TavernDesk.sln -c Release --no-restore
 dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-build -- --storage-smoke ".\user-data\verification-local"
 ```
 
-最近完整基线（2026-08-03）：当前 Release 自动化测试 `92/92` 通过；Release 构建 0 个警告、0 个错误；根目录 `TavernDesk.exe --probe` 退出码为 0。此基线已包含跑团 USER/AI 行动原子附加 `1d20`、GM 玩家自主权与灵活裁定协议、AI GM 收尾校验/失败重试，以及秘密同投裁定后揭示；隔离 WPF 视觉验证无启动或绑定错误。验证没有读取 API Key、刷新模型目录或调用真实 Provider；临时数据已清理，TavernDesk 进程数为 0。
+最近完整基线（2026-08-03）：当前 Release 自动化测试 `93/93` 通过；回收箱孤立源码清理后的隔离 Release 干净构建为 0 个警告、0 个错误。根目录 `TavernDesk.exe --probe` 退出码 0 和隔离 WPF 视觉验证沿用同日上一基线，本轮未重复启动 GUI。验证没有读取 API Key、刷新模型目录或调用真实 Provider。
 
 ## 稳定产品约束
 
@@ -190,7 +192,7 @@ dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-b
 
 ## 后续候选
 
-- OpenRouter/xAI/Grok CLI 的真实账号验收、取消行为和更完整错误矩阵；
+- OpenRouter、硅基流动、DeepSeek 官方 API、`127.0.0.1:6543` LM Studio 与 Grok CLI 的真实短链路、取消行为和更完整错误矩阵；
 - 以真实长局验证跑团上下文预算、不同 Provider 的并发限制和异常恢复；只有出现实际需求时再考虑持久化回合 barrier；
 - 按真实需求扩展非 Tiktoken 模型家族、可配置上下文压缩和结构化记忆；
 - 可选 embedding 知识库；

@@ -8,7 +8,8 @@ public sealed class HeuristicTokenEstimator : ITokenEstimator
     public TokenEstimate Estimate(
         IEnumerable<ContextSegment> segments,
         int contextLimit,
-        int reservedOutputTokens)
+        int reservedOutputTokens,
+        string? modelId = null)
     {
         var inputTokens = 0;
         foreach (var segment in segments)

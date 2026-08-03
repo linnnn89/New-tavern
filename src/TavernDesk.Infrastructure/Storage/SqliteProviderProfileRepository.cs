@@ -7,7 +7,7 @@ namespace TavernDesk.Infrastructure.Storage;
 public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
 {
     private const string DefaultsInitializedKey =
-        "providers.defaults_initialized";
+        "providers.catalog_v2_initialized";
     private readonly SqliteDatabase _database;
 
     public SqliteProviderProfileRepository(SqliteDatabase database)
@@ -110,45 +110,62 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
             return;
         }
 
-        if ((await ListAsync(cancellationToken)).Count == 0)
+        var existingProfiles = await ListAsync(cancellationToken);
+        var existingIds = existingProfiles
+            .Select(profile => profile.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var profile in existingProfiles.Where(profile =>
+                     !ProviderProfileIds.IsSupported(profile.Id)
+                     && profile.IsEnabled))
         {
-            var defaults = new[]
-            {
-                new ProviderProfile
-                {
-                    Id = "builtin-openrouter",
-                    Name = "OpenRouter",
-                    AdapterKind = ProviderAdapterKind.OpenAiCompatible,
-                    BaseUrl = "https://openrouter.ai/api/v1"
-                },
-                new ProviderProfile
-                {
-                    Id = "builtin-xai",
-                    Name = "xAI (Grok)",
-                    AdapterKind = ProviderAdapterKind.OpenAiCompatible,
-                    BaseUrl = "https://api.x.ai/v1"
-                },
-                new ProviderProfile
-                {
-                    Id = "builtin-grok-cli",
-                    Name = "Grok CLI（订阅登录）",
-                    AdapterKind = ProviderAdapterKind.GrokCli,
-                    BaseUrl = "grok://local",
-                    RequestTimeoutSeconds = 600
-                },
-                new ProviderProfile
-                {
-                    Id = "builtin-openai-compatible",
-                    Name = "其他 OpenAI-compatible",
-                    AdapterKind = ProviderAdapterKind.OpenAiCompatible,
-                    BaseUrl = "https://api.openai.com/v1"
-                }
-            };
+            profile.IsEnabled = false;
+            profile.UpdatedAt = DateTimeOffset.Now;
+            await UpsertAsync(profile, cancellationToken);
+        }
 
-            foreach (var profile in defaults)
+        var defaults = new[]
+        {
+            new ProviderProfile
             {
-                await UpsertAsync(profile, cancellationToken);
+                Id = ProviderProfileIds.GrokCli,
+                Name = "Grok CLI（订阅登录）",
+                AdapterKind = ProviderAdapterKind.GrokCli,
+                BaseUrl = "grok://local",
+                RequestTimeoutSeconds = 600
+            },
+            new ProviderProfile
+            {
+                Id = ProviderProfileIds.OpenRouter,
+                Name = "OpenRouter",
+                AdapterKind = ProviderAdapterKind.OpenAiCompatible,
+                BaseUrl = "https://openrouter.ai/api/v1"
+            },
+            new ProviderProfile
+            {
+                Id = ProviderProfileIds.SiliconFlow,
+                Name = "硅基流动",
+                AdapterKind = ProviderAdapterKind.OpenAiCompatible,
+                BaseUrl = "https://api.siliconflow.cn/v1"
+            },
+            new ProviderProfile
+            {
+                Id = ProviderProfileIds.DeepSeek,
+                Name = "DeepSeek 官方 API",
+                AdapterKind = ProviderAdapterKind.OpenAiCompatible,
+                BaseUrl = "https://api.deepseek.com"
+            },
+            new ProviderProfile
+            {
+                Id = ProviderProfileIds.LmStudio,
+                Name = "LM Studio（本地）",
+                AdapterKind = ProviderAdapterKind.OpenAiCompatible,
+                BaseUrl = "http://127.0.0.1:6543"
             }
+        };
+
+        foreach (var profile in defaults.Where(profile => !existingIds.Contains(profile.Id)))
+        {
+            await UpsertAsync(profile, cancellationToken);
         }
 
         await MarkDefaultsInitializedAsync(cancellationToken);

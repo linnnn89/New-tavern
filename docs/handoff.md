@@ -17,9 +17,9 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 
 ## 2. 用户已经明确的方向
 
-- 当前不继续本地模型方向，尤其不使用 Ollama；不要主动恢复这条路线。
-- Provider 优先级是 OpenRouter 与 Grok CLI。Grok CLI 走本机订阅登录和官方 ACP `agent stdio`，不等同于 xAI 按 Token 计费 API。
-- xAI API 与其他 OpenAI-compatible 保持可用，但不是当前首要验收对象。
+- 不恢复 Ollama；本地模型只保留 LM Studio 的 OpenAI-compatible 接入，默认地址为 `http://127.0.0.1:6543`，具体模型由用户随时切换并主动刷新目录。
+- Provider 固定为 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio 五项。Grok CLI 走本机订阅登录和官方 ACP `agent stdio`；其余四项走统一 OpenAI-compatible 边界。
+- xAI API、通用自定义接入商以及未实现的 OpenAI/Anthropic/Google/Ollama/Custom 适配器不再作为界面选项。
 - 提示词要精炼、角色扮演职责清楚、固定内容靠前、动态内容靠后，优先利用 DeepSeek/OpenRouter 的相同前缀缓存。
 - 记忆更新、记忆压缩和群聊记忆合并各只有一份全局模板，不恢复 User 模板或角色/群聊局部覆盖。
 - 普通聊天和跑团记忆严格隔离；开跑团时只能显式选择是否一次性导入角色、Persona 或普通记忆快照。
@@ -54,7 +54,9 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 
 ### Provider 与密钥
 
-- OpenRouter、xAI API、Grok CLI 和通用 OpenAI-compatible 已有统一配置入口。
+- Provider 页面只显示 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio；新数据根正好预置这五项。
+- 旧数据根会补齐缺失的五项；历史/自定义 Provider 记录为避免静默销毁密钥和模型分配而停用并保留在数据库中，但不再显示，也不能从界面新增。
+- API Provider 只暴露已实现的 OpenAI-compatible 适配器，另保留 Grok CLI 专用适配器；LM Studio 不固定模型，切换后主动刷新目录。
 - API Key 位于数据根 `secrets/`，使用 Windows DPAPI CurrentUser 保护；SQLite 仅保存随机引用。
 - 删除接入商会同步删除其本地模型目录、功能分配和 TavernDesk 保存的密钥文件；默认接入商被用户删除后不会自动复活。
 - DPAPI 可降低数据库、备份或单独文件泄漏导致的明文暴露，但不能抵御同一 Windows 用户上下文中的恶意程序、管理员、调试器或正在运行进程被控制。
@@ -82,12 +84,10 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 
 2026-08-03 当前工作区：
 
-- Release 自动化测试：`92/92` 通过；
-- Release 解决方案构建：0 个警告、0 个错误；
-- 根目录 `TavernDesk.exe --probe`：退出码 0；
-- 隔离 WPF 视觉验证：自动行动骰、GM 收尾章节与“额外掷骰”布局正常，无启动/绑定错误；
-- 未读取 API Key、未刷新模型目录、未发送 OpenRouter/xAI/Grok 真实请求；
-- 验证临时数据与生成器已清理；当前没有 TavernDesk GUI 进程。
+- Release 自动化测试：`93/93` 通过；
+- 删除回收箱孤立 WPF 源码并修复 Token 估算器接口签名后，隔离 Release 干净构建：0 个警告、0 个错误；
+- 根目录 `TavernDesk.exe --probe` 退出码 0 与隔离 WPF 视觉验证沿用同日上一基线，本轮未复跑；
+- 未读取 API Key、未刷新模型目录、未发送任何真实 Provider 请求。
 
 最新永久删除回归覆盖：
 
@@ -100,7 +100,8 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 ## 5. 尚未充分验证
 
 - 最新“按需批量整理”与“永久删除确认”仍应由用户做一次真实视觉和点击验收；自动化与 XAML/Release 编译已通过。
-- OpenRouter 真实账号下的模型刷新、流式回复、缓存 usage、reasoning、额度/限流错误和取消后计费行为。
+- OpenRouter、硅基流动和 DeepSeek 官方 API 的真实账号模型刷新、流式回复、usage、额度/限流错误与取消行为。
+- 当前 `http://127.0.0.1:6543` LM Studio 地址的模型切换、目录刷新与生成链路；历史 LM Studio 冒烟不能替代此端口的当前验证。
 - Grok CLI 的真实安装发现、`grok login`、ACP 普通聊天、会话取消和订阅侧并发限制；模型枚举当前仍使用默认模型占位。
 - 真实多模型跑团短局及中等长度跑团：上下文预算、途中换模型、席位失败重试、秘密同投隔离和停止全部生成。
 - 大型真实数据库迁移、长列表性能、DPI/键盘无障碍和强制结束进程后的流式恢复。
@@ -114,19 +115,22 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 2. **真实 OpenRouter 短链路**
    - 保存 Key → 主动刷新模型 → 分配角色聊天 → 发一条短消息 → 检查流式、usage、缓存和停止。
    - 不批量消耗 Token，不先做长局。
-3. **真实 Grok CLI 短链路**
+3. **按需验证其他保留 Provider**
+   - 硅基流动、DeepSeek 官方 API 各做一次短请求；LM Studio 在 `127.0.0.1:6543` 切换模型后刷新目录并发一条短消息。
+   - 不批量消耗 Token；出现真实兼容性问题后再加服务商特例。
+4. **真实 Grok CLI 短链路**
    - 确认本机 CLI 与登录状态 → ACP 单轮普通聊天 → 取消。
-   - 不读取或创建 xAI API Key，不开放 CLI 工具权限。
-4. **跑团真实短局**
+   - 不开放 CLI 工具权限。
+5. **跑团真实短局**
    - 使用现有 Naruto 剧本和 1–2 张角色卡；
    - 可给不同 AI 席位分配不同 OpenRouter 模型；
    - 分别验证一个协作回合和一个技术失败/重试，不扩建 R2。
-5. **只根据真实故障追加局部修复**
+6. **只根据真实故障追加局部修复**
    - 若短局证明确有 barrier、并发上限、摘要压缩或超时策略需求，再讨论对应最小实现。
 
 ## 7. 不要倒退的边界
 
-- 不恢复 Ollama/本地模型主路线。
+- 不恢复 Ollama；LM Studio 只走当前 OpenAI-compatible 本地入口。
 - 不恢复消息回收箱、软删除 UI 或恢复消息能力。
 - 不把记忆模板重新拆成 System/User 两套。
 - 不让角色书架目录重新持有角色编辑草稿或详情会话状态。

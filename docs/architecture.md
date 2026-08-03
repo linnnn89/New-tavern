@@ -207,7 +207,7 @@ M4.1 已接入 global → character → conversation 预设栈、群聊额外指
 
 OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持 SSE 和非流式 JSON 回退。裸服务根地址自动补全 `/v1`；已经包含 `/v1` 或其他显式兼容路径时不改写该路径。OpenRouter 请求按普通聊天会话或跑团 GM/玩家席位传递稳定 `session_id`，并从 `prompt_tokens_details.cached_tokens` 读取缓存命中量；DeepSeek 直连兼容字段 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` 也在同一 usage 解析处处理，不新增第二套 Provider。`ReasoningStreamNormalizer` 在 Infrastructure 边界执行服务商无关的语义归一化：优先读取 `reasoning`、`reasoning_content`、`thinking`、`analysis` 及受控的 reasoning/thinking 前缀变体，并递归确认结构化数组/对象中存在有效值；若服务只把思考写入正文，则仅在响应开头识别 `<think>`、`<thinking>`、`<analysis>` 成对标签。状态机可跨 SSE chunk 识别标签，且只暂存可能组成闭合标签的最短后缀。结构化字段优先，正文中途出现的字面标签按普通正文保留，避免过宽通配误吞用户内容。
 
-归一化后的流在 Infrastructure 内统一拆为 reasoning 信号、最终正文和 completed/usage；reasoning 原文不越过 Provider 边界，App 只用信号驱动临时状态。模型目录只在用户主动刷新时请求。`ConversationGenerationSessionStore` 以会话 ID 保存应用级生成快照和临时正文；多个 `ChatViewModel` 可附着同一会话，不同会话可同时流式生成，同一会话拒绝重入。发送开始时快照模型分配、Persona、预设和当前记忆，后续切换界面或关闭展示窗口不会把上下文串线或终止流。原生 Ollama、LM Studio REST、Anthropic 或 Gemini 适配器尚未实现；未来适配器必须输出相同规范事件，而不是把专用字段判断带入 App。
+归一化后的流在 Infrastructure 内统一拆为 reasoning 信号、最终正文和 completed/usage；reasoning 原文不越过 Provider 边界，App 只用信号驱动临时状态。模型目录只在用户主动刷新时请求。`ConversationGenerationSessionStore` 以会话 ID 保存应用级生成快照和临时正文；多个 `ChatViewModel` 可附着同一会话，不同会话可同时流式生成，同一会话拒绝重入。发送开始时快照模型分配、Persona、预设和当前记忆，后续切换界面或关闭展示窗口不会把上下文串线或终止流。当前目录固定为 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 `http://127.0.0.1:6543` LM Studio；后四项复用 OpenAI-compatible 适配器。专用 Ollama、LM Studio 原生、Anthropic 或 Gemini 适配器尚未实现。
 
 记忆更新、压缩和群聊记忆合并分别使用独立功能模型分配，每项只有一份可编辑全局职责提示词；旧记忆、新消息、角色名和目标 Token 等动态资料由 `MemoryPromptComposer` 构造固定输入载荷，不存在第二份可配置 User 模板。提示词、目标 Token 和完整发送结构仍可在生成前查看；请求中的 `user` role 只是 OpenAI-compatible 协议的数据承载消息，不是另一项用户配置。自动阈值只创建待确认草稿，不自动覆盖记忆正文。群聊使用独立的“群聊接力”和“群聊记忆合并”功能分配；`@` 接力只读取上一角色输出的最后一句，识别 `@USER` 或 Persona 名后持久化暂停状态。
 
@@ -286,7 +286,7 @@ OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持 SSE
 - 真实 WPF 隔离数据根已验证 Naruto 剧本开局、结构化 GM 开场、关闭重启后续玩和游戏桌面；正式数据根已导入四张角色卡与一张剧本卡，并确认大厅列出四个独立模型席位。
 - M4.2 使用隔离数据根连接本机 LM Studio：目标模型发现、单流最终正文、单请求取消和两条并发流均通过；真实请求只含固定合成标签。
 - M4.3 集中自动化验证 40/40 通过；通用 thinking 与多窗口生命周期验证未连接真实 API。
-- 2026-08-03 当前 Release 集中自动化验证 `92/92` 通过；Release 构建 0 个警告、0 个错误；根目录启动器 `--probe` 退出码为 0。该基线已覆盖玩家行动原子附加 `1d20`、GM 玩家自主权与收尾协议、协议失败重试和秘密同投裁定后揭示；隔离 WPF 视觉验证无启动或绑定错误。验证未读取 API Key、刷新模型目录或发送真实 Provider 请求。
+- 2026-08-03 当前 Release 集中自动化验证 `93/93` 通过；删除回收箱孤立源码并修复 Token 估算器接口签名后，隔离 Release 干净构建 0 个警告、0 个错误。根目录启动器 `--probe` 与隔离 WPF 视觉验证沿用同日上一基线，本轮未复跑；未读取 API Key、刷新模型目录或发送真实 Provider 请求。
 
 不进行：
 

@@ -11,6 +11,18 @@ public enum ProviderAdapterKind
     GrokCli
 }
 
+public static class ProviderProfileIds
+{
+    public const string GrokCli = "builtin-grok-cli";
+    public const string OpenRouter = "builtin-openrouter";
+    public const string SiliconFlow = "builtin-siliconflow";
+    public const string DeepSeek = "builtin-deepseek";
+    public const string LmStudio = "builtin-lm-studio";
+
+    public static bool IsSupported(string id) =>
+        id is GrokCli or OpenRouter or SiliconFlow or DeepSeek or LmStudio;
+}
+
 public sealed class ProviderProfile
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
