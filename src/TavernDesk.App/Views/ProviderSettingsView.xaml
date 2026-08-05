@@ -1,0 +1,713 @@
+<UserControl x:Class="TavernDesk.App.Views.ProviderSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="32,26,32,32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="设置" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedTextBrush}" />
+        </StackPanel>
+
+        <TabControl Grid.Row="1"
+                    TabStripPlacement="Left"
+                    SelectedIndex="{Binding SelectedSettingsTabIndex}">
+            <TabItem Header="API 提供商">
+                <Grid Margin="18,4,4,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="290" MinWidth="230" />
+                        <ColumnDefinition Width="20" />
+                        <ColumnDefinition Width="*" MinWidth="400" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource CardStyle}" Padding="0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Margin="16,10,10,8">
+                                <TextBlock Text="接入商"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold" />
+                                <Button HorizontalAlignment="Right"
+                                        Width="54"
+                                        Height="30"
+                                        Padding="8,3"
+                                        Content="添加"
+                                        Click="AddProviderButton_OnClick"
+                                        ToolTip="添加新的自定义 OpenAI-compatible API 提供商"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                            </Grid>
+                            <ListBox x:Name="ProviderList"
+                                     Grid.Row="1"
+                                     Margin="8,0"
+                                     Padding="0"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     ItemsSource="{Binding Profiles}"
+                                     SelectionChanged="ProviderList_OnSelectionChanged"
+                                     ToolTip="选择接入商；右键可删除接入商及其本地模型、功能分配和 Key。"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Margin" Value="0,2" />
+                                        <Setter Property="Padding" Value="0" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10,9"
+                                                Tag="{Binding DataContext.DeleteProviderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                            <Border.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="删除"
+                                                              Command="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Border.ContextMenu>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Margin="0,2,0,0"
+                                                           Text="{Binding BaseUrl}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="138" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.ColumnSpan="2"
+                                           Text="API 提供商"
+                                           FontSize="24"
+                                           FontWeight="SemiBold" />
+
+                                <TextBlock Grid.Row="1" Margin="0,18,0,0" VerticalAlignment="Center" Text="名称" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,18,0,0"
+                                         Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center" Text="适配器" />
+                                <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,14,0,0"
+                                          ItemsSource="{Binding AdapterKinds}"
+                                          SelectedItem="{Binding Editor.AdapterKind}" />
+
+                                <TextBlock Grid.Row="3" Margin="0,14,0,0" VerticalAlignment="Center" Text="API / 本机地址" />
+                                <StackPanel Grid.Row="3"
+                                            Grid.Column="1"
+                                            Margin="0,14,0,0">
+                                    <TextBox Text="{Binding Editor.BaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="填写到 /api/v1 或 /v1 结束，不要加入 /chat。" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Text="填写到 api/v1 结束，不要加入 /chat。"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Row="4" Margin="0,14,0,0" VerticalAlignment="Center" Text="新 API Key" />
+                                <PasswordBox x:Name="ApiKeyBox"
+                                             Grid.Row="4"
+                                             Grid.Column="1"
+                                             Margin="0,14,0,0"
+                                             MinHeight="36"
+                                             Padding="10,6"
+                                             PasswordChanged="ApiKeyBox_OnPasswordChanged"
+                                             ToolTip="API 提供商可在此输入；Grok CLI 使用 grok login，不要输入。明文不会写入数据库或日志。" />
+
+                                <TextBlock Grid.Row="5" Margin="0,14,0,0" VerticalAlignment="Center" Text="等待上限（秒）" />
+                                <TextBox Grid.Row="5" Grid.Column="1" Margin="0,14,0,0"
+                                         Text="{Binding Editor.RequestTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <CheckBox Grid.Row="6"
+                                          Grid.Column="1"
+                                          Margin="0,14,0,0"
+                                          Content="启用此接入商"
+                                          IsChecked="{Binding Editor.IsEnabled}" />
+
+                                <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,22,0,0">
+                                    <Border Padding="12"
+                                            Background="{StaticResource SurfaceAltBrush}"
+                                            CornerRadius="8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding KeyStatus}" />
+                                            <TextBlock Margin="0,6,0,0"
+                                                       Text="Key 文件独立保存在数据目录的 secrets 文件夹；受 Windows DPAPI 当前用户保护，数据库只保存随机引用。这不是应用进程隔离：同一 Windows 用户下的恶意程序或管理员仍可能取得访问能力。"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="清除 Key"
+                                                Command="{Binding ClearKeyCommand}"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="12,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="保存设置不会自动联网。"
+                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                        <Button Grid.Column="2"
+                                                Content="保存当前设置"
+                                                Command="{Binding SaveCommand}"
+                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="模型目录">
+                <Grid Margin="18,4,4,4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Style="{StaticResource CardStyle}" Padding="14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox ItemsSource="{Binding Profiles}"
+                                      SelectedItem="{Binding CatalogProvider}"
+                                      DisplayMemberPath="Name"
+                                      ToolTip="先选择供应商" />
+                            <TextBox Grid.Column="1"
+                                     Margin="12,0"
+                                     Text="{Binding CatalogSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="再输入模型 ID 或名称搜索" />
+                            <Button Grid.Column="2"
+                                    Margin="0,0,10,0"
+                                    Content="{Binding CustomModelButtonText}"
+                                    Command="{Binding AddCustomModelCommand}"
+                                    ToolTip="输入任意模型 ID 或名称保存到当前供应商的本地目录；实际调用接口由功能分配决定。"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Grid.Column="3"
+                                    Content="刷新聊天与 Embedding 目录"
+                                    Command="{Binding RefreshModelsCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="360" />
+                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="330" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource CardStyle}" Padding="8">
+                            <ListBox ItemsSource="{Binding VisibleCatalogModels}"
+                                     SelectedItem="{Binding SelectedCatalogModel}"
+                                     BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="6">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Text="{Binding ModelId}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="模型本地上限" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="{Binding SelectedCatalogModel.ModelId, TargetNullValue=请选择模型}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,16,0,0" Text="上下文上限 tokens" />
+                                <TextBox Margin="0,5,0,0"
+                                         Text="{Binding ModelContextLimit, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Margin="0,12,0,0" Text="最大输出 tokens" />
+                                <TextBox Margin="0,5,0,0"
+                                         Text="{Binding ModelMaxOutputTokens, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Margin="0,12,0,0"
+                                           Text="目录刷新会保留同一模型已经手动设置的上下文和输出上限。"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                                <Button Margin="0,18,0,0"
+                                        Content="保存模型上限"
+                                        Command="{Binding SaveModelLimitsCommand}"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="功能分配">
+                <Grid Margin="18,4,4,4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Style="{StaticResource CardStyle}" Padding="14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="210" />
+                                <ColumnDefinition Width="240" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox ItemsSource="{Binding FunctionOptions}"
+                                      SelectedItem="{Binding SelectedFunction}"
+                                      DisplayMemberPath="Label"
+                                      ToolTip="选择要分配模型的功能" />
+                            <ComboBox Grid.Column="1"
+                                      Margin="12,0,0,0"
+                                      ItemsSource="{Binding Profiles}"
+                                      SelectedItem="{Binding AssignmentProvider}"
+                                      DisplayMemberPath="Name"
+                                      ToolTip="然后选择供应商" />
+                            <TextBox Grid.Column="2"
+                                     Margin="12,0,0,0"
+                                     Text="{Binding AssignmentSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="最后输入具体模型名称或 ID 搜索" />
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="360" />
+                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="360" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource CardStyle}" Padding="8">
+                            <ListBox ItemsSource="{Binding VisibleAssignmentModels}"
+                                     SelectedItem="{Binding SelectedAssignmentModel}"
+                                     BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="6">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Text="{Binding ModelId}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="当前分配总览" Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Margin="0,2,0,6"
+                                               Text="已保存分配"
+                                               FontSize="11"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                    <ItemsControl ItemsSource="{Binding AssignmentOverview}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Expander Margin="0,0,0,4"
+                                                          IsEnabled="{Binding IsReasoningAvailable}"
+                                                          ToolTip="仅 OpenRouter 且模型 ID 含完整 deepseek 词段时可展开">
+                                                    <Expander.Header>
+                                                        <Border Padding="7,5"
+                                                                Background="{StaticResource SurfaceAltBrush}"
+                                                                CornerRadius="6">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="126" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="{Binding Label}"
+                                                                           FontWeight="SemiBold"
+                                                                           VerticalAlignment="Center" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding TargetText}"
+                                                                           FontSize="11"
+                                                                           VerticalAlignment="Center"
+                                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                                           TextWrapping="NoWrap"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           ToolTip="{Binding TargetText}" />
+                                                            </Grid>
+                                                        </Border>
+                                                    </Expander.Header>
+                                                    <Grid Margin="24,7,5,7">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="36" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="DeepSeek 推理"
+                                                                       FontWeight="SemiBold" />
+                                                            <TextBlock Text="使用 OpenRouter reasoning 参数"
+                                                                       FontSize="11"
+                                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                                        </StackPanel>
+                                                        <ToggleButton Grid.Column="1"
+                                                                      IsChecked="{Binding IsReasoningEnabled, Mode=OneWay}"
+                                                                      Command="{Binding DataContext.ToggleReasoningCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                      CommandParameter="{Binding}"
+                                                                      Style="{StaticResource ReasoningToggleStyle}" />
+                                                        <TextBlock Grid.Column="2"
+                                                                   Margin="7,0,0,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding ReasoningStateText}"
+                                                                   FontWeight="SemiBold" />
+                                                    </Grid>
+                                                </Expander>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <ScrollViewer Grid.Row="1"
+                                              Margin="0,12,0,0"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEmbeddingFunctionSelected}"
+                                                                 Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="请求参数"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Text="{Binding SelectedAssignmentModel.ModelId, TargetNullValue=请先刷新并选择模型}"
+                                                   TextWrapping="Wrap" />
+
+                                        <Grid Margin="0,10,0,0" HorizontalAlignment="Left">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="126" />
+                                                <ColumnDefinition Width="180" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock VerticalAlignment="Center" Text="上下文上限 tokens" />
+                                            <TextBox Grid.Column="1"
+                                                     MinHeight="32"
+                                                     Text="{Binding AssignmentContextLimit, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="1"
+                                                       Margin="0,8,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Text="最大输出 tokens" />
+                                            <TextBox Grid.Row="1"
+                                                     Grid.Column="1"
+                                                     Margin="0,8,0,0"
+                                                     MinHeight="32"
+                                                     Text="{Binding AssignmentMaxOutputTokens, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="2"
+                                                       Margin="0,8,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Text="temperature（0–2）" />
+                                            <TextBox Grid.Row="2"
+                                                     Grid.Column="1"
+                                                     Margin="0,8,0,0"
+                                                     MinHeight="32"
+                                                     Text="{Binding AssignmentTemperature, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="3"
+                                                       Margin="0,8,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Text="top_p（0–1）" />
+                                            <TextBox Grid.Row="3"
+                                                     Grid.Column="1"
+                                                     Margin="0,8,0,0"
+                                                     MinHeight="32"
+                                                     Text="{Binding AssignmentTopP, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEmbeddingFunctionSelected}"
+                                                                 Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="Embedding 模型"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Text="{Binding SelectedAssignmentModel.ModelId, TargetNullValue=请先刷新并选择模型}"
+                                                   TextWrapping="Wrap" />
+                                        <Border Margin="0,12,0,0"
+                                                Padding="12"
+                                                Background="{StaticResource SurfaceAltBrush}"
+                                                CornerRadius="8">
+                                            <TextBlock Text="Embedding 只保存供应商和模型，不使用上下文上限、最大输出、temperature、top_p 或推理参数。"
+                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
+                                    </StackPanel>
+
+                                    <Button Width="180"
+                                            Margin="0,14,0,0"
+                                            HorizontalAlignment="Right"
+                                            Content="保存功能分配"
+                                            Command="{Binding SaveAssignmentCommand}"
+                                            Style="{StaticResource PrimaryButtonStyle}" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="提示词管理">
+                <Grid Margin="18,4,4,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" MinWidth="420" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource CardStyle}" Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Margin="7,5,7,10"
+                                       Text="分类"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                            <ListBox Grid.Row="1"
+                                     BorderThickness="0"
+                                     ItemsSource="{Binding Prompts.Categories}"
+                                     SelectedItem="{Binding Prompts.SelectedCategory}"
+                                     DisplayMemberPath="Name" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Margin="7,5,7,10"
+                                       Text="功能"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                            <ListBox Grid.Row="1"
+                                     BorderThickness="0"
+                                     ItemsSource="{Binding Prompts.SelectedCategory.Prompts}"
+                                     SelectedItem="{Binding Prompts.SelectedPrompt}"
+                                     DisplayMemberPath="Label"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="4" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding Prompts.SelectedPrompt.Label}"
+                                       Style="{StaticResource PageTitleStyle}" />
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,6,0,12"
+                                       Text="{Binding Prompts.SelectedPrompt.Description}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <Border Grid.Row="2"
+                                    Margin="0,0,0,12"
+                                    Padding="10,8"
+                                    Background="{StaticResource AccentSoftBrush}"
+                                    CornerRadius="7">
+                                <StackPanel>
+                                    <TextBlock Text="配置生效范围"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Text="{Binding Prompts.SelectedPrompt.LocalOverrideHint}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBox Grid.Row="3"
+                                     MinHeight="280"
+                                     AcceptsReturn="True"
+                                     AcceptsTab="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding Prompts.SelectedPrompt.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Grid.Row="4" Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button Content="恢复默认"
+                                        Command="{Binding Prompts.RestoreDefaultCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Grid.Column="2"
+                                        Margin="0,0,8,0"
+                                        Content="另存完整配置…"
+                                        Command="{Binding Prompts.ExportCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Grid.Column="3"
+                                        Content="保存全局提示词"
+                                        Command="{Binding Prompts.SaveCommand}"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                            </Grid>
+                            <TextBlock Grid.Row="5"
+                                       Margin="0,12,0,0"
+                                       Text="{Binding Prompts.Status}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="界面设置">
+                <ScrollViewer Margin="18,4,4,4"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="界面设置"
+                                   Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Margin="0,2,0,14"
+                                   Text="调整聊天滚动行为和应用全局字体；设置仅保存在本机。"
+                                   Foreground="{StaticResource MutedTextBrush}" />
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="聊天界面"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <CheckBox Margin="0,8,0,0"
+                                          Content="有新消息、切换会话或流式生成时自动滚动到底部"
+                                          IsChecked="{Binding ChatAutoScrollEnabled}" />
+                                <TextBlock Margin="24,5,0,0"
+                                           Text="关闭后，聊天窗口会保持当前阅读位置。"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,12,0,0"
+                                Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="全局字体"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Margin="0,7,0,4"
+                                           Text="字体" />
+                                <ComboBox ItemsSource="{Binding AvailableInterfaceFontFamilies}"
+                                          SelectedItem="{Binding InterfaceFontFamily}"
+                                          IsTextSearchEnabled="True" />
+
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="54" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Minimum="10"
+                                            Maximum="32"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            Value="{Binding InterfaceFontSize}" />
+                                    <TextBlock Grid.Column="1"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding InterfaceFontSize, StringFormat={}{0:0}}" />
+                                </Grid>
+                                <TextBlock Margin="0,3,0,0"
+                                           Text="字号范围 10–32；聊天正文会在此基础上增加一级。"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+
+                                <Border Margin="0,12,0,0"
+                                        Padding="12"
+                                        Background="{StaticResource SurfaceAltBrush}"
+                                        CornerRadius="8">
+                                    <TextBlock Text="字体预览：TavernDesk 酒馆聊天 Aa 123"
+                                               FontFamily="{Binding InterfaceFontFamily}"
+                                               FontSize="{Binding InterfaceFontSize}" />
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,12,0,0"
+                                Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="主题"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Margin="0,7,0,0"
+                                           Text="当前主题：默认浅色。主题资源继续保持独立，后续可在这里扩展其他皮肤。" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Margin="0,12,0,0"
+                                    HorizontalAlignment="Right"
+                                    Orientation="Horizontal">
+                            <Button Margin="0,0,8,0"
+                                    Content="恢复默认值"
+                                    Command="{Binding RestoreInterfaceDefaultsCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Content="保存界面设置"
+                                    Command="{Binding SaveInterfaceSettingsCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,10,0,0"
+                                   Text="{Binding InterfaceSettingsStatus}"
+                                   Foreground="{StaticResource MutedTextBrush}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

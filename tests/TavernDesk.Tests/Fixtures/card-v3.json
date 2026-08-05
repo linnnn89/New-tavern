@@ -1,0 +1,37 @@
+{
+  "spec": "chara_card_v3",
+  "spec_version": "3.0",
+  "x_root_unknown": {
+    "stable": "yes"
+  },
+  "data": {
+    "name": "V3 固定样本",
+    "description": "V3 描述",
+    "personality": "温和",
+    "scenario": "海边",
+    "first_mes": "潮声很近。",
+    "mes_example": "",
+    "creator_notes": "固定样本",
+    "system_prompt": "",
+    "post_history_instructions": "",
+    "alternate_greetings": [],
+    "tags": ["fixture", "v3"],
+    "creator": "TavernDesk tests",
+    "character_version": "3",
+    "extensions": {
+      "fixture_extension": {
+        "value": "preserve-me"
+      }
+    },
+    "assets": [],
+    "nickname": "小三",
+    "creator_notes_multilingual": {},
+    "source": [],
+    "group_only_greetings": [],
+    "creation_date": 1700000000,
+    "modification_date": 1700000001,
+    "x_data_unknown": {
+      "nested": [true, false]
+    }
+  }
+}

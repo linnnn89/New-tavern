@@ -1,0 +1,17 @@
+.vs/
+.idea/
+.vscode/
+.dotnet/
+.dotnet_cli_home/
+.packages/
+.tools/
+artifacts/
+TestResults/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.cache
+*.log
+user-data/
+work/verification/

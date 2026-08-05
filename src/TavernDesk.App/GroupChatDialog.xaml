@@ -1,0 +1,97 @@
+<Window x:Class="TavernDesk.App.GroupChatDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="新建群聊"
+        Width="640"
+        Height="680"
+        MinWidth="480"
+        MinHeight="480"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackgroundBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="新建群聊" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock Margin="0,5,0,0"
+                       Text="选择至少两个角色。群聊会拥有独立聊天记录、独立记忆和接力设置。"
+                       Foreground="{StaticResource MutedTextBrush}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,18,0,14">
+            <TextBlock Text="群聊名称" FontWeight="SemiBold" />
+            <TextBox x:Name="TitleBox"
+                     Margin="0,6,0,0"
+                     Text="新群聊"
+                     MaxLength="120" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="8">
+            <ListBox x:Name="CharacterList"
+                     ItemsSource="{Binding Choices}"
+                     BorderThickness="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <CheckBox Margin="8,6"
+                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  VerticalContentAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="40"
+                                        Height="40"
+                                        CornerRadius="20"
+                                        Background="{StaticResource AccentSoftBrush}">
+                                    <Image Source="{Binding Character.AvatarPath}"
+                                           Stretch="UniformToFill">
+                                        <Image.Clip>
+                                            <EllipseGeometry Center="20,20"
+                                                             RadiusX="20"
+                                                             RadiusY="20" />
+                                        </Image.Clip>
+                                    </Image>
+                                </Border>
+                                <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Character.Name}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Character.Description}"
+                                               MaxWidth="420"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </StackPanel>
+                        </CheckBox>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="ValidationText"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource DangerBrush}" />
+            <Button Grid.Column="1"
+                    Width="92"
+                    Margin="0,0,10,0"
+                    Content="取消"
+                    IsCancel="True"
+                    Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Grid.Column="2"
+                    Width="112"
+                    Content="创建群聊"
+                    Click="Create_OnClick"
+                    Style="{StaticResource PrimaryButtonStyle}" />
+        </Grid>
+    </Grid>
+</Window>
