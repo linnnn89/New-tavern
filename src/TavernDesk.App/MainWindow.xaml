@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="TavernDesk"
+        Icon="/TavernDesk.App;component/Assets/Icons/TavernDesk.ico"
         Width="1440"
         Height="900"
         MinWidth="960"
@@ -10,14 +11,15 @@
         ResizeMode="CanResize">
     <Grid Background="{StaticResource WindowBackgroundBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="86" />
+            <ColumnDefinition Width="92" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="0,0,1,0">
+                BorderThickness="0,0,1,0"
+                Effect="{StaticResource CardShadowEffect}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="82" />
@@ -25,59 +27,68 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Width="48" Height="48" CornerRadius="14"
+                <Border Width="54" Height="54" CornerRadius="16"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                        Background="{StaticResource AccentBrush}">
-                    <TextBlock Text="T" Foreground="White" FontSize="23" FontWeight="Bold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        Background="Transparent">
+                    <Image Source="/TavernDesk.App;component/Assets/Icons/brand-mark.png"
+                           Width="54"
+                           Height="54"
+                           Stretch="Uniform"
+                           SnapsToDevicePixels="True" />
                 </Border>
 
                 <StackPanel Grid.Row="1">
                     <Button Command="{Binding ShowDashboardCommand}"
-                            ToolTip="打开本地数据与应用状态概览。"
-                            Style="{StaticResource NavButtonStyle}">
+                        ToolTip="打开本地数据与应用状态概览。"
+                        Style="{StaticResource NavButtonStyle}">
                         <StackPanel>
-                            <TextBlock Text="⌂" FontSize="22" HorizontalAlignment="Center" />
+                            <Image Source="/TavernDesk.App;component/Assets/Icons/dashboard.png"
+                                   Width="28" Height="28" Stretch="Uniform" />
                             <TextBlock Text="仪表盘" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding ShowChatCommand}"
-                            ToolTip="打开一对一角色聊天。"
-                            Style="{StaticResource NavButtonStyle}">
+                        ToolTip="打开一对一角色聊天。"
+                        Style="{StaticResource NavButtonStyle}">
                         <StackPanel>
-                            <TextBlock Text="◌" FontSize="22" HorizontalAlignment="Center" />
+                            <Image Source="/TavernDesk.App;component/Assets/Icons/chat.png"
+                                   Width="28" Height="28" Stretch="Uniform" />
                             <TextBlock Text="聊天" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding ShowCampaignsCommand}"
-                            ToolTip="打开剧本库、起始大厅和多人跑团。"
-                            Style="{StaticResource NavButtonStyle}">
+                        ToolTip="打开剧本库、起始大厅和多人跑团。"
+                        Style="{StaticResource NavButtonStyle}">
                         <StackPanel>
-                            <TextBlock Text="⚄" FontSize="22" HorizontalAlignment="Center" />
+                            <Image Source="/TavernDesk.App;component/Assets/Icons/campaign.png"
+                                   Width="28" Height="28" Stretch="Uniform" />
                             <TextBlock Text="跑团" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding ShowCharactersCommand}"
-                            ToolTip="管理本地角色卡与角色资料。"
-                            Style="{StaticResource NavButtonStyle}">
+                        ToolTip="管理本地角色卡与角色资料。"
+                        Style="{StaticResource NavButtonStyle}">
                         <StackPanel>
-                            <TextBlock Text="▦" FontSize="22" HorizontalAlignment="Center" />
+                            <Image Source="/TavernDesk.App;component/Assets/Icons/characters.png"
+                                   Width="28" Height="28" Stretch="Uniform" />
                             <TextBlock Text="角色" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button IsEnabled="False"
-                            ToolTip="知识库功能尚未开放。"
+                    <Button Command="{Binding ShowWorldbooksCommand}"
+                        ToolTip="导入、管理并测试酒馆世界书；关键词和语义召回分开运行。"
                             Style="{StaticResource NavButtonStyle}">
                         <StackPanel>
-                            <TextBlock Text="◇" FontSize="22" HorizontalAlignment="Center" />
-                            <TextBlock Text="知识" HorizontalAlignment="Center" />
+                            <Image Source="/TavernDesk.App;component/Assets/Icons/worldbook.png"
+                                   Width="28" Height="28" Stretch="Uniform" />
+                            <TextBlock Text="世界书" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button IsEnabled="False"
                             ToolTip="工具页功能尚未开放。"
                             Style="{StaticResource NavButtonStyle}">
                         <StackPanel>
-                            <TextBlock Text="✦" FontSize="22" HorizontalAlignment="Center" />
+                            <Image Source="/TavernDesk.App;component/Assets/Icons/tools.png"
+                                   Width="28" Height="28" Stretch="Uniform" />
                             <TextBlock Text="工具" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -89,7 +100,8 @@
                         ToolTip="配置模型供应商、API Key、默认模型与全局提示词。"
                         Style="{StaticResource NavButtonStyle}">
                     <StackPanel>
-                        <TextBlock Text="⚙" FontSize="21" HorizontalAlignment="Center" />
+                        <Image Source="/TavernDesk.App;component/Assets/Icons/settings.png"
+                               Width="28" Height="28" Stretch="Uniform" />
                         <TextBlock Text="设置" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Button>
@@ -103,7 +115,7 @@
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0"
-                    Padding="22,0"
+                    Padding="26,0"
                     Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="0,0,0,1">

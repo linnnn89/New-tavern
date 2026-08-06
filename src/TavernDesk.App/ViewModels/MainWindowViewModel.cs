@@ -63,7 +63,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             interaction,
             OpenCharacterChatAsync,
             CreateNewCharacterChatAsync,
-            OpenRecentConversationAsync);
+            OpenRecentConversationAsync,
+            Chat.DeleteConversationAsync);
         Settings = new ProviderSettingsViewModel(
             services.Providers,
             services.Models,
@@ -73,7 +74,15 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.ContextBudget,
             interaction,
             services.GlobalPrompts,
-            fileDialog);
+            fileDialog,
+            services.Settings,
+            services.DataLocation);
+        Worldbooks = new WorldbookViewModel(
+            services.WorldbookService,
+            services.Characters,
+            services.CampaignScenarios,
+            fileDialog,
+            interaction);
         Campaigns = new CampaignsViewModel(
             services.CampaignScenarios,
             services.CampaignScenarioCards,
@@ -86,7 +95,11 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.Models,
             services.ModelAssignments,
             services.Settings,
-            fileDialog);
+            fileDialog,
+            interaction,
+            services.WorldbookService,
+            services.CampaignMemoryRepository,
+            services.CampaignMemory);
         Chat.OpenPromptSettings = OpenPromptSettingsAsync;
         Campaigns.OpenPromptSettings = OpenPromptSettingsAsync;
         services.GenerationCoordinator.StateChanged += OnGenerationStateChanged;
@@ -97,6 +110,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         ShowCharactersCommand = new AsyncRelayCommand(ShowCharactersAsync);
         ShowChatCommand = new AsyncRelayCommand(ShowChatAsync);
         ShowCampaignsCommand = new AsyncRelayCommand(ShowCampaignsAsync);
+        ShowWorldbooksCommand = new AsyncRelayCommand(ShowWorldbooksAsync);
         ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync);
         StopAllGenerationCommand = new AsyncRelayCommand(
             StopAllGenerationAsync,
@@ -108,6 +122,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public ChatViewModel Chat { get; }
     public CampaignsViewModel Campaigns { get; }
     public ProviderSettingsViewModel Settings { get; }
+    public WorldbookViewModel Worldbooks { get; }
     public bool IsGenerationActive
     {
         get => _isGenerationActive;
@@ -142,6 +157,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand ShowCharactersCommand { get; }
     public AsyncRelayCommand ShowChatCommand { get; }
     public AsyncRelayCommand ShowCampaignsCommand { get; }
+    public AsyncRelayCommand ShowWorldbooksCommand { get; }
     public AsyncRelayCommand ShowSettingsCommand { get; }
     public AsyncRelayCommand StopAllGenerationCommand { get; }
 
@@ -163,6 +179,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         await Characters.LoadAsync();
         await Chat.LoadAsync();
         await Campaigns.LoadAsync();
+        await Worldbooks.LoadAsync();
         await Settings.LoadAsync();
     }
 
@@ -276,6 +293,23 @@ public sealed class MainWindowViewModel : ViewModelBase
         await Campaigns.LoadAsync();
         CurrentPage = Campaigns;
         CurrentSection = "跑团";
+    }
+
+    private async Task ShowWorldbooksAsync()
+    {
+        if (ReferenceEquals(CurrentPage, Worldbooks))
+        {
+            return;
+        }
+
+        if (!await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        await Worldbooks.LoadAsync();
+        CurrentPage = Worldbooks;
+        CurrentSection = "世界书";
     }
 
     private async Task ShowSettingsAsync()

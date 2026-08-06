@@ -423,6 +423,34 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         }
     }
 
+    public async Task RecoverInterruptedGenerationsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE campaign_events
+            SET generation_status = $interrupted,
+                end_reason = $processExited,
+                is_locked = 0,
+                updated_at = $updatedAt
+            WHERE generation_status IN ($queued, $streaming);
+            """;
+        command.Parameters.AddWithValue(
+            "$interrupted",
+            (int)CampaignGenerationStatus.Interrupted);
+        command.Parameters.AddWithValue(
+            "$processExited",
+            (int)CampaignEndReason.ProcessExited);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.Parameters.AddWithValue("$queued", (int)CampaignGenerationStatus.Queued);
+        command.Parameters.AddWithValue(
+            "$streaming",
+            (int)CampaignGenerationStatus.Streaming);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task UpdateRuntimeAsync(
         string campaignId,
         int expectedStateVersion,
@@ -836,6 +864,26 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.Parameters.AddWithValue("$campaignId", campaignId);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task DeleteAsync(
+        string campaignId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            DELETE FROM campaigns
+            WHERE id = $campaignId;
+            """;
+        command.Parameters.AddWithValue("$campaignId", campaignId);
+        var deleted = await command.ExecuteNonQueryAsync(cancellationToken);
+        if (deleted == 0)
+        {
+            throw new InvalidOperationException("要删除的跑团不存在。");
+        }
     }
 
     private async Task UpdateRouteAsync(

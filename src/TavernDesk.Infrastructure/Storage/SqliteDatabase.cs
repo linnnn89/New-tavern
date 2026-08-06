@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 15;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -601,6 +601,256 @@ public sealed class SqliteDatabase : IDatabaseInitializer
 
             DELETE FROM messages
             WHERE is_deleted = 1;
+            """),
+        new(
+            11,
+            """
+            ALTER TABLE provider_models
+                ADD COLUMN model_kind INTEGER NOT NULL DEFAULT 0;
+
+            CREATE INDEX ix_provider_models_kind
+                ON provider_models(provider_id, model_kind, display_name COLLATE NOCASE);
+            """),
+        new(
+            12,
+            """
+            CREATE TABLE IF NOT EXISTS worldbooks (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                source_kind INTEGER NOT NULL,
+                source_path TEXT NOT NULL,
+                source_file_name TEXT NOT NULL,
+                source_sha256 TEXT NOT NULL,
+                raw_json TEXT NOT NULL,
+                is_enabled INTEGER NOT NULL,
+                scan_depth INTEGER NOT NULL,
+                token_budget INTEGER NOT NULL,
+                recursive_scanning INTEGER NOT NULL,
+                revision INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS worldbook_sources (
+                id TEXT PRIMARY KEY,
+                worldbook_id TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                source_format TEXT NOT NULL,
+                source_sha256 TEXT NOT NULL,
+                raw_json TEXT NOT NULL,
+                parser_version TEXT NOT NULL,
+                imported_at TEXT NOT NULL,
+                FOREIGN KEY(worldbook_id) REFERENCES worldbooks(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS worldbook_entries (
+                worldbook_id TEXT NOT NULL,
+                entry_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                comment TEXT NOT NULL,
+                content TEXT NOT NULL,
+                keys_json TEXT NOT NULL,
+                secondary_keys_json TEXT NOT NULL,
+                content_type INTEGER NOT NULL,
+                visibility INTEGER NOT NULL,
+                semantic_enabled INTEGER NOT NULL,
+                enabled INTEGER NOT NULL,
+                constant INTEGER NOT NULL,
+                case_sensitive INTEGER NOT NULL,
+                match_whole_words INTEGER NOT NULL,
+                selective_logic INTEGER NOT NULL,
+                insertion_order INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                depth INTEGER NOT NULL,
+                provider_role TEXT NOT NULL,
+                probability INTEGER NOT NULL,
+                use_probability INTEGER NOT NULL,
+                inclusion_group TEXT NOT NULL,
+                group_weight INTEGER NOT NULL,
+                exclude_recursion INTEGER NOT NULL,
+                original_index INTEGER NOT NULL,
+                content_hash TEXT NOT NULL,
+                extensions_json TEXT NOT NULL,
+                PRIMARY KEY(worldbook_id, entry_id),
+                FOREIGN KEY(worldbook_id) REFERENCES worldbooks(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS worldbook_mounts (
+                worldbook_id TEXT NOT NULL,
+                scope_kind INTEGER NOT NULL,
+                scope_id TEXT NOT NULL,
+                sort_index INTEGER NOT NULL,
+                is_enabled INTEGER NOT NULL,
+                mounted_revision INTEGER NOT NULL,
+                PRIMARY KEY(worldbook_id, scope_kind, scope_id),
+                FOREIGN KEY(worldbook_id) REFERENCES worldbooks(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS worldbook_chunks (
+                id TEXT PRIMARY KEY,
+                worldbook_id TEXT NOT NULL,
+                entry_id TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                normalized_content TEXT NOT NULL,
+                token_count INTEGER NOT NULL,
+                source_locator TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(worldbook_id, entry_id, chunk_index),
+                FOREIGN KEY(worldbook_id, entry_id)
+                    REFERENCES worldbook_entries(worldbook_id, entry_id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS worldbook_chunks_fts USING fts5(
+                chunk_id UNINDEXED,
+                worldbook_id UNINDEXED,
+                entry_id UNINDEXED,
+                content,
+                normalized_content,
+                tokenize = 'unicode61'
+            );
+
+            CREATE TABLE IF NOT EXISTS embedding_profiles (
+                id TEXT PRIMARY KEY,
+                provider_id TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                dimension INTEGER NULL,
+                normalize INTEGER NOT NULL,
+                batch_size INTEGER NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS worldbook_embeddings (
+                chunk_id TEXT NOT NULL,
+                profile_id TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                dimension INTEGER NOT NULL,
+                vector_blob BLOB NOT NULL,
+                content_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(chunk_id, profile_id),
+                FOREIGN KEY(chunk_id) REFERENCES worldbook_chunks(id) ON DELETE CASCADE,
+                FOREIGN KEY(profile_id) REFERENCES embedding_profiles(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS ix_worldbooks_updated
+                ON worldbooks(updated_at DESC);
+
+            CREATE INDEX IF NOT EXISTS ix_worldbook_mounts_scope
+                ON worldbook_mounts(scope_kind, scope_id, sort_index);
+
+            CREATE INDEX IF NOT EXISTS ix_worldbook_entries_semantic
+                ON worldbook_entries(worldbook_id, semantic_enabled, enabled);
+
+            CREATE INDEX IF NOT EXISTS ix_worldbook_chunks_book
+                ON worldbook_chunks(worldbook_id, entry_id, chunk_index);
+            """),
+        new(
+            13,
+            """
+            CREATE TABLE embedding_profiles_v13 (
+                id TEXT PRIMARY KEY,
+                provider_id TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                dimension INTEGER NULL,
+                normalize INTEGER NOT NULL,
+                batch_size INTEGER NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            INSERT INTO embedding_profiles_v13(
+                id, provider_id, model_id, dimension,
+                normalize, batch_size, updated_at)
+            SELECT id, provider_id, model_id, dimension,
+                   normalize, batch_size, updated_at
+            FROM embedding_profiles;
+
+            CREATE TABLE worldbook_embeddings_backup_v13 (
+                chunk_id TEXT NOT NULL,
+                profile_id TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                dimension INTEGER NOT NULL,
+                vector_blob BLOB NOT NULL,
+                content_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            INSERT INTO worldbook_embeddings_backup_v13(
+                chunk_id, profile_id, model_id, dimension,
+                vector_blob, content_hash, updated_at)
+            SELECT chunk_id, profile_id, model_id, dimension,
+                   vector_blob, content_hash, updated_at
+            FROM worldbook_embeddings;
+
+            DROP TABLE worldbook_embeddings;
+            DROP TABLE embedding_profiles;
+            ALTER TABLE embedding_profiles_v13 RENAME TO embedding_profiles;
+
+            CREATE TABLE worldbook_embeddings (
+                chunk_id TEXT NOT NULL,
+                profile_id TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                dimension INTEGER NOT NULL,
+                vector_blob BLOB NOT NULL,
+                content_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(chunk_id, profile_id),
+                FOREIGN KEY(chunk_id) REFERENCES worldbook_chunks(id) ON DELETE CASCADE,
+                FOREIGN KEY(profile_id) REFERENCES embedding_profiles(id) ON DELETE CASCADE
+            );
+
+            INSERT INTO worldbook_embeddings(
+                chunk_id, profile_id, model_id, dimension,
+                vector_blob, content_hash, updated_at)
+            SELECT chunk_id, profile_id, model_id, dimension,
+                   vector_blob, content_hash, updated_at
+            FROM worldbook_embeddings_backup_v13;
+
+            DROP TABLE worldbook_embeddings_backup_v13;
+            """),
+        new(
+            14,
+            """
+            ALTER TABLE memory_workflow_settings
+                ADD COLUMN maximum_source_user_turns INTEGER NOT NULL DEFAULT 20;
+
+            ALTER TABLE memory_workflow_settings
+                ADD COLUMN send_only_new_messages INTEGER NOT NULL DEFAULT 1;
+            """),
+        new(
+            15,
+            """
+            CREATE TABLE IF NOT EXISTS campaign_memory_banks (
+                id TEXT PRIMARY KEY,
+                campaign_id TEXT NOT NULL,
+                scope INTEGER NOT NULL,
+                body TEXT NOT NULL,
+                target_tokens INTEGER NOT NULL,
+                source_through_event_sequence INTEGER NOT NULL,
+                prompt_version TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(campaign_id, scope),
+                FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS campaign_memory_checkpoints (
+                campaign_id TEXT NOT NULL,
+                scope INTEGER NOT NULL,
+                last_event_sequence INTEGER NOT NULL,
+                processed_round INTEGER NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(campaign_id, scope),
+                FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS ix_campaign_memory_banks_campaign
+                ON campaign_memory_banks(campaign_id, scope);
+
+            CREATE INDEX IF NOT EXISTS ix_campaign_memory_checkpoints_campaign
+                ON campaign_memory_checkpoints(campaign_id, scope);
             """)
     ];
 

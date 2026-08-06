@@ -1,15 +1,19 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Collections.Concurrent;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Worldbooks;
 
 namespace TavernDesk.Infrastructure.Context;
 
 public sealed class CharacterWorldbookEngine : IWorldbookEngine
 {
+    private const int MaximumCachedDocuments = 64;
     private readonly IMacroEngine _macros;
+    private readonly ConcurrentDictionary<string, ParsedWorldbookDocument> _documentCache =
+        new(StringComparer.Ordinal);
 
     public CharacterWorldbookEngine(IMacroEngine macros)
     {
@@ -21,180 +25,157 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var data = ReadCardData(request.RawCardJson);
-        if (data?["character_book"] is not JsonObject book
-            || book["entries"] is not JsonArray entries)
+        var sources = new List<(string RawJson, string IdPrefix)>
         {
-            return Task.FromResult(new WorldbookScanResult([], []));
+            (request.RawCardJson, string.Empty)
+        };
+        if (request.AdditionalRawBookJson is { Count: > 0 })
+        {
+            sources.AddRange(request.AdditionalRawBookJson
+                .Where(raw => !string.IsNullOrWhiteSpace(raw))
+                .Select((raw, index) => (raw, $"book-{index + 1}:")));
         }
 
         var diagnostics = new List<string>();
-        var definitions = entries
-            .OfType<JsonObject>()
-            .Select((entry, index) => ReadEntry(
-                entry,
-                index,
-                book,
-                diagnostics))
-            .Where(entry => entry is not null)
-            .Cast<EntryDefinition>()
-            .ToArray();
-        var scanDepth = Math.Clamp(
-            ReadInt32(book, "scan_depth")
-            ?? ReadExtensionInt32(book, "scan_depth")
-            ?? request.DefaultScanDepth,
-            0,
-            1000);
-        var scanMessages = scanDepth == 0
-            ? Array.Empty<ChatMessage>()
-            : request.Messages.TakeLast(scanDepth).ToArray();
-        var scan = new StringBuilder();
-        foreach (var message in scanMessages)
-        {
-            scan.AppendLine(message.Content);
-        }
-
-        scan.Append(request.UserInput);
-        var scanText = scan.ToString();
-        var active = new List<(EntryDefinition Entry, int Level)>();
-        var activeIds = new HashSet<string>(StringComparer.Ordinal);
-        var maximumSteps = Math.Clamp(request.MaximumRecursionSteps, 1, 20);
-        for (var level = 0; level < maximumSteps; level++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var newlyActive = definitions
-                .Where(entry => !activeIds.Contains(entry.Id))
-                .Where(entry => (level == 0 && entry.Constant)
-                                || Matches(entry, scanText))
-                .Where(entry => PassesProbability(entry, request))
-                .ToList();
-            newlyActive = ResolveInclusionGroups(newlyActive);
-            if (newlyActive.Count == 0)
-            {
-                break;
-            }
-
-            foreach (var entry in newlyActive)
-            {
-                activeIds.Add(entry.Id);
-                active.Add((entry, level));
-            }
-
-            scanText += "\n" + string.Join(
-                "\n",
-                newlyActive.Select(entry => entry.Content));
-        }
-
         var matches = new List<WorldbookMatch>();
         var usedCharacters = 0;
-        foreach (var item in active
-                     .OrderBy(value => value.Entry.InsertionOrder)
-                     .ThenBy(value => value.Entry.OriginalIndex))
+        foreach (var source in sources)
         {
-            var expanded = _macros.Expand(
-                item.Entry.Content,
-                request.MacroVariables);
-            if (expanded.Length == 0)
+            cancellationToken.ThrowIfCancellationRequested();
+            var document = ParseCached(source.RawJson);
+            diagnostics.AddRange(document.Diagnostics);
+            if (!document.FoundBook)
             {
                 continue;
             }
 
-            if (usedCharacters + expanded.Length > request.MaximumContentCharacters)
+            var definitions = document.Entries
+                .Where(entry => entry.Enabled)
+                .Select(entry => ToDefinition(entry, source.IdPrefix))
+                .ToArray();
+            var scanDepth = Math.Clamp(
+                document.ScanDepth,
+                0,
+                1000);
+            var scanMessages = scanDepth == 0
+                ? Array.Empty<ChatMessage>()
+                : request.Messages.TakeLast(scanDepth).ToArray();
+            var scan = new StringBuilder();
+            foreach (var message in scanMessages)
             {
-                diagnostics.Add(
-                    $"世界书条目“{item.Entry.Title}”因本轮世界书字符预算不足而未注入。");
-                continue;
+                scan.AppendLine(message.Content);
             }
 
-            usedCharacters += expanded.Length;
-            matches.Add(new WorldbookMatch(
-                item.Entry.Id,
-                item.Entry.Title,
-                expanded,
-                item.Entry.Position,
-                item.Entry.Depth,
-                item.Entry.ProviderRole,
-                item.Entry.InsertionOrder,
-                item.Level));
+            scan.Append(request.UserInput);
+            var scanText = scan.ToString();
+            var active = new List<(EntryDefinition Entry, int Level)>();
+            var activeIds = new HashSet<string>(StringComparer.Ordinal);
+            var maximumSteps = document.RecursiveScanning
+                ? Math.Clamp(request.MaximumRecursionSteps, 1, 20)
+                : 1;
+            for (var level = 0; level < maximumSteps; level++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var newlyActive = definitions
+                    .Where(entry => !activeIds.Contains(entry.Id))
+                    .Where(entry => level == 0 || !entry.ExcludeRecursion)
+                    .Where(entry => (level == 0 && entry.Constant)
+                                    || Matches(entry, scanText))
+                    .Where(entry => PassesProbability(entry, request))
+                    .ToList();
+                newlyActive = ResolveInclusionGroups(newlyActive);
+                if (newlyActive.Count == 0)
+                {
+                    break;
+                }
+
+                foreach (var entry in newlyActive)
+                {
+                    activeIds.Add(entry.Id);
+                    active.Add((entry, level));
+                }
+
+                scanText += "\n" + string.Join(
+                    "\n",
+                    newlyActive.Select(entry => entry.Content));
+            }
+
+            foreach (var item in active
+                         .OrderBy(value => value.Entry.InsertionOrder)
+                         .ThenBy(value => value.Entry.OriginalIndex))
+            {
+                var expanded = _macros.Expand(
+                    item.Entry.Content,
+                    request.MacroVariables);
+                if (expanded.Length == 0)
+                {
+                    continue;
+                }
+
+                if (usedCharacters + expanded.Length > request.MaximumContentCharacters)
+                {
+                    diagnostics.Add(
+                        $"世界书条目“{item.Entry.Title}”因本轮世界书字符预算不足而未注入。");
+                    continue;
+                }
+
+                usedCharacters += expanded.Length;
+                matches.Add(new WorldbookMatch(
+                    item.Entry.Id,
+                    item.Entry.Title,
+                    expanded,
+                    item.Entry.Position,
+                    item.Entry.Depth,
+                    item.Entry.ProviderRole,
+                    item.Entry.InsertionOrder,
+                    item.Level,
+                    ContentType: item.Entry.ContentType));
+            }
         }
 
         return Task.FromResult(new WorldbookScanResult(matches, diagnostics));
     }
 
-    private static EntryDefinition? ReadEntry(
-        JsonObject entry,
-        int index,
-        JsonObject book,
-        ICollection<string> diagnostics)
+    private ParsedWorldbookDocument ParseCached(string rawJson)
     {
-        if (ReadBoolean(entry, "enabled") == false)
+        if (_documentCache.TryGetValue(rawJson, out var cached))
         {
-            return null;
+            return cached;
         }
 
-        var content = ReadString(entry, "content");
-        if (string.IsNullOrWhiteSpace(content))
+        var parsed = WorldbookJsonParser.Parse(rawJson);
+        if (_documentCache.Count >= MaximumCachedDocuments)
         {
-            return null;
+            _documentCache.Clear();
         }
 
-        var extensions = entry["extensions"] as JsonObject;
-        var id = ReadString(entry, "id")
-                 ?? ReadString(entry, "uid")
-                 ?? index.ToString();
-        var title = ReadString(entry, "name")
-                    ?? ReadString(entry, "comment")
-                    ?? $"角色世界书 · 条目 {index + 1}";
-        var position = ReadPosition(entry, extensions, diagnostics, title);
-        var role = (ReadString(entry, "role")
-                    ?? ReadString(extensions, "role")
-                    ?? "system").ToLowerInvariant();
-        if (role is not ("system" or "user" or "assistant"))
-        {
-            diagnostics.Add($"世界书条目“{title}”的 role 无效，已按 system 处理。");
-            role = "system";
-        }
-
-        return new EntryDefinition(
-            id,
-            title,
-            content.Trim(),
-            ReadStringArray(entry, "keys"),
-            ReadStringArray(entry, "secondary_keys"),
-            ReadBoolean(entry, "constant") == true,
-            ReadBoolean(entry, "case_sensitive")
-            ?? ReadBoolean(book, "case_sensitive")
-            ?? false,
-            ReadBoolean(entry, "match_whole_words")
-            ?? ReadBoolean(extensions, "match_whole_words")
-            ?? false,
-            ReadLogic(entry, extensions),
-            ReadInt32(entry, "insertion_order")
-            ?? ReadInt32(entry, "order")
-            ?? 100,
-            position,
-            Math.Clamp(
-                ReadInt32(entry, "depth")
-                ?? ReadInt32(extensions, "depth")
-                ?? 4,
-                1,
-                100),
-            role,
-            Math.Clamp(
-                ReadInt32(entry, "probability")
-                ?? ReadInt32(extensions, "probability")
-                ?? 100,
-                0,
-                100),
-            ReadString(entry, "inclusion_group")
-            ?? ReadString(entry, "group")
-            ?? ReadString(extensions, "inclusion_group")
-            ?? string.Empty,
-            ReadInt32(entry, "group_weight")
-            ?? ReadInt32(extensions, "group_weight")
-            ?? 100,
-            index);
+        return _documentCache.GetOrAdd(rawJson, parsed);
     }
+
+    private static EntryDefinition ToDefinition(
+        WorldbookEntry entry,
+        string idPrefix) =>
+        new(
+            idPrefix + entry.Id,
+            entry.Title,
+            entry.Content,
+            entry.Keys,
+            entry.SecondaryKeys,
+            entry.Constant,
+            entry.CaseSensitive,
+            entry.MatchWholeWords,
+            entry.SelectiveLogic,
+            entry.InsertionOrder,
+            entry.Position,
+            entry.Depth,
+            entry.ProviderRole,
+            entry.Probability,
+            entry.UseProbability,
+            entry.InclusionGroup,
+            entry.GroupWeight,
+            entry.ExcludeRecursion,
+            entry.OriginalIndex,
+            entry.ContentType);
 
     private static bool Matches(EntryDefinition entry, string scanText)
     {
@@ -298,7 +279,7 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
         EntryDefinition entry,
         WorldbookScanRequest request)
     {
-        if (entry.Probability >= 100)
+        if (!entry.UseProbability || entry.Probability >= 100)
         {
             return true;
         }
@@ -312,131 +293,6 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
             $"{request.ConversationId}\0{request.UserInput}\0{entry.Id}"));
         return BitConverter.ToUInt32(bytes, 0) % 100 < entry.Probability;
     }
-
-    private static WorldbookInsertionPosition ReadPosition(
-        JsonObject entry,
-        JsonObject? extensions,
-        ICollection<string> diagnostics,
-        string title)
-    {
-        var raw = ReadString(entry, "position")
-                  ?? ReadString(extensions, "position");
-        if (raw is not null)
-        {
-            return raw.Trim().ToLowerInvariant() switch
-            {
-                "before_char" or "beforecharacter" or "before_character" =>
-                    WorldbookInsertionPosition.BeforeCharacter,
-                "after_char" or "aftercharacter" or "after_character" =>
-                    WorldbookInsertionPosition.AfterCharacter,
-                "at_depth" or "atdepth" or "chat_history" =>
-                    WorldbookInsertionPosition.HistoryDepth,
-                _ => WorldbookInsertionPosition.AfterCharacter
-            };
-        }
-
-        var numeric = ReadInt32(entry, "position")
-                      ?? ReadInt32(extensions, "position");
-        if (numeric is null)
-        {
-            return WorldbookInsertionPosition.AfterCharacter;
-        }
-
-        return numeric.Value switch
-        {
-            0 => WorldbookInsertionPosition.BeforeCharacter,
-            1 => WorldbookInsertionPosition.AfterCharacter,
-            4 or 6 => WorldbookInsertionPosition.HistoryDepth,
-            _ => ReportUnsupportedPosition(diagnostics, title, numeric.Value)
-        };
-    }
-
-    private static WorldbookInsertionPosition ReportUnsupportedPosition(
-        ICollection<string> diagnostics,
-        string title,
-        int position)
-    {
-        diagnostics.Add(
-            $"世界书条目“{title}”的位置 {position} 暂无独立槽位，已降级为角色设定后。");
-        return WorldbookInsertionPosition.AfterCharacter;
-    }
-
-    private static WorldbookSelectiveLogic ReadLogic(
-        JsonObject entry,
-        JsonObject? extensions)
-    {
-        var raw = ReadString(entry, "selective_logic")
-                  ?? ReadString(entry, "logic")
-                  ?? ReadString(extensions, "selective_logic");
-        if (raw is not null)
-        {
-            return raw.Replace("_", string.Empty).ToLowerInvariant() switch
-            {
-                "andall" => WorldbookSelectiveLogic.AndAll,
-                "notany" => WorldbookSelectiveLogic.NotAny,
-                "notall" => WorldbookSelectiveLogic.NotAll,
-                _ => WorldbookSelectiveLogic.AndAny
-            };
-        }
-
-        var numeric = ReadInt32(entry, "selectiveLogic")
-                      ?? ReadInt32(entry, "selective_logic")
-                      ?? ReadInt32(extensions, "selective_logic");
-        return numeric switch
-        {
-            1 => WorldbookSelectiveLogic.AndAll,
-            2 => WorldbookSelectiveLogic.NotAny,
-            3 => WorldbookSelectiveLogic.NotAll,
-            _ => WorldbookSelectiveLogic.AndAny
-        };
-    }
-
-    private static JsonObject? ReadCardData(string rawJson)
-    {
-        try
-        {
-            var root = JsonNode.Parse(rawJson) as JsonObject;
-            return root?["data"] as JsonObject ?? root;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string? ReadString(JsonObject? source, string propertyName) =>
-        source?[propertyName] is JsonValue value
-        && value.TryGetValue<string>(out var result)
-            ? result
-            : null;
-
-    private static bool? ReadBoolean(JsonObject? source, string propertyName) =>
-        source?[propertyName] is JsonValue value
-        && value.TryGetValue<bool>(out var result)
-            ? result
-            : null;
-
-    private static int? ReadInt32(JsonObject? source, string propertyName) =>
-        source?[propertyName] is JsonValue value
-        && value.TryGetValue<int>(out var result)
-            ? result
-            : null;
-
-    private static int? ReadExtensionInt32(JsonObject source, string propertyName) =>
-        ReadInt32(source["extensions"] as JsonObject, propertyName);
-
-    private static IReadOnlyList<string> ReadStringArray(
-        JsonObject source,
-        string propertyName) =>
-        source[propertyName] is JsonArray array
-            ? array
-                .OfType<JsonValue>()
-                .Select(value => value.TryGetValue<string>(out var result)
-                    ? result.Trim()
-                    : string.Empty)
-                .Where(value => value.Length > 0)
-                .ToArray()
-            : Array.Empty<string>();
 
     private sealed record EntryDefinition(
         string Id,
@@ -453,7 +309,10 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
         int Depth,
         string ProviderRole,
         int Probability,
+        bool UseProbability,
         string InclusionGroup,
         int GroupWeight,
-        int OriginalIndex);
+        bool ExcludeRecursion,
+        int OriginalIndex,
+        WorldbookContentType ContentType);
 }

@@ -558,6 +558,12 @@
                                                 Command="{Binding DataContext.OpenCharacterConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource SecondaryButtonStyle}">
+                                            <Button.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="删除整个聊天记录"
+                                                              Command="{Binding DeleteConversationCommand}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
@@ -794,19 +800,29 @@
                         </Grid.Style>
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Button Content="返回角色主页"
+                            <Button HorizontalAlignment="Left"
+                                    Padding="12,8"
                                     Command="{Binding ShowCharacterOverviewCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Grid.Column="1"
-                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    ToolTip="返回当前角色主页">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,7,0"
+                                               Text="←"
+                                               FontSize="16" />
+                                    <TextBlock Text="角色主页"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2"
                                     Content="导出角色卡"
                                     Command="{Binding ExportCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Grid.Column="2"
+                            <Button Grid.Column="3"
                                     Margin="8,0,0,0"
                                     Content="保存角色设定"
                                     Command="{Binding SaveCharacterCommand}"

@@ -664,6 +664,11 @@ public sealed class CharacterDetailsTests
             CancellationToken cancellationToken = default) =>
             inner.GetAsync(id, cancellationToken);
 
+        public Task DeleteConversationAsync(
+            string conversationId,
+            CancellationToken cancellationToken = default) =>
+            inner.DeleteConversationAsync(conversationId, cancellationToken);
+
         public Task<IReadOnlyList<ChatMessage>> ListMessagesAsync(
             string conversationId,
             CancellationToken cancellationToken = default) =>
@@ -693,6 +698,15 @@ public sealed class CharacterDetailsTests
             MessageCandidate candidate,
             CancellationToken cancellationToken = default) =>
             inner.AddAndActivateCandidateAsync(candidate, cancellationToken);
+
+        public Task ActivateCandidateAsync(
+            string messageId,
+            int candidateIndex,
+            CancellationToken cancellationToken = default) =>
+            inner.ActivateCandidateAsync(
+                messageId,
+                candidateIndex,
+                cancellationToken);
 
         public Task UpdateMessageContentAsync(
             string messageId,

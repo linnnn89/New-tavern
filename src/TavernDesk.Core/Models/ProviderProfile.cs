@@ -21,6 +21,10 @@ public static class ProviderProfileIds
 
     public static bool IsSupported(string id) =>
         id is GrokCli or OpenRouter or SiliconFlow or DeepSeek or LmStudio;
+
+    public static bool IsSupportedAdapter(ProviderAdapterKind adapterKind) =>
+        adapterKind is ProviderAdapterKind.OpenAiCompatible
+            or ProviderAdapterKind.GrokCli;
 }
 
 public sealed class ProviderProfile

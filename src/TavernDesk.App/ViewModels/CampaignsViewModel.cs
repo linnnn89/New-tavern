@@ -22,7 +22,11 @@ public sealed class CampaignsViewModel : ViewModelBase
     private readonly IModelCatalogRepository _models;
     private readonly IModelAssignmentRepository _assignments;
     private readonly IAppSettingsRepository _settings;
+    private readonly ICampaignMemoryRepository? _campaignMemories;
+    private readonly ICampaignMemoryUpdateService? _campaignMemoryUpdater;
     private readonly IFileDialogService _fileDialog;
+    private readonly IUserInteractionService _interaction;
+    private readonly IWorldbookService? _worldbooks;
     private Campaign? _draftCampaign;
     private CampaignAggregate? _game;
     private CampaignScenario? _selectedScenario;
@@ -34,10 +38,19 @@ public sealed class CampaignsViewModel : ViewModelBase
     private CampaignEventItemViewModel? _selectedEvent;
     private string _screen = "library";
     private string _statusText = "选择剧本创建新局，或继续已有跑团。";
+    private bool _isCreatingScenario;
     private string _title = string.Empty;
     private string _worldSetting = string.Empty;
     private string _rules = string.Empty;
     private string _openingPrompt = string.Empty;
+    private string _scenarioTitle = string.Empty;
+    private string _scenarioSummary = string.Empty;
+    private string _scenarioWorldSetting = string.Empty;
+    private string _scenarioPublicRules = string.Empty;
+    private string _scenarioGmInstructions = string.Empty;
+    private string _scenarioOpeningSetup = string.Empty;
+    private string _scenarioOpeningNarration = string.Empty;
+    private string _scenarioLegacyExamplesArchive = string.Empty;
     private string _userPersonaName = "USER";
     private string _userPersonaDescription = string.Empty;
     private int _playerHistoryBudget = 12000;
@@ -47,6 +60,10 @@ public sealed class CampaignsViewModel : ViewModelBase
     private string _diceExpression = "1d20";
     private bool _isBusy;
     private bool _updatingCharacterSelection;
+    private bool _campaignMemoryPending;
+    private string _campaignMemoryStatusText = "跑团记忆：未检查";
+    private string? _campaignMemoryLastError;
+    private readonly HashSet<string> _memoryRecoveryInFlight = [];
     private CampaignGameUiState _gameUiState = CampaignGameUiState.Empty;
 
     public CampaignsViewModel(
@@ -61,7 +78,11 @@ public sealed class CampaignsViewModel : ViewModelBase
         IModelCatalogRepository models,
         IModelAssignmentRepository assignments,
         IAppSettingsRepository settings,
-        IFileDialogService fileDialog)
+        IFileDialogService fileDialog,
+        IUserInteractionService interaction,
+        IWorldbookService? worldbooks = null,
+        ICampaignMemoryRepository? campaignMemories = null,
+        ICampaignMemoryUpdateService? campaignMemoryUpdater = null)
     {
         _scenarios = scenarios;
         _scenarioCards = scenarioCards;
@@ -74,7 +95,11 @@ public sealed class CampaignsViewModel : ViewModelBase
         _models = models;
         _assignments = assignments;
         _settings = settings;
+        _campaignMemories = campaignMemories;
+        _campaignMemoryUpdater = campaignMemoryUpdater;
         _fileDialog = fileDialog;
+        _interaction = interaction;
+        _worldbooks = worldbooks;
 
         FlowChoices =
         [
@@ -118,9 +143,15 @@ public sealed class CampaignsViewModel : ViewModelBase
         _selectedUserParticipation = UserParticipationChoices[0];
 
         ImportScenarioCommand = new AsyncRelayCommand(ImportScenarioAsync);
+        NewScenarioCommand = new AsyncRelayCommand(NewScenarioAsync);
+        EditScenarioCommand = new AsyncRelayCommand(
+            EditScenarioAsync,
+            () => SelectedScenario is not null);
+        SaveScenarioCommand = new AsyncRelayCommand(SaveScenarioAsync);
         OpenScenarioLobbyCommand = new AsyncRelayCommand(OpenScenarioLobbyAsync);
         ContinueCampaignCommand = new AsyncRelayCommand(ContinueSelectedCampaignAsync);
         CloneCampaignCommand = new AsyncRelayCommand(CloneSelectedCampaignAsync);
+        DeleteCampaignCommand = new AsyncRelayCommand(DeleteCampaignAsync);
         BackToLibraryCommand = new AsyncRelayCommand(BackToLibraryAsync);
         SaveLobbyCommand = new AsyncRelayCommand(SaveLobbyAsync);
         StartCampaignCommand = new AsyncRelayCommand(StartCampaignAsync);
@@ -134,6 +165,8 @@ public sealed class CampaignsViewModel : ViewModelBase
             ScheduleUserJoinAsync);
         RollDiceCommand = new AsyncRelayCommand(RollDiceAsync);
         RetryEventCommand = new AsyncRelayCommand(RetryEventAsync);
+        RetryCampaignMemoryCommand = new AsyncRelayCommand(
+            RetryCampaignMemoryAsync);
         ApplySeatRouteCommand = new AsyncRelayCommand(ApplySeatRouteAsync);
         ApplyGmRouteCommand = new AsyncRelayCommand(ApplyGmRouteAsync);
         OpenGlobalPromptCommand = new AsyncRelayCommand(OpenGlobalPromptAsync);
@@ -145,15 +178,21 @@ public sealed class CampaignsViewModel : ViewModelBase
     public ObservableCollection<CampaignModelOption> ModelOptions { get; } = [];
     public ObservableCollection<CampaignSeatViewModel> Seats { get; } = [];
     public ObservableCollection<CampaignEventItemViewModel> Events { get; } = [];
+    public ObservableCollection<CampaignWorldbookBindingItem>
+        ScenarioWorldbookBindings { get; } = [];
     public IReadOnlyList<CampaignFlowChoice> FlowChoices { get; }
     public IReadOnlyList<CampaignGmChoice> GmChoices { get; }
     public IReadOnlyList<CampaignUserParticipationChoice>
         UserParticipationChoices { get; }
 
     public AsyncRelayCommand ImportScenarioCommand { get; }
+    public AsyncRelayCommand NewScenarioCommand { get; }
+    public AsyncRelayCommand EditScenarioCommand { get; }
+    public AsyncRelayCommand SaveScenarioCommand { get; }
     public AsyncRelayCommand OpenScenarioLobbyCommand { get; }
     public AsyncRelayCommand ContinueCampaignCommand { get; }
     public AsyncRelayCommand CloneCampaignCommand { get; }
+    public AsyncRelayCommand DeleteCampaignCommand { get; }
     public AsyncRelayCommand BackToLibraryCommand { get; }
     public AsyncRelayCommand SaveLobbyCommand { get; }
     public AsyncRelayCommand StartCampaignCommand { get; }
@@ -165,12 +204,20 @@ public sealed class CampaignsViewModel : ViewModelBase
     public AsyncRelayCommand ScheduleUserJoinCommand { get; }
     public AsyncRelayCommand RollDiceCommand { get; }
     public AsyncRelayCommand RetryEventCommand { get; }
+    public AsyncRelayCommand RetryCampaignMemoryCommand { get; }
     public AsyncRelayCommand ApplySeatRouteCommand { get; }
     public AsyncRelayCommand ApplyGmRouteCommand { get; }
     public AsyncRelayCommand OpenGlobalPromptCommand { get; }
     public Func<GlobalPromptKey, Task>? OpenPromptSettings { get; set; }
 
     public bool IsLibrary => _screen == "library";
+    public bool IsScenarioEditor => _screen == "scenario-editor";
+    public bool IsCreatingScenario => _isCreatingScenario;
+    public string ScenarioEditorTitle =>
+        IsCreatingScenario ? "新建剧本" : "编辑剧本";
+    public string ScenarioEditorDescription => IsCreatingScenario
+        ? "按下面的结构逐项填写剧本；保存后即可在剧本库中开局。"
+        : "按下面的结构修改剧本副本；已经开始的跑团不会被事后编辑影响。";
     public bool IsLobby => _screen == "lobby";
     public bool IsGame => _screen == "game";
     public bool IsAiGm => SelectedGm.Value == CampaignGmKind.Ai;
@@ -244,6 +291,12 @@ public sealed class CampaignsViewModel : ViewModelBase
     public string SaveStateText => _game is null
         ? string.Empty
         : $"已自动保存到本地 · 状态版本 {_game.Campaign.StateVersion}";
+    public string CampaignMemoryStatusText => _campaignMemoryStatusText;
+    public bool CanRetryCampaignMemory =>
+        IsGame
+        && !IsBusy
+        && _campaignMemoryPending
+        && _campaignMemoryUpdater is not null;
 
     private bool AiGmResolutionNeedsRetry =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
@@ -260,7 +313,13 @@ public sealed class CampaignsViewModel : ViewModelBase
     public CampaignScenario? SelectedScenario
     {
         get => _selectedScenario;
-        set => SetProperty(ref _selectedScenario, value);
+        set
+        {
+            if (SetProperty(ref _selectedScenario, value))
+            {
+                EditScenarioCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public CampaignSummaryItemViewModel? SelectedCampaign
@@ -335,6 +394,54 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         get => _openingPrompt;
         set => SetProperty(ref _openingPrompt, value);
+    }
+
+    public string ScenarioTitle
+    {
+        get => _scenarioTitle;
+        set => SetProperty(ref _scenarioTitle, value);
+    }
+
+    public string ScenarioSummary
+    {
+        get => _scenarioSummary;
+        set => SetProperty(ref _scenarioSummary, value);
+    }
+
+    public string ScenarioWorldSetting
+    {
+        get => _scenarioWorldSetting;
+        set => SetProperty(ref _scenarioWorldSetting, value);
+    }
+
+    public string ScenarioPublicRules
+    {
+        get => _scenarioPublicRules;
+        set => SetProperty(ref _scenarioPublicRules, value);
+    }
+
+    public string ScenarioGmInstructions
+    {
+        get => _scenarioGmInstructions;
+        set => SetProperty(ref _scenarioGmInstructions, value);
+    }
+
+    public string ScenarioOpeningSetup
+    {
+        get => _scenarioOpeningSetup;
+        set => SetProperty(ref _scenarioOpeningSetup, value);
+    }
+
+    public string ScenarioOpeningNarration
+    {
+        get => _scenarioOpeningNarration;
+        set => SetProperty(ref _scenarioOpeningNarration, value);
+    }
+
+    public string ScenarioLegacyExamplesArchive
+    {
+        get => _scenarioLegacyExamplesArchive;
+        set => SetProperty(ref _scenarioLegacyExamplesArchive, value);
     }
 
     public string UserPersonaName
@@ -450,9 +557,12 @@ public sealed class CampaignsViewModel : ViewModelBase
         ModelOptions.Clear();
         foreach (var provider in providersTask.Result.Where(item => item.IsEnabled))
         {
-            var models = await _models.ListAsync(provider.Id);
+            var models = (await _models.ListAsync(provider.Id))
+                .Where(model => model.ModelKind is ModelCatalogKind.Chat
+                    or ModelCatalogKind.Custom)
+                .ToArray();
             if (provider.AdapterKind == ProviderAdapterKind.GrokCli
-                && models.Count == 0)
+                && models.Length == 0)
             {
                 ModelOptions.Add(new CampaignModelOption(
                     provider.Id,
@@ -507,6 +617,7 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     private async Task RefreshLibraryAsync()
     {
+        var preferredScenarioId = SelectedScenario?.Id;
         var scenariosTask = _scenarios.ListAsync();
         var campaignsTask = _campaigns.ListAsync();
         await Task.WhenAll(scenariosTask, campaignsTask);
@@ -522,7 +633,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             Campaigns.Add(new CampaignSummaryItemViewModel(campaign));
         }
 
-        SelectedScenario ??= Scenarios.FirstOrDefault();
+        SelectedScenario = Scenarios.FirstOrDefault(item =>
+                              item.Id == preferredScenarioId)
+                          ?? Scenarios.FirstOrDefault();
         SelectedCampaign = Campaigns.FirstOrDefault();
     }
 
@@ -544,6 +657,155 @@ public sealed class CampaignsViewModel : ViewModelBase
                 ? $"已导入剧本“{result.Scenario.Title}”。"
                 : $"已导入剧本“{result.Scenario.Title}”；{string.Join("；", result.Warnings)}";
         });
+    }
+
+    private async Task NewScenarioAsync()
+    {
+        await RunUiAsync(async () =>
+        {
+            _isCreatingScenario = true;
+            OnPropertyChanged(nameof(IsCreatingScenario));
+            OnPropertyChanged(nameof(ScenarioEditorTitle));
+            OnPropertyChanged(nameof(ScenarioEditorDescription));
+            SelectedScenario = new CampaignScenario();
+            LoadScenarioEditor(SelectedScenario);
+            await LoadScenarioWorldbookBindingsAsync(SelectedScenario.Id);
+            ShowScreen("scenario-editor");
+            StatusText = "请按问卷顺序填写剧本结构；保存后才会加入剧本库。";
+        });
+    }
+
+    private async Task EditScenarioAsync()
+    {
+        if (SelectedScenario is not { } selected)
+        {
+            StatusText = "请先选择一个剧本。";
+            return;
+        }
+
+        await RunUiAsync(async () =>
+        {
+            var scenario = await _scenarios.GetAsync(selected.Id)
+                           ?? throw new InvalidOperationException("剧本不存在。");
+            _isCreatingScenario = false;
+            OnPropertyChanged(nameof(IsCreatingScenario));
+            OnPropertyChanged(nameof(ScenarioEditorTitle));
+            OnPropertyChanged(nameof(ScenarioEditorDescription));
+            LoadScenarioEditor(scenario);
+            await LoadScenarioWorldbookBindingsAsync(scenario.Id);
+            ShowScreen("scenario-editor");
+            StatusText = "可编辑剧本的结构化字段；点击保存后才会写入本地剧本库。";
+        });
+    }
+
+    private async Task SaveScenarioAsync()
+    {
+        if (SelectedScenario is not { } scenario)
+        {
+            StatusText = "没有正在编辑的剧本。";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ScenarioTitle))
+        {
+            StatusText = "剧本标题不能为空。";
+            return;
+        }
+
+        await RunUiAsync(async () =>
+        {
+            scenario.Title = ScenarioTitle.Trim();
+            scenario.Summary = ScenarioSummary.Trim();
+            scenario.WorldSetting = ScenarioWorldSetting.Trim();
+            scenario.PublicRules = ScenarioPublicRules.Trim();
+            scenario.GmInstructions = ScenarioGmInstructions.Trim();
+            scenario.OpeningSetup = ScenarioOpeningSetup.Trim();
+            scenario.OpeningNarration = ScenarioOpeningNarration.Trim();
+            scenario.LegacyExamplesArchive = ScenarioLegacyExamplesArchive.Trim();
+            await _scenarios.UpsertAsync(scenario);
+            await SaveScenarioWorldbookBindingsAsync(scenario.Id);
+            await RefreshLibraryAsync();
+            SelectedScenario = Scenarios.FirstOrDefault(item => item.Id == scenario.Id);
+            _isCreatingScenario = false;
+            OnPropertyChanged(nameof(IsCreatingScenario));
+            OnPropertyChanged(nameof(ScenarioEditorTitle));
+            OnPropertyChanged(nameof(ScenarioEditorDescription));
+            ShowScreen("library");
+            StatusText = $"剧本“{scenario.Title}”已保存。已经开始的跑团仍使用各自冻结的剧本快照。";
+        });
+    }
+
+    private void LoadScenarioEditor(CampaignScenario scenario)
+    {
+        ScenarioTitle = scenario.Title;
+        ScenarioSummary = scenario.Summary;
+        ScenarioWorldSetting = scenario.WorldSetting;
+        ScenarioPublicRules = scenario.PublicRules;
+        ScenarioGmInstructions = scenario.GmInstructions;
+        ScenarioOpeningSetup = scenario.OpeningSetup;
+        ScenarioOpeningNarration = scenario.OpeningNarration;
+        ScenarioLegacyExamplesArchive = scenario.LegacyExamplesArchive;
+    }
+
+    private async Task LoadScenarioWorldbookBindingsAsync(string scenarioId)
+    {
+        ScenarioWorldbookBindings.Clear();
+        if (_worldbooks is null)
+        {
+            return;
+        }
+
+        var books = await _worldbooks.ListAsync();
+        var mounts = await Task.WhenAll(
+            books.Select(book => _worldbooks.ListMountsAsync(book.Id)));
+        var boundBookIds = mounts
+            .SelectMany(item => item)
+            .Where(mount => mount.ScopeKind == WorldbookScopeKind.Campaign
+                            && mount.IsEnabled
+                            && mount.ScopeId == scenarioId)
+            .Select(mount => mount.WorldbookId)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var book in books.OrderBy(item => item.Name))
+        {
+            ScenarioWorldbookBindings.Add(
+                new CampaignWorldbookBindingItem(
+                    book,
+                    boundBookIds.Contains(book.Id)));
+        }
+    }
+
+    private async Task SaveScenarioWorldbookBindingsAsync(string scenarioId)
+    {
+        if (_worldbooks is null)
+        {
+            return;
+        }
+
+        var sortIndex = 100;
+        foreach (var item in ScenarioWorldbookBindings)
+        {
+            if (item.IsBound)
+            {
+                await _worldbooks.UpsertMountAsync(
+                    new WorldbookMount
+                    {
+                        WorldbookId = item.Worldbook.Id,
+                        ScopeKind = WorldbookScopeKind.Campaign,
+                        ScopeId = scenarioId,
+                        SortIndex = sortIndex,
+                        IsEnabled = true,
+                        MountedRevision = item.Worldbook.Revision
+                    });
+                sortIndex += 10;
+            }
+            else
+            {
+                await _worldbooks.RemoveMountAsync(
+                    item.Worldbook.Id,
+                    WorldbookScopeKind.Campaign,
+                    scenarioId);
+            }
+        }
     }
 
     private async Task OpenScenarioLobbyAsync()
@@ -609,13 +871,66 @@ public sealed class CampaignsViewModel : ViewModelBase
         });
     }
 
+    private async Task DeleteCampaignAsync(object? parameter)
+    {
+        if (parameter is not CampaignSummaryItemViewModel selected)
+        {
+            StatusText = "请右键选择要删除的跑团。";
+            return;
+        }
+
+        await RunUiAsync(async () =>
+        {
+            var aggregate = await _campaigns.GetAsync(selected.Id);
+            if (aggregate is null)
+            {
+                await RefreshLibraryAsync();
+                StatusText = "该跑团已经不存在。";
+                return;
+            }
+
+            if (!_interaction.ConfirmCampaignDeletion(
+                    aggregate.Campaign.Title,
+                    aggregate.Events.Count))
+            {
+                return;
+            }
+
+            await _campaigns.DeleteAsync(selected.Id);
+            if (string.Equals(
+                    _game?.Campaign.Id,
+                    selected.Id,
+                    StringComparison.Ordinal))
+            {
+                _game = null;
+                _gameUiState = CampaignGameUiState.Empty;
+                Seats.Clear();
+                Events.Clear();
+            }
+
+            await RefreshLibraryAsync();
+            StatusText =
+                $"跑团“{aggregate.Campaign.Title}”及其 {aggregate.Events.Count} 条记录已永久删除。";
+        });
+    }
+
     private async Task BackToLibraryAsync()
     {
         await RunUiAsync(async () =>
         {
             await RefreshLibraryAsync();
+            var wasEditingScenario = IsScenarioEditor;
+            var wasCreatingScenario = IsCreatingScenario;
+            _isCreatingScenario = false;
+            OnPropertyChanged(nameof(IsCreatingScenario));
+            OnPropertyChanged(nameof(ScenarioEditorTitle));
+            OnPropertyChanged(nameof(ScenarioEditorDescription));
             ShowScreen("library");
-            StatusText = "所有已开始的跑团均已即时保存，可随时继续或另开一局。";
+            StatusText = wasEditingScenario
+                ? wasCreatingScenario
+                    ? "已取消新建剧本，未保存的内容已丢弃。"
+                    : "已取消剧本编辑，未保存的修改已丢弃。"
+                : "所有已开始的跑团均已即时保存，可随时继续或另开一局。";
         });
     }
 
@@ -1022,11 +1337,140 @@ public sealed class CampaignsViewModel : ViewModelBase
         await OpenPromptSettings(key);
     }
 
+    private async Task RetryCampaignMemoryAsync(object? _)
+    {
+        if (_game is null || _campaignMemoryUpdater is null)
+        {
+            return;
+        }
+
+        var campaignId = _game.Campaign.Id;
+        await RunUiAsync(async () =>
+        {
+            _campaignMemoryLastError = null;
+            SetCampaignMemoryStatus("跑团记忆：正在更新…");
+            var result = await _campaignMemoryUpdater.UpdateAsync(campaignId);
+            if (!result.Succeeded)
+            {
+                _campaignMemoryLastError = result.ErrorMessage
+                                            ?? result.Status.ToString();
+            }
+
+            await RefreshCampaignMemoryStatusAsync(scheduleRecovery: false);
+            StatusText = result.Succeeded
+                ? "跑团记忆已更新。"
+                : $"跑团记忆更新未完成：{_campaignMemoryLastError}";
+        });
+    }
+
+    private async Task RefreshCampaignMemoryStatusAsync(
+        bool scheduleRecovery)
+    {
+        if (_game is null || _campaignMemories is null)
+        {
+            _campaignMemoryPending = false;
+            SetCampaignMemoryStatus("跑团记忆：未启用");
+            return;
+        }
+
+        var latestSequence = _game.Events
+            .Where(item =>
+                item.IsLocked
+                && item.GenerationStatus == CampaignGenerationStatus.Completed)
+            .Select(item => item.SequenceNo)
+            .DefaultIfEmpty(0)
+            .Max();
+        var gmCheckpointTask = _campaignMemories.GetCheckpointAsync(
+            _game.Campaign.Id,
+            CampaignMemoryScope.GameMaster);
+        var publicCheckpointTask = _campaignMemories.GetCheckpointAsync(
+            _game.Campaign.Id,
+            CampaignMemoryScope.Public);
+        await Task.WhenAll(gmCheckpointTask, publicCheckpointTask);
+        var gmSequence = gmCheckpointTask.Result?.LastEventSequence ?? 0;
+        var publicSequence = publicCheckpointTask.Result?.LastEventSequence ?? 0;
+        _campaignMemoryPending = latestSequence > gmSequence
+                                 || latestSequence > publicSequence;
+        OnPropertyChanged(nameof(CanRetryCampaignMemory));
+        if (!string.IsNullOrWhiteSpace(_campaignMemoryLastError)
+            && _campaignMemoryPending)
+        {
+            SetCampaignMemoryStatus(
+                $"跑团记忆：更新失败（最新 #{latestSequence}，可重试）");
+        }
+        else if (latestSequence == 0)
+        {
+            SetCampaignMemoryStatus("跑团记忆：暂无已锁定事件");
+        }
+        else if (_campaignMemoryPending)
+        {
+            SetCampaignMemoryStatus(
+                $"跑团记忆：待更新（GM #{gmSequence} · 公共 #{publicSequence} · 最新 #{latestSequence}）");
+        }
+        else
+        {
+            _campaignMemoryLastError = null;
+            SetCampaignMemoryStatus(
+                $"跑团记忆：已更新到事件 #{latestSequence}");
+        }
+
+        if (scheduleRecovery
+            && _campaignMemoryPending
+            && _campaignMemoryUpdater is not null)
+        {
+            _ = RecoverCampaignMemoryAsync(_game.Campaign.Id);
+        }
+    }
+
+    private async Task RecoverCampaignMemoryAsync(string campaignId)
+    {
+        if (_campaignMemoryUpdater is null
+            || !_memoryRecoveryInFlight.Add(campaignId))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _campaignMemoryUpdater.UpdateAsync(campaignId);
+            if (_game?.Campaign.Id != campaignId)
+            {
+                return;
+            }
+
+            _campaignMemoryLastError = result.Succeeded
+                ? null
+                : result.ErrorMessage ?? result.Status.ToString();
+            await RefreshCampaignMemoryStatusAsync(scheduleRecovery: false);
+        }
+        catch (Exception exception)
+        {
+            if (_game?.Campaign.Id == campaignId)
+            {
+                _campaignMemoryLastError = exception.Message;
+                await RefreshCampaignMemoryStatusAsync(scheduleRecovery: false);
+            }
+        }
+        finally
+        {
+            _memoryRecoveryInFlight.Remove(campaignId);
+        }
+    }
+
+    private void SetCampaignMemoryStatus(string value)
+    {
+        if (SetProperty(ref _campaignMemoryStatusText, value))
+        {
+            OnPropertyChanged(nameof(CanRetryCampaignMemory));
+        }
+    }
+
     private async Task LoadGameAsync(string campaignId)
     {
         _game = await _campaigns.GetAsync(campaignId)
                 ?? throw new InvalidOperationException("跑团不存在。");
         _gameUiState = CampaignGameUiState.Create(_game);
+        await RefreshCampaignMemoryStatusAsync(scheduleRecovery: true);
         SelectedGm = GmChoices.Single(item => item.Value == _game.Campaign.GmKind);
         SelectedGmRoute = FindRoute(
             _game.Campaign.GmProviderId,
@@ -1213,6 +1657,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         _screen = screen;
         OnPropertyChanged(nameof(IsLibrary));
+        OnPropertyChanged(nameof(IsScenarioEditor));
         OnPropertyChanged(nameof(IsLobby));
         OnPropertyChanged(nameof(IsGame));
     }
@@ -1262,6 +1707,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ResolveHelpText));
         OnPropertyChanged(nameof(ScheduleUserJoinButtonText));
         OnPropertyChanged(nameof(ScheduleUserJoinHelpText));
+        OnPropertyChanged(nameof(CampaignMemoryStatusText));
+        OnPropertyChanged(nameof(CanRetryCampaignMemory));
     }
 
     private async Task RunUiAsync(Func<Task> operation)

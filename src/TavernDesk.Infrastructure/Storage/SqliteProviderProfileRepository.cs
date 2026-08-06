@@ -115,7 +115,7 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
             .Select(profile => profile.Id)
             .ToHashSet(StringComparer.Ordinal);
         foreach (var profile in existingProfiles.Where(profile =>
-                     !ProviderProfileIds.IsSupported(profile.Id)
+                     !ProviderProfileIds.IsSupportedAdapter(profile.AdapterKind)
                      && profile.IsEnabled))
         {
             profile.IsEnabled = false;

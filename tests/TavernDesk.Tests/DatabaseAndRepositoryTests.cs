@@ -38,6 +38,93 @@ public sealed class DatabaseAndRepositoryTests
     }
 
     [Fact]
+    public async Task DeleteConversationRemovesConversationCacheButKeepsCharacterMemory()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+
+        var character = new Character
+        {
+            Name = "保留长期记忆的角色",
+            Description = "用于验证会话删除边界。",
+            Personality = "稳定",
+            Scenario = "本地",
+            FirstMessage = ""
+        };
+        await services.Characters.UpsertAsync(character);
+        await services.MemoryBanks.SaveBodyAsync(
+            character.Id,
+            "角色整体记忆：这段内容不能随聊天记录删除。",
+            5000);
+
+        var deletedConversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "需要删除的聊天"
+        };
+        var retainedConversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "仍要保留的聊天"
+        };
+        await services.Conversations.UpsertAsync(deletedConversation);
+        await services.Conversations.UpsertAsync(retainedConversation);
+
+        var message = new ChatMessage
+        {
+            ConversationId = deletedConversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "这条消息和候选回复都应删除。"
+        };
+        await services.Conversations.AddMessageAsync(message);
+        await services.Conversations.AddCandidateAsync(new MessageCandidate
+        {
+            MessageId = message.Id,
+            CandidateIndex = 0,
+            Content = message.Content
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = retainedConversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "保留的聊天消息。"
+        });
+
+        await services.Conversations.DeleteConversationAsync(
+            deletedConversation.Id);
+
+        Assert.Null(await services.Conversations.GetAsync(deletedConversation.Id));
+        Assert.Empty(await services.Conversations.ListMessagesAsync(deletedConversation.Id));
+        Assert.Empty(await services.Conversations.ListCandidatesAsync(message.Id));
+        Assert.NotNull(await services.Conversations.GetAsync(retainedConversation.Id));
+        Assert.Equal(
+            "角色整体记忆：这段内容不能随聊天记录删除。",
+            (await services.MemoryBanks.GetAsync(character.Id))?.Body);
+
+        await using var connection = services.Database.CreateConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT
+                (SELECT COUNT(*) FROM message_search WHERE conversation_id = $id),
+                (SELECT COUNT(*) FROM message_search_trigram WHERE conversation_id = $id),
+                (SELECT COUNT(*) FROM messages WHERE conversation_id = $id),
+                (SELECT COUNT(*) FROM message_candidates WHERE message_id = $messageId);
+            """;
+        command.Parameters.AddWithValue("$id", deletedConversation.Id);
+        command.Parameters.AddWithValue("$messageId", message.Id);
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(0, reader.GetInt32(0));
+        Assert.Equal(0, reader.GetInt32(1));
+        Assert.Equal(0, reader.GetInt32(2));
+        Assert.Equal(0, reader.GetInt32(3));
+    }
+
+    [Fact]
     public async Task FutureDatabaseVersionIsRejectedWithoutDowngrade()
     {
         using var workspace = new TestWorkspace();
@@ -60,6 +147,11 @@ public sealed class DatabaseAndRepositoryTests
                 INSERT INTO schema_info(version, applied_at) VALUES(9, '2026-08-01T00:00:08+08:00');
                 INSERT INTO schema_info(version, applied_at) VALUES(10, '2026-08-01T00:00:09+08:00');
                 INSERT INTO schema_info(version, applied_at) VALUES(11, '2026-08-01T00:00:10+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(12, '2026-08-01T00:00:11+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(13, '2026-08-01T00:00:12+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(14, '2026-08-01T00:00:13+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(15, '2026-08-01T00:00:14+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(16, '2026-08-01T00:00:15+08:00');
                 """;
             await command.ExecuteNonQueryAsync();
         }
@@ -104,8 +196,19 @@ public sealed class DatabaseAndRepositoryTests
                 DELETE FROM message_search
                 WHERE message_id = $messageId;
 
+                DROP INDEX IF EXISTS ix_provider_models_kind;
+
+                ALTER TABLE provider_models
+                DROP COLUMN model_kind;
+
+                ALTER TABLE memory_workflow_settings
+                DROP COLUMN maximum_source_user_turns;
+
+                ALTER TABLE memory_workflow_settings
+                DROP COLUMN send_only_new_messages;
+
                 DELETE FROM schema_info
-                WHERE version = 10;
+                WHERE version >= 10;
                 """;
             command.Parameters.AddWithValue("$messageId", legacyDeleted.Id);
             await command.ExecuteNonQueryAsync();

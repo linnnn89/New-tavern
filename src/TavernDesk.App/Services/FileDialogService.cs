@@ -14,6 +14,8 @@ public interface IFileDialogService
     string? PickChatJsonl();
     string? PickChatJsonlExportPath(string conversationTitle);
     string? PickPromptProfileExportPath();
+    string? PickWorldbookSource() => null;
+    string? PickDataRoot() => null;
 }
 
 public sealed class FileDialogService : IFileDialogService
@@ -127,6 +129,31 @@ public sealed class FileDialogService : IFileDialogService
         };
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public string? PickWorldbookSource()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "导入世界书或包含内置世界书的角色卡",
+            Filter = "世界书/角色卡 (*.json;*.png;*.charx)|*.json;*.png;*.charx|世界书 JSON (*.json)|*.json|PNG 角色卡 (*.png)|*.png|CHARX 角色卡 (*.charx)|*.charx|全部文件 (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public string? PickDataRoot()
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "选择 TavernDesk 个人资料目录",
+            Multiselect = false,
+            ValidateNames = true
+        };
+
+        return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
 
     private static string SanitizeFileName(string value)

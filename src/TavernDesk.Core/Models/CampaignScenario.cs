@@ -10,7 +10,6 @@ public sealed class CampaignScenario
     public string GmInstructions { get; set; } = string.Empty;
     public string OpeningSetup { get; set; } = string.Empty;
     public string OpeningNarration { get; set; } = string.Empty;
-    public string LobbyInstructions { get; set; } = string.Empty;
     public string LegacyExamplesArchive { get; set; } = string.Empty;
     public string SourceCardJson { get; set; } = "{}";
     public string SourceFileName { get; set; } = string.Empty;

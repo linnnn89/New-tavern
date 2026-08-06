@@ -5,11 +5,293 @@ using TavernDesk.App.ViewModels;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
+using TavernDesk.Infrastructure.Memory;
 
 namespace TavernDesk.Tests;
 
 public sealed class MemoryAndGroupTests
 {
+    [Fact]
+    public async Task NewMemoryWorkflowDefaultsToAutoGenerationAndPreviewPublishesStructure()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+
+        var character = new Character { Name = "预览角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "预览会话"
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "记住这条预览事实"
+        });
+
+        var defaults = await services.MemoryWorkflow.GetSettingsAsync(character.Id);
+        Assert.True(defaults.AutoGenerateEnabled);
+        Assert.Equal(20, defaults.UpdateIntervalTurns);
+        Assert.Equal(20, defaults.MaximumSourceUserTurns);
+        Assert.True(defaults.SendOnlyNewMessages);
+
+        var viewModel = new MemoryWorkflowViewModel(
+            services.MemoryBanks,
+            services.MemoryWorkflow,
+            services.MemoryPrompts,
+            services.Conversations,
+            services.Characters,
+            services.ModelAssignments,
+            services.ProviderGateway,
+            services.GenerationCoordinator,
+            services.GlobalPrompts);
+        await viewModel.LoadAsync(character.Id, conversation.Id, character.Name);
+
+        Assert.True(viewModel.AutoGenerateEnabled);
+        Assert.True(viewModel.PreviewUpdateCommand.CanExecute(null));
+        viewModel.PreviewUpdateCommand.Execute(null);
+        await WaitUntilAsync(() => Task.FromResult(
+            viewModel.Status.Contains("已预览增量更新", StringComparison.Ordinal)));
+
+        using var preview = JsonDocument.Parse(viewModel.RequestPreview);
+        Assert.Equal(
+            1,
+            preview.RootElement.GetProperty("source_user_turns").GetInt32());
+        Assert.Contains(
+            "记住这条预览事实",
+            preview.RootElement
+                .GetProperty("messages")[1]
+                .GetProperty("content")
+                .GetString());
+    }
+
+    [Fact]
+    public async Task AutomaticMemoryUpdateCommitsBodyAndCheckpointByDefault()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+
+        var character = new Character { Name = "自动保存角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "自动保存会话"
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        for (var index = 1; index <= 20; index++)
+        {
+            await services.Conversations.AddMessageAsync(new ChatMessage
+            {
+                ConversationId = conversation.Id,
+                SenderKind = MessageSenderKind.User,
+                SenderId = "local-user",
+                Content = $"需要记住的事实 {index}"
+            });
+        }
+
+        await services.Providers.UpsertAsync(new ProviderProfile
+        {
+            Id = "auto-memory-provider",
+            Name = "Automatic Memory Provider",
+            BaseUrl = "https://fixture.invalid/v1"
+        });
+        await services.Models.ReplaceAsync(
+            "auto-memory-provider",
+            [new ProviderModelDescriptor("auto-memory-model", "Automatic Memory Model")]);
+        await services.ModelAssignments.UpsertAsync(new ModelFunctionAssignment
+        {
+            FunctionKind = ModelFunctionKind.MemoryUpdate,
+            ProviderId = "auto-memory-provider",
+            ModelId = "auto-memory-model"
+        });
+
+        var gateway = new RecordingMemoryGateway();
+        var viewModel = new MemoryWorkflowViewModel(
+            services.MemoryBanks,
+            services.MemoryWorkflow,
+            services.MemoryPrompts,
+            services.Conversations,
+            services.Characters,
+            services.ModelAssignments,
+            gateway,
+            services.GenerationCoordinator,
+            services.GlobalPrompts);
+        await viewModel.LoadAsync(
+            character.Id,
+            conversation.Id,
+            character.Name);
+
+        await viewModel.TryAutoGenerateAsync(character.Id, conversation.Id);
+
+        var bank = Assert.IsType<MemoryBank>(
+            await services.MemoryBanks.GetAsync(character.Id));
+        var checkpoint = Assert.IsType<MemoryCheckpoint>(
+            await services.MemoryWorkflow.GetCheckpointAsync(
+                character.Id,
+                conversation.Id));
+        var messages = await services.Conversations.ListMessagesAsync(conversation.Id);
+
+        Assert.Equal("测试记忆草稿", bank.Body);
+        Assert.Equal(messages[^1].SequenceNo, checkpoint.LastSequenceNo);
+        Assert.Equal(20, checkpoint.ProcessedUserTurns);
+        Assert.Null(await services.MemoryWorkflow.GetDraftAsync(
+            character.Id,
+            conversation.Id,
+            MemoryDraftKind.Update));
+        Assert.Contains("自动保存记忆正文", viewModel.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MemoryWorkflowPersistsBatchAndCheckpointBoundarySettings()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+
+        await services.MemoryWorkflow.SaveSettingsAsync(
+            new MemoryWorkflowSettings
+            {
+                OwnerId = "memory-settings-owner",
+                UpdateIntervalTurns = 12,
+                MaximumSourceUserTurns = 7,
+                SendOnlyNewMessages = false
+            });
+
+        var settings = await services.MemoryWorkflow.GetSettingsAsync("memory-settings-owner");
+        Assert.Equal(12, settings.UpdateIntervalTurns);
+        Assert.Equal(7, settings.MaximumSourceUserTurns);
+        Assert.False(settings.SendOnlyNewMessages);
+    }
+
+    [Fact]
+    public void MemoryUpdateUsesBatchLimitAndCheckpointBoundary()
+    {
+        var composer = new MemoryPromptComposer();
+        var settings = new MemoryWorkflowSettings
+        {
+            OwnerId = "owner",
+            MaximumSourceUserTurns = 1,
+            SendOnlyNewMessages = true
+        };
+        var messages = new[]
+        {
+            CreateMessage("conversation", 1, MessageSenderKind.User, "old"),
+            CreateMessage("conversation", 2, MessageSenderKind.Character, "old reply"),
+            CreateMessage("conversation", 3, MessageSenderKind.User, "new one"),
+            CreateMessage("conversation", 4, MessageSenderKind.Character, "new one reply"),
+            CreateMessage("conversation", 5, MessageSenderKind.User, "new two"),
+            CreateMessage("conversation", 6, MessageSenderKind.Character, "new two reply")
+        };
+        var checkpoint = new MemoryCheckpoint
+        {
+            OwnerId = "owner",
+            ConversationId = "conversation",
+            LastSequenceNo = 2
+        };
+
+        var plan = composer.BuildUpdate(
+            "owner",
+            "conversation",
+            "旧记忆",
+            5000,
+            settings,
+            checkpoint,
+            messages,
+            new Dictionary<string, string>());
+
+        Assert.Equal(1, plan.SourceUserTurns);
+        Assert.Equal(4, plan.SourceThroughSequenceNo);
+        Assert.Contains("new one", plan.InputPayload, StringComparison.Ordinal);
+        Assert.Contains("new one reply", plan.InputPayload, StringComparison.Ordinal);
+        Assert.DoesNotContain("old", plan.InputPayload, StringComparison.Ordinal);
+        Assert.DoesNotContain("new two", plan.InputPayload, StringComparison.Ordinal);
+
+        settings.SendOnlyNewMessages = false;
+        plan = composer.BuildUpdate(
+            "owner",
+            "conversation",
+            "旧记忆",
+            5000,
+            settings,
+            checkpoint,
+            messages,
+            new Dictionary<string, string>());
+
+        Assert.Equal(1, plan.SourceUserTurns);
+        Assert.Equal(6, plan.SourceThroughSequenceNo);
+        Assert.Contains("new two", plan.InputPayload, StringComparison.Ordinal);
+        Assert.DoesNotContain("new one", plan.InputPayload, StringComparison.Ordinal);
+        Assert.DoesNotContain("old", plan.InputPayload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MemoryPromptBindsSubjectAndUserIdentityToNeutralNarrative()
+    {
+        var composer = new MemoryPromptComposer();
+        var settings = new MemoryWorkflowSettings
+        {
+            OwnerId = "owner"
+        };
+        var plan = composer.BuildUpdate(
+            "owner",
+            "conversation",
+            "旧记忆",
+            5000,
+            settings,
+            checkpoint: null,
+            [
+                CreateMessage("conversation", 1, MessageSenderKind.User, "我答应明天回来"),
+                new ChatMessage
+                {
+                    ConversationId = "conversation",
+                    SequenceNo = 2,
+                    SenderKind = MessageSenderKind.Character,
+                    SenderId = "character",
+                    Content = "我会等你"
+                }
+            ],
+            new Dictionary<string, string> { ["character"] = "角色甲" },
+            "角色共享记忆 · 角色甲",
+            "小明");
+
+        Assert.Contains(
+            "【记忆叙述契约】",
+            plan.SystemPrompt,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【记忆主体】\n角色共享记忆 · 角色甲",
+            plan.InputPayload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【用户身份】\n小明",
+            plan.InputPayload,
+            StringComparison.Ordinal);
+        Assert.Contains("[用户：小明 #1]", plan.InputPayload, StringComparison.Ordinal);
+        Assert.Contains("[角色：角色甲 #2]", plan.InputPayload, StringComparison.Ordinal);
+        Assert.DoesNotContain("[USER #1]", plan.InputPayload, StringComparison.Ordinal);
+    }
+
+    private static ChatMessage CreateMessage(
+        string conversationId,
+        long sequenceNo,
+        MessageSenderKind senderKind,
+        string content) =>
+        new()
+        {
+            ConversationId = conversationId,
+            SequenceNo = sequenceNo,
+            SenderKind = senderKind,
+            SenderId = senderKind == MessageSenderKind.User ? "local-user" : "character",
+            Content = content
+        };
+
     [Fact]
     public async Task MemoryDraftCommitUpdatesBankAndCheckpointAtomically()
     {
@@ -330,7 +612,12 @@ public sealed class MemoryAndGroupTests
                 Assert.Contains(
                     request.Messages,
                     message => message.Role == "system"
-                               && message.Content == "GLOBAL_UPDATE_SYSTEM");
+                               && message.Content.StartsWith(
+                                   "GLOBAL_UPDATE_SYSTEM",
+                                   StringComparison.Ordinal)
+                               && message.Content.Contains(
+                                   "【记忆叙述契约】",
+                                   StringComparison.Ordinal));
                 Assert.Contains(
                     request.Messages,
                     message => message.Role == "user"
@@ -346,7 +633,12 @@ public sealed class MemoryAndGroupTests
                 Assert.Contains(
                     request.Messages,
                     message => message.Role == "system"
-                               && message.Content == "GLOBAL_COMPRESSION_SYSTEM");
+                               && message.Content.StartsWith(
+                                   "GLOBAL_COMPRESSION_SYSTEM",
+                                   StringComparison.Ordinal)
+                               && message.Content.Contains(
+                                   "【记忆叙述契约】",
+                                   StringComparison.Ordinal));
                 Assert.Contains(
                     request.Messages,
                     message => message.Role == "user"
@@ -359,7 +651,12 @@ public sealed class MemoryAndGroupTests
                 Assert.Contains(
                     request.Messages,
                     message => message.Role == "system"
-                               && message.Content == "GLOBAL_GROUP_MERGE_SYSTEM");
+                               && message.Content.StartsWith(
+                                   "GLOBAL_GROUP_MERGE_SYSTEM",
+                                   StringComparison.Ordinal)
+                               && message.Content.Contains(
+                                   "【记忆叙述契约】",
+                                   StringComparison.Ordinal));
                 Assert.Contains(
                     request.Messages,
                     message => message.Role == "user"

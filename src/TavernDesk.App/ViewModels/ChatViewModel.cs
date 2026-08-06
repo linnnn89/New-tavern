@@ -13,6 +13,9 @@ namespace TavernDesk.App.ViewModels;
 
 public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 {
+    private const string ContinueWithoutUserInstruction =
+        "当前用户并未发送回复，但是要求你继续书写聊天发给用户。";
+
     private readonly IConversationRepository _repository;
     private readonly ICharacterRepository _characters;
     private readonly IContextAssembler _contextAssembler;
@@ -346,6 +349,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             if (SetProperty(ref _personaName, value))
             {
+                Memory.SetUserIdentity(value);
+                RefreshPersonaPresentation();
                 ScheduleContextRefresh();
             }
         }
@@ -533,6 +538,62 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
     }
 
+    private Task DeleteConversationAsync(ConversationListItemViewModel conversation) =>
+        DeleteConversationAsync(conversation.Id, conversation.Title);
+
+    public async Task DeleteConversationAsync(
+        string conversationId,
+        string conversationTitle)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        ArgumentNullException.ThrowIfNull(conversationTitle);
+        var selectedConversationId = SelectedConversation?.Id;
+        var isSelected = string.Equals(
+            selectedConversationId,
+            conversationId,
+            StringComparison.Ordinal);
+        if (IsConversationBusy(conversationId)
+            || (isSelected && Memory.IsGenerating))
+        {
+            SetStatusForConversation(
+                conversationId,
+                "本会话正在生成或更新记忆，完成后才能删除聊天记录。");
+            return;
+        }
+
+        if (!_interaction.ConfirmConversationDeletion(conversationTitle))
+        {
+            return;
+        }
+
+        if (isSelected)
+        {
+            // Stop selection/context reloads before deleting the database row;
+            // the UI cache is cleared, while Memory.Clear only clears the
+            // presentation state and never deletes the character's memory bank.
+            ClearSelection();
+        }
+
+        try
+        {
+            await _repository.DeleteConversationAsync(conversationId);
+            _conversationStatuses.TryRemove(conversationId, out _);
+            _pendingSessionRefreshes.TryRemove(conversationId, out _);
+            _generationSessions.Forget(conversationId);
+            await ReloadGroupsAsync(isSelected
+                ? null
+                : selectedConversationId);
+            Status = $"已删除聊天记录“{conversationTitle}”；角色整体记忆未受影响。";
+        }
+        catch (Exception exception)
+        {
+            // If a delete fails after the selected view was cleared, reload the
+            // row so the user does not lose the current chat presentation.
+            await ReloadGroupsAsync(selectedConversationId);
+            Status = $"删除聊天记录失败：{exception.Message}";
+        }
+    }
+
     private async Task<Conversation> CreateCharacterConversationAsync(Character character)
     {
         var conversation = new Conversation
@@ -598,7 +659,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 .Select(summary => new ConversationListItemViewModel(
                     summary,
                     _generationCoordinator.GetState(summary.Id),
-                    _openConversationWindow))
+                    _openConversationWindow,
+                    DeleteConversationAsync))
                 .ToArray();
             if (items.Length == 0)
             {
@@ -771,11 +833,31 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
-            Messages.Clear();
-            foreach (var message in messagesTask.Result)
+            var loadedMessages = messagesTask.Result;
+            var candidateTasks = loadedMessages
+                .Select(message =>
+                    message.SenderKind == MessageSenderKind.Character
+                        ? _repository.ListCandidatesAsync(
+                            message.Id,
+                            cancellationToken)
+                        : Task.FromResult<IReadOnlyList<MessageCandidate>>([]))
+                .ToArray();
+            await Task.WhenAll(candidateTasks);
+            if (cancellationToken.IsCancellationRequested
+                || version != _selectionVersion
+                || SelectedConversation?.Id != conversation.Id)
             {
-                Messages.Add(CreateMessageItem(message));
+                return;
             }
+
+            Messages.Clear();
+            for (var index = 0; index < loadedMessages.Count; index++)
+            {
+                Messages.Add(CreateMessageItem(
+                    loadedMessages[index],
+                    candidateTasks[index].Result));
+            }
+            RefreshContinueGenerationCommands();
             ApplyLiveSession(_generationSessions.Get(conversation.Id));
 
             var ownerId = loadedConversation.Mode == ConversationMode.Group
@@ -806,7 +888,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     ownerId,
                     loadedConversation.Id,
                     ownerLabel,
-                    cancellationToken),
+                    cancellationToken,
+                    PersonaName),
                 Group.LoadAsync(loadedConversation, cancellationToken),
                 Retrieval.LoadAsync(loadedConversation, cancellationToken),
                 Presets.LoadAsync(loadedConversation, cancellationToken));
@@ -1274,18 +1357,97 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
     }
 
-    private ChatMessageItemViewModel CreateMessageItem(ChatMessage message) =>
+    private ChatMessageItemViewModel CreateMessageItem(
+        ChatMessage message,
+        IReadOnlyList<MessageCandidate>? candidates = null) =>
         new(
             message,
             EditMessageAsync,
             DeleteMessageAsync,
             ForkMessageAsync,
             RegenerateMessageAsync,
+            ContinueGenerationAsync,
+            CanContinueGeneration,
+            ActivateCandidateAsync,
+            candidates ?? [],
             CopyMessage,
             OpenMessageTools,
-            message.SenderKind == MessageSenderKind.Character
-                ? _characterLookup.GetValueOrDefault(message.SenderId)?.Name
-                : null);
+            senderLabel: message.SenderKind switch
+                {
+                    MessageSenderKind.Character =>
+                        _characterLookup.GetValueOrDefault(message.SenderId)?.Name,
+                    MessageSenderKind.User => EffectivePersonaLabel(),
+                    _ => null
+                },
+            personaName: EffectivePersonaLabel(),
+            characterName: EffectiveCharacterMacroName(message));
+
+    private async Task ActivateCandidateAsync(
+        ChatMessageItemViewModel item,
+        MessageCandidate candidate)
+    {
+        await _repository.ActivateCandidateAsync(
+            item.Id,
+            candidate.CandidateIndex);
+        item.ApplyCandidate(candidate);
+        ScheduleContextRefresh();
+        Status = $"已切换到{item.CandidateNavigationLabel}。";
+    }
+
+    private void RefreshPersonaPresentation()
+    {
+        var label = EffectivePersonaLabel();
+        foreach (var message in Messages)
+        {
+            if (message.SenderKind == MessageSenderKind.User)
+            {
+                message.UpdateSenderLabel(label);
+            }
+
+            message.UpdateTavernNames(
+                label,
+                EffectiveCharacterMacroName(message.Message));
+        }
+    }
+
+    private string EffectivePersonaLabel() =>
+        string.IsNullOrWhiteSpace(PersonaName)
+            ? "USER"
+            : PersonaName.Trim();
+
+    private string EffectiveCharacterMacroName(ChatMessage message)
+    {
+        if (message.SenderKind == MessageSenderKind.Character
+            && !string.IsNullOrWhiteSpace(message.SenderId)
+            && _characterLookup.TryGetValue(message.SenderId, out var sender)
+            && !string.IsNullOrWhiteSpace(sender.Name))
+        {
+            return sender.Name.Trim();
+        }
+
+        var conversationCharacterId = SelectedConversation?.CharacterId;
+        return conversationCharacterId is not null
+               && _characterLookup.TryGetValue(
+                   conversationCharacterId,
+                   out var conversationCharacter)
+               && !string.IsNullOrWhiteSpace(conversationCharacter.Name)
+            ? conversationCharacter.Name.Trim()
+            : "角色";
+    }
+
+    private bool CanContinueGeneration(ChatMessageItemViewModel item) =>
+        SelectedConversation is not null
+        && !IsCurrentConversationBusy
+        && item.SenderKind == MessageSenderKind.Character
+        && string.Equals(Messages.LastOrDefault()?.Id, item.Id, StringComparison.Ordinal);
+
+    private void RefreshContinueGenerationCommands()
+    {
+        foreach (var message in Messages)
+        {
+            message.ContinueCommand.RaiseCanExecuteChanged();
+        }
+    }
 
     private void OpenMessageTools(ChatMessageItemViewModel selected)
     {
@@ -1357,12 +1519,26 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
 
         var conversationId = SelectedConversation.Id;
-        var assignment = AssignmentFor(SelectedConversation.Mode);
+        var conversationMode = SelectedConversation.Mode;
+        var assignment = AssignmentFor(conversationMode);
         if (assignment is null)
         {
-            Status = SelectedConversation.Mode == ConversationMode.Group
+            Status = conversationMode == ConversationMode.Group
                 ? "群聊接力功能尚未分配模型，不能重新生成。"
                 : "角色聊天功能尚未分配模型，不能重新生成。";
+            return;
+        }
+
+        var additionalRequirement =
+            await _interaction.PromptRegenerationRequirementAsync();
+        if (additionalRequirement is null)
+        {
+            Status = "已取消重新生成。";
+            return;
+        }
+
+        if (SelectedConversation?.Id != conversationId)
+        {
             return;
         }
 
@@ -1375,15 +1551,33 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
 
         var original = item.Message.Content;
+        var originalCandidateIndex = item.Message.ActiveCandidateIndex;
         var contextSnapshot = CreateContextSnapshot(_contextBudget.GetCurrentBudget())
             with { SpeakerCharacterId = item.Message.SenderId };
         try
         {
+            var conversationMessages = await _repository.ListMessagesAsync(
+                conversationId);
+            var precedingMessage = conversationMessages
+                .Where(message => message.SequenceNo < item.Message.SequenceNo)
+                .OrderByDescending(message => message.SequenceNo)
+                .FirstOrDefault();
+            var continuationInstruction =
+                conversationMode == ConversationMode.SingleCharacter
+                && precedingMessage?.SenderKind == MessageSenderKind.Character
+                    ? AppendAdditionalRequirement(
+                        ContinueWithoutUserInstruction,
+                        additionalRequirement)
+                    : null;
+            var regenerationInput = continuationInstruction is null
+                ? FormatAdditionalRequirement(additionalRequirement)
+                : string.Empty;
             var context = await AssembleContextAsync(
                 conversationId,
-                userInput: string.Empty,
+                userInput: regenerationInput,
                 historyBeforeSequenceNo: item.Message.SequenceNo,
-                snapshot: contextSnapshot);
+                snapshot: contextSnapshot,
+                continuationInstruction: continuationInstruction);
             if (context.Estimate.ExceedsLimit)
             {
                 Status = "重新生成所需上下文超过模型上限，未调用模型。";
@@ -1428,9 +1622,20 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             }
 
             var candidates = await _repository.ListCandidatesAsync(item.Id);
-            var nextIndex = candidates.Count == 0
-                ? Math.Max(1, item.Message.ActiveCandidateIndex + 1)
-                : candidates.Max(candidate => candidate.CandidateIndex) + 1;
+            if (candidates.Count == 0)
+            {
+                var originalCandidate = new MessageCandidate
+                {
+                    MessageId = item.Id,
+                    CandidateIndex = originalCandidateIndex,
+                    Content = original
+                };
+                await _repository.AddCandidateAsync(originalCandidate);
+                candidates = [originalCandidate];
+            }
+
+            var nextIndex =
+                candidates.Max(candidate => candidate.CandidateIndex) + 1;
             await _repository.AddAndActivateCandidateAsync(new MessageCandidate
             {
                 MessageId = item.Id,
@@ -1472,10 +1677,90 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
     }
 
+    private async Task ContinueGenerationAsync(ChatMessageItemViewModel item)
+    {
+        item.CloseTools();
+        var selected = SelectedConversation;
+        if (selected is null || !CanContinueGeneration(item))
+        {
+            return;
+        }
+
+        if (selected.Mode == ConversationMode.Group)
+        {
+            await StartGroupContinueAsync(manualSpeakerId: null);
+            return;
+        }
+
+        var assignment = _chatAssignment;
+        if (assignment is null)
+        {
+            Status = "角色聊天功能尚未分配模型，不能继续生成。";
+            return;
+        }
+
+        if (!_generationSessions.TryBegin(selected.Id, out var operationId))
+        {
+            Status = "当前会话已有生成任务。";
+            return;
+        }
+
+        var snapshot = new SendSnapshot(
+            selected.Id,
+            ConversationMode.SingleCharacter,
+            selected.CharacterId,
+            Input: string.Empty,
+            ChatSendMode.SendAndGenerate,
+            assignment,
+            CreateContextSnapshot(_contextBudget.GetCurrentBudget()),
+            operationId);
+        RaiseCurrentConversationBusyChanged(selected.Id);
+        try
+        {
+            var context = await AssembleContextAsync(
+                selected.Id,
+                userInput: string.Empty,
+                historyBeforeSequenceNo: null,
+                snapshot: snapshot.Context,
+                continuationInstruction: ContinueWithoutUserInstruction);
+            if (context.Estimate.ExceedsLimit)
+            {
+                Status = "继续生成所需上下文超过当前模型上限。";
+                return;
+            }
+
+            var assistant = await GenerateReplyAsync(
+                snapshot,
+                assignment,
+                context,
+                selected.CharacterId ?? item.Message.SenderId);
+            if (assistant is null)
+            {
+                return;
+            }
+
+            await ReloadGroupsPreservingSelectionAsync();
+            TriggerAutoMemory(snapshot);
+        }
+        catch (Exception exception)
+        {
+            SetStatusForConversation(
+                selected.Id,
+                $"继续生成失败：{exception.Message}");
+            await ReloadGroupsPreservingSelectionAsync();
+        }
+        finally
+        {
+            _generationSessions.End(selected.Id, operationId);
+            RaiseCurrentConversationBusyChanged(selected.Id);
+            SendLocalCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     private void CopyMessage(ChatMessageItemViewModel item)
     {
         item.CloseTools();
-        _interaction.CopyText(item.Content);
+        _interaction.CopyText(item.DisplayContent);
         Status = "消息正文已复制。";
     }
 
@@ -1738,7 +2023,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 selected.Id,
                 ComposerText,
                 historyBeforeSequenceNo: null,
-                cancellationToken);
+                cancellationToken,
+                allowRemoteSemanticRetrieval: false);
             if (cancellationToken.IsCancellationRequested
                 || version != _contextVersion
                 || SelectedConversation?.Id != selected.Id)
@@ -1772,14 +2058,16 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string conversationId,
         string userInput,
         long? historyBeforeSequenceNo,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool allowRemoteSemanticRetrieval = true)
     {
         return AssembleContextAsync(
             conversationId,
             userInput,
             historyBeforeSequenceNo,
             CreateContextSnapshot(_contextBudget.GetCurrentBudget()),
-            cancellationToken);
+            cancellationToken,
+            allowRemoteSemanticRetrieval: allowRemoteSemanticRetrieval);
     }
 
     private Task<ContextAssemblyResult> AssembleContextAsync(
@@ -1787,7 +2075,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string userInput,
         long? historyBeforeSequenceNo,
         ContextInputSnapshot snapshot,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? continuationInstruction = null,
+        bool allowRemoteSemanticRetrieval = true)
     {
         return _contextAssembler.AssembleAsync(
             new ContextAssemblyRequest(
@@ -1811,7 +2101,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 GroupSystemPrompt: snapshot.Group?.Settings.GroupSystemPrompt,
                 GroupBatonInstruction: BuildGroupBatonInstruction(snapshot),
                 Retrieval: snapshot.Retrieval,
-                ModelId: snapshot.ModelId),
+                ModelId: snapshot.ModelId,
+                ContinuationInstruction: continuationInstruction,
+                AllowRemoteSemanticRetrieval: allowRemoteSemanticRetrieval),
             cancellationToken);
     }
 
@@ -1908,6 +2200,21 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             assignment.TopP,
             assignment.ReasoningEnabled,
             SessionId: $"chat:{conversationId}");
+
+    private static string FormatAdditionalRequirement(string requirement) =>
+        string.IsNullOrWhiteSpace(requirement)
+            ? string.Empty
+            : $"附加要求：{requirement.Trim()}";
+
+    private static string AppendAdditionalRequirement(
+        string instruction,
+        string requirement)
+    {
+        var additional = FormatAdditionalRequirement(requirement);
+        return additional.Length == 0
+            ? instruction
+            : $"{instruction}\n{additional}";
+    }
 
     private static string RenderApiRequestPreview(ContextAssemblyResult context)
     {
@@ -2138,6 +2445,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 ActiveCandidateIndex = 0
             };
             Messages.Add(CreateMessageItem(transient));
+            RefreshContinueGenerationCommands();
             return;
         }
 
@@ -2209,6 +2517,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         if (SelectedConversation?.Id == conversationId)
         {
             OnPropertyChanged(nameof(IsCurrentConversationBusy));
+            RefreshContinueGenerationCommands();
         }
     }
 

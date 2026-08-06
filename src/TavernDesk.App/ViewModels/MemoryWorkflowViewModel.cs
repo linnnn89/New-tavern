@@ -22,10 +22,13 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private string? _ownerId;
     private string? _conversationId;
     private string _ownerLabel = "未选择记忆";
+    private string _userIdentity = "用户";
     private string _body = string.Empty;
     private string _targetTokens = "5000";
     private bool _autoGenerateEnabled;
     private string _updateIntervalTurns = "20";
+    private string _maximumSourceUserTurns = "20";
+    private bool _sendOnlyNewMessages = true;
     private string _status = "选择会话后载入角色或群聊的独立记忆银行。";
     private string _checkpointText = "尚无处理检查点。";
     private string _requestPreview = "生成或预览后显示记忆 API 发送结构；不会包含 API Key。";
@@ -91,6 +94,9 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     public string? OwnerId => _ownerId;
     public string? ConversationId => _conversationId;
 
+    public void SetUserIdentity(string? userIdentity) =>
+        _userIdentity = NormalizeUserIdentity(userIdentity);
+
     public string OwnerLabel
     {
         get => _ownerLabel;
@@ -125,6 +131,18 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     {
         get => _updateIntervalTurns;
         set => SetProperty(ref _updateIntervalTurns, value);
+    }
+
+    public string MaximumSourceUserTurns
+    {
+        get => _maximumSourceUserTurns;
+        set => SetProperty(ref _maximumSourceUserTurns, value);
+    }
+
+    public bool SendOnlyNewMessages
+    {
+        get => _sendOnlyNewMessages;
+        set => SetProperty(ref _sendOnlyNewMessages, value);
     }
 
     public string Status
@@ -177,7 +195,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         string ownerId,
         string conversationId,
         string ownerLabel,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? userIdentity = null)
     {
         var version = Interlocked.Increment(ref _loadVersion);
         var bankTask = _memoryBanks.GetAsync(ownerId, cancellationToken);
@@ -196,6 +215,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         _ownerId = ownerId;
         _conversationId = conversationId;
         OwnerLabel = ownerLabel;
+        _userIdentity = NormalizeUserIdentity(userIdentity);
         var bank = bankTask.Result;
         Body = bank?.Body ?? string.Empty;
         TargetTokens = (bank?.TargetTokens ?? 5000).ToString();
@@ -213,6 +233,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         Interlocked.Increment(ref _loadVersion);
         _ownerId = null;
         _conversationId = null;
+        _userIdentity = "用户";
         OwnerLabel = "未选择记忆";
         Body = string.Empty;
         TargetTokens = "5000";
@@ -271,12 +292,15 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 settings,
                 checkpoint,
                 messages,
-                await BuildSenderNamesAsync(cancellationToken));
+                await BuildSenderNamesAsync(cancellationToken),
+                PromptMemorySubject(ownerId),
+                _userIdentity);
             await GeneratePlanAsync(
                 plan,
                 ModelFunctionKind.MemoryUpdate,
-                "已按阈值自动生成待保存记忆草稿；正文尚未覆盖。",
-                cancellationToken);
+                "已按阈值自动保存记忆正文，并推进本会话处理检查点。",
+                cancellationToken,
+                autoCommit: true);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -285,7 +309,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         {
             if (_ownerId == ownerId && _conversationId == conversationId)
             {
-                Status = $"自动记忆草稿未生成：{exception.Message}";
+                Status = $"自动保存记忆失败，已保留草稿：{exception.Message}";
             }
         }
     }
@@ -309,7 +333,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             characterBank?.Body ?? string.Empty,
             Body,
             characterBank?.TargetTokens ?? 5000,
-            effectiveGroupSettings);
+            effectiveGroupSettings,
+            _userIdentity);
         await GeneratePlanAsync(
             plan,
             ModelFunctionKind.GroupMemoryMerge,
@@ -338,11 +363,20 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             return;
         }
 
+        if (!int.TryParse(MaximumSourceUserTurns, out var maximumSourceUserTurns)
+            || maximumSourceUserTurns is < 1 or > 10000)
+        {
+            Status = "单次发送上限必须是 1–10000 之间的用户轮次数。";
+            return;
+        }
+
         var settings = new MemoryWorkflowSettings
         {
             OwnerId = _ownerId,
             AutoGenerateEnabled = AutoGenerateEnabled,
             UpdateIntervalTurns = interval,
+            MaximumSourceUserTurns = maximumSourceUserTurns,
+            SendOnlyNewMessages = SendOnlyNewMessages,
             UpdateSystemPrompt =
                 _globalPrompts.Get(GlobalPromptKey.MemoryUpdateSystem),
             UpdateUserTemplate =
@@ -353,8 +387,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 MemoryPromptDefaults.CompressionInput
         };
         await _workflow.SaveSettingsAsync(settings);
+        var sourceMode = SendOnlyNewMessages
+            ? "仅发送检查点后的新增对话"
+            : "允许重新发送已有对话";
         Status = AutoGenerateEnabled
-            ? $"已保存记忆工作流；每新增 {interval} 个用户轮次自动生成待保存草稿。"
+            ? $"已保存记忆工作流；每新增 {interval} 个用户轮次触发，单次最多发送 {maximumSourceUserTurns} 个用户轮次；{sourceMode}。"
             : "已保存记忆工作流；自动生成保持关闭。";
     }
 
@@ -413,7 +450,9 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 Body,
                 targetTokens,
                 settings,
-                checkpoint);
+                checkpoint,
+                PromptMemorySubject(_ownerId),
+                _userIdentity);
             await GeneratePlanAsync(
                 plan,
                 ModelFunctionKind.MemoryCompression,
@@ -449,14 +488,17 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             CreateSettingsSnapshot(),
             checkpointTask.Result,
             messagesTask.Result,
-            namesTask.Result);
+            namesTask.Result,
+            PromptMemorySubject(_ownerId),
+            _userIdentity);
     }
 
     private async Task GeneratePlanAsync(
         MemoryPromptPlan plan,
         ModelFunctionKind functionKind,
         string successStatus,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool autoCommit = false)
     {
         if (!await _generationGate.WaitAsync(0, cancellationToken))
         {
@@ -574,9 +616,34 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 SourceUserTurns = plan.SourceUserTurns
             };
             await _workflow.SaveDraftAsync(draft, _generationCancellation.Token);
+            if (autoCommit)
+            {
+                await _workflow.CommitDraftAsync(
+                    draft.Id,
+                    draft.Body,
+                    draft.TargetTokens,
+                    _generationCancellation.Token);
+            }
+
             if (IsCurrent(plan))
             {
-                ApplyDraft(draft);
+                if (autoCommit)
+                {
+                    ApplyDraft(null);
+                    if (draft.TargetOwnerId == _ownerId)
+                    {
+                        Body = draft.Body;
+                        ApplyCheckpoint(await _workflow.GetCheckpointAsync(
+                            draft.TargetOwnerId,
+                            draft.SourceConversationId,
+                            _generationCancellation.Token));
+                    }
+                }
+                else
+                {
+                    ApplyDraft(draft);
+                }
+
                 Status = successStatus;
             }
         }
@@ -658,7 +725,12 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             AutoGenerateEnabled = AutoGenerateEnabled,
             UpdateIntervalTurns = int.TryParse(UpdateIntervalTurns, out var interval)
                 ? interval
-                : 20
+                : 20,
+            MaximumSourceUserTurns =
+                int.TryParse(MaximumSourceUserTurns, out var maximumSourceUserTurns)
+                    ? maximumSourceUserTurns
+                    : 20,
+            SendOnlyNewMessages = SendOnlyNewMessages
         });
 
     private MemoryWorkflowSettings ResolveGlobalDefaults(
@@ -691,6 +763,16 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         (await _characters.ListAsync(cancellationToken))
         .ToDictionary(character => character.Id, character => character.Name, StringComparer.Ordinal);
 
+    private string PromptMemorySubject(string? ownerId) =>
+        _ownerId == ownerId && !string.IsNullOrWhiteSpace(OwnerLabel)
+            ? OwnerLabel
+            : string.IsNullOrWhiteSpace(ownerId)
+                ? "当前记忆主体"
+                : ownerId.Trim();
+
+    private static string NormalizeUserIdentity(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "用户" : value.Trim();
+
     private bool TryReadTargetTokens(out int targetTokens)
     {
         if (!int.TryParse(TargetTokens, out targetTokens)
@@ -710,6 +792,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     {
         AutoGenerateEnabled = settings.AutoGenerateEnabled;
         UpdateIntervalTurns = settings.UpdateIntervalTurns.ToString();
+        MaximumSourceUserTurns = settings.MaximumSourceUserTurns.ToString();
+        SendOnlyNewMessages = settings.SendOnlyNewMessages;
     }
 
     private void ApplyCheckpoint(MemoryCheckpoint? checkpoint)

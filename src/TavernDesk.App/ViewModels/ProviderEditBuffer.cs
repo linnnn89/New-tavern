@@ -98,11 +98,32 @@ public sealed class ProviderEditBuffer : ViewModelBase
                 return false;
             }
         }
-        else if (!Uri.TryCreate(normalizedBaseUrl, UriKind.Absolute, out var baseUri)
-                 || baseUri.Scheme is not ("http" or "https"))
+        else
         {
-            error = "API 地址必须是完整的 http 或 https 地址。";
-            return false;
+            if (!Uri.TryCreate(normalizedBaseUrl, UriKind.Absolute, out var baseUri)
+                || baseUri.Scheme is not ("http" or "https"))
+            {
+                error = "API 地址必须是完整的 http 或 https 地址。";
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(baseUri.Query)
+                || !string.IsNullOrEmpty(baseUri.Fragment))
+            {
+                error = "API 地址不能包含查询参数或片段。";
+                return false;
+            }
+
+            if (baseUri.AbsolutePath.EndsWith(
+                    "/chat",
+                    StringComparison.OrdinalIgnoreCase)
+                || baseUri.AbsolutePath.EndsWith(
+                    "/chat/completions",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                error = "API 地址请填写到 /api/v1 或 /v1 结束，不要加入 /chat。";
+                return false;
+            }
         }
 
         if (!double.TryParse(RequestTimeoutSeconds, out var timeout)

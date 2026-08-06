@@ -183,6 +183,12 @@ schema v9 为模型功能分配增加显式 reasoning 开关。当前只对 Open
 
 schema v10 取消消息回收箱：迁移会永久清理旧版本已软删除的消息；新删除路径在同一事务中按稳定 `sequence_no` 确定范围，先清理旧 FTS 记录，再物理删除消息，候选和聊天导入负载依靠外键级联删除，trigram 索引由删除触发器同步。该迁移不删除兼容列，避免为一次产品收敛重建整张消息表。
 
+schema v11 为 `provider_models` 增加 `model_kind` 目录来源元数据，以兼容普通目录、专用 Embedding 目录和手工录入记录；它不是模型能力判断，也不参与 API 路由。普通 OpenAI-compatible `/models` 与支持的专用 `/embeddings/models` 会合并到统一模型目录，功能分配可以从统一目录选择模型。
+
+schema v12 增加世界书语义索引及角色/全局/跑团剧本挂载关联；schema v13 重建 Embedding profile 与向量表，移除过窄的 Provider+模型唯一约束并保留旧索引数据；schema v14 为 `memory_workflow_settings` 增加 `maximum_source_user_turns` 和 `send_only_new_messages`。记忆工作流默认每 20 个用户轮次触发一次、每次最多发送 20 个用户轮次（含角色回复），并默认只发送检查点之后的新对话；仍先生成草稿，显式保存后才推进检查点。
+
+跑团 AI 玩家请求按事件生命周期分为四块：“已裁定共同历史”保留最新 GM 事件之前的真实时间顺序；“最新 GM 场景与裁定”是当前行动的权威世界起点；“本轮其他席位已提交内容”只收录最新 GM 之后、当前回合可见的 `PlayerIntent`；“当前回合任务”只授权 `current_actor` 提交自己的行动。每行 JSONL 在不改写原始事件正文的前提下附加运行时 `resolution_status`：GM 事件为 `confirmed_by_gm`，过去玩家意图为 `resolved_round_record`，当前回合意图为 `pending_gm_resolution`。平级玩家公开表达的台词与行动意图可以被感知、回应或用于协作，但行动成败、观察结论以及 NPC、环境和世界影响必须等待 GM 裁定；`speaker` 与 `current_actor` 仍是身份事实。角色卡快照只定义性格、背景、知识、能力、社会位置和表达风格，不能通过卡内指令取得 GM、NPC、旁白、其他席位或故事作者权限。该结构仍由单次常规 API 请求完成，不引入摘要调用、数据库事件迁移或 Agent 流程。
+
 群聊记忆的 owner ID 为 `group:{conversation_id}`。群聊分支复制截止消息、全部消息候选、群聊设置和成员并重建 ID；新分支不复制原群聊记忆，防止分支起点之后形成的摘要泄漏到新分支。群聊状态在分支中重置。
 
 手工编辑只覆盖当前候选文本，不保留编辑历史；重新生成产生新的候选版本。独立分支复制消息及全部候选并重建 ID，不共享消息节点。消息删除必须先选择范围并最终确认，随后永久生效；不提供回收、恢复或隐藏软删除入口。
@@ -203,13 +209,15 @@ schema v10 取消消息回收箱：迁移会永久清理旧版本已软删除的
 → Token 估算与阻止判定
 ```
 
-M4.1 已接入 global → character → conversation 预设栈、群聊额外指令、当前发言角色 system prompt/核心字段、群聊成员设定、Persona、角色世界书、角色或群聊记忆、FTS5 消息召回、带真实 provider role/角色姓名的近期历史、post-history、群聊接力指令和当前输入。默认发送顺序优先保持固定前缀：精炼职责、Persona、角色资料、普通世界资料和长期记忆位于历史前；逐轮变化的检索、post-history 与接力指令位于历史后；当前用户原文保持最后一条。单聊历史直接使用原生 role，群聊历史只增加单行 JSON `speaker` 信封；不插入会在后续轮次移动位置的历史起止标记。世界书支持 constant/selective、递归、概率、互斥组、正则/整词和 at-depth，并继续尊重用户选择的插入位置；因此位于历史前的动态条目仍可能使后续缓存前缀失效。安全宏展开在角色字段、世界书和预设解析之后统一完成。上下文检查器与实际请求从同一 `ContextAssemblyResult` 生成；当前模型 ID 随预算快照进入组装器，GPT-5/4.1/4o/o 系列使用 `o200k_base`，GPT-4/3.5 使用 `cl100k_base`，未知模型保持原 UTF-8 启发式回退。词表由 NuGet 数据程序集随发布目录内置，不读取用户电脑上的外部路径。由于服务端消息模板仍可能变化，结果统一标记为 `IsExact=false`；超限时阻止请求且不自动裁剪。知识库语义召回及非 Tiktoken 模型家族的本地 tokenizer 仍为后续能力。
+M4.1 已接入 global → character → conversation 预设栈、群聊额外指令、当前发言角色 system prompt/核心字段、群聊成员设定、Persona、角色世界书、角色或群聊记忆、FTS5 消息召回、带真实 provider role/角色姓名的近期历史、post-history、群聊接力指令和当前输入。默认发送顺序优先保持固定前缀：精炼职责、Persona、角色资料、普通世界资料和长期记忆位于历史前；逐轮变化的检索、post-history 与接力指令位于历史后；当前用户原文保持最后一条。单聊历史直接使用原生 role，群聊历史只增加单行 JSON `speaker` 信封；不插入会在后续轮次移动位置的历史起止标记。世界书支持 constant/selective、递归、概率、互斥组、正则/整词和 at-depth，并继续尊重用户选择的插入位置；语义世界书检索使用 FTS5 与 Embedding 的确定性混合召回，预览不触发远程向量请求，当前输入为空时仍可从有限近期历史/续写指令构造查询。世界书向量/主 FTS 索引的 `normalized_content` 同时包含词条名、关键词和正文；CJK 的本地 substring 兜底仅检查正文。安全宏展开在角色字段、世界书和预设解析之后统一完成。上下文检查器与实际请求从同一 `ContextAssemblyResult` 生成；当前模型 ID 随预算快照进入组装器，GPT-5/4.1/4o/o 系列使用 `o200k_base`，GPT-4/3.5 使用 `cl100k_base`，未知模型保持原 UTF-8 启发式回退。词表由 NuGet 数据程序集随发布目录内置，不读取用户电脑上的外部路径。由于服务端消息模板仍可能变化，结果统一标记为 `IsExact=false`；超限时阻止请求且不自动裁剪。非 Tiktoken 模型家族的本地 tokenizer 仍为后续能力。
 
-OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持 SSE 和非流式 JSON 回退。裸服务根地址自动补全 `/v1`；已经包含 `/v1` 或其他显式兼容路径时不改写该路径。OpenRouter 请求按普通聊天会话或跑团 GM/玩家席位传递稳定 `session_id`，并从 `prompt_tokens_details.cached_tokens` 读取缓存命中量；DeepSeek 直连兼容字段 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` 也在同一 usage 解析处处理，不新增第二套 Provider。`ReasoningStreamNormalizer` 在 Infrastructure 边界执行服务商无关的语义归一化：优先读取 `reasoning`、`reasoning_content`、`thinking`、`analysis` 及受控的 reasoning/thinking 前缀变体，并递归确认结构化数组/对象中存在有效值；若服务只把思考写入正文，则仅在响应开头识别 `<think>`、`<thinking>`、`<analysis>` 成对标签。状态机可跨 SSE chunk 识别标签，且只暂存可能组成闭合标签的最短后缀。结构化字段优先，正文中途出现的字面标签按普通正文保留，避免过宽通配误吞用户内容。
+OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持专用目录的接入商另使用 `/embeddings/models` 读取目录；调用者选择 `Embedding 向量化` 功能后，Embedding 网关固定把请求发送到 `/embeddings`，不检查模型目录类型，普通聊天功能仍通过 `/chat/completions`。所有接口支持既有 SSE 和非流式 JSON 回退路径。裸服务根地址自动补全 `/v1`；已经包含 `/v1` 或其他显式兼容路径时不改写该路径。OpenRouter 请求按普通聊天会话或跑团 GM/玩家席位传递稳定 `session_id`，并从 `prompt_tokens_details.cached_tokens` 读取缓存命中量；DeepSeek 直连兼容字段 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` 也在同一 usage 解析处处理，不新增第二套 Provider。`ReasoningStreamNormalizer` 在 Infrastructure 边界执行服务商无关的语义归一化：优先读取 `reasoning`、`reasoning_content`、`thinking`、`analysis` 及受控的 reasoning/thinking 前缀变体，并递归确认结构化数组/对象中存在有效值；若服务只把思考写入正文，则仅在响应开头识别 `<think>`、`<thinking>`、`<analysis>` 成对标签。状态机可跨 SSE chunk 识别标签，且只暂存可能组成闭合标签的最短后缀。结构化字段优先，正文中途出现的字面标签按普通正文保留，避免过宽通配误吞用户内容。
 
-归一化后的流在 Infrastructure 内统一拆为 reasoning 信号、最终正文和 completed/usage；reasoning 原文不越过 Provider 边界，App 只用信号驱动临时状态。模型目录只在用户主动刷新时请求。`ConversationGenerationSessionStore` 以会话 ID 保存应用级生成快照和临时正文；多个 `ChatViewModel` 可附着同一会话，不同会话可同时流式生成，同一会话拒绝重入。发送开始时快照模型分配、Persona、预设和当前记忆，后续切换界面或关闭展示窗口不会把上下文串线或终止流。当前目录固定为 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 `http://127.0.0.1:6543` LM Studio；后四项复用 OpenAI-compatible 适配器。专用 Ollama、LM Studio 原生、Anthropic 或 Gemini 适配器尚未实现。
+归一化后的流在 Infrastructure 内统一拆为 reasoning 信号、最终正文和 completed/usage；reasoning 原文不越过 Provider 边界，App 只用信号驱动临时状态。模型目录只在用户主动刷新时请求。`ConversationGenerationSessionStore` 以会话 ID 保存应用级生成快照和临时正文；多个 `ChatViewModel` 可附着同一会话，不同会话可同时流式生成，同一会话拒绝重入。默认目录固定为 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 `http://127.0.0.1:6543` LM Studio；后四项复用 OpenAI-compatible 适配器。设置页还允许新增自定义 OpenAI-compatible Provider。专用 Ollama、LM Studio 原生、Anthropic 或 Gemini 适配器尚未实现。
 
-记忆更新、压缩和群聊记忆合并分别使用独立功能模型分配，每项只有一份可编辑全局职责提示词；旧记忆、新消息、角色名和目标 Token 等动态资料由 `MemoryPromptComposer` 构造固定输入载荷，不存在第二份可配置 User 模板。提示词、目标 Token 和完整发送结构仍可在生成前查看；请求中的 `user` role 只是 OpenAI-compatible 协议的数据承载消息，不是另一项用户配置。自动阈值只创建待确认草稿，不自动覆盖记忆正文。群聊使用独立的“群聊接力”和“群聊记忆合并”功能分配；`@` 接力只读取上一角色输出的最后一句，识别 `@USER` 或 Persona 名后持久化暂停状态。
+记忆更新、压缩和群聊记忆合并分别使用独立功能模型分配，每项只有一份可编辑全局职责提示词；旧记忆、新消息、角色名和目标 Token 等动态资料由 `MemoryPromptComposer` 构造固定输入载荷，不存在第二份可配置 User 模板。提示词、目标 Token 和完整发送结构仍可在生成前查看；请求中的 `user` role 只是 OpenAI-compatible 协议的数据承载消息，不是另一项用户配置。记忆银行的自动阈值更新默认开启，但只创建待确认草稿，不自动覆盖记忆正文。群聊使用独立的“群聊接力”和“群聊记忆合并”功能分配；`@` 接力只读取上一角色输出的最后一句，识别 `@USER` 或 Persona 名后持久化暂停状态。模型功能分配另设与生成任务平行的 `Embedding` 项，只持久化 Provider 与模型；上下文上限、最大输出、temperature、top_p 和 reasoning 对该项无效。实际 Embedding 请求已经固定走 `/embeddings`；世界书向量索引、混合 RAG、内容哈希复用和索引事务已接入，角色卡内置世界书导入时自动建立/复用工作副本。
+
+Provider 页面预置五个已支持入口，也允许新增仅使用 `OpenAiCompatible` 适配器的自定义 Provider。自定义基地址持久化到 Provider profile，网关在 Infrastructure 内补全 `/v1`（裸主机时）和相对接口路径；UI 明确提示用户不要把 `/chat` 或 `/chat/completions` 写入基地址。未实现的 Provider adapter 仍会在初始化时停用并从设置页隐藏。
 
 ## 5. UI 状态原则
 
@@ -225,6 +233,7 @@ OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持 SSE
 - 正式角色资料与未保存编辑缓冲分离；书架刷新不重建脏草稿，保存成功后才替换正式资料，旧会话的异步结果提交前必须同时匹配会话 ID 和角色 ID；
 - 备选开场白在 UI 中按数组元素逐项编辑；写回时仍更新原始 JSON 树，不重建未知节点；
 - 聊天导航采用“角色 → 独立会话”两级结构；点击角色只展开，点击会话才加载右侧正文；
+- 会话列表和角色详情的会话行都可右键物理删除整个会话；仓储事务显式清理 FTS5 虚表，再依靠外键级联清理消息、候选、归档载荷和会话级工作流数据，不删除角色共享 `memory_banks`；
 - 仪表盘最近会话以会话 ID 精确打开目标记录；按压位移与反弹只作用于被点击卡片；
 - 所有页面支持窗口拉伸，关键按钮不依赖固定像素位置；
 - 主窗口、独立聊天窗口和消息编辑器分别记住最后使用尺寸；最大化关闭时保存还原尺寸，并按当前工作区边界收敛；
@@ -236,11 +245,13 @@ OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持 SSE
 - 跑团席位状态仪表盘读取持久化事件终态，不另建一套临时任务状态；失败详情、有限部分输出和重试入口保留在对应席位缓存中。
 - `ConversationGenerationCoordinator` 是单一应用级生成主管：聊天、跑团席位、跑团 GM 和记忆生成用 `scope + scope_id + operation_id` 登记，不为跑团另建任务框架；现有聊天接口保留为薄包装。
 - 每项生成只允许一个终态；取消、正常完成和 Provider 错误竞争时，最先写入的终态胜出。后续迟到 chunk 必须由 `operation_id` 与终态守卫丢弃，不能再创建消息、提交记忆或锁定跑团行动。
+- 数据库初始化后、业务页面载入前，跑团仓储用一次原子更新把遗留的 `Queued/Streaming` 事件收尾为 `Interrupted(ProcessExited)`；保留已有正文、操作 ID 和尝试链，不触碰任何既有终态，也不自动重试或恢复进程内 barrier。
 - 跑团 GM 请求在自定义全局提示词之外强制附加运行时回合协议，并显式列出启用席位所有权及冻结角色/Persona 资料。AI GM 输出缺少非空最终章节 `【下一轮评定参考】` 时使用 `ProtocolViolation` 终态：正文和重试链保留，但事件不锁定、不进入世界摘要，也不推进回合。
 - 秘密同投的 `PlayerIntent` 与其自动骰在当前回合保持提交者/GM 可见；只有 GM 裁定完成、轮号推进后才向其他玩家历史和导演界面揭示。
 - 顶栏红色“停止全部 API”按钮先阻止新登记，再取消当前登记的全部请求并等待本地收尾；HTTP/SSE 以断开响应流结束，ACP 优先发送会话取消并在宽限超时后终止该次隔离进程。部分输出保留为本地 `Interrupted` 诊断，不冒充 Provider 正常完成。
 - 归一化后的正文经过有界输出健康守卫；只检测保守的连续精确重复，不引入语义检测模型。reasoning 原文从不进入 App 缓存或数据库；输出上限、取消令牌和顶栏全局停止负责其资源兜底。异常正文不得进入消息、记忆或跑团 GM 上下文。
 - 主窗口关闭是当前唯一的真实应用退出路径；最小化、页面切换、模态窗口与非主窗口关闭均不属于退出。
+- WPF 入口在数据库和 Provider 初始化前获取 `Local\TavernDesk.App.SingleInstance.v1` 命名互斥量；同一 Windows 桌面会话的第二应用实例只显示提示并退出。独立聊天等子窗口由首个进程内部创建，不参与单实例竞争；主进程退出或异常终止后，操作系统释放互斥量，下一次启动可以正常接管。
 - 气泡/小说显示模式是纯展示偏好，不改变消息存储、候选或上下文。
 - thinking 只显示为消息区底部、输入区上方的临时五字波浪提示；第一段正文到达即隐藏，且不预先创建空白助手气泡。
 - 发送前的本地 Token 估算与 Provider 返回的实际 usage 分行呈现；已知 Tiktoken 模型使用内置词表，未知模型启发式回退；actual usage 可包含 reasoning、输入缓存命中/未命中 Token 和完成原因。
@@ -280,13 +291,13 @@ OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持 SSE
 - 预设按三层作用域稳定深合并并输出来源诊断；
 - FTS5 trigram 召回在消息编辑、永久删除、会话范围和排除集下保持一致；
 - JSONL 导入/编辑/导出/再导入保留未知字段和全部候选；损坏文件不产生部分数据库记录。
-- 剧本卡导入保留原始 PNG 与 JSON；`first_mes` 只进入大厅说明，`mes_example` 只进入历史档案，均不进入当前跑团事件流或玩家上下文。
+- 剧本卡导入保留原始 PNG 与 JSON；`first_mes` 不再作为独立剧本字段保存或显示，`mes_example` 只进入历史档案，均不进入当前跑团事件流或玩家上下文。
 - 跑团仓储覆盖草稿保存、开局冻结、重启续玩、同剧本另开独立局、操作 ID 幂等、事件终态不可逆、乐观运行时版本和途中模型路由审计。
 - 跑团执行器覆盖协作串行、秘密同投冻结快照并发、严格先攻、USER/AI GM、掷骰、席位失败缓存、重试、全局停止和上下文超限门阀。
 - 真实 WPF 隔离数据根已验证 Naruto 剧本开局、结构化 GM 开场、关闭重启后续玩和游戏桌面；正式数据根已导入四张角色卡与一张剧本卡，并确认大厅列出四个独立模型席位。
 - M4.2 使用隔离数据根连接本机 LM Studio：目标模型发现、单流最终正文、单请求取消和两条并发流均通过；真实请求只含固定合成标签。
 - M4.3 集中自动化验证 40/40 通过；通用 thinking 与多窗口生命周期验证未连接真实 API。
-- 2026-08-03 当前 Release 集中自动化验证 `93/93` 通过；删除回收箱孤立源码并修复 Token 估算器接口签名后，隔离 Release 干净构建 0 个警告、0 个错误。根目录启动器 `--probe` 与隔离 WPF 视觉验证沿用同日上一基线，本轮未复跑；未读取 API Key、刷新模型目录或发送真实 Provider 请求。
+- 2026-08-03 当前 Release 集中自动化验证 `119/119` 通过；功能分配切换回归确认同一模型下各功能独立恢复上下文上限、最大输出、temperature 与 top_p；启动恢复回归确认遗留 `Queued/Streaming` 转为 `Interrupted(ProcessExited)`、已完成事件不变且重复初始化幂等；单实例回归确认第二实例被拒绝且首实例释放后可重新启动；世界书回归确认同一本世界书可同时绑定多个角色而不改变全局挂载；跑团回归确认剧本结构化字段编辑保存且原始来源保留、AI 玩家请求以权威 current_actor/席位映射/JSONL speaker 信封区分发言所有权、GM 将历史和本轮 PlayerIntent 分区且不复述玩家正文、已保存跑团可确认后物理删除并级联清理该局数据。标准 Release 构建 0 个警告、0 个错误。根目录启动器 `--probe` 退出码 0；隔离 WPF 视觉验证沿用同日上一基线，本轮未复跑；未读取 API Key、刷新模型目录或发送真实 Provider 请求。
 
 不进行：
 

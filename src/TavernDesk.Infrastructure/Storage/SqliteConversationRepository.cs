@@ -127,6 +127,61 @@ public sealed class SqliteConversationRepository : IConversationRepository
         };
     }
 
+    public async Task DeleteConversationAsync(
+        string conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(
+            cancellationToken);
+        try
+        {
+            // FTS tables are virtual tables and therefore do not participate
+            // in the conversations -> messages foreign-key cascade.
+            await using (var search = connection.CreateCommand())
+            {
+                search.Transaction = (SqliteTransaction)transaction;
+                search.CommandText = """
+                    DELETE FROM message_search
+                    WHERE conversation_id = $conversationId;
+
+                    DELETE FROM message_search_trigram
+                    WHERE conversation_id = $conversationId;
+                    """;
+                search.Parameters.AddWithValue(
+                    "$conversationId",
+                    conversationId);
+                await search.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using var delete = connection.CreateCommand();
+            delete.Transaction = (SqliteTransaction)transaction;
+            delete.CommandText = """
+                DELETE FROM conversations
+                WHERE id = $conversationId;
+                """;
+            delete.Parameters.AddWithValue("$conversationId", conversationId);
+            if (await delete.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                throw new InvalidOperationException("聊天记录不存在或已经删除。");
+            }
+
+            // Child rows (messages, candidates, JSONL payloads, retrieval
+            // settings, checkpoints and group-chat state) use ON DELETE
+            // CASCADE. memory_banks intentionally does not: a character's
+            // shared long-term memory belongs to the character, not a chat.
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     public async Task<IReadOnlyList<ChatMessage>> ListMessagesAsync(
         string conversationId,
         CancellationToken cancellationToken = default)
@@ -377,6 +432,104 @@ public sealed class SqliteConversationRepository : IConversationRepository
                     """;
                 conversation.Parameters.AddWithValue("$updatedAt", updatedAt);
                 conversation.Parameters.AddWithValue("$conversationId", conversationId);
+                await conversation.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    public async Task ActivateCandidateAsync(
+        string messageId,
+        int candidateIndex,
+        CancellationToken cancellationToken = default)
+    {
+        if (candidateIndex < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(candidateIndex));
+        }
+
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(
+            cancellationToken);
+        var updatedAt = DateTimeOffset.Now.ToString("O");
+        try
+        {
+            string content;
+            string conversationId;
+            await using (var select = connection.CreateCommand())
+            {
+                select.Transaction = (SqliteTransaction)transaction;
+                select.CommandText = """
+                    SELECT mc.content, m.conversation_id
+                    FROM message_candidates mc
+                    JOIN messages m ON m.id = mc.message_id
+                    WHERE mc.message_id = $messageId
+                      AND mc.candidate_index = $candidateIndex
+                      AND m.is_deleted = 0;
+                    """;
+                select.Parameters.AddWithValue("$messageId", messageId);
+                select.Parameters.AddWithValue("$candidateIndex", candidateIndex);
+                await using var reader = await select.ExecuteReaderAsync(
+                    cancellationToken);
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    throw new InvalidOperationException(
+                        "所选候选不存在或所属消息已经删除。");
+                }
+
+                content = reader.GetString(0);
+                conversationId = reader.GetString(1);
+            }
+
+            await using (var update = connection.CreateCommand())
+            {
+                update.Transaction = (SqliteTransaction)transaction;
+                update.CommandText = """
+                    UPDATE messages
+                    SET content = $content,
+                        active_candidate_index = $candidateIndex,
+                        updated_at = $updatedAt
+                    WHERE id = $messageId AND is_deleted = 0;
+                    """;
+                update.Parameters.AddWithValue("$content", content);
+                update.Parameters.AddWithValue("$candidateIndex", candidateIndex);
+                update.Parameters.AddWithValue("$updatedAt", updatedAt);
+                update.Parameters.AddWithValue("$messageId", messageId);
+                await update.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using (var search = connection.CreateCommand())
+            {
+                search.Transaction = (SqliteTransaction)transaction;
+                search.CommandText = """
+                    UPDATE message_search
+                    SET content = $content
+                    WHERE message_id = $messageId;
+                    """;
+                search.Parameters.AddWithValue("$content", content);
+                search.Parameters.AddWithValue("$messageId", messageId);
+                await search.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using (var conversation = connection.CreateCommand())
+            {
+                conversation.Transaction = (SqliteTransaction)transaction;
+                conversation.CommandText = """
+                    UPDATE conversations
+                    SET updated_at = $updatedAt
+                    WHERE id = $conversationId;
+                    """;
+                conversation.Parameters.AddWithValue("$updatedAt", updatedAt);
+                conversation.Parameters.AddWithValue(
+                    "$conversationId",
+                    conversationId);
                 await conversation.ExecuteNonQueryAsync(cancellationToken);
             }
 

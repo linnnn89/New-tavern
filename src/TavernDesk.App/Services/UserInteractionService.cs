@@ -17,6 +17,13 @@ public enum UnsavedChangesDecision
     Save
 }
 
+public enum DataRootMigrationDecision
+{
+    Cancel,
+    KeepTargetAsIs,
+    CopyCurrentData
+}
+
 public sealed record GroupChatDraft(
     string Title,
     IReadOnlyList<string> CharacterIds);
@@ -24,6 +31,13 @@ public sealed record GroupChatDraft(
 public interface IUserInteractionService
 {
     Task<string?> EditTextAsync(string title, string prompt, string initialText);
+    Task<string?> PromptModelNameAsync(string initialText = "") =>
+        EditTextAsync(
+            "添加自定义模型",
+            "输入模型 ID 或名称。保存后只写入本地模型目录，不会发起网络请求。",
+            initialText);
+    Task<string?> PromptRegenerationRequirementAsync() =>
+        Task.FromResult<string?>(string.Empty);
     DeleteMessageDecision ConfirmMessageDeletion();
     UnsavedChangesDecision ConfirmUnsavedCharacterChanges(string characterName);
     UnsavedChangesDecision ConfirmUnsavedProviderChanges(string providerName);
@@ -31,7 +45,13 @@ public interface IUserInteractionService
     bool ConfirmShelfDeletion(string shelfName);
     bool ConfirmPresetDeletion(string presetName);
     bool ConfirmProviderDeletion(string providerName);
+    bool ConfirmWorldbookDeletion(string worldbookName) => true;
+    bool ConfirmCampaignDeletion(string campaignTitle, int eventCount) => false;
+    bool ConfirmConversationDeletion(string conversationTitle) => false;
     bool ConfirmSecretClear(string providerName);
+    DataRootMigrationDecision ConfirmDataRootMigration(
+        string currentRoot,
+        string newRoot) => DataRootMigrationDecision.Cancel;
     Task<GroupChatDraft?> CreateGroupChatAsync(IReadOnlyList<Character> characters);
     void CopyText(string text);
 }
@@ -55,6 +75,30 @@ public sealed class UserInteractionService : IUserInteractionService
         var accepted = dialog.ShowDialog() == true;
         await _windowPlacement.SaveAsync(dialog, "window.textEditor");
         return accepted ? dialog.ResultText : null;
+    }
+
+    public Task<string?> PromptRegenerationRequirementAsync()
+    {
+        var dialog = new RegenerationRequirementDialog
+        {
+            Owner = Application.Current.MainWindow
+        };
+        return Task.FromResult(
+            dialog.ShowDialog() == true
+                ? dialog.ResultText
+                : null);
+    }
+
+    public Task<string?> PromptModelNameAsync(string initialText = "")
+    {
+        var dialog = new CustomModelDialog(initialText)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        return Task.FromResult(
+            dialog.ShowDialog() == true
+                ? dialog.ResultText
+                : null);
     }
 
     public DeleteMessageDecision ConfirmMessageDeletion()
@@ -131,6 +175,16 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
+    public bool ConfirmConversationDeletion(string conversationTitle) =>
+        MessageBox.Show(
+            Application.Current.MainWindow,
+            $"永久删除聊天记录“{conversationTitle}”？\n\n"
+            + "本会话的全部消息、候选回复和本地聊天缓存都会删除，删除后无法恢复。\n"
+            + "角色卡、角色整体记忆和其他聊天记录不受影响。",
+            "删除聊天记录",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
     public bool ConfirmShelfDeletion(string shelfName) =>
         MessageBox.Show(
             Application.Current.MainWindow,
@@ -155,6 +209,24 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
+    public bool ConfirmWorldbookDeletion(string worldbookName) =>
+        MessageBox.Show(
+            Application.Current.MainWindow,
+            $"删除世界书“{worldbookName}”？\n\n已保存的原始 JSON 工作副本和其 Embedding 派生索引都会删除；用户原文件不会修改。",
+            "删除世界书",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    public bool ConfirmCampaignDeletion(string campaignTitle, int eventCount) =>
+        MessageBox.Show(
+            Application.Current.MainWindow,
+            $"永久删除跑团“{campaignTitle}”？\n\n"
+            + $"该局的全部席位和 {eventCount} 条跑团记录会同时删除，删除后无法恢复。\n"
+            + "剧本卡、角色卡和其他跑团不会被删除。",
+            "确认永久删除跑团",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
     public bool ConfirmSecretClear(string providerName) =>
         MessageBox.Show(
             Application.Current.MainWindow,
@@ -162,6 +234,26 @@ public sealed class UserInteractionService : IUserInteractionService
             "清除 API Key",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    public DataRootMigrationDecision ConfirmDataRootMigration(
+        string currentRoot,
+        string newRoot)
+    {
+        var result = MessageBox.Show(
+            Application.Current.MainWindow,
+            "个人资料目录即将切换。是否先把当前数据库、聊天记录、角色卡、剧本、附件和其他个人资料复制到新目录？\n\n"
+            + "选择“是”会复制当前资料并保留旧目录作为安全备份；选择“否”只切换配置，不会覆盖新目录中的已有文件；选择“取消”保持不变。\n\n"
+            + $"当前：{currentRoot}\n新目录：{newRoot}",
+            "切换个人资料目录",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+        return result switch
+        {
+            MessageBoxResult.Yes => DataRootMigrationDecision.CopyCurrentData,
+            MessageBoxResult.No => DataRootMigrationDecision.KeepTargetAsIs,
+            _ => DataRootMigrationDecision.Cancel
+        };
+    }
 
     public async Task<GroupChatDraft?> CreateGroupChatAsync(
         IReadOnlyList<Character> characters)

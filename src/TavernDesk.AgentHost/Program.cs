@@ -153,7 +153,10 @@ static async Task RunCampaignLivePreflightAsync(string sourceDataRoot)
         var modelCatalogs = new List<object>();
         foreach (var provider in providers.Where(item => item.IsEnabled))
         {
-            var models = await services.Models.ListAsync(provider.Id);
+            var models = (await services.Models.ListAsync(provider.Id))
+                .Where(model => model.ModelKind is ModelCatalogKind.Chat
+                    or ModelCatalogKind.Custom)
+                .ToArray();
             modelCatalogs.Add(new
             {
                 providerId = provider.Id,
@@ -162,7 +165,7 @@ static async Task RunCampaignLivePreflightAsync(string sourceDataRoot)
                 provider.BaseUrl,
                 secretConfigured = !string.IsNullOrWhiteSpace(
                     provider.SecretReference),
-                modelCount = models.Count,
+                modelCount = models.Length,
                 models = models
                     .Where(model =>
                         string.Equals(
@@ -420,6 +423,8 @@ static async Task RunCampaignLiveSmokeAsync(
         }
 
         var selectedModel = (await sourceServices.Models.ListAsync(provider.Id))
+            .Where(model => model.ModelKind is ModelCatalogKind.Chat
+                or ModelCatalogKind.Custom)
             .SingleOrDefault(model => string.Equals(
                 model.ModelId,
                 assignment.ModelId,
@@ -540,7 +545,9 @@ static async Task RunCampaignLiveSmokeAsync(
             isolatedServices.CampaignScenarios,
             auditedGateway,
             isolatedServices.GenerationCoordinator,
-            sourceServices.GlobalPrompts);
+            sourceServices.GlobalPrompts,
+            isolatedServices.CampaignMemory,
+            isolatedServices.CampaignMemoryRepository);
 
         stage = "start-campaign";
         var started = await runner.StartAsync(campaign.Id);
@@ -1080,6 +1087,55 @@ static async Task RunStorageSmokeAsync(string dataRoot)
     Assert(reopenedMarker == "persisted", "应用设置重启重读失败。");
     Assert(await reopened.Providers.CountEnabledAsync() >= 3, "默认接入商未初始化。");
 
+    var deleteConversation = new Conversation
+    {
+        CharacterId = character.Id,
+        Title = "会话物理删除自检"
+    };
+    await reopened.Conversations.UpsertAsync(deleteConversation);
+    var deleteMessage = new ChatMessage
+    {
+        ConversationId = deleteConversation.Id,
+        SenderKind = MessageSenderKind.Character,
+        SenderId = character.Id,
+        Content = "这条自检消息和本地索引都应被删除。"
+    };
+    await reopened.Conversations.AddMessageAsync(deleteMessage);
+    await reopened.Conversations.AddCandidateAsync(new MessageCandidate
+    {
+        MessageId = deleteMessage.Id,
+        CandidateIndex = 0,
+        Content = deleteMessage.Content
+    });
+    await reopened.Conversations.DeleteConversationAsync(deleteConversation.Id);
+    Assert(
+        await reopened.Conversations.GetAsync(deleteConversation.Id) is null,
+        "会话物理删除后仍能读取会话行。");
+    Assert(
+        (await reopened.Conversations.ListMessagesAsync(deleteConversation.Id)).Count == 0,
+        "会话物理删除后仍能读取消息。");
+    await using (var cacheConnection = reopened.Database.CreateConnection())
+    {
+        await cacheConnection.OpenAsync();
+        await using var cacheCommand = cacheConnection.CreateCommand();
+        cacheCommand.CommandText = """
+            SELECT
+                (SELECT COUNT(*) FROM message_search WHERE conversation_id = $id),
+                (SELECT COUNT(*) FROM message_search_trigram WHERE conversation_id = $id),
+                (SELECT COUNT(*) FROM message_candidates WHERE message_id = $messageId);
+            """;
+        cacheCommand.Parameters.AddWithValue("$id", deleteConversation.Id);
+        cacheCommand.Parameters.AddWithValue("$messageId", deleteMessage.Id);
+        await using var cacheReader = await cacheCommand.ExecuteReaderAsync();
+        Assert(await cacheReader.ReadAsync(), "删除检查缺少缓存统计结果。");
+        Assert(cacheReader.GetInt64(0) == 0, "旧 FTS 消息索引未清理。");
+        Assert(cacheReader.GetInt64(1) == 0, "trigram 消息索引未清理。");
+        Assert(cacheReader.GetInt64(2) == 0, "候选回复缓存未清理。");
+    }
+    Assert(
+        (await reopened.MemoryBanks.GetAsync(character.Id))?.Body == "记忆银行自检正文",
+        "删除聊天记录错误影响了角色整体记忆。");
+
     Console.WriteLine(JsonSerializer.Serialize(new
     {
         status = "PASS",
@@ -1098,7 +1154,8 @@ static async Task RunStorageSmokeAsync(string dataRoot)
             "memory-bank-reopen",
             "group-settings-members-memory-reopen",
             "app-setting-reopen",
-            "default-providers"
+            "default-providers",
+            "conversation-hard-delete-preserves-character-memory"
         },
         apiRequests = 0
     }));
@@ -1329,6 +1386,8 @@ static async Task RunProviderLiveSmokeAsync(
         $"LM Studio 模型目录没有返回目标模型 {modelId}。");
     await services.Models.ReplaceAsync(providerId, models);
     var selectedModel = (await services.Models.ListAsync(providerId))
+        .Where(model => model.ModelKind is ModelCatalogKind.Chat
+            or ModelCatalogKind.Custom)
         .Single(model => string.Equals(
             model.ModelId,
             modelId,

@@ -22,15 +22,18 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
     private readonly SqliteDatabase _database;
     private readonly ICharacterRepository _characters;
     private readonly IConversationRepository _conversations;
+    private readonly AppDataPaths _paths;
 
     public SillyTavernChatJsonlService(
         SqliteDatabase database,
         ICharacterRepository characters,
-        IConversationRepository conversations)
+        IConversationRepository conversations,
+        AppDataPaths? paths = null)
     {
         _database = database;
         _characters = characters;
         _conversations = conversations;
+        _paths = paths ?? new AppDataPaths();
     }
 
     public async Task<ChatJsonlImportResult> ImportAsync(
@@ -676,7 +679,7 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
                 StringComparer.Ordinal));
     }
 
-    private static async Task InsertCharacterAsync(
+    private async Task InsertCharacterAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
         Character character,
@@ -700,12 +703,22 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
         command.Parameters.AddWithValue("$personality", character.Personality);
         command.Parameters.AddWithValue("$scenario", character.Scenario);
         command.Parameters.AddWithValue("$firstMessage", character.FirstMessage);
-        command.Parameters.AddWithValue("$avatarPath", character.AvatarPath);
+        command.Parameters.AddWithValue(
+            "$avatarPath",
+            _paths.ToManagedStoredPath(
+                character.AvatarPath,
+                AppDataPaths.CharacterCardsDirectoryName,
+                character.Id));
         command.Parameters.AddWithValue("$rawCardJson", character.RawCardJson);
         command.Parameters.AddWithValue(
             "$sourceCardFormat",
             (int)character.SourceCardFormat);
-        command.Parameters.AddWithValue("$sourceCardPath", character.SourceCardPath);
+        command.Parameters.AddWithValue(
+            "$sourceCardPath",
+            _paths.ToManagedStoredPath(
+                character.SourceCardPath,
+                AppDataPaths.CharacterCardsDirectoryName,
+                character.Id));
         command.Parameters.AddWithValue(
             "$importReportJson",
             character.ImportReportJson);

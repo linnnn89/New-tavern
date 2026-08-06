@@ -23,7 +23,6 @@ public sealed class CampaignRunnerTests
             GmInstructions = "GM_PRIVATE_RULE",
             OpeningSetup = "卷轴出现",
             OpeningNarration = "乌云压住木叶，禁术卷轴在雨中显现。",
-            LobbyInstructions = "LOBBY_ONLY_FIRST_MESSAGE",
             LegacyExamplesArchive = "LEGACY_CHAT_ARCHIVE"
         };
         await services.CampaignScenarios.UpsertAsync(scenario);
@@ -153,12 +152,71 @@ public sealed class CampaignRunnerTests
             playerRequest.SessionId);
         Assert.Equal($"campaign:{campaign.Id}:gm", gmRequest.SessionId);
         Assert.StartsWith(
-            "【可见跑团记录】",
+            "【已裁定共同历史】",
             playerRequest.Messages[^1].Content,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "【最新 GM 场景与裁定｜当前行动依据】",
+            playerRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【本轮其他席位已提交内容｜结果等待 GM 裁定】",
+            playerRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "以最新 GM 场景和裁定为权威起点",
+            playerRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.True(
+            playerRequest.Messages[^1].Content.IndexOf(
+                "【最新 GM 场景与裁定｜当前行动依据】",
+                StringComparison.Ordinal)
+            < playerRequest.Messages[^1].Content.IndexOf(
+                "【本轮其他席位已提交内容｜结果等待 GM 裁定】",
+                StringComparison.Ordinal));
         Assert.StartsWith(
-            "【跑团记录】",
+            "【已裁定历史】",
             gmRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【本轮待裁定行动】",
+            gmRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【本轮 GM 输出任务】",
+            gmRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "禁止复制、转述、概括或重新表演任何 PlayerIntent",
+            gmRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "玩家已经说出的台词和公开表达可以视为角色已提交的公开行为",
+            gmRequest.Messages[0].Content,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "行动是否成功、观察是否正确，以及对 NPC、环境和世界造成的影响仍待本次裁定",
+            gmRequest.Messages[0].Content,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "刚刚发生完毕的输入",
+            gmRequest.Messages[0].Content,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "从上述行动全部结束后的时间点继续",
+            gmRequest.Messages[^1].Content,
+            StringComparison.Ordinal);
+        var gmPromptSections = gmRequest.Messages[^1].Content.Split(
+            "【本轮待裁定行动】",
+            StringSplitOptions.None);
+        Assert.Equal(2, gmPromptSections.Length);
+        Assert.DoesNotContain(
+            "我先检查卷轴周围的封印。",
+            gmPromptSections[0],
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "我先检查卷轴周围的封印。",
+            gmPromptSections[1],
             StringComparison.Ordinal);
         Assert.DoesNotContain("现在是第", playerRequest.Messages[^1].Content);
         Assert.DoesNotContain("请提交", playerRequest.Messages[^1].Content);
@@ -172,6 +230,217 @@ public sealed class CampaignRunnerTests
         Assert.DoesNotContain(
             "【下一轮评定参考】",
             nextRound.Campaign.WorldSummary,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PlayerPromptKeepsSpeakerOwnershipAndMarksCurrentRoundIntentsPending()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var scenario = new CampaignScenario
+        {
+            Title = "发言归属测试",
+            WorldSetting = "多人共同在研究社活动室中。",
+            PublicRules = "每名玩家只控制自己的角色。",
+            OpeningSetup = "所有人已经到场。",
+            OpeningNarration = "研究社活动室内，所有人等待下一步行动。"
+        };
+        await services.CampaignScenarios.UpsertAsync(scenario);
+        var campaign = new Campaign
+        {
+            StoryId = scenario.Id,
+            Title = scenario.Title,
+            WorldSetting = scenario.WorldSetting,
+            Rules = scenario.PublicRules,
+            OpeningPrompt = scenario.OpeningSetup,
+            GmKind = CampaignGmKind.User,
+            FlowPreset = CampaignFlowPreset.CollaborativeTable
+        };
+        var user = new CampaignParticipant
+        {
+            CampaignId = campaign.Id,
+            Kind = CampaignParticipantKind.User,
+            SortIndex = 0,
+            DisplayName = "林楠",
+            PersonaSnapshotJson = """{"name":"林楠"}"""
+        };
+        var alter = CreateAiParticipant(
+            campaign.Id,
+            1,
+            "黑贞德",
+            "alter-model");
+        var orihime = CreateAiParticipant(
+            campaign.Id,
+            2,
+            "井上织姬",
+            "orihime-model");
+        await services.Campaigns.SaveDraftAsync(campaign, [user, alter, orihime]);
+        var gateway = new RecordingCampaignGateway();
+        var runner = new CampaignRunner(
+            services.Campaigns,
+            services.CampaignScenarios,
+            gateway,
+            services.GenerationCoordinator,
+            services.GlobalPrompts);
+        await runner.StartAsync(campaign.Id);
+        await runner.SubmitUserActionAsync(
+            campaign.Id,
+            "要求莉雅丝测试我被转生后获得的能力。");
+        await runner.GenerateAiActionAsync(campaign.Id, alter.Id);
+        await runner.GenerateAiActionAsync(campaign.Id, orihime.Id);
+
+        var request = gateway.Requests.Single(item =>
+            item.ModelId == "orihime-model");
+        var system = request.Messages[0].Content;
+        var payload = request.Messages[1].Content;
+
+        Assert.Contains(
+            $"\"current_actor\":{{\"kind\":\"ai_player\",\"id\":\"{orihime.Id}\",\"name\":\"井上织姬\"}}",
+            system,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "当前输出作者只能是“井上织姬”",
+            system,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"\"kind\":\"user_player\",\"id\":\"{user.Id}\",\"name\":\"林楠\",\"is_current_actor\":false",
+            system,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"\"speaker\":{{\"kind\":\"user_player\",\"id\":\"{user.Id}\",\"name\":\"林楠\"}}",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"resolution_status\":\"pending_gm_resolution\"",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"content\":\"要求莉雅丝测试我被转生后获得的能力。",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"\"speaker\":{{\"kind\":\"ai_player\",\"id\":\"{alter.Id}\",\"name\":\"黑贞德\"}}",
+            payload,
+            StringComparison.Ordinal);
+        Assert.StartsWith(
+            "【已裁定共同历史】",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【最新 GM 场景与裁定｜当前行动依据】",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "【本轮其他席位已提交内容｜结果等待 GM 裁定】",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "只为 current_actor“井上织姬”",
+            payload,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "以最新 GM 场景和裁定为权威起点",
+            payload,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "先回答 GM",
+            payload,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("[R1 #", payload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PlayerPromptKeepsResolvedHistoryChronologicalAndCurrentRoundIntentsSeparate()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var scenario = new CampaignScenario
+        {
+            Title = "事件生命周期测试",
+            WorldSetting = "封闭活动室",
+            PublicRules = "GM 裁定世界结果。",
+            OpeningSetup = "所有席位已经到场。",
+            OpeningNarration = "GM 开场：所有席位已经到场。"
+        };
+        await services.CampaignScenarios.UpsertAsync(scenario);
+        var campaign = new Campaign
+        {
+            StoryId = scenario.Id,
+            Title = scenario.Title,
+            WorldSetting = scenario.WorldSetting,
+            Rules = scenario.PublicRules,
+            OpeningPrompt = scenario.OpeningSetup,
+            UserAlsoPlayer = false,
+            GmKind = CampaignGmKind.User,
+            FlowPreset = CampaignFlowPreset.CollaborativeTable
+        };
+        var first = CreateAiParticipant(campaign.Id, 0, "玩家A", "model-a");
+        var second = CreateAiParticipant(campaign.Id, 1, "玩家B", "model-b");
+        await services.Campaigns.SaveDraftAsync(campaign, [first, second]);
+        var gateway = new RecordingCampaignGateway();
+        var runner = new CampaignRunner(
+            services.Campaigns,
+            services.CampaignScenarios,
+            gateway,
+            services.GenerationCoordinator,
+            services.GlobalPrompts);
+
+        await runner.StartAsync(campaign.Id);
+        await runner.GenerateAiActionAsync(campaign.Id, first.Id);
+        await runner.GenerateAiActionAsync(campaign.Id, second.Id);
+        await runner.SubmitUserGmResolutionAsync(
+            campaign.Id,
+            "第一轮结果已经由 GM 裁定。");
+        await runner.GenerateAiActionAsync(campaign.Id, first.Id);
+        await runner.GenerateAiActionAsync(campaign.Id, second.Id);
+
+        var payload = gateway.Requests
+            .Last(request => request.ModelId == "model-b")
+            .Messages[^1]
+            .Content;
+        var confirmedStart = payload.IndexOf(
+            "【已裁定共同历史】",
+            StringComparison.Ordinal);
+        var latestGmStart = payload.IndexOf(
+            "【最新 GM 场景与裁定｜当前行动依据】",
+            StringComparison.Ordinal);
+        var pendingStart = payload.IndexOf(
+            "【本轮其他席位已提交内容｜结果等待 GM 裁定】",
+            StringComparison.Ordinal);
+        var taskStart = payload.IndexOf(
+            "【当前回合任务】",
+            StringComparison.Ordinal);
+        Assert.True(
+            0 <= confirmedStart
+            && confirmedStart < latestGmStart
+            && latestGmStart < pendingStart
+            && pendingStart < taskStart);
+
+        var confirmed = payload[confirmedStart..latestGmStart];
+        var latestGm = payload[latestGmStart..pendingStart];
+        var pending = payload[pendingStart..taskStart];
+        Assert.True(
+            confirmed.IndexOf("GM 开场：所有席位已经到场。", StringComparison.Ordinal)
+            < confirmed.IndexOf("model-a 的公开行动。", StringComparison.Ordinal));
+        Assert.True(
+            confirmed.IndexOf("model-a 的公开行动。", StringComparison.Ordinal)
+            < confirmed.IndexOf("model-b 的公开行动。", StringComparison.Ordinal));
+        Assert.Contains(
+            "\"resolution_status\":\"resolved_round_record\"",
+            confirmed,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "第一轮结果已经由 GM 裁定。",
+            latestGm,
+            StringComparison.Ordinal);
+        Assert.Contains("model-a 的公开行动。", pending, StringComparison.Ordinal);
+        Assert.DoesNotContain("model-b 的公开行动。", pending, StringComparison.Ordinal);
+        Assert.Contains(
+            "\"resolution_status\":\"pending_gm_resolution\"",
+            pending,
             StringComparison.Ordinal);
     }
 

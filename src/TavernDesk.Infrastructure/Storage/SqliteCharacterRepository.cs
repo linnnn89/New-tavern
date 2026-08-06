@@ -7,10 +7,14 @@ namespace TavernDesk.Infrastructure.Storage;
 public sealed class SqliteCharacterRepository : ICharacterRepository
 {
     private readonly SqliteDatabase _database;
+    private readonly AppDataPaths _paths;
 
-    public SqliteCharacterRepository(SqliteDatabase database)
+    public SqliteCharacterRepository(
+        SqliteDatabase database,
+        AppDataPaths paths)
     {
         _database = database;
+        _paths = paths;
     }
 
     public async Task<IReadOnlyList<Character>> ListAsync(CancellationToken cancellationToken = default)
@@ -88,10 +92,20 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         command.Parameters.AddWithValue("$personality", character.Personality);
         command.Parameters.AddWithValue("$scenario", character.Scenario);
         command.Parameters.AddWithValue("$firstMessage", character.FirstMessage);
-        command.Parameters.AddWithValue("$avatarPath", character.AvatarPath);
+        command.Parameters.AddWithValue(
+            "$avatarPath",
+            _paths.ToManagedStoredPath(
+                character.AvatarPath,
+                AppDataPaths.CharacterCardsDirectoryName,
+                character.Id));
         command.Parameters.AddWithValue("$rawCardJson", character.RawCardJson);
         command.Parameters.AddWithValue("$sourceCardFormat", (int)character.SourceCardFormat);
-        command.Parameters.AddWithValue("$sourceCardPath", character.SourceCardPath);
+        command.Parameters.AddWithValue(
+            "$sourceCardPath",
+            _paths.ToManagedStoredPath(
+                character.SourceCardPath,
+                AppDataPaths.CharacterCardsDirectoryName,
+                character.Id));
         command.Parameters.AddWithValue("$importReportJson", character.ImportReportJson);
         command.Parameters.AddWithValue("$createdAt", character.CreatedAt.ToString("O"));
         command.Parameters.AddWithValue("$updatedAt", character.UpdatedAt.ToString("O"));
@@ -117,21 +131,30 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
     }
 
-    private static Character ReadCharacter(SqliteDataReader reader) =>
-        new()
+    private Character ReadCharacter(SqliteDataReader reader)
+    {
+        var id = reader.GetString(0);
+        return new()
         {
-            Id = reader.GetString(0),
+            Id = id,
             Name = reader.GetString(1),
             Description = reader.GetString(2),
             Personality = reader.GetString(3),
             Scenario = reader.GetString(4),
             FirstMessage = reader.GetString(5),
-            AvatarPath = reader.GetString(6),
+            AvatarPath = _paths.ResolveManagedPath(
+                reader.GetString(6),
+                AppDataPaths.CharacterCardsDirectoryName,
+                id),
             RawCardJson = reader.GetString(7),
             SourceCardFormat = (CharacterCardFormat)reader.GetInt32(8),
-            SourceCardPath = reader.GetString(9),
+            SourceCardPath = _paths.ResolveManagedPath(
+                reader.GetString(9),
+                AppDataPaths.CharacterCardsDirectoryName,
+                id),
             ImportReportJson = reader.GetString(10),
             CreatedAt = DateTimeOffset.Parse(reader.GetString(11)),
             UpdatedAt = DateTimeOffset.Parse(reader.GetString(12))
         };
+    }
 }

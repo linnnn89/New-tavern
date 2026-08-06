@@ -11,6 +11,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\Icons\TavernDesk.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Icons\*.png" />
+    <Resource Include="Assets\Icons\TavernDesk.ico" />
+  </ItemGroup>
 
 </Project>

@@ -23,7 +23,8 @@ public sealed record WorldbookScanRequest(
     IReadOnlyDictionary<string, string> MacroVariables,
     int DefaultScanDepth = 5,
     int MaximumRecursionSteps = 4,
-    int MaximumContentCharacters = 12000);
+    int MaximumContentCharacters = 12000,
+    IReadOnlyList<string>? AdditionalRawBookJson = null);
 
 public sealed record WorldbookMatch(
     string Id,
@@ -33,7 +34,11 @@ public sealed record WorldbookMatch(
     int Depth,
     string ProviderRole,
     int InsertionOrder,
-    int RecursionLevel);
+    int RecursionLevel,
+    string? SourceWorldbookId = null,
+    double? SemanticScore = null,
+    WorldbookContentType ContentType = WorldbookContentType.Instruction,
+    string? SourceEntryId = null);
 
 public sealed record WorldbookScanResult(
     IReadOnlyList<WorldbookMatch> Matches,

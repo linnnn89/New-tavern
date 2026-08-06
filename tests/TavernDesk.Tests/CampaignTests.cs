@@ -1,4 +1,6 @@
 using System.Text.Json.Nodes;
+using TavernDesk.App.Services;
+using TavernDesk.App.ViewModels;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
 using TavernDesk.Infrastructure.Compatibility;
@@ -7,6 +9,117 @@ namespace TavernDesk.Tests;
 
 public sealed class CampaignTests
 {
+    [Fact]
+    public async Task ScenarioEditorLoadsStructuredFieldsAndPersistsOnlyTheScenarioCopy()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var scenario = CreateScenario();
+        scenario.SourceCardJson = "{\"source_extension\":true}";
+        scenario.SourceFileName = "original-card.png";
+        scenario.LegacyExamplesArchive = "旧示例";
+        await services.CampaignScenarios.UpsertAsync(scenario);
+
+        var viewModel = new CampaignsViewModel(
+            services.CampaignScenarios,
+            services.CampaignScenarioCards,
+            services.Campaigns,
+            services.CampaignRunner,
+            services.Characters,
+            services.CampaignCharacterSnapshots,
+            services.MemoryBanks,
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Settings,
+            new NoOpFileDialogService(),
+            new CampaignInteractionService());
+        await viewModel.LoadAsync();
+        viewModel.SelectedScenario = viewModel.Scenarios.Single();
+
+        viewModel.EditScenarioCommand.Execute(null);
+        await WaitUntilAsync(() => viewModel.IsScenarioEditor);
+
+        Assert.Equal(scenario.Title, viewModel.ScenarioTitle);
+        Assert.Equal(scenario.WorldSetting, viewModel.ScenarioWorldSetting);
+        Assert.Equal(scenario.GmInstructions, viewModel.ScenarioGmInstructions);
+        Assert.Equal(scenario.LegacyExamplesArchive, viewModel.ScenarioLegacyExamplesArchive);
+
+        viewModel.ScenarioTitle = "编辑后的剧本标题";
+        viewModel.ScenarioSummary = "编辑后的简介";
+        viewModel.ScenarioWorldSetting = "编辑后的世界观";
+        viewModel.ScenarioPublicRules = "编辑后的规则";
+        viewModel.ScenarioGmInstructions = "编辑后的 GM 指令";
+        viewModel.ScenarioOpeningSetup = "编辑后的开场设置";
+        viewModel.ScenarioOpeningNarration = "编辑后的开场旁白";
+        viewModel.ScenarioLegacyExamplesArchive = "编辑后的历史归档";
+        viewModel.SaveScenarioCommand.Execute(null);
+        await WaitUntilAsync(() => viewModel.IsLibrary);
+
+        var saved = await services.CampaignScenarios.GetAsync(scenario.Id);
+        Assert.NotNull(saved);
+        Assert.Equal("编辑后的剧本标题", saved.Title);
+        Assert.Equal("编辑后的简介", saved.Summary);
+        Assert.Equal("编辑后的世界观", saved.WorldSetting);
+        Assert.Equal("编辑后的规则", saved.PublicRules);
+        Assert.Equal("编辑后的 GM 指令", saved.GmInstructions);
+        Assert.Equal("编辑后的开场设置", saved.OpeningSetup);
+        Assert.Equal("编辑后的开场旁白", saved.OpeningNarration);
+        Assert.Equal("编辑后的历史归档", saved.LegacyExamplesArchive);
+        Assert.Equal(scenario.SourceCardJson, saved.SourceCardJson);
+        Assert.Equal(scenario.SourceFileName, saved.SourceFileName);
+    }
+
+    [Fact]
+    public async Task CampaignContextDeleteRemovesOnlyTheConfirmedRun()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var scenario = CreateScenario();
+        await services.CampaignScenarios.UpsertAsync(scenario);
+        var deletedCampaign = CreateCampaign(scenario.Id);
+        var retainedCampaign = CreateCampaign(scenario.Id);
+        retainedCampaign.Title = "保留的跑团";
+        await services.Campaigns.SaveDraftAsync(
+            deletedCampaign,
+            CreateParticipants(deletedCampaign.Id));
+        await services.Campaigns.SaveDraftAsync(
+            retainedCampaign,
+            CreateParticipants(retainedCampaign.Id, "ai-retained"));
+        await services.Campaigns.StartAsync(deletedCampaign.Id);
+
+        var interaction = new CampaignInteractionService(confirmDeletion: true);
+        var viewModel = new CampaignsViewModel(
+            services.CampaignScenarios,
+            services.CampaignScenarioCards,
+            services.Campaigns,
+            services.CampaignRunner,
+            services.Characters,
+            services.CampaignCharacterSnapshots,
+            services.MemoryBanks,
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Settings,
+            new NoOpFileDialogService(),
+            interaction);
+        await viewModel.LoadAsync();
+        var item = viewModel.Campaigns.Single(campaign =>
+            campaign.Id == deletedCampaign.Id);
+
+        viewModel.DeleteCampaignCommand.Execute(item);
+        await WaitUntilAsync(() => viewModel.Campaigns.Count == 1);
+
+        Assert.Equal(deletedCampaign.Title, interaction.ConfirmedTitle);
+        Assert.Equal(1, interaction.ConfirmedEventCount);
+        Assert.Null(await services.Campaigns.GetAsync(deletedCampaign.Id));
+        Assert.NotNull(await services.Campaigns.GetAsync(retainedCampaign.Id));
+        Assert.NotNull(await services.CampaignScenarios.GetAsync(scenario.Id));
+        Assert.Equal(retainedCampaign.Id, viewModel.Campaigns.Single().Id);
+    }
+
     [Fact]
     public async Task StartingCampaignFreezesDraftAndCloneCreatesIndependentRun()
     {
@@ -242,6 +355,102 @@ public sealed class CampaignTests
             () => services.Campaigns.UpdateEventAsync(first));
     }
 
+    [Fact]
+    public async Task RestartRecoversStaleGenerationsWithoutChangingTerminalEvents()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var scenario = CreateScenario();
+        await services.CampaignScenarios.UpsertAsync(scenario);
+        var campaign = CreateCampaign(scenario.Id);
+        await services.Campaigns.SaveDraftAsync(
+            campaign,
+            CreateParticipants(campaign.Id));
+        await services.Campaigns.StartAsync(campaign.Id);
+
+        await services.Campaigns.AppendEventAsync(new CampaignEvent
+        {
+            CampaignId = campaign.Id,
+            RoundNo = 1,
+            Kind = CampaignEventKind.PlayerIntent,
+            ActorId = "ai-1",
+            Visibility = CampaignVisibility.Public,
+            OperationId = "queued-before-exit",
+            GenerationStatus = CampaignGenerationStatus.Queued
+        });
+        var streaming = await services.Campaigns.AppendEventAsync(new CampaignEvent
+        {
+            CampaignId = campaign.Id,
+            RoundNo = 1,
+            Kind = CampaignEventKind.PlayerIntent,
+            ActorId = "ai-1",
+            Visibility = CampaignVisibility.Public,
+            OperationId = "streaming-before-exit",
+            GenerationStatus = CampaignGenerationStatus.Queued
+        });
+        streaming.Content = "已持久化的部分内容";
+        streaming.GenerationStatus = CampaignGenerationStatus.Streaming;
+        await services.Campaigns.UpdateEventAsync(streaming);
+        var completed = await services.Campaigns.AppendEventAsync(new CampaignEvent
+        {
+            CampaignId = campaign.Id,
+            RoundNo = 1,
+            Kind = CampaignEventKind.PlayerIntent,
+            ActorId = "ai-1",
+            Visibility = CampaignVisibility.Public,
+            Content = "已经完成的内容",
+            OperationId = "completed-before-exit",
+            GenerationStatus = CampaignGenerationStatus.Completed,
+            EndReason = CampaignEndReason.Normal,
+            IsLocked = true
+        });
+
+        var restarted = new InfrastructureServices(workspace.Root);
+        await restarted.InitializeAsync();
+        var recovered = await restarted.Campaigns.GetAsync(campaign.Id);
+
+        Assert.NotNull(recovered);
+        var queuedAfterRestart = recovered.Events.Single(
+            item => item.OperationId == "queued-before-exit");
+        Assert.Equal(
+            CampaignGenerationStatus.Interrupted,
+            queuedAfterRestart.GenerationStatus);
+        Assert.Equal(CampaignEndReason.ProcessExited, queuedAfterRestart.EndReason);
+        Assert.False(queuedAfterRestart.IsLocked);
+
+        var streamingAfterRestart = recovered.Events.Single(
+            item => item.OperationId == "streaming-before-exit");
+        Assert.Equal(
+            CampaignGenerationStatus.Interrupted,
+            streamingAfterRestart.GenerationStatus);
+        Assert.Equal(CampaignEndReason.ProcessExited, streamingAfterRestart.EndReason);
+        Assert.Equal("已持久化的部分内容", streamingAfterRestart.Content);
+        Assert.False(streamingAfterRestart.IsLocked);
+
+        var completedAfterRestart = recovered.Events.Single(
+            item => item.OperationId == completed.OperationId);
+        Assert.Equal(
+            CampaignGenerationStatus.Completed,
+            completedAfterRestart.GenerationStatus);
+        Assert.Equal(CampaignEndReason.Normal, completedAfterRestart.EndReason);
+        Assert.Equal("已经完成的内容", completedAfterRestart.Content);
+        Assert.True(completedAfterRestart.IsLocked);
+
+        var recoveredAt = streamingAfterRestart.UpdatedAt;
+        await restarted.InitializeAsync();
+        var recoveredAgain = await restarted.Campaigns.GetAsync(campaign.Id);
+        var streamingAfterSecondInitialization = recoveredAgain!.Events.Single(
+            item => item.OperationId == "streaming-before-exit");
+        Assert.Equal(
+            CampaignGenerationStatus.Interrupted,
+            streamingAfterSecondInitialization.GenerationStatus);
+        Assert.Equal(
+            CampaignEndReason.ProcessExited,
+            streamingAfterSecondInitialization.EndReason);
+        Assert.Equal(recoveredAt, streamingAfterSecondInitialization.UpdatedAt);
+    }
+
     private static CampaignScenario CreateScenario() =>
         new()
         {
@@ -270,7 +479,9 @@ public sealed class CampaignTests
             GmMaxOutputTokens = 2048
         };
 
-    private static CampaignParticipant[] CreateParticipants(string campaignId) =>
+    private static CampaignParticipant[] CreateParticipants(
+        string campaignId,
+        string aiId = "ai-1") =>
     [
         new()
         {
@@ -281,7 +492,7 @@ public sealed class CampaignTests
         },
         new()
         {
-            Id = "ai-1",
+            Id = aiId,
             CampaignId = campaignId,
             Kind = CampaignParticipantKind.Ai,
             SortIndex = 1,
@@ -296,4 +507,72 @@ public sealed class CampaignTests
             MaxOutputTokens = 1024
         }
     ];
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), "等待 ViewModel 状态变化超时。");
+    }
+
+    private sealed class CampaignInteractionService(
+        bool confirmDeletion = false) : IUserInteractionService
+    {
+        public string? ConfirmedTitle { get; private set; }
+        public int ConfirmedEventCount { get; private set; }
+
+        public Task<string?> EditTextAsync(
+            string title,
+            string prompt,
+            string initialText) =>
+            Task.FromResult<string?>(null);
+
+        public DeleteMessageDecision ConfirmMessageDeletion() =>
+            DeleteMessageDecision.Cancel;
+
+        public UnsavedChangesDecision ConfirmUnsavedCharacterChanges(
+            string characterName) =>
+            UnsavedChangesDecision.Cancel;
+
+        public UnsavedChangesDecision ConfirmUnsavedProviderChanges(
+            string providerName) =>
+            UnsavedChangesDecision.Cancel;
+
+        public bool ConfirmCharacterDeletion(
+            string characterName,
+            int conversationCount) => false;
+
+        public bool ConfirmShelfDeletion(string shelfName) => false;
+
+        public bool ConfirmPresetDeletion(string presetName) => false;
+
+        public bool ConfirmProviderDeletion(string providerName) => false;
+
+        public bool ConfirmCampaignDeletion(
+            string campaignTitle,
+            int eventCount)
+        {
+            ConfirmedTitle = campaignTitle;
+            ConfirmedEventCount = eventCount;
+            return confirmDeletion;
+        }
+
+        public bool ConfirmSecretClear(string providerName) => false;
+
+        public Task<GroupChatDraft?> CreateGroupChatAsync(
+            IReadOnlyList<Character> characters) =>
+            Task.FromResult<GroupChatDraft?>(null);
+
+        public void CopyText(string text)
+        {
+        }
+    }
 }

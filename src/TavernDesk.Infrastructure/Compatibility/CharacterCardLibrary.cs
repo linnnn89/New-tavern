@@ -1,6 +1,7 @@
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure.Storage;
+using TavernDesk.Infrastructure.Worldbooks;
 
 namespace TavernDesk.Infrastructure.Compatibility;
 
@@ -8,14 +9,17 @@ public sealed class CharacterCardLibrary : ICharacterCardLibrary
 {
     private readonly AppDataPaths _paths;
     private readonly ICharacterRepository _characters;
+    private readonly IWorldbookService _worldbooks;
 
     public CharacterCardLibrary(
         AppDataPaths paths,
         ICharacterRepository characters,
-        IReadOnlyList<ICharacterCardCodec> codecs)
+        IReadOnlyList<ICharacterCardCodec> codecs,
+        IWorldbookService worldbooks)
     {
         _paths = paths;
         _characters = characters;
+        _worldbooks = worldbooks;
         Codecs = codecs;
     }
 
@@ -64,6 +68,39 @@ public sealed class CharacterCardLibrary : ICharacterCardLibrary
             }
 
             var storedReport = decoded.Report with { SourcePreserved = true };
+            var embeddedWorldbook = WorldbookJsonParser.Parse(
+                character.RawCardJson,
+                character.Name);
+            if (embeddedWorldbook.FoundBook)
+            {
+                try
+                {
+                    var worldbook = await _worldbooks.ImportAsync(
+                        sourceCopyPath,
+                        WorldbookScopeKind.Character,
+                        character.Id,
+                        cancellationToken);
+                    if (worldbook.Warnings.Count > 0)
+                    {
+                        storedReport = storedReport with
+                        {
+                            Warnings = storedReport.Warnings
+                                .Concat(worldbook.Warnings)
+                                .ToArray()
+                        };
+                    }
+                }
+                catch (Exception exception)
+                {
+                    storedReport = storedReport with
+                    {
+                        Warnings = storedReport.Warnings
+                            .Append($"角色卡内置世界书未能建立本地工作副本：{exception.Message}")
+                            .ToArray()
+                    };
+                }
+            }
+
             character.ImportReportJson = CharacterCardReportSerializer.Write(storedReport);
             character.UpdatedAt = DateTimeOffset.Now;
             await _characters.UpsertAsync(character, cancellationToken);

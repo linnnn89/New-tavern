@@ -54,6 +54,9 @@ public interface IConversationRepository
         CancellationToken cancellationToken = default);
 
     Task<Conversation?> GetAsync(string id, CancellationToken cancellationToken = default);
+    Task DeleteConversationAsync(
+        string conversationId,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ChatMessage>> ListMessagesAsync(
         string conversationId,
         CancellationToken cancellationToken = default);
@@ -68,6 +71,10 @@ public interface IConversationRepository
         CancellationToken cancellationToken = default);
     Task AddAndActivateCandidateAsync(
         MessageCandidate candidate,
+        CancellationToken cancellationToken = default);
+    Task ActivateCandidateAsync(
+        string messageId,
+        int candidateIndex,
         CancellationToken cancellationToken = default);
     Task UpdateMessageContentAsync(
         string messageId,

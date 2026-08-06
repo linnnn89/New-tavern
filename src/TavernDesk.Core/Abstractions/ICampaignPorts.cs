@@ -69,6 +69,9 @@ public interface ICampaignRepository
         CampaignEvent campaignEvent,
         CancellationToken cancellationToken = default);
 
+    Task RecoverInterruptedGenerationsAsync(
+        CancellationToken cancellationToken = default);
+
     Task UpdateRuntimeAsync(
         string campaignId,
         int expectedStateVersion,
@@ -94,6 +97,10 @@ public interface ICampaignRepository
         CancellationToken cancellationToken = default);
 
     Task ArchiveAsync(
+        string campaignId,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
         string campaignId,
         CancellationToken cancellationToken = default);
 }

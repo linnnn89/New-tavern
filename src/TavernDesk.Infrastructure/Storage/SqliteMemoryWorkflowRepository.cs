@@ -23,6 +23,7 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT owner_id, auto_generate_enabled, update_interval_turns,
+                   maximum_source_user_turns, send_only_new_messages,
                    update_system_prompt, update_user_template,
                    compression_system_prompt, compression_user_template, updated_at
             FROM memory_workflow_settings
@@ -47,15 +48,19 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         command.CommandText = """
             INSERT INTO memory_workflow_settings(
                 owner_id, auto_generate_enabled, update_interval_turns,
+                maximum_source_user_turns, send_only_new_messages,
                 update_system_prompt, update_user_template,
                 compression_system_prompt, compression_user_template, updated_at)
             VALUES(
                 $ownerId, $autoGenerateEnabled, $updateIntervalTurns,
+                $maximumSourceUserTurns, $sendOnlyNewMessages,
                 $updateSystemPrompt, $updateUserTemplate,
                 $compressionSystemPrompt, $compressionUserTemplate, $updatedAt)
             ON CONFLICT(owner_id) DO UPDATE SET
                 auto_generate_enabled = excluded.auto_generate_enabled,
                 update_interval_turns = excluded.update_interval_turns,
+                maximum_source_user_turns = excluded.maximum_source_user_turns,
+                send_only_new_messages = excluded.send_only_new_messages,
                 update_system_prompt = excluded.update_system_prompt,
                 update_user_template = excluded.update_user_template,
                 compression_system_prompt = excluded.compression_system_prompt,
@@ -65,6 +70,12 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         command.Parameters.AddWithValue("$ownerId", settings.OwnerId);
         command.Parameters.AddWithValue("$autoGenerateEnabled", settings.AutoGenerateEnabled);
         command.Parameters.AddWithValue("$updateIntervalTurns", settings.UpdateIntervalTurns);
+        command.Parameters.AddWithValue(
+            "$maximumSourceUserTurns",
+            settings.MaximumSourceUserTurns);
+        command.Parameters.AddWithValue(
+            "$sendOnlyNewMessages",
+            settings.SendOnlyNewMessages);
         command.Parameters.AddWithValue("$updateSystemPrompt", settings.UpdateSystemPrompt);
         command.Parameters.AddWithValue("$updateUserTemplate", settings.UpdateUserTemplate);
         command.Parameters.AddWithValue(
@@ -339,6 +350,13 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                 "自动生成阈值必须在 1–10000 个用户轮次之间。");
         }
 
+        if (settings.MaximumSourceUserTurns is < 1 or > 10000)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings.MaximumSourceUserTurns),
+                "单次发送上限必须在 1–10000 个用户轮次之间。");
+        }
+
         if (string.IsNullOrWhiteSpace(settings.UpdateSystemPrompt)
             || string.IsNullOrWhiteSpace(settings.UpdateUserTemplate)
             || string.IsNullOrWhiteSpace(settings.CompressionSystemPrompt)
@@ -354,11 +372,13 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             OwnerId = reader.GetString(0),
             AutoGenerateEnabled = reader.GetBoolean(1),
             UpdateIntervalTurns = reader.GetInt32(2),
-            UpdateSystemPrompt = reader.GetString(3),
-            UpdateUserTemplate = reader.GetString(4),
-            CompressionSystemPrompt = reader.GetString(5),
-            CompressionUserTemplate = reader.GetString(6),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(7))
+            MaximumSourceUserTurns = reader.GetInt32(3),
+            SendOnlyNewMessages = reader.GetBoolean(4),
+            UpdateSystemPrompt = reader.GetString(5),
+            UpdateUserTemplate = reader.GetString(6),
+            CompressionSystemPrompt = reader.GetString(7),
+            CompressionUserTemplate = reader.GetString(8),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(9))
         };
 
     private static MemoryCheckpoint ReadCheckpoint(SqliteDataReader reader) =>

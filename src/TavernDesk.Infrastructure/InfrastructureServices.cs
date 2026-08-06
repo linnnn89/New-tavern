@@ -7,6 +7,7 @@ using TavernDesk.Infrastructure.Memory;
 using TavernDesk.Infrastructure.Providers;
 using TavernDesk.Infrastructure.Security;
 using TavernDesk.Infrastructure.Storage;
+using TavernDesk.Infrastructure.Worldbooks;
 
 namespace TavernDesk.Infrastructure;
 
@@ -14,12 +15,18 @@ public sealed class InfrastructureServices
 {
     public InfrastructureServices(string? dataRoot = null)
     {
-        Paths = new AppDataPaths(dataRoot);
+        DataConfiguration = new AppDataConfiguration();
+        Paths = new AppDataPaths(dataRoot, DataConfiguration);
         Database = new SqliteDatabase(Paths);
-        Characters = new SqliteCharacterRepository(Database);
+        DataLocation = new AppDataLocationService(
+            DataConfiguration,
+            Paths,
+            Database);
+        Characters = new SqliteCharacterRepository(Database, Paths);
         CharacterShelves = new SqliteCharacterShelfRepository(Database);
-        CampaignScenarios = new SqliteCampaignScenarioRepository(Database);
+        CampaignScenarios = new SqliteCampaignScenarioRepository(Database, Paths);
         Campaigns = new SqliteCampaignRepository(Database);
+        CampaignMemoryRepository = new SqliteCampaignMemoryRepository(Database);
         Conversations = new SqliteConversationRepository(Database);
         Providers = new SqliteProviderProfileRepository(Database);
         Models = new SqliteModelCatalogRepository(Database);
@@ -38,14 +45,7 @@ public sealed class InfrastructureServices
         ContextBudget = new DefaultContextBudgetProvider();
         MacroEngine = new SafeMacroEngine();
         WorldbookEngine = new CharacterWorldbookEngine(MacroEngine);
-        ContextAssembler = new BasicContextAssembler(
-            Conversations,
-            Characters,
-            MemoryBanks,
-            TokenEstimator,
-            WorldbookEngine,
-            MacroEngine,
-            Retrieval);
+        Worldbooks = new SqliteWorldbookRepository(Database, Paths);
         // This coordinator is application-scoped. Every current or future chat
         // window must share it so closing a view cannot cancel an in-flight stream.
         GenerationCoordinator = new ConversationGenerationCoordinator();
@@ -58,22 +58,48 @@ public sealed class InfrastructureServices
             Providers,
             openAiCompatibleGateway,
             grokCliGateway);
+        EmbeddingProviderGateway = (IEmbeddingProviderGateway)ProviderGateway;
+        CampaignMemory = new CampaignMemoryUpdateService(
+            Campaigns,
+            CampaignMemoryRepository,
+            ModelAssignments,
+            ProviderGateway,
+            GenerationCoordinator);
         CampaignRunner = new CampaignRunner(
             Campaigns,
             CampaignScenarios,
             ProviderGateway,
             GenerationCoordinator,
-            GlobalPrompts);
+            GlobalPrompts,
+            CampaignMemory,
+            CampaignMemoryRepository);
         CharacterCardCodecs =
         [
             new SillyTavernPngCardCodec(),
             new SillyTavernJsonCardCodec(),
             new SillyTavernCharxCardCodec()
         ];
+        WorldbookService = new WorldbookService(
+            Worldbooks,
+            ModelAssignments,
+            EmbeddingProviderGateway,
+            CharacterCardCodecs,
+            MacroEngine,
+            Providers);
         CharacterCards = new CharacterCardLibrary(
             Paths,
             Characters,
-            CharacterCardCodecs);
+            CharacterCardCodecs,
+            WorldbookService);
+        ContextAssembler = new BasicContextAssembler(
+            Conversations,
+            Characters,
+            MemoryBanks,
+            TokenEstimator,
+            WorldbookEngine,
+            WorldbookService,
+            MacroEngine,
+            Retrieval);
         CampaignScenarioCards = new CampaignScenarioCardImporter(
             Paths,
             CampaignScenarios);
@@ -81,15 +107,20 @@ public sealed class InfrastructureServices
         ChatArchives = new SillyTavernChatJsonlService(
             Database,
             Characters,
-            Conversations);
+            Conversations,
+            Paths);
     }
 
+    public AppDataConfiguration DataConfiguration { get; }
     public AppDataPaths Paths { get; }
+    public AppDataLocationService DataLocation { get; }
     public SqliteDatabase Database { get; }
     public ICharacterRepository Characters { get; }
     public ICharacterShelfRepository CharacterShelves { get; }
     public ICampaignScenarioRepository CampaignScenarios { get; }
     public ICampaignRepository Campaigns { get; }
+    public ICampaignMemoryRepository CampaignMemoryRepository { get; }
+    public ICampaignMemoryUpdateService CampaignMemory { get; }
     public IConversationRepository Conversations { get; }
     public IProviderProfileRepository Providers { get; }
     public IModelCatalogRepository Models { get; }
@@ -102,6 +133,8 @@ public sealed class InfrastructureServices
     public IGroupChatRepository GroupChats { get; }
     public IGroupRelayPlanner GroupRelay { get; }
     public IMessageRetrievalRepository Retrieval { get; }
+    public IWorldbookRepository Worldbooks { get; }
+    public IWorldbookService WorldbookService { get; }
     public IPresetRepository Presets { get; }
     public IPresetResolver PresetResolver { get; }
     public ITokenEstimator TokenEstimator { get; }
@@ -113,6 +146,7 @@ public sealed class InfrastructureServices
     public IConversationGenerationSessionStore GenerationSessions { get; }
     public ISecretStore Secrets { get; }
     public IProviderGateway ProviderGateway { get; }
+    public IEmbeddingProviderGateway EmbeddingProviderGateway { get; }
     public ICampaignRunner CampaignRunner { get; }
     public IReadOnlyList<ICharacterCardCodec> CharacterCardCodecs { get; }
     public ICharacterCardLibrary CharacterCards { get; }
@@ -122,7 +156,15 @@ public sealed class InfrastructureServices
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        if (!Paths.IsExternalOverride)
+        {
+            await DataConfiguration.EnsureStartupConfigurationAsync(
+                cancellationToken);
+        }
+
         await Database.InitializeAsync(cancellationToken);
+        await DataLocation.RepairDatabasePathsAsync(cancellationToken);
+        await Campaigns.RecoverInterruptedGenerationsAsync(cancellationToken);
         await Providers.EnsureDefaultsAsync(cancellationToken);
         await GlobalPrompts.InitializeAsync(cancellationToken);
     }

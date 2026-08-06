@@ -16,12 +16,22 @@
                                Foreground="{StaticResource MutedTextBrush}" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Margin="0,18,0,16" Orientation="Horizontal">
+                    <Button Content="新建剧本"
+                            Command="{Binding NewScenarioCommand}"
+                            ToolTip="按问卷式结构填写并保存一个新的跑团剧本。"
+                            Style="{StaticResource PrimaryButtonStyle}" />
                     <Button Content="导入剧本卡"
+                            Margin="8,0,0,0"
                             Command="{Binding ImportScenarioCommand}"
                             ToolTip="从本地选择一张剧本卡并加入剧本库。"
                             Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Content="用所选剧本开新局"
+                    <Button Content="编辑所选剧本"
                             Margin="8,0,0,0"
+                            Command="{Binding EditScenarioCommand}"
+                            ToolTip="打开所选剧本的结构化编辑界面；保存后更新剧本库。"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                    <Button Content="用所选剧本开新局"
+                            Margin="24,0,0,0"
                             Command="{Binding OpenScenarioLobbyCommand}"
                             ToolTip="进入起始大厅，选择 GM、参与方式、角色和模型后创建一局全新跑团。"
                             Style="{StaticResource PrimaryButtonStyle}" />
@@ -54,18 +64,44 @@
                                      HorizontalContentAlignment="Stretch"
                                      ItemsSource="{Binding Scenarios}"
                                      SelectedItem="{Binding SelectedScenario}">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0,2" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Margin="6">
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding Summary}"
-                                                       TextWrapping="Wrap"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
-                                            <TextBlock Margin="0,4,0,0"
-                                                       Text="{Binding SourceFileName}"
-                                                       FontSize="11"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
-                                        </StackPanel>
+                                        <Border Margin="2"
+                                                Padding="10,9"
+                                                BorderBrush="{StaticResource BorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="7">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Row="1"
+                                                           Margin="0,4,0,0"
+                                                           MaxHeight="40"
+                                                           Text="{Binding Summary}"
+                                                           TextWrapping="Wrap"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                                <TextBlock Grid.Row="2"
+                                                           Margin="0,5,0,0"
+                                                           Text="{Binding SourceFileName}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -82,10 +118,19 @@
                                      Margin="0,12,0,0"
                                      HorizontalContentAlignment="Stretch"
                                      ItemsSource="{Binding Campaigns}"
-                                     SelectedItem="{Binding SelectedCampaign}">
+                                     SelectedItem="{Binding SelectedCampaign}"
+                                     ToolTip="选择跑团继续或另开一局；右键可永久删除该局及其记录。">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="6">
+                                        <Grid Margin="6"
+                                              Tag="{Binding DataContext.DeleteCampaignCommand, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="删除跑团…"
+                                                              Command="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
@@ -118,6 +163,180 @@
                            Text="{Binding StatusText}"
                            Foreground="{StaticResource MutedTextBrush}" />
             </Grid>
+        </Grid>
+
+        <Grid Visibility="{Binding IsScenarioEditor, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="30,22,30,30">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding ScenarioEditorTitle}" Style="{StaticResource PageTitleStyle}" />
+                            <TextBlock Text="{Binding ScenarioEditorDescription}"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    HorizontalAlignment="Right"
+                                    Orientation="Horizontal">
+                            <Button Content="返回剧本库"
+                                    Command="{Binding BackToLibraryCommand}"
+                                    ToolTip="放弃未保存的剧本修改并返回剧本库。"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Content="保存剧本"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding SaveScenarioCommand}"
+                                    ToolTip="保存当前结构化字段；不会改写原始来源卡片文件。"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Margin="0,18,0,0"
+                            Padding="18"
+                            Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="按结构填写剧本"
+                                       FontSize="18"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Margin="0,4,0,18"
+                                       Text="每一项都会成为独立的剧本资料。可以先写简短版本，保存后再继续编辑。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+
+                            <TextBlock Text="1. 剧本标题" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：剧本名称或冒险主题。作用：显示在剧本库和开局选择中。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Text="{Binding ScenarioTitle, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="2. 剧本简介" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：用几句话说明玩家将面对什么故事。作用：帮助你在剧本库快速识别和选择。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="86"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioSummary, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="3. 世界观" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：时代、地点、势力、重要事实、能力体系和氛围。作用：给 GM 和玩家提供共同的故事背景。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="150"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioWorldSetting, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="4. 公开规则" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：玩家可以怎样行动、哪些内容需要掷骰或由 GM 裁定。作用：建立所有席位都能理解的行动和裁定边界。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="150"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioPublicRules, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="5. GM 主持指令" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：GM 的叙事口吻、主持职责、信息公开方式和必须遵守的边界。作用：只给 GM 使用，指导它持续主持。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="150"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioGmInstructions, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="6. 开场设置" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：第一幕开始时的任务、地点、人物关系、已知条件和待解决问题。作用：帮助 GM 从正确的状态创建第一场戏。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="130"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioOpeningSetup, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="7. 开场旁白" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：玩家看到的第一段场景文字或事件。作用：作为跑团真正开始时的公开叙事起点。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="130"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioOpeningNarration, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="8. 旧示例 / 历史归档（可选）" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,7"
+                                       Text="写什么：旧对话示例、参考片段或迁移记录。作用：仅作为剧本资料留档，不会伪装成当前跑团历史。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBox Height="130"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding ScenarioLegacyExamplesArchive, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="0,18,0,0" Text="9. 世界书绑定（可多选）" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,4,0,10"
+                                       Text="选择会随这个剧本一起使用的世界书；绑定和解绑会在保存剧本时生效，也可以从世界书页面反向操作。"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <ItemsControl ItemsSource="{Binding ScenarioWorldbookBindings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,7"
+                                                Padding="10,8"
+                                                Background="{StaticResource SurfaceAltBrush}"
+                                                CornerRadius="7">
+                                            <StackPanel>
+                                                <CheckBox Content="{Binding Name}"
+                                                          IsChecked="{Binding IsBound, Mode=TwoWay}"
+                                                          FontWeight="SemiBold" />
+                                                <TextBlock Margin="24,3,0,0"
+                                                           Text="{Binding Description}"
+                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="尚未导入世界书；也可以先保存剧本，再到“世界书”页面选择跑团剧本绑定。"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ScenarioWorldbookBindings.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Margin="0,14,0,0"
+                               Text="{Binding StatusText}"
+                               Foreground="{StaticResource MutedTextBrush}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Text="原始来源卡片不会被覆盖；保存的是 TavernDesk 本地剧本副本。已经开始的跑团不会被事后编辑影响。"
+                               FontSize="12"
+                               Foreground="{StaticResource MutedTextBrush}" />
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <Grid Visibility="{Binding IsLobby, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -355,8 +574,16 @@
                     <StackPanel>
                         <TextBlock Text="{Binding GameTitle}" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="{Binding GamePhaseText}" Foreground="{StaticResource MutedTextBrush}" />
+                        <TextBlock Text="{Binding CampaignMemoryStatusText}"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   FontSize="12" />
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Content="重试跑团记忆"
+                                Command="{Binding RetryCampaignMemoryCommand}"
+                                IsEnabled="{Binding CanRetryCampaignMemory}"
+                                ToolTip="重试处理已锁定但尚未进入 GM/Public 记忆的事件。"
+                                Style="{StaticResource SecondaryButtonStyle}" />
                         <Button Content="重新载入本局"
                                 Command="{Binding RefreshGameCommand}"
                                 ToolTip="从本地数据库重新载入当前跑团；不会调用任何模型。"

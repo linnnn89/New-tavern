@@ -8,6 +8,10 @@ namespace TavernDesk.App;
 
 public partial class App : Application
 {
+    private const string SingleInstanceMutexName =
+        @"Local\TavernDesk.App.SingleInstance.v1";
+    private SingleInstanceGate? _singleInstanceGate;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -16,6 +20,22 @@ public partial class App : Application
 
         try
         {
+            _singleInstanceGate =
+                SingleInstanceGate.TryAcquire(SingleInstanceMutexName);
+            if (!_singleInstanceGate.IsPrimaryInstance)
+            {
+                _singleInstanceGate.Dispose();
+                _singleInstanceGate = null;
+                MessageBox.Show(
+                    "TavernDesk 已经在运行。\n\n"
+                    + "请使用现有主窗口，或在其中打开独立聊天等子窗口。",
+                    "TavernDesk",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+
             var services = new InfrastructureServices(ParseDataRoot(e.Args));
             await services.InitializeAsync();
 
@@ -53,6 +73,13 @@ public partial class App : Application
                 MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _singleInstanceGate?.Dispose();
+        _singleInstanceGate = null;
+        base.OnExit(e);
     }
 
     private static void OnDispatcherUnhandledException(

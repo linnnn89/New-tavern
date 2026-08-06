@@ -7,7 +7,8 @@ public sealed record ProviderModelDescriptor(
     string DisplayName,
     int? ContextLimit = null,
     int? MaxOutputTokens = null,
-    bool SupportsStreaming = true);
+    bool SupportsStreaming = true,
+    ModelCatalogKind ModelKind = ModelCatalogKind.Chat);
 
 public sealed record ProviderChatMessage(
     string Role,
@@ -22,6 +23,19 @@ public sealed record ModelExecutionRequest(
     double TopP,
     bool? ReasoningEnabled = null,
     string? SessionId = null);
+
+public sealed record EmbeddingRequest(
+    string ProviderId,
+    string ModelId,
+    IReadOnlyList<string> Inputs);
+
+public sealed record EmbeddingVector(
+    int Index,
+    IReadOnlyList<float> Values);
+
+public sealed record EmbeddingResponse(
+    IReadOnlyList<EmbeddingVector> Vectors,
+    ProviderTokenUsage? Usage = null);
 
 public enum ProviderStreamEventKind
 {
@@ -68,11 +82,13 @@ public interface IModelCatalogRepository
 {
     Task<IReadOnlyList<ProviderModel>> ListAsync(
         string providerId,
+        ModelCatalogKind? modelKind = null,
         CancellationToken cancellationToken = default);
 
     Task ReplaceAsync(
         string providerId,
         IReadOnlyList<ProviderModelDescriptor> models,
+        ModelCatalogKind modelKind = ModelCatalogKind.Chat,
         CancellationToken cancellationToken = default);
 
     Task UpsertAsync(
@@ -102,5 +118,19 @@ public interface IProviderGateway
 
     IAsyncEnumerable<ProviderStreamEvent> StreamChatAsync(
         ModelExecutionRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IEmbeddingModelCatalogGateway
+{
+    Task<IReadOnlyList<ProviderModelDescriptor>> RefreshEmbeddingModelsAsync(
+        string providerId,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IEmbeddingProviderGateway
+{
+    Task<EmbeddingResponse> CreateEmbeddingsAsync(
+        EmbeddingRequest request,
         CancellationToken cancellationToken = default);
 }

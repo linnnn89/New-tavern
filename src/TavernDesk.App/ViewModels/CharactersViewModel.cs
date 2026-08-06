@@ -22,6 +22,7 @@ public sealed class CharactersViewModel : ViewModelBase
     private readonly Func<Character, Task> _startChat;
     private readonly Func<Character, Task> _createNewChat;
     private readonly Func<ConversationSummary, Task> _openConversation;
+    private readonly Func<string, string, Task>? _deleteConversation;
     private IReadOnlySet<string> _selectedShelfCharacterIds =
         new HashSet<string>(StringComparer.Ordinal);
     private CharacterCardScale _scale = CharacterCardScale.Medium;
@@ -47,7 +48,8 @@ public sealed class CharactersViewModel : ViewModelBase
         IUserInteractionService interaction,
         Func<Character, Task> startChat,
         Func<Character, Task> createNewChat,
-        Func<ConversationSummary, Task> openConversation)
+        Func<ConversationSummary, Task> openConversation,
+        Func<string, string, Task>? deleteConversation = null)
     {
         _repository = repository;
         _shelves = shelves;
@@ -59,6 +61,7 @@ public sealed class CharactersViewModel : ViewModelBase
         _startChat = startChat;
         _createNewChat = createNewChat;
         _openConversation = openConversation;
+        _deleteConversation = deleteConversation;
 
         SetDenseCommand = new AsyncRelayCommand(() => SetScaleAsync(CharacterCardScale.Dense));
         SetMediumCommand = new AsyncRelayCommand(() => SetScaleAsync(CharacterCardScale.Medium));
@@ -784,10 +787,41 @@ public sealed class CharactersViewModel : ViewModelBase
         foreach (var conversation in conversations)
         {
             session.Conversations.Add(
-                new CharacterConversationListItemViewModel(conversation));
+                new CharacterConversationListItemViewModel(
+                    conversation,
+                    _deleteConversation is null
+                        ? null
+                        : DeleteCharacterConversationAsync));
         }
 
         OnPropertyChanged(nameof(CharacterConversationCount));
+    }
+
+    private async Task DeleteCharacterConversationAsync(
+        string conversationId,
+        string conversationTitle)
+    {
+        var session = _characterSession;
+        var item = session?.Conversations.FirstOrDefault(
+            conversation => conversation.Id == conversationId);
+        if (session is null
+            || item is null
+            || _deleteConversation is null
+            || !IsCurrentCharacterSession(session))
+        {
+            return;
+        }
+
+        await _deleteConversation(conversationId, conversationTitle);
+        if (!IsCurrentCharacterSession(session)
+            || await _conversations.GetAsync(conversationId) is not null)
+        {
+            return;
+        }
+
+        session.Conversations.Remove(item);
+        OnPropertyChanged(nameof(CharacterConversationCount));
+        Status = $"已删除聊天记录“{conversationTitle}”；角色卡和角色整体记忆未受影响。";
     }
 
     private async Task<bool> ConfirmCanLeaveAsync(

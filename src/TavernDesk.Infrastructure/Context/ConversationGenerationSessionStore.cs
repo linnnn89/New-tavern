@@ -93,6 +93,17 @@ public sealed class ConversationGenerationSessionStore
         return true;
     }
 
+    public void Forget(string conversationId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        if (_active.ContainsKey(conversationId))
+        {
+            return;
+        }
+
+        _lastSnapshots.TryRemove(conversationId, out _);
+    }
+
     private bool TryResolve(
         string conversationId,
         string operationId,

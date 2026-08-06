@@ -53,7 +53,9 @@ public sealed record ContextAssemblyRequest(
     string? GroupSystemPrompt = null,
     string? GroupBatonInstruction = null,
     RetrievalContextOptions? Retrieval = null,
-    string? ModelId = null);
+    string? ModelId = null,
+    string? ContinuationInstruction = null,
+    bool AllowRemoteSemanticRetrieval = true);
 
 public sealed record ContextAssemblyResult(
     IReadOnlyList<ContextSegment> Segments,
@@ -171,6 +173,7 @@ public interface IConversationGenerationSessionStore
         ProviderStreamEvent streamEvent);
 
     bool End(string conversationId, string operationId);
+    void Forget(string conversationId);
 }
 
 public interface IMemoryBankService

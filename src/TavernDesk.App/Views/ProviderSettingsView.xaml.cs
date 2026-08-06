@@ -77,6 +77,30 @@ public partial class ProviderSettingsView : UserControl
         }
     }
 
+    private async void AddProviderButton_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (DataContext is not ProviderSettingsViewModel viewModel
+            || !await viewModel.ConfirmCanLeaveAsync())
+        {
+            return;
+        }
+
+        var dialog = new CustomProviderDialog
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        await viewModel.AddCustomProviderAsync(
+            dialog.ProviderName,
+            dialog.BaseUrl);
+    }
+
     private void OnViewModelPropertyChanged(
         object? sender,
         PropertyChangedEventArgs e)

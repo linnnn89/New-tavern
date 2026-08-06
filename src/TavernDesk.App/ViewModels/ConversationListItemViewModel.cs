@@ -12,13 +12,17 @@ public sealed class ConversationListItemViewModel : ViewModelBase
     public ConversationListItemViewModel(
         ConversationSummary summary,
         ConversationGenerationState generationState,
-        Func<string, Task>? openInNewWindow = null)
+        Func<string, Task>? openInNewWindow = null,
+        Func<ConversationListItemViewModel, Task>? deleteConversation = null)
     {
         Summary = summary;
         _generationState = generationState;
         OpenInNewWindowCommand = new AsyncRelayCommand(
             () => openInNewWindow?.Invoke(Id) ?? Task.CompletedTask,
             () => openInNewWindow is not null);
+        DeleteConversationCommand = new AsyncRelayCommand(
+            () => deleteConversation?.Invoke(this) ?? Task.CompletedTask,
+            () => deleteConversation is not null);
     }
 
     public ConversationSummary Summary { get; }
@@ -30,6 +34,7 @@ public sealed class ConversationListItemViewModel : ViewModelBase
     public string UpdatedText => ConversationTextFormatter.FriendlyTime(Summary.UpdatedAt);
     public DateTimeOffset UpdatedAt => Summary.UpdatedAt;
     public AsyncRelayCommand OpenInNewWindowCommand { get; }
+    public AsyncRelayCommand DeleteConversationCommand { get; }
 
     public bool IsSelected
     {

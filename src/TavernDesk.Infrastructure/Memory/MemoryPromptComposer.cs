@@ -14,10 +14,14 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
         MemoryWorkflowSettings settings,
         MemoryCheckpoint? checkpoint,
         IReadOnlyList<ChatMessage> messages,
-        IReadOnlyDictionary<string, string> senderNames)
+        IReadOnlyDictionary<string, string> senderNames,
+        string memorySubject = "当前记忆主体",
+        string userIdentity = "用户")
     {
         ValidateTargetTokens(targetTokens);
-        var fromSequence = checkpoint?.LastSequenceNo ?? 0;
+        var fromSequence = settings.SendOnlyNewMessages
+            ? checkpoint?.LastSequenceNo ?? 0
+            : 0;
         var source = messages
             .Where(message => !message.IsDeleted
                               && message.SequenceNo > fromSequence
@@ -27,15 +31,27 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
             .ToArray();
         if (source.Length == 0)
         {
-            throw new InvalidOperationException("当前检查点之后没有可更新的聊天记录。");
+            throw new InvalidOperationException(
+                settings.SendOnlyNewMessages
+                    ? "当前检查点之后没有可更新的聊天记录。"
+                    : "当前聊天没有可更新的记录。");
         }
 
+        source = LimitSource(
+            source,
+            settings.MaximumSourceUserTurns,
+            settings.SendOnlyNewMessages);
+
         var transcript = new StringBuilder();
+        var normalizedSubject = NormalizeLabel(memorySubject, "当前记忆主体");
+        var normalizedUserIdentity = NormalizeLabel(userIdentity, "用户");
         foreach (var message in source)
         {
             var sender = message.SenderKind == MessageSenderKind.User
-                ? "USER"
-                : senderNames.GetValueOrDefault(message.SenderId, "角色");
+                ? $"用户：{normalizedUserIdentity}"
+                : $"角色：{NormalizeLabel(
+                    senderNames.GetValueOrDefault(message.SenderId, "角色"),
+                    "角色")}";
             transcript
                 .Append('[')
                 .Append(sender)
@@ -51,6 +67,8 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["target_tokens"] = targetTokens.ToString(),
+                ["memory_subject"] = normalizedSubject,
+                ["user_identity"] = normalizedUserIdentity,
                 ["current_memory"] = NormalizeEmpty(currentMemory),
                 ["new_messages"] = transcript.ToString().TrimEnd()
             });
@@ -58,11 +76,42 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
             MemoryDraftKind.Update,
             ownerId,
             conversationId,
-            settings.UpdateSystemPrompt.Trim(),
+            ComposeSystemPrompt(settings.UpdateSystemPrompt),
             inputPayload,
             source.Max(message => message.SequenceNo),
             source.Count(message => message.SenderKind == MessageSenderKind.User),
             targetTokens);
+    }
+
+    private static ChatMessage[] LimitSource(
+        ChatMessage[] source,
+        int maximumUserTurns,
+        bool sendOnlyNewMessages)
+    {
+        var limit = Math.Clamp(maximumUserTurns, 1, 10000);
+        var userIndexes = source
+            .Select((message, index) =>
+                (message.SenderKind == MessageSenderKind.User, index))
+            .Where(item => item.Item1)
+            .Select(item => item.index)
+            .ToArray();
+        if (userIndexes.Length <= limit)
+        {
+            return source;
+        }
+
+        if (sendOnlyNewMessages)
+        {
+            // Consume the oldest pending turns first. The boundary is the
+            // next user message, so the final selected turn keeps all of its
+            // replies.
+            var nextUserIndex = userIndexes[limit];
+            return source[..nextUserIndex];
+        }
+
+        // When the option is disabled, use the most recent batch while still
+        // keeping each selected turn intact through the end of the transcript.
+        return source[userIndexes[^limit]..];
     }
 
     public MemoryPromptPlan BuildCompression(
@@ -71,7 +120,9 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
         string currentMemory,
         int targetTokens,
         MemoryWorkflowSettings settings,
-        MemoryCheckpoint? checkpoint)
+        MemoryCheckpoint? checkpoint,
+        string memorySubject = "当前记忆主体",
+        string userIdentity = "用户")
     {
         ValidateTargetTokens(targetTokens);
         if (string.IsNullOrWhiteSpace(currentMemory))
@@ -83,12 +134,14 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
             MemoryDraftKind.Compression,
             ownerId,
             conversationId,
-            settings.CompressionSystemPrompt.Trim(),
+            ComposeSystemPrompt(settings.CompressionSystemPrompt),
             Expand(
                 MemoryPromptDefaults.CompressionInput,
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["target_tokens"] = targetTokens.ToString(),
+                    ["memory_subject"] = NormalizeLabel(memorySubject, "当前记忆主体"),
+                    ["user_identity"] = NormalizeLabel(userIdentity, "用户"),
                     ["current_memory"] = currentMemory.Trim()
                 }),
             checkpoint?.LastSequenceNo ?? 0,
@@ -103,7 +156,8 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
         string characterMemory,
         string groupMemory,
         int targetTokens,
-        GroupChatSettings settings)
+        GroupChatSettings settings,
+        string userIdentity = "用户")
     {
         ValidateTargetTokens(targetTokens);
         if (string.IsNullOrWhiteSpace(groupMemory))
@@ -115,7 +169,7 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
             MemoryDraftKind.GroupMerge,
             targetCharacterId,
             sourceConversationId,
-            settings.MergeSystemPrompt.Trim(),
+            ComposeSystemPrompt(settings.MergeSystemPrompt),
             Expand(
                 MemoryPromptDefaults.GroupMergeInput,
                 new Dictionary<string, string>(StringComparer.Ordinal)
@@ -123,7 +177,8 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
                     ["target_tokens"] = targetTokens.ToString(),
                     ["character_memory"] = NormalizeEmpty(characterMemory),
                     ["group_memory"] = groupMemory.Trim(),
-                    ["character_name"] = characterName
+                    ["character_name"] = NormalizeLabel(characterName, "目标角色"),
+                    ["user_identity"] = NormalizeLabel(userIdentity, "用户")
                 }),
             0,
             0,
@@ -148,6 +203,26 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
 
     private static string NormalizeEmpty(string value) =>
         string.IsNullOrWhiteSpace(value) ? "（空）" : value.Trim();
+
+    private static string NormalizeLabel(string value, string fallback) =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
+    private static string ComposeSystemPrompt(string prompt)
+    {
+        var normalized = string.IsNullOrWhiteSpace(prompt)
+            ? string.Empty
+            : prompt.Trim();
+        return normalized.Contains(
+                   "【记忆叙述契约】",
+                   StringComparison.Ordinal)
+            ? normalized
+            : string.IsNullOrWhiteSpace(normalized)
+                ? MemoryPromptDefaults.NarrativeContract
+                : normalized
+                  + Environment.NewLine
+                  + Environment.NewLine
+                  + MemoryPromptDefaults.NarrativeContract;
+    }
 
     private static void ValidateTargetTokens(int targetTokens)
     {

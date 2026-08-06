@@ -73,7 +73,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
         var name = ReadString(data, "name");
         var description = ReadString(data, "description");
         var scenarioText = ReadString(data, "scenario");
-        var firstMessage = ReadString(data, "first_mes");
         var examples = ReadString(data, "mes_example");
         var systemPrompt = ReadString(data, "system_prompt");
         var postHistory = ReadString(data, "post_history_instructions");
@@ -89,7 +88,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
             ? CreateNarutoScenario(
                 description,
                 scenarioText,
-                firstMessage,
                 examples,
                 json,
                 sourceName)
@@ -97,7 +95,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
                 name,
                 description,
                 scenarioText,
-                firstMessage,
                 examples,
                 systemPrompt,
                 postHistory,
@@ -142,7 +139,7 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
         var warnings = new List<string>
         {
             "源 PNG 与完整原始 JSON 已原样保留。",
-            "first_mes 已改存为仅供起始大厅显示的说明，不会注入 GM 或 AI 玩家请求。",
+            "first_mes 不再作为独立剧本字段保存或显示。",
             "mes_example 已改存为历史样例档案，不会伪装成当前跑团历史。"
         };
         if (isNaruto)
@@ -171,7 +168,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
     private static CampaignScenario CreateNarutoScenario(
         string description,
         string sourceScenario,
-        string firstMessage,
         string examples,
         string rawJson,
         string sourceName) =>
@@ -204,7 +200,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
                 "反常的乌云压在木叶上空。你们被紧急召往火影办公室；"
                 + "一份来历不明、封印古老的卷轴正安静地躺在桌上，"
                 + "而它所记载的禁术预言可能打破整个忍界的平衡。",
-            LobbyInstructions = firstMessage.Trim(),
             LegacyExamplesArchive = examples,
             SourceCardJson = rawJson,
             SourceFileName = sourceName
@@ -214,7 +209,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
         string name,
         string description,
         string sourceScenario,
-        string firstMessage,
         string examples,
         string systemPrompt,
         string postHistory,
@@ -235,7 +229,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
                     .Where(value => value.Length > 0)),
             OpeningSetup = sourceScenario.Trim(),
             OpeningNarration = string.Empty,
-            LobbyInstructions = firstMessage.Trim(),
             LegacyExamplesArchive = examples,
             SourceCardJson = rawJson,
             SourceFileName = sourceName

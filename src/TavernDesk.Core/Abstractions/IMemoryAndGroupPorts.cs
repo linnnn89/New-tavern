@@ -45,7 +45,9 @@ public interface IMemoryPromptComposer
         MemoryWorkflowSettings settings,
         MemoryCheckpoint? checkpoint,
         IReadOnlyList<ChatMessage> messages,
-        IReadOnlyDictionary<string, string> senderNames);
+        IReadOnlyDictionary<string, string> senderNames,
+        string memorySubject = "当前记忆主体",
+        string userIdentity = "用户");
 
     MemoryPromptPlan BuildCompression(
         string ownerId,
@@ -53,7 +55,9 @@ public interface IMemoryPromptComposer
         string currentMemory,
         int targetTokens,
         MemoryWorkflowSettings settings,
-        MemoryCheckpoint? checkpoint);
+        MemoryCheckpoint? checkpoint,
+        string memorySubject = "当前记忆主体",
+        string userIdentity = "用户");
 
     MemoryPromptPlan BuildGroupMerge(
         string targetCharacterId,
@@ -62,7 +66,8 @@ public interface IMemoryPromptComposer
         string characterMemory,
         string groupMemory,
         int targetTokens,
-        GroupChatSettings settings);
+        GroupChatSettings settings,
+        string userIdentity = "用户");
 }
 
 public interface IGroupChatRepository

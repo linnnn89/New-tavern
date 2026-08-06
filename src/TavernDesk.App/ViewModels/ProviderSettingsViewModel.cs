@@ -1,13 +1,25 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
+using System.Net.Http;
+using System.Windows.Media;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Storage;
 
 namespace TavernDesk.App.ViewModels;
 
 public sealed class ProviderSettingsViewModel : ViewModelBase
 {
+    public const string ChatAutoScrollSettingKey = "ui.chat.autoScroll";
+    public const string InterfaceFontFamilySettingKey = "ui.font.family";
+    public const string InterfaceFontSizeSettingKey = "ui.font.size";
+
+    private static readonly Lazy<IReadOnlyList<string>> SystemFontFamilies =
+        new(LoadSystemFontFamilies);
+
     private readonly IProviderProfileRepository _repository;
     private readonly IModelCatalogRepository _models;
     private readonly IModelAssignmentRepository _assignments;
@@ -15,6 +27,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private readonly IProviderGateway _gateway;
     private readonly IContextBudgetProvider _contextBudget;
     private readonly IUserInteractionService _interaction;
+    private readonly IFileDialogService _fileDialog;
+    private readonly IAppSettingsRepository? _appSettings;
+    private readonly AppDataLocationService? _dataLocation;
     private readonly HashSet<string> _persistedProfileIds = new(StringComparer.Ordinal);
     private readonly List<ProviderModel> _allCatalogModels = [];
     private readonly List<ProviderModel> _allAssignmentModels = [];
@@ -36,6 +51,16 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private string _assignmentTemperature = "0.8";
     private string _assignmentTopP = "1";
     private string _status = "保存接入商不会联网；只有主动点击“刷新模型目录”才会请求对应 API。";
+    private bool _chatAutoScrollEnabled =
+        InterfaceSettingsRuntime.DefaultChatAutoScroll;
+    private string _interfaceFontFamily =
+        InterfaceSettingsRuntime.DefaultFontFamily;
+    private double _interfaceFontSize =
+        InterfaceSettingsRuntime.DefaultFontSize;
+    private string _interfaceSettingsStatus =
+        "聊天自动滚动、字体和字号会保存到本地设置。";
+    private string _dataRoot = string.Empty;
+    private string _dataRootStatus = "个人资料目录由 Windows 用户级配置管理。";
     private int _selectedSettingsTabIndex;
     private int _catalogLoadVersion;
     private int _assignmentLoadVersion;
@@ -49,7 +74,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         IContextBudgetProvider contextBudget,
         IUserInteractionService interaction,
         IGlobalPromptConfiguration globalPrompts,
-        IFileDialogService fileDialog)
+        IFileDialogService fileDialog,
+        IAppSettingsRepository? appSettings = null,
+        AppDataLocationService? dataLocation = null)
     {
         _repository = repository;
         _models = models;
@@ -58,6 +85,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         _gateway = gateway;
         _contextBudget = contextBudget;
         _interaction = interaction;
+        _fileDialog = fileDialog;
+        _appSettings = appSettings;
+        _dataLocation = dataLocation;
         Prompts = new PromptSettingsViewModel(globalPrompts, fileDialog);
         FunctionOptions =
         [
@@ -65,7 +95,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             new(ModelFunctionKind.MemoryUpdate, "记忆银行更新"),
             new(ModelFunctionKind.MemoryCompression, "记忆银行压缩"),
             new(ModelFunctionKind.GroupChat, "群聊接力"),
-            new(ModelFunctionKind.GroupMemoryMerge, "群聊记忆合并")
+            new(ModelFunctionKind.GroupMemoryMerge, "群聊记忆合并"),
+            new(ModelFunctionKind.Embedding, "Embedding 向量化")
         ];
         _selectedFunction = FunctionOptions[0];
 
@@ -81,6 +112,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         RefreshModelsCommand = new AsyncRelayCommand(
             RefreshModelsAsync,
             () => CatalogProvider is not null);
+        AddCustomModelCommand = new AsyncRelayCommand(
+            AddCustomModelAsync,
+            () => CatalogProvider is not null);
         SaveModelLimitsCommand = new AsyncRelayCommand(
             SaveModelLimitsAsync,
             () => SelectedCatalogModel is not null);
@@ -94,6 +128,17 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             {
                 IsReasoningAvailable: true
             });
+        SaveInterfaceSettingsCommand = new AsyncRelayCommand(
+            SaveInterfaceSettingsAsync,
+            () => _appSettings is not null);
+        RestoreInterfaceDefaultsCommand = new RelayCommand(
+            RestoreInterfaceDefaults);
+        PickDataRootCommand = new RelayCommand(PickDataRoot);
+        ChangeDataRootCommand = new AsyncRelayCommand(
+            ChangeDataRootAsync,
+            () => _dataLocation is not null
+                  && !_dataLocation.IsExternallyOverridden
+                  && !string.IsNullOrWhiteSpace(DataRoot));
         _editor.PropertyChanged += OnEditorPropertyChanged;
     }
 
@@ -127,9 +172,16 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand ClearKeyCommand { get; }
     public AsyncRelayCommand RefreshModelsCommand { get; }
+    public AsyncRelayCommand AddCustomModelCommand { get; }
     public AsyncRelayCommand SaveModelLimitsCommand { get; }
     public AsyncRelayCommand SaveAssignmentCommand { get; }
     public AsyncRelayCommand ToggleReasoningCommand { get; }
+    public AsyncRelayCommand SaveInterfaceSettingsCommand { get; }
+    public RelayCommand RestoreInterfaceDefaultsCommand { get; }
+    public RelayCommand PickDataRootCommand { get; }
+    public AsyncRelayCommand ChangeDataRootCommand { get; }
+    public IReadOnlyList<string> AvailableInterfaceFontFamilies =>
+        SystemFontFamilies.Value;
 
     public ProviderProfile? SelectedProfile
     {
@@ -159,6 +211,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             var version = ++_catalogLoadVersion;
             _ = LoadCatalogSafeAsync(version);
             RefreshModelsCommand.RaiseCanExecuteChanged();
+            AddCustomModelCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -204,7 +257,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 return;
             }
 
-            if (value is not null)
+            if (value is not null && !IsEmbeddingFunctionSelected)
             {
                 AssignmentContextLimit = value.ContextLimit.ToString();
                 AssignmentMaxOutputTokens = value.MaxOutputTokens.ToString();
@@ -221,11 +274,17 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedFunction, value))
             {
+                OnPropertyChanged(nameof(IsEmbeddingFunctionSelected));
                 var version = ++_assignmentLoadVersion;
                 _ = LoadFunctionAssignmentSafeAsync(version);
             }
         }
     }
+
+    public bool IsEmbeddingFunctionSelected =>
+        SelectedFunction.Value == ModelFunctionKind.Embedding;
+
+    public string CustomModelButtonText => "添加自定义模型";
 
     public string PendingApiKey
     {
@@ -317,6 +376,54 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         private set => SetProperty(ref _status, value);
     }
 
+    public bool ChatAutoScrollEnabled
+    {
+        get => _chatAutoScrollEnabled;
+        set => SetProperty(ref _chatAutoScrollEnabled, value);
+    }
+
+    public string InterfaceFontFamily
+    {
+        get => _interfaceFontFamily;
+        set => SetProperty(ref _interfaceFontFamily, value);
+    }
+
+    public double InterfaceFontSize
+    {
+        get => _interfaceFontSize;
+        set => SetProperty(ref _interfaceFontSize, value);
+    }
+
+    public string InterfaceSettingsStatus
+    {
+        get => _interfaceSettingsStatus;
+        private set => SetProperty(ref _interfaceSettingsStatus, value);
+    }
+
+    public string DataRoot
+    {
+        get => _dataRoot;
+        set
+        {
+            if (SetProperty(ref _dataRoot, value))
+            {
+                ChangeDataRootCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string DataRootConfigurationPath =>
+        _dataLocation?.ConfigurationPath ?? string.Empty;
+
+    public bool IsDataRootExternallyOverridden =>
+        _dataLocation?.IsExternallyOverridden ?? true;
+
+    public string DataRootStatus
+    {
+        get => _dataRootStatus;
+        private set => SetProperty(ref _dataRootStatus, value);
+    }
+
     public int SelectedSettingsTabIndex
     {
         get => _selectedSettingsTabIndex;
@@ -325,6 +432,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public async Task LoadAsync()
     {
+        LoadDataRootSettings();
+        await LoadInterfaceSettingsAsync();
         var selectedProfileId = SelectedProfile?.Id;
         var catalogProviderId = CatalogProvider?.Id;
         var assignmentProviderId = AssignmentProvider?.Id;
@@ -373,16 +482,271 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
     }
 
+    private async Task LoadInterfaceSettingsAsync()
+    {
+        if (_appSettings is null)
+        {
+            InterfaceSettingsRuntime.Apply(
+                InterfaceFontFamily,
+                InterfaceFontSize,
+                ChatAutoScrollEnabled);
+            return;
+        }
+
+        var autoScrollTask = _appSettings.GetAsync(ChatAutoScrollSettingKey);
+        var fontFamilyTask = _appSettings.GetAsync(InterfaceFontFamilySettingKey);
+        var fontSizeTask = _appSettings.GetAsync(InterfaceFontSizeSettingKey);
+        await Task.WhenAll(autoScrollTask, fontFamilyTask, fontSizeTask);
+
+        ChatAutoScrollEnabled =
+            !bool.TryParse(autoScrollTask.Result, out var autoScroll)
+            || autoScroll;
+        InterfaceFontFamily = NormalizeFontFamily(fontFamilyTask.Result);
+        InterfaceFontSize = NormalizeFontSize(fontSizeTask.Result);
+        InterfaceSettingsRuntime.Apply(
+            InterfaceFontFamily,
+            InterfaceFontSize,
+            ChatAutoScrollEnabled);
+        InterfaceSettingsStatus = "界面设置已载入；修改后点击“保存界面设置”。";
+    }
+
+    private void LoadDataRootSettings()
+    {
+        DataRoot = _dataLocation?.CurrentRoot ?? string.Empty;
+        DataRootStatus = _dataLocation is null
+            ? "当前环境没有可用的个人资料目录管理器。"
+            : _dataLocation.IsExternallyOverridden
+                ? "当前目录由 --data-root 或 TAVERNDESK_DATA_ROOT 覆盖；请移除覆盖后再从这里修改。"
+                : $"配置文件：{_dataLocation.ConfigurationPath}。修改后需要重启 TavernDesk 才会切换当前服务。";
+    }
+
+    private void PickDataRoot()
+    {
+        var selected = _fileDialog.PickDataRoot();
+        if (!string.IsNullOrWhiteSpace(selected))
+        {
+            DataRoot = Path.GetFullPath(selected);
+            DataRootStatus = "已选择新目录；点击“保存并切换”后会先询问是否迁移当前资料。";
+        }
+    }
+
+    private async Task ChangeDataRootAsync()
+    {
+        if (_dataLocation is null)
+        {
+            DataRootStatus = "当前环境没有可用的个人资料目录管理器。";
+            return;
+        }
+
+        if (_dataLocation.IsExternallyOverridden)
+        {
+            DataRootStatus = "当前目录由 --data-root 或 TAVERNDESK_DATA_ROOT 覆盖，未修改配置。";
+            return;
+        }
+
+        string requestedRoot;
+        try
+        {
+            requestedRoot = Path.GetFullPath(DataRoot.Trim());
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException)
+        {
+            DataRootStatus = $"个人资料目录无效：{exception.Message}";
+            return;
+        }
+
+        if (string.Equals(
+                requestedRoot,
+                _dataLocation.CurrentRoot,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            DataRoot = requestedRoot;
+            DataRootStatus = "个人资料目录没有变化。";
+            return;
+        }
+
+        var decision = _interaction.ConfirmDataRootMigration(
+            _dataLocation.CurrentRoot,
+            requestedRoot);
+        if (decision == DataRootMigrationDecision.Cancel)
+        {
+            DataRootStatus = "已取消个人资料目录切换。";
+            return;
+        }
+
+        try
+        {
+            var mode = decision == DataRootMigrationDecision.CopyCurrentData
+                ? DataRootMigrationMode.CopyCurrentData
+                : DataRootMigrationMode.KeepTargetAsIs;
+            var result = await _dataLocation.ChangeRootAsync(
+                requestedRoot,
+                mode);
+            DataRoot = result.NewRoot;
+            DataRootStatus = result.Migrated
+                ? $"已复制 {result.CopiedFiles} 个文件（{result.CopiedBytes:N0} B）并切换配置；旧目录保留为安全备份。请重启 TavernDesk。"
+                : "已切换配置但未迁移文件；请确认新目录已有可用个人资料后重启 TavernDesk。";
+        }
+        catch (Exception exception)
+        {
+            DataRootStatus = $"个人资料目录切换失败，原配置未改变：{exception.Message}";
+        }
+    }
+
+    private async Task SaveInterfaceSettingsAsync()
+    {
+        if (_appSettings is null)
+        {
+            InterfaceSettingsStatus = "当前环境没有可用的本地设置仓储。";
+            return;
+        }
+
+        InterfaceFontFamily = NormalizeFontFamily(InterfaceFontFamily);
+        InterfaceFontSize = NormalizeFontSize(InterfaceFontSize);
+        await Task.WhenAll(
+            _appSettings.SetAsync(
+                ChatAutoScrollSettingKey,
+                ChatAutoScrollEnabled.ToString(CultureInfo.InvariantCulture)),
+            _appSettings.SetAsync(
+                InterfaceFontFamilySettingKey,
+                InterfaceFontFamily),
+            _appSettings.SetAsync(
+                InterfaceFontSizeSettingKey,
+                InterfaceFontSize.ToString(CultureInfo.InvariantCulture)));
+        InterfaceSettingsRuntime.Apply(
+            InterfaceFontFamily,
+            InterfaceFontSize,
+            ChatAutoScrollEnabled);
+        InterfaceSettingsStatus =
+            $"界面设置已保存：{InterfaceFontFamily}，字号 {InterfaceFontSize:0}；"
+            + (ChatAutoScrollEnabled ? "聊天自动滚动已开启。" : "聊天自动滚动已关闭。");
+    }
+
+    private void RestoreInterfaceDefaults()
+    {
+        ChatAutoScrollEnabled = InterfaceSettingsRuntime.DefaultChatAutoScroll;
+        InterfaceFontFamily = InterfaceSettingsRuntime.DefaultFontFamily;
+        InterfaceFontSize = InterfaceSettingsRuntime.DefaultFontSize;
+        InterfaceSettingsStatus = "已恢复默认值；点击“保存界面设置”后生效。";
+    }
+
+    private string NormalizeFontFamily(string? value)
+    {
+        var requested = string.IsNullOrWhiteSpace(value)
+            ? InterfaceSettingsRuntime.DefaultFontFamily
+            : value.Trim();
+        return AvailableInterfaceFontFamilies.FirstOrDefault(font =>
+                   string.Equals(font, requested, StringComparison.OrdinalIgnoreCase))
+               ?? InterfaceSettingsRuntime.DefaultFontFamily;
+    }
+
+    private static double NormalizeFontSize(string? value) =>
+        double.TryParse(
+            value,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var parsed)
+            ? NormalizeFontSize(parsed)
+            : InterfaceSettingsRuntime.DefaultFontSize;
+
+    private static double NormalizeFontSize(double value) =>
+        double.IsFinite(value)
+            ? Math.Clamp(
+                Math.Round(value, MidpointRounding.AwayFromZero),
+                InterfaceSettingsRuntime.MinimumFontSize,
+                InterfaceSettingsRuntime.MaximumFontSize)
+            : InterfaceSettingsRuntime.DefaultFontSize;
+
+    private static IReadOnlyList<string> LoadSystemFontFamilies()
+    {
+        var fonts = Fonts.SystemFontFamilies
+            .Select(font => font.Source)
+            .Where(font => !string.IsNullOrWhiteSpace(font))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(font => font, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        if (!fonts.Contains(
+                InterfaceSettingsRuntime.DefaultFontFamily,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            fonts.Insert(0, InterfaceSettingsRuntime.DefaultFontFamily);
+        }
+
+        return fonts;
+    }
+
     private async Task ReloadProfilesAsync()
     {
         Profiles.Clear();
         _persistedProfileIds.Clear();
         foreach (var profile in (await _repository.ListAsync())
-                     .Where(profile => ProviderProfileIds.IsSupported(profile.Id)))
+                     .Where(profile => ProviderProfileIds.IsSupportedAdapter(
+                         profile.AdapterKind)))
         {
             Profiles.Add(profile);
             _persistedProfileIds.Add(profile.Id);
         }
+    }
+
+    public async Task<ProviderProfile?> AddCustomProviderAsync(
+        string name,
+        string baseUrl)
+    {
+        var normalizedName = name.Trim();
+        var normalizedBaseUrl = baseUrl.Trim().TrimEnd('/');
+        if (normalizedName.Length == 0)
+        {
+            Status = "接入商名称不能为空。";
+            return null;
+        }
+
+        if (!Uri.TryCreate(normalizedBaseUrl, UriKind.Absolute, out var baseUri)
+            || baseUri.Scheme is not ("http" or "https"))
+        {
+            Status = "API 地址必须是完整的 http 或 https 地址。";
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(baseUri.Query)
+            || !string.IsNullOrEmpty(baseUri.Fragment))
+        {
+            Status = "API 地址不能包含查询参数或片段。";
+            return null;
+        }
+
+        if (baseUri.AbsolutePath.EndsWith(
+                "/chat",
+                StringComparison.OrdinalIgnoreCase)
+            || baseUri.AbsolutePath.EndsWith(
+                "/chat/completions",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "API 地址请填写到 /api/v1 或 /v1 结束，不要加入 /chat。";
+            return null;
+        }
+
+        var profile = new ProviderProfile
+        {
+            Id = $"custom-{Guid.NewGuid():N}",
+            Name = normalizedName,
+            AdapterKind = ProviderAdapterKind.OpenAiCompatible,
+            BaseUrl = normalizedBaseUrl,
+            RequestTimeoutSeconds = 300,
+            IsEnabled = true
+        };
+        try
+        {
+            await _repository.UpsertAsync(profile);
+            await RefreshProfileReferencesAsync(profile.Id);
+        }
+        catch (Exception exception)
+        {
+            Status = $"添加接入商失败：{exception.Message}";
+            return null;
+        }
+
+        Status = $"已添加“{profile.Name}”；默认使用 OpenAI Compatible，请填写 API Key 后保存。";
+        return Profiles.FirstOrDefault(item => item.Id == profile.Id) ?? profile;
     }
 
     private async Task DeleteProviderAsync(object? parameter)
@@ -699,14 +1063,126 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         try
         {
             Status = $"正在请求 {CatalogProvider.Name} 的模型目录…";
-            var descriptors = await _gateway.RefreshModelsAsync(CatalogProvider.Id);
+            var descriptors = (await _gateway.RefreshModelsAsync(
+                    CatalogProvider.Id))
+                .ToList();
+            string? embeddingStatus = null;
+            if (_gateway is IEmbeddingModelCatalogGateway embeddingGateway)
+            {
+                try
+                {
+                    var dedicatedEmbeddingDescriptors =
+                        await embeddingGateway.RefreshEmbeddingModelsAsync(
+                            CatalogProvider.Id);
+                    descriptors.AddRange(dedicatedEmbeddingDescriptors);
+                }
+                catch (HttpRequestException exception)
+                {
+                    embeddingStatus =
+                        $"Embedding 专用目录未刷新：{exception.Message}";
+                }
+            }
+
+            descriptors = descriptors
+                .Where(model => !string.IsNullOrWhiteSpace(model.ModelId))
+                .GroupBy(model => model.ModelId.Trim(), StringComparer.Ordinal)
+                .Select(group => group.First())
+                .ToList();
             await _models.ReplaceAsync(CatalogProvider.Id, descriptors);
+
             await LoadCatalogSafeAsync(++_catalogLoadVersion);
-            Status = $"已刷新 {CatalogProvider.Name}：{descriptors.Count} 个模型。";
+            Status = embeddingStatus is null
+                ? $"已刷新 {CatalogProvider.Name}：{descriptors.Count} 个模型。"
+                : $"已刷新 {CatalogProvider.Name}：{descriptors.Count} 个模型；{embeddingStatus}";
         }
         catch (Exception exception)
         {
             Status = $"刷新模型失败：{exception.Message}";
+        }
+    }
+
+    private async Task AddCustomModelAsync()
+    {
+        if (CatalogProvider is null)
+        {
+            Status = "请先选择供应商。";
+            return;
+        }
+
+        if (!_persistedProfileIds.Contains(CatalogProvider.Id))
+        {
+            Status = "请先保存接入商，再添加自定义模型。";
+            return;
+        }
+
+        var modelId = await _interaction.PromptModelNameAsync(CatalogSearchText);
+        if (modelId is null)
+        {
+            return;
+        }
+
+        await SaveCustomModelCoreAsync(modelId);
+    }
+
+    public async Task<bool> SaveCustomModelAsync(string modelId)
+    {
+        return await SaveCustomModelCoreAsync(modelId);
+    }
+
+    private async Task<bool> SaveCustomModelCoreAsync(string modelId)
+    {
+        if (CatalogProvider is null)
+        {
+            Status = "请先选择供应商。";
+            return false;
+        }
+
+        if (!_persistedProfileIds.Contains(CatalogProvider.Id))
+        {
+            Status = "请先保存接入商，再添加自定义模型。";
+            return false;
+        }
+
+        var normalizedModelId = modelId.Trim();
+        if (normalizedModelId.Length == 0)
+        {
+            Status = "模型 ID 或名称不能为空。";
+            return false;
+        }
+
+        if (normalizedModelId.Contains('\r')
+            || normalizedModelId.Contains('\n'))
+        {
+            Status = "模型 ID 或名称必须是一行文本。";
+            return false;
+        }
+
+        try
+        {
+            await _models.UpsertAsync(new ProviderModel
+            {
+                ProviderId = CatalogProvider.Id,
+                ModelId = normalizedModelId,
+                DisplayName = normalizedModelId,
+                ContextLimit = 32768,
+                MaxOutputTokens = 4096,
+                SupportsStreaming = true,
+                ModelKind = ModelCatalogKind.Custom,
+                UpdatedAt = DateTimeOffset.Now
+            });
+
+            CatalogSearchText = normalizedModelId;
+            await LoadCatalogSafeAsync(++_catalogLoadVersion);
+            SelectedCatalogModel = VisibleCatalogModels.FirstOrDefault(model =>
+                model.ModelId == normalizedModelId
+                && model.ModelKind == ModelCatalogKind.Custom);
+            Status = $"已保存自定义模型：{normalizedModelId}。";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Status = $"保存自定义模型失败：{exception.Message}";
+            return false;
         }
     }
 
@@ -793,14 +1269,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                            ?? Profiles.FirstOrDefault();
             _assignmentProvider = provider;
             OnPropertyChanged(nameof(AssignmentProvider));
-            if (assignment is not null)
-            {
-                AssignmentContextLimit = assignment.ContextLimit.ToString();
-                AssignmentMaxOutputTokens = assignment.MaxOutputTokens.ToString();
-                AssignmentTemperature = assignment.Temperature.ToString("0.###");
-                AssignmentTopP = assignment.TopP.ToString("0.###");
-            }
-            else
+            if (assignment is null)
             {
                 AssignmentContextLimit = "32768";
                 AssignmentMaxOutputTokens = "4096";
@@ -811,6 +1280,15 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             await LoadAssignmentModelsSafeAsync(
                 version,
                 assignment?.ModelId);
+            if (version != _assignmentLoadVersion || assignment is null)
+            {
+                return;
+            }
+
+            AssignmentContextLimit = assignment.ContextLimit.ToString();
+            AssignmentMaxOutputTokens = assignment.MaxOutputTokens.ToString();
+            AssignmentTemperature = assignment.Temperature.ToString("0.###");
+            AssignmentTopP = assignment.TopP.ToString("0.###");
         }
         catch (Exception exception) when (version == _assignmentLoadVersion)
         {
@@ -832,6 +1310,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                     profile.Id == assignment.ProviderId);
             var reasoningAvailable =
                 assignment is not null
+                && option.Value != ModelFunctionKind.Embedding
                 && ModelFeatureSupport.SupportsOpenRouterDeepSeekReasoning(
                     provider,
                     assignment.ModelId);
@@ -856,7 +1335,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             var provider = AssignmentProvider;
             var models = provider is null
                 ? Array.Empty<ProviderModel>()
-                : await _models.ListAsync(provider.Id);
+                : (await _models.ListAsync(provider.Id)).ToArray();
             if (version != _assignmentLoadVersion)
             {
                 return;
@@ -898,33 +1377,53 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             return;
         }
 
-        if (!TryReadLimits(
-                AssignmentContextLimit,
-                AssignmentMaxOutputTokens,
-                out var contextLimit,
-                out var maxOutput,
-                out var error))
+        int contextLimit;
+        int maxOutput;
+        double temperature;
+        double topP;
+        if (IsEmbeddingFunctionSelected)
         {
-            Status = error;
-            return;
+            // The existing assignment table requires generation columns.
+            // Embedding does not use them; neutral persisted values preserve
+            // the shared provider/model assignment path without exposing
+            // meaningless generation controls in the UI.
+            contextLimit = 1024;
+            maxOutput = 1;
+            temperature = 0;
+            topP = 1;
         }
-
-        if (!double.TryParse(AssignmentTemperature, out var temperature)
-            || temperature is < 0 or > 2)
+        else
         {
-            Status = "temperature 必须在 0–2 之间。";
-            return;
-        }
+            if (!TryReadLimits(
+                    AssignmentContextLimit,
+                    AssignmentMaxOutputTokens,
+                    out contextLimit,
+                    out maxOutput,
+                    out var error))
+            {
+                Status = error;
+                return;
+            }
 
-        if (!double.TryParse(AssignmentTopP, out var topP)
-            || topP is <= 0 or > 1)
-        {
-            Status = "top_p 必须在 0（不含）–1 之间。";
-            return;
+            if (!double.TryParse(AssignmentTemperature, out temperature)
+                || temperature is < 0 or > 2)
+            {
+                Status = "temperature 必须在 0–2 之间。";
+                return;
+            }
+
+            if (!double.TryParse(AssignmentTopP, out topP)
+                || topP is <= 0 or > 1)
+            {
+                Status = "top_p 必须在 0（不含）–1 之间。";
+                return;
+            }
         }
 
         var previous = await _assignments.GetAsync(SelectedFunction.Value);
         var reasoningAvailable =
+            !IsEmbeddingFunctionSelected
+            &&
             ModelFeatureSupport.SupportsOpenRouterDeepSeekReasoning(
                 AssignmentProvider,
                 SelectedAssignmentModel.ModelId);

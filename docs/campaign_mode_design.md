@@ -666,6 +666,225 @@ R1 只做保守、可解释的精确重复检测，不做语义相似模型：
 - 通用 Agent 编排框架；
 - 本地模型/Ollama。
 
+### R2-A：Campaign State Memory Layer（第一阶段已实现，后续仍需长局验证）
+
+状态：R2-A 的最小代码闭环、GM/Public 上下文接入及 R2-A.2 更新可靠性加固已落地；`CampaignFact`、Participant Memory、分支回滚和完整管理 UI 仍属于后续范围。目标是在真实短局和中等长度跑团验证通过后，再决定是否继续扩展。
+
+#### 1. 核心结论
+
+跑团记忆不应直接复用群聊记忆，也不应把一段 LLM 摘要当成唯一事实源。目标架构为：
+
+```text
+CampaignEvent（权威事件日志）
+        ↓
+CampaignFact / CampaignState（结构化事实与当前状态）
+        ↓
+GM/Public/Participant Memory（按权限生成的文本投影）
+        ↓
+GM 与 AI 玩家上下文
+```
+
+R1 已经提供了第一层的关键基础：稳定事件序号、事件锁定、`PlayerIntent`/`GmResolution` 生命周期、`StateDelta`、`WorldSummary`、`Public`/`Private`/`GmOnly` 可见性和终态守卫。记忆层只能从这些已锁定事实派生，不能反向改变事件日志。
+
+#### 2. 非 Agent 固定流水线
+
+该功能使用普通 API 调用和确定性代码流程，不引入 Agent、多智能体、通用工作流框架、第二套生成主管或向量数据库。
+
+```text
+GM 裁定成功并锁定 CampaignEvent
+        ↓
+代码标记存在待处理记忆
+        ↓
+读取 checkpoint 之后的已锁定事件
+        ↓
+代码按可见性过滤 GM/Public 输入
+        ↓
+调用一次或数次普通 LLM API
+        ↓
+校验结构化结果和来源事件序号
+        ↓
+更新记忆投影/事实状态
+        ↓
+原子推进 checkpoint
+```
+
+代码负责：事件范围、替换/废弃判断、可见性过滤、检查点、幂等、字段校验、数据库写入、重试和上下文组装。LLM 只负责从已提供的事件中提取变化、合并重复事实、压缩文本和输出规定格式；模型不能访问数据库、选择秘密范围、调用第二个模型或自行循环。
+
+当前实现复用现有 `IProviderGateway`、`IModelAssignmentRepository` 和 `IConversationGenerationCoordinator`；没有新增 `IModelClient` 或第二套生成管理器。已新增跑团专用的 `SqliteCampaignMemoryRepository` 和 `CampaignMemoryUpdateService`；可见性过滤目前由更新服务在生成公共记忆前直接执行，后续若规则继续增长再拆成独立 `CampaignVisibilityFilter`。
+
+#### 3. 三类信息层
+
+第一阶段只建议落地两份文本记忆：
+
+```text
+GM Memory       完整事实与必要隐藏信息
+Public Memory   只由公开事件生成的共同记忆
+```
+
+后续若真实需求证明角色需要记住自己的私密经历，再增加：
+
+```text
+ParticipantMemory/{participantId}
+```
+
+它不是角色普通记忆，而是该角色在某个跑团中的专属记忆。角色普通 `memory_banks` 仍然只在建局时作为可选初始 `MemorySnapshot` 导入，跑团过程中不自动回写。
+
+AI GM 读取 GM Memory；AI 玩家读取 Public Memory、自己的角色快照、自己的初始记忆快照和被授权的 Participant Memory。公共记忆绝不能从完整 GM Memory 二次改写得到，必须先由代码过滤 `CampaignEvent.Visibility`，再单独调用模型生成，避免隐藏信息泄露。
+
+#### 4. 建议的数据增量
+
+第一阶段已新增独立跑团记忆表，不复用 `memory_banks` 的 owner 语义：
+
+```text
+campaign_memory_banks
+  id, campaign_id, scope, body, target_tokens,
+  source_through_event_sequence, prompt_version, updated_at
+
+campaign_memory_checkpoints
+  campaign_id, scope, last_event_sequence,
+  processed_round, updated_at
+```
+
+`scope` 第一阶段为 `gm` 和 `public`。当前没有新增 `campaign_rounds`、持久化 barrier 或后台队列；现有 `campaigns.current_round`、事件序号、进程内同局更新闸门和统一生成主管支撑第一版。持久化 job/CAS 仍需长局验证后再决定。
+
+#### 5. 结构化事实层
+
+长期跑团不能只靠文本摘要维护状态。目标是在 R2-A 验证成功后增加 `campaign_facts`，每条事实必须绑定来源事件：
+
+```json
+{
+  "campaignId": "...",
+  "subject": "圣剑",
+  "predicate": "location",
+  "object": "黑森林",
+  "status": "confirmed",
+  "visibility": "public",
+  "sourceEventSequence": 56
+}
+```
+
+建议状态至少区分：
+
+```text
+confirmed       GM 已确认的世界事实
+goal            玩家或角色目标
+belief          角色或玩家的猜测
+private_intent  私密计划
+```
+
+代码拒绝没有 `sourceEventSequence` 的事实，也不允许事实层覆盖 `CampaignEvent`。需要重建时，删除派生事实和记忆，再从已锁定事件重新处理。
+
+R1 现有 `StateDelta` 继续作为事件级状态变化记录；`WorldSummary` 暂不改字段名，但语义收敛为“当前世界状态短摘要”，不承担完整剧情流水账。完整历史仍由 `CampaignEvent` 保存。
+
+#### 6. PlayerIntent 与事实的关系
+
+`PlayerIntent` 不能简单地全部丢弃，也不能直接当成世界事实：
+
+```text
+玩家说“我要调查地下城”
+    → 可以记录为角色目标或当前意图
+    → 不能记录为“地下城已经调查完毕”
+```
+
+只有 `GmResolution` 确认的结果才能进入 `confirmed` 世界事实。玩家承诺、目标、猜测和私密计划可以进入对应角色的 Participant Memory，但必须标明状态和可见性。
+
+R1 不立即扩展 `CampaignEventKind`；现有 `PlayerIntent`、`GmResolution`、`StateDelta`、`PrivateDelivery` 和骰点事件已经能表达第一版边界。只有真实长局证明 `Observation`、`Revelation`、`RelationshipChange`、`QuestUpdate` 等类型需要被代码直接查询时，才增加事件枚举或事实表字段。
+
+#### 7. 增量更新与压缩
+
+不在每次更新时重新发送整个战役历史。每个 scope 只读取自己的 checkpoint 之后的新锁定事件：
+
+```text
+checkpoint 后的新事件
+        ↓
+事实/状态增量
+        ↓
+GM/Public Memory 增量更新
+```
+
+GM 与 Public 可以各自调用一次普通模型；两次调用的输入范围不同。输出建议包含受限 JSON：
+
+```json
+{
+  "body": "更新后的记忆正文",
+  "importantFacts": [],
+  "openThreads": [],
+  "sourceThroughEventSequence": 128
+}
+```
+
+Provider 不支持严格 JSON Schema 时，代码仍必须解析并检查必需字段、正文和来源序号；解析失败不得写库，保留待重试状态。
+
+增量更新负责短期连续性，达到事件数量、轮数或 Token 阈值后再做压缩。压缩只改变记忆投影，不删除原始事件和结构化事实；用户手动编辑的文本如果未来允许保存，也应作为投影草稿处理，不能成为不可重建的事实源。
+
+#### 8. 失败、重试和并发
+
+- 先保存并锁定 GM 裁定，再生成记忆；记忆失败不能回滚或阻塞跑团回合；
+- 失败时不推进 checkpoint，重新打开跑团或用户显式重试即可处理同一批事件；
+- 当前实现使用 `campaign_id + scope` 唯一约束、事件序号 checkpoint 和进程内同局更新闸门避免重复推进；持久化 CAS 与迟到结果防护留到长局验证后补充；
+- 不新增后台 Agent。第一版可以由一次非阻塞普通任务触发，并在重新打开跑团时检查 checkpoint 滞后；是否需要持久化 job 表留到真实长局后决定；
+- GM/Public 两份记忆可以在同一批事件上分别生成，但数据库提交仍必须由代码按检查点原子完成。
+
+#### 9. 跑团分支与删除
+
+如果未来支持战役克隆，父局和子局必须拥有独立记忆和独立 checkpoint。可以复制当前记忆快照，也可以从分支截止事件重建，但不能共享分支后的实时记忆。
+
+删除跑团时，跑团记忆、事实和检查点随该局删除；角色卡、角色普通记忆、剧本卡和其他跑团不受影响。跑团记忆写回角色普通记忆只能由用户显式生成并确认合并草稿。
+
+#### 10. 分阶段范围
+
+**R2-A / 第一阶段（已实现的部分）：**
+
+- GM/Public 两份跑团记忆；
+- 独立 memory 表和 checkpoint；
+- GM 裁定后按锁定事件增量更新；
+- 代码先过滤可见性，再分别调用模型；
+- AI GM 请求注入 GM Memory，AI 玩家请求只注入 Public Memory；摘要带来源序号并计入历史预算；
+- 打开跑团时检查落后 checkpoint，后台补跑并提供手动重试入口；
+- 同一 campaign 的进行中更新请求合并；长积压按模型上下文分批处理，每批成功后原子推进 checkpoint；
+- 超长记忆正文不再静默保存；上下文注入保留摘要头尾，避免单纯保留旧前缀；
+- 结构化输出和来源序号校验；
+- 失败时不推进 checkpoint，同一进程内同局更新串行，下一次更新可重试；
+- 从事件 checkpoint 继续增量处理；完整的用户触发重建入口暂缓；
+- 默认不回写角色普通记忆。
+
+**R2-B / 长局验证后：**
+
+- `campaign_facts` 结构化事实层；
+- 当前任务、关系、地点和重要物品的确定性查询；
+- Participant Memory；
+- 记忆投影压缩和用户确认的草稿编辑。
+
+**R3 / 有真实需求后：**
+
+- 战役分支/回滚；
+- 世界包导入导出；
+- 角色属性、背包、任务图、关系图和地图；
+- 特殊角色私密记忆和更细的知识边界。
+
+#### 11. 关键取舍
+
+1. **文本记忆还是结构化状态**：文本适合上下文注入，结构化事实适合查询和一致性；最终采用两者并存，事件日志永远是事实源。
+2. **GM/Public 是否共用一次摘要**：不共用；输入必须在代码侧分流，防止秘密通过二次摘要泄露。
+3. **是否把玩家意图写入记忆**：可以保存为 `goal/belief/private_intent`，但不能当作 `confirmed` 世界事实。
+4. **每回合全量重写还是增量**：增量处理 checkpoint 后事件，周期性压缩，避免长局 Token 和成本爆炸。
+5. **是否引入 Agent**：不引入；这是固定事件流水线，不是自主规划任务。
+6. **是否实时写回角色普通记忆**：不写回；跨世界污染风险高，必须通过用户确认草稿。
+7. **是否继续扩展**：R2-A 最小闭环已实现；先进行真实短局和中等长度跑团验证，没有长局证据时不提前建设 `campaign_facts`、Participant Memory、持久化 barrier 或分支回滚。
+
+#### 12. 方案验收标准
+
+1. 未锁定、失败、被替换的事件不会进入任何记忆；
+2. Public Memory 不包含 `Private` 或 `GmOnly` 事件的信息；
+3. GM/Public 记忆可以独立从事件 checkpoint 重建；
+4. 每个结构化事实都能回溯到至少一个 `sourceEventSequence`；
+5. 玩家目标和猜测不会被写成已确认世界事实；
+6. 记忆生成失败不影响已保存的 GM 裁定和回合推进；
+7. 重试不会重复写入事实、推进检查点或覆盖更新的记忆；
+8. 角色普通记忆、角色卡和其他跑团不会被跑团记忆自动修改；
+9. 长局压缩后仍可由事件日志重建，不依赖压缩文本作为唯一真相；
+10. 现有 R1 的流程预设、事件可见性、终态守卫和统一生成主管不被改写。
+
 ### R2：长局验证后再决定
 
 - 可恢复的持久化 barrier、统一回合截止时间和跳过策略；

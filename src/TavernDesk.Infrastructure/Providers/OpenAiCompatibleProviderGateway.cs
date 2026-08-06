@@ -8,7 +8,10 @@ using TavernDesk.Core.Models;
 
 namespace TavernDesk.Infrastructure.Providers;
 
-public sealed class OpenAiCompatibleProviderGateway : IProviderGateway
+public sealed class OpenAiCompatibleProviderGateway :
+    IProviderGateway,
+    IEmbeddingModelCatalogGateway,
+    IEmbeddingProviderGateway
 {
     private const int MaximumModelsResponseBytes = 8 * 1024 * 1024;
     private const int MaximumErrorResponseBytes = 64 * 1024;
@@ -28,15 +31,83 @@ public sealed class OpenAiCompatibleProviderGateway : IProviderGateway
         _httpClient = httpClient ?? CreateHttpClient();
     }
 
-    public async Task<IReadOnlyList<ProviderModelDescriptor>> RefreshModelsAsync(
+    public Task<IReadOnlyList<ProviderModelDescriptor>> RefreshModelsAsync(
         string providerId,
+        CancellationToken cancellationToken = default) =>
+        RefreshCatalogAsync(
+            providerId,
+            "models",
+            forcedKind: null,
+            cancellationToken);
+
+    public Task<IReadOnlyList<ProviderModelDescriptor>> RefreshEmbeddingModelsAsync(
+        string providerId,
+        CancellationToken cancellationToken = default) =>
+        RefreshCatalogAsync(
+            providerId,
+            "embeddings/models",
+            ModelCatalogKind.Embedding,
+            cancellationToken);
+
+    public async Task<EmbeddingResponse> CreateEmbeddingsAsync(
+        EmbeddingRequest request,
         CancellationToken cancellationToken = default)
+    {
+        if (request.Inputs.Count == 0)
+        {
+            throw new ArgumentException(
+                "Embedding 请求至少需要一条输入文本。",
+                nameof(request));
+        }
+
+        var profile = await ResolveProfileAsync(
+            request.ProviderId,
+            cancellationToken);
+        using var timeout = CreateTimeout(profile, cancellationToken);
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            BuildEndpoint(profile.BaseUrl, "embeddings"));
+        await AddAuthorizationAsync(message, profile, timeout.Token);
+        var payload = new Dictionary<string, object?>
+        {
+            ["model"] = request.ModelId,
+            ["input"] = request.Inputs.Count == 1
+                ? request.Inputs[0]
+                : request.Inputs.ToArray(),
+            ["encoding_format"] = "float"
+        };
+        message.Content = new ByteArrayContent(
+            JsonSerializer.SerializeToUtf8Bytes(payload));
+        message.Content.Headers.ContentType =
+            new MediaTypeHeaderValue("application/json");
+        using var response = await SendWithDiagnosticsAsync(
+            message,
+            profile,
+            timeout,
+            cancellationToken);
+        await EnsureSuccessAsync(response, timeout.Token);
+        var bytes = await ExecuteTransportAsync(
+            token => ReadLimitedAsync(
+                response.Content,
+                MaximumModelsResponseBytes,
+                token),
+            profile,
+            timeout,
+            cancellationToken);
+        return ReadEmbeddingResponse(bytes);
+    }
+
+    private async Task<IReadOnlyList<ProviderModelDescriptor>> RefreshCatalogAsync(
+        string providerId,
+        string endpointPath,
+        ModelCatalogKind? forcedKind,
+        CancellationToken cancellationToken)
     {
         var profile = await ResolveProfileAsync(providerId, cancellationToken);
         using var timeout = CreateTimeout(profile, cancellationToken);
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            BuildEndpoint(profile.BaseUrl, "models"));
+            BuildEndpoint(profile.BaseUrl, endpointPath));
         await AddAuthorizationAsync(request, profile, timeout.Token);
         using var response = await SendWithDiagnosticsAsync(
             request,
@@ -76,7 +147,7 @@ public sealed class OpenAiCompatibleProviderGateway : IProviderGateway
             }
 
             return data.EnumerateArray()
-                .Select(ReadModel)
+                .Select(element => ReadModel(element, forcedKind))
                 .Where(model => model is not null)
                 .Cast<ProviderModelDescriptor>()
                 .GroupBy(model => model.ModelId, StringComparer.Ordinal)
@@ -331,7 +402,9 @@ public sealed class OpenAiCompatibleProviderGateway : IProviderGateway
         }
     }
 
-    private static ProviderModelDescriptor? ReadModel(JsonElement element)
+    private static ProviderModelDescriptor? ReadModel(
+        JsonElement element,
+        ModelCatalogKind? forcedKind)
     {
         if (element.ValueKind != JsonValueKind.Object
             || !element.TryGetProperty("id", out var idElement)
@@ -366,7 +439,8 @@ public sealed class OpenAiCompatibleProviderGateway : IProviderGateway
             id,
             string.IsNullOrWhiteSpace(displayName) ? id : displayName,
             contextLimit,
-            maxOutputTokens);
+            maxOutputTokens,
+            ModelKind: forcedKind ?? ModelCatalogKind.Chat);
     }
 
     private static int? ReadPositiveInt32(
@@ -435,6 +509,60 @@ public sealed class OpenAiCompatibleProviderGateway : IProviderGateway
             StructuredContainer: message.Clone(),
             FinishReason: ReadString(choices[0], "finish_reason"),
             Usage: ReadUsage(document.RootElement));
+    }
+
+    private static EmbeddingResponse ReadEmbeddingResponse(byte[] json)
+    {
+        using var document = JsonDocument.Parse(json, new JsonDocumentOptions
+        {
+            MaxDepth = 64
+        });
+        ThrowIfApiError(document.RootElement);
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException(
+                "Embedding 响应缺少 data 数组。");
+        }
+
+        var vectors = new List<EmbeddingVector>();
+        var fallbackIndex = 0;
+        foreach (var item in data.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object
+                || !item.TryGetProperty("embedding", out var embedding)
+                || embedding.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidDataException(
+                    "Embedding 响应缺少有效的 embedding 数组。");
+            }
+
+            var values = new List<float>();
+            foreach (var value in embedding.EnumerateArray())
+            {
+                if (value.ValueKind != JsonValueKind.Number
+                    || !value.TryGetSingle(out var parsed)
+                    || !float.IsFinite(parsed))
+                {
+                    throw new InvalidDataException(
+                        "Embedding 响应包含无效的向量值。");
+                }
+
+                values.Add(parsed);
+            }
+
+            var index = item.TryGetProperty("index", out var indexElement)
+                        && indexElement.ValueKind == JsonValueKind.Number
+                        && indexElement.TryGetInt32(out var parsedIndex)
+                ? parsedIndex
+                : fallbackIndex;
+            vectors.Add(new EmbeddingVector(index, values));
+            fallbackIndex++;
+        }
+
+        return new EmbeddingResponse(
+            vectors.OrderBy(vector => vector.Index).ToArray(),
+            ReadUsage(document.RootElement));
     }
 
     private static string? ReadString(JsonElement element, string propertyName) =>

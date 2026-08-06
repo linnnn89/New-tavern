@@ -4,7 +4,10 @@ using TavernDesk.Core.Models;
 
 namespace TavernDesk.Infrastructure.Providers;
 
-public sealed class ProviderGatewayRouter : IProviderGateway
+public sealed class ProviderGatewayRouter :
+    IProviderGateway,
+    IEmbeddingModelCatalogGateway,
+    IEmbeddingProviderGateway
 {
     private readonly IProviderProfileRepository _profiles;
     private readonly IProviderGateway _openAiCompatible;
@@ -26,6 +29,34 @@ public sealed class ProviderGatewayRouter : IProviderGateway
     {
         var gateway = await ResolveAsync(providerId, cancellationToken);
         return await gateway.RefreshModelsAsync(providerId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ProviderModelDescriptor>> RefreshEmbeddingModelsAsync(
+        string providerId,
+        CancellationToken cancellationToken = default)
+    {
+        var gateway = await ResolveAsync(providerId, cancellationToken);
+        return gateway is IEmbeddingModelCatalogGateway embeddingGateway
+            ? await embeddingGateway.RefreshEmbeddingModelsAsync(
+                providerId,
+                cancellationToken)
+            : [];
+    }
+
+    public async Task<EmbeddingResponse> CreateEmbeddingsAsync(
+        EmbeddingRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var gateway = await ResolveAsync(request.ProviderId, cancellationToken);
+        if (gateway is not IEmbeddingProviderGateway embeddingGateway)
+        {
+            throw new NotSupportedException(
+                "当前接入商不支持 OpenAI-compatible Embedding 接口。");
+        }
+
+        return await embeddingGateway.CreateEmbeddingsAsync(
+            request,
+            cancellationToken);
     }
 
     public async IAsyncEnumerable<ProviderStreamEvent> StreamChatAsync(

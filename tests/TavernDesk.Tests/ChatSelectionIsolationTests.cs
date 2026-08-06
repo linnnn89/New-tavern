@@ -164,6 +164,11 @@ public sealed class ChatSelectionIsolationTests
             CancellationToken cancellationToken = default) =>
             _inner.GetAsync(id, cancellationToken);
 
+        public Task DeleteConversationAsync(
+            string conversationId,
+            CancellationToken cancellationToken = default) =>
+            _inner.DeleteConversationAsync(conversationId, cancellationToken);
+
         public async Task<IReadOnlyList<ChatMessage>> ListMessagesAsync(
             string conversationId,
             CancellationToken cancellationToken = default)
@@ -200,6 +205,15 @@ public sealed class ChatSelectionIsolationTests
             MessageCandidate candidate,
             CancellationToken cancellationToken = default) =>
             _inner.AddAndActivateCandidateAsync(candidate, cancellationToken);
+
+        public Task ActivateCandidateAsync(
+            string messageId,
+            int candidateIndex,
+            CancellationToken cancellationToken = default) =>
+            _inner.ActivateCandidateAsync(
+                messageId,
+                candidateIndex,
+                cancellationToken);
 
         public Task UpdateMessageContentAsync(
             string messageId,

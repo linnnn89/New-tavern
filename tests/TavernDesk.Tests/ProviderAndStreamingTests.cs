@@ -102,6 +102,14 @@ public sealed class ProviderAndStreamingTests
             SecretReference = "fixture-secret"
         };
         await services.Providers.UpsertAsync(profile);
+        await services.Models.UpsertAsync(new ProviderModel
+        {
+            ProviderId = profile.Id,
+            ModelId = "manual-lmstudio-model",
+            DisplayName = "Manual LM Studio Model",
+            ModelKind = ModelCatalogKind.Chat,
+            UpdatedAt = DateTimeOffset.Now
+        });
         var handler = new FixtureHttpHandler();
         var gateway = new OpenAiCompatibleProviderGateway(
             services.Providers,
@@ -173,6 +181,118 @@ public sealed class ProviderAndStreamingTests
         Assert.Contains("\"role\":\"user\"", handler.ChatRequestJson);
         Assert.Equal(1, handler.ModelsRequestCount);
         Assert.Equal(1, handler.ChatRequestCount);
+    }
+
+    [Fact]
+    public async Task OpenAiCompatibleGatewayReadsDedicatedEmbeddingCatalog()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var profile = new ProviderProfile
+        {
+            Id = "mock-openai-embedding",
+            Name = "Mock OpenAI Embedding",
+            BaseUrl = "https://mock.local",
+            SecretReference = "fixture-secret"
+        };
+        await services.Providers.UpsertAsync(profile);
+        var handler = new FixtureHttpHandler();
+        var gateway = new OpenAiCompatibleProviderGateway(
+            services.Providers,
+            new FixedSecretStore("fixture-key"),
+            new HttpClient(handler));
+
+        var models = await gateway.RefreshEmbeddingModelsAsync(profile.Id);
+
+        var model = Assert.Single(models);
+        Assert.Equal("qwen/qwen3-embedding-8b", model.ModelId);
+        Assert.Equal(ModelCatalogKind.Embedding, model.ModelKind);
+        Assert.Equal(32768, model.ContextLimit);
+        Assert.Equal(1, handler.EmbeddingModelsRequestCount);
+    }
+
+    [Fact]
+    public async Task OpenAiCompatibleGatewayPostsEmbeddingInputsToEmbeddingsEndpoint()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var profile = new ProviderProfile
+        {
+            Id = "mock-openai-embedding-request",
+            Name = "Mock OpenAI Embedding Request",
+            BaseUrl = "https://mock.local",
+            SecretReference = "fixture-secret"
+        };
+        await services.Providers.UpsertAsync(profile);
+        var handler = new FixtureHttpHandler();
+        var gateway = new OpenAiCompatibleProviderGateway(
+            services.Providers,
+            new FixedSecretStore("fixture-key"),
+            new HttpClient(handler));
+
+        var response = await gateway.CreateEmbeddingsAsync(
+            new EmbeddingRequest(
+                profile.Id,
+                "manual-lmstudio-model",
+                ["你好", "世界"]));
+
+        Assert.Equal(2, response.Vectors.Count);
+        Assert.Equal([0.1f, -0.2f], response.Vectors[0].Values);
+        Assert.Equal([0.3f, 0.4f], response.Vectors[1].Values);
+        Assert.Equal(1, handler.EmbeddingRequestCount);
+        Assert.Equal("/v1/embeddings", handler.EmbeddingRequestPath);
+        Assert.Equal(0, handler.ChatRequestCount);
+        using var requestDocument = JsonDocument.Parse(handler.EmbeddingRequestJson);
+        Assert.Equal(
+            "manual-lmstudio-model",
+            requestDocument.RootElement.GetProperty("model").GetString());
+        Assert.Equal(
+            2,
+            requestDocument.RootElement.GetProperty("input").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task ModelCatalogKeepsChatAndEmbeddingEntriesInSeparateKinds()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        const string providerId = "builtin-openrouter";
+
+        await services.Models.ReplaceAsync(
+            providerId,
+            [new ProviderModelDescriptor("chat-model", "Chat")],
+            ModelCatalogKind.Chat);
+        await services.Models.ReplaceAsync(
+            providerId,
+            [new ProviderModelDescriptor(
+                "embedding-model",
+                "Embedding",
+                ModelKind: ModelCatalogKind.Embedding)],
+            ModelCatalogKind.Embedding);
+
+        Assert.Equal(
+            "chat-model",
+            Assert.Single(await services.Models.ListAsync(
+                providerId,
+                ModelCatalogKind.Chat)).ModelId);
+        Assert.Equal(
+            "embedding-model",
+            Assert.Single(await services.Models.ListAsync(
+                providerId,
+                ModelCatalogKind.Embedding)).ModelId);
+        Assert.Equal(2, (await services.Models.ListAsync(providerId)).Count);
+
+        await services.Models.ReplaceAsync(
+            providerId,
+            [new ProviderModelDescriptor("chat-model-2", "Chat 2")],
+            ModelCatalogKind.Chat);
+        Assert.Single(
+            await services.Models.ListAsync(
+                providerId,
+                ModelCatalogKind.Embedding));
     }
 
     [Fact]
@@ -446,6 +566,63 @@ public sealed class ProviderAndStreamingTests
     }
 
     [Fact]
+    public async Task InterfaceSettingsLoadApplyAndPersistAutoScrollAndFont()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        await services.Settings.SetAsync(
+            ProviderSettingsViewModel.ChatAutoScrollSettingKey,
+            "False");
+        await services.Settings.SetAsync(
+            ProviderSettingsViewModel.InterfaceFontFamilySettingKey,
+            InterfaceSettingsRuntime.DefaultFontFamily);
+        await services.Settings.SetAsync(
+            ProviderSettingsViewModel.InterfaceFontSizeSettingKey,
+            "18");
+        var viewModel = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(),
+            services.GlobalPrompts,
+            new NoOpFileDialogService(),
+            services.Settings);
+
+        await viewModel.LoadAsync();
+
+        Assert.False(viewModel.ChatAutoScrollEnabled);
+        Assert.Equal(18, viewModel.InterfaceFontSize);
+        Assert.Equal(
+            InterfaceSettingsRuntime.DefaultFontFamily,
+            viewModel.InterfaceFontFamily);
+        Assert.False(InterfaceSettingsRuntime.ChatAutoScrollEnabled);
+        Assert.Equal(18, InterfaceSettingsRuntime.FontSize);
+
+        viewModel.ChatAutoScrollEnabled = true;
+        viewModel.InterfaceFontSize = 16;
+        viewModel.SaveInterfaceSettingsCommand.Execute(null);
+        await WaitUntilAsync(() =>
+            viewModel.InterfaceSettingsStatus.StartsWith(
+                "界面设置已保存",
+                StringComparison.Ordinal));
+
+        Assert.Equal(
+            "True",
+            await services.Settings.GetAsync(
+                ProviderSettingsViewModel.ChatAutoScrollSettingKey));
+        Assert.Equal(
+            "16",
+            await services.Settings.GetAsync(
+                ProviderSettingsViewModel.InterfaceFontSizeSettingKey));
+        Assert.True(InterfaceSettingsRuntime.ChatAutoScrollEnabled);
+        Assert.Equal(16, InterfaceSettingsRuntime.FontSize);
+    }
+
+    [Fact]
     public async Task ProviderDeletionPurgesOwnedDataAndDoesNotRestoreDeletedDefaults()
     {
         using var workspace = new TestWorkspace();
@@ -505,6 +682,60 @@ public sealed class ProviderAndStreamingTests
 
         await services.Providers.EnsureDefaultsAsync();
         Assert.Empty(await services.Providers.ListAsync());
+    }
+
+    [Fact]
+    public async Task CustomOpenAiCompatibleProviderCanBeAddedLoadedAndDeleted()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var viewModel = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(confirmProviderDeletion: true),
+            services.GlobalPrompts,
+            new NoOpFileDialogService());
+        await viewModel.LoadAsync();
+
+        var invalid = await viewModel.AddCustomProviderAsync(
+            "错误地址",
+            "https://example.com/api/v1/chat");
+        Assert.Null(invalid);
+        Assert.Contains("不要加入 /chat", viewModel.Status);
+
+        var added = await viewModel.AddCustomProviderAsync(
+            "本地代理",
+            "http://127.0.0.1:8000/api/v1");
+        Assert.NotNull(added);
+        Assert.Equal(ProviderAdapterKind.OpenAiCompatible, added.AdapterKind);
+        Assert.Equal("http://127.0.0.1:8000/api/v1", added.BaseUrl);
+        Assert.Equal(added.Id, viewModel.SelectedProfile?.Id);
+        Assert.Contains(viewModel.Profiles, profile => profile.Id == added.Id);
+
+        var reloaded = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(confirmProviderDeletion: true),
+            services.GlobalPrompts,
+            new NoOpFileDialogService());
+        await reloaded.LoadAsync();
+        var persisted = Assert.Single(
+            reloaded.Profiles,
+            profile => profile.Id == added.Id);
+        reloaded.DeleteProviderCommand.Execute(persisted);
+        await WaitUntilAsync(
+            () => reloaded.Profiles.All(profile => profile.Id != added.Id));
+
+        Assert.Null(await services.Providers.GetAsync(added.Id));
     }
 
     [Fact]
@@ -660,6 +891,192 @@ public sealed class ProviderAndStreamingTests
             item => item.Value == ModelFunctionKind.MemoryUpdate);
         Assert.Equal("未分配", memoryUpdate.ProviderName);
         Assert.Equal("—", memoryUpdate.ModelId);
+        var embedding = Assert.Single(
+            viewModel.AssignmentOverview,
+            item => item.Value == ModelFunctionKind.Embedding);
+        Assert.Equal("Embedding 向量化", embedding.Label);
+        Assert.Equal("未分配", embedding.ProviderName);
+        Assert.False(embedding.IsReasoningAvailable);
+    }
+
+    [Fact]
+    public async Task EmbeddingFunctionAssignmentPersistsWithoutGenerationParameters()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        const string providerId = "builtin-openrouter";
+        const string modelId = "fixture-embedding-model";
+        await services.Models.ReplaceAsync(
+            providerId,
+            [new ProviderModelDescriptor(modelId, "Fixture Embedding Model")],
+            ModelCatalogKind.Embedding);
+        var viewModel = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(),
+            services.GlobalPrompts,
+            new NoOpFileDialogService());
+        await viewModel.LoadAsync();
+
+        viewModel.AssignmentProvider = Assert.Single(
+            viewModel.Profiles,
+            profile => profile.Id == providerId);
+        viewModel.SelectedFunction = viewModel.FunctionOptions.Single(option =>
+            option.Value == ModelFunctionKind.Embedding);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedAssignmentModel?.ModelId == modelId);
+
+        Assert.True(viewModel.IsEmbeddingFunctionSelected);
+        viewModel.AssignmentContextLimit = "not-used";
+        viewModel.AssignmentMaxOutputTokens = "not-used";
+        viewModel.AssignmentTemperature = "not-used";
+        viewModel.AssignmentTopP = "not-used";
+
+        viewModel.SaveAssignmentCommand.Execute(null);
+        await WaitUntilAsync(() =>
+            viewModel.SaveAssignmentCommand.CanExecute(null));
+        var assignment = await services.ModelAssignments.GetAsync(
+            ModelFunctionKind.Embedding);
+
+        Assert.NotNull(assignment);
+        Assert.Equal(providerId, assignment.ProviderId);
+        Assert.Equal(modelId, assignment.ModelId);
+        Assert.Equal(1024, assignment.ContextLimit);
+        Assert.Equal(1, assignment.MaxOutputTokens);
+        Assert.Equal(0, assignment.Temperature);
+        Assert.Equal(1, assignment.TopP);
+        Assert.False(assignment.ReasoningEnabled);
+    }
+
+    [Fact]
+    public async Task ProviderSettingsSavesCustomModelsAsUniversalEntries()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var viewModel = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(editText: "custom-chat-model"),
+            services.GlobalPrompts,
+            new NoOpFileDialogService());
+        await viewModel.LoadAsync();
+        viewModel.CatalogProvider = Assert.Single(
+            viewModel.Profiles,
+            profile => profile.Id == "builtin-openrouter");
+
+        viewModel.AddCustomModelCommand.Execute(null);
+        await WaitUntilAsync(() =>
+            viewModel.Status.Contains(
+                "custom-chat-model",
+                StringComparison.Ordinal));
+        viewModel.SelectedFunction = viewModel.FunctionOptions.Single(option =>
+            option.Value == ModelFunctionKind.Embedding);
+        Assert.True(await viewModel.SaveCustomModelAsync("custom-embedding-model"));
+
+        var models = await services.Models.ListAsync("builtin-openrouter");
+        var chat = Assert.Single(models, model =>
+            model.ModelId == "custom-chat-model");
+        var embedding = Assert.Single(models, model =>
+            model.ModelId == "custom-embedding-model");
+        Assert.Equal(ModelCatalogKind.Custom, chat.ModelKind);
+        Assert.Equal(ModelCatalogKind.Custom, embedding.ModelKind);
+        Assert.Equal("custom-embedding-model", viewModel.SelectedCatalogModel?.ModelId);
+
+        viewModel.AssignmentProvider = viewModel.Profiles.Single(profile =>
+            profile.Id == "builtin-openrouter");
+        await WaitUntilAsync(() => viewModel.VisibleAssignmentModels.Any(model =>
+            model.ModelId == "custom-embedding-model"));
+    }
+
+    [Fact]
+    public async Task FunctionAssignmentSwitchRestoresFunctionSpecificRequestParameters()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        const string providerId = "builtin-openrouter";
+        const string modelId = "deepseek/deepseek-v4-flash-0731";
+        await services.Models.ReplaceAsync(
+            providerId,
+            [
+                new ProviderModelDescriptor(
+                    modelId,
+                    "DeepSeek V4 Flash",
+                    ContextLimit: 1_048_576,
+                    MaxOutputTokens: 65_536)
+            ]);
+        await services.ModelAssignments.UpsertAsync(new ModelFunctionAssignment
+        {
+            FunctionKind = ModelFunctionKind.Chat,
+            ProviderId = providerId,
+            ModelId = modelId,
+            ContextLimit = 131_072,
+            MaxOutputTokens = 8_192,
+            Temperature = 0.4,
+            TopP = 0.9,
+            UpdatedAt = DateTimeOffset.Now
+        });
+        await services.ModelAssignments.UpsertAsync(new ModelFunctionAssignment
+        {
+            FunctionKind = ModelFunctionKind.MemoryUpdate,
+            ProviderId = providerId,
+            ModelId = modelId,
+            ContextLimit = 262_144,
+            MaxOutputTokens = 16_384,
+            Temperature = 0.6,
+            TopP = 0.8,
+            UpdatedAt = DateTimeOffset.Now
+        });
+        var viewModel = new ProviderSettingsViewModel(
+            services.Providers,
+            services.Models,
+            services.ModelAssignments,
+            services.Secrets,
+            services.ProviderGateway,
+            services.ContextBudget,
+            new NoOpInteractionService(),
+            services.GlobalPrompts,
+            new NoOpFileDialogService());
+
+        await viewModel.LoadAsync();
+
+        Assert.Equal(ModelFunctionKind.Chat, viewModel.SelectedFunction.Value);
+        Assert.Equal("131072", viewModel.AssignmentContextLimit);
+        Assert.Equal("8192", viewModel.AssignmentMaxOutputTokens);
+        Assert.Equal("0.4", viewModel.AssignmentTemperature);
+        Assert.Equal("0.9", viewModel.AssignmentTopP);
+
+        viewModel.SelectedFunction = viewModel.FunctionOptions.Single(option =>
+            option.Value == ModelFunctionKind.MemoryUpdate);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedAssignmentModel?.ModelId == modelId
+            && viewModel.AssignmentTemperature == "0.6");
+
+        Assert.Equal("262144", viewModel.AssignmentContextLimit);
+        Assert.Equal("16384", viewModel.AssignmentMaxOutputTokens);
+        Assert.Equal("0.6", viewModel.AssignmentTemperature);
+        Assert.Equal("0.8", viewModel.AssignmentTopP);
+
+        viewModel.SelectedFunction = viewModel.FunctionOptions.Single(option =>
+            option.Value == ModelFunctionKind.Chat);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedAssignmentModel?.ModelId == modelId
+            && viewModel.AssignmentTemperature == "0.4");
+
+        Assert.Equal("131072", viewModel.AssignmentContextLimit);
+        Assert.Equal("8192", viewModel.AssignmentMaxOutputTokens);
+        Assert.Equal("0.4", viewModel.AssignmentTemperature);
+        Assert.Equal("0.9", viewModel.AssignmentTopP);
     }
 
     [Fact]
@@ -1121,6 +1538,167 @@ public sealed class ProviderAndStreamingTests
         Assert.Equal(
             "CUSTOM_GM",
             services.GlobalPrompts.Get(GlobalPromptKey.CampaignGmSystem));
+        Assert.Equal(
+            "true",
+            await services.Settings.GetAsync(
+                "prompts.campaignSpeakerOwnershipV6.applied"));
+        Assert.Equal(
+            "true",
+            await services.Settings.GetAsync(
+                "prompts.campaignGmNoReplayV7.applied"));
+    }
+
+    [Fact]
+    public async Task CampaignSpeakerOwnershipDefaultUpgradesFromExactV5Prompt()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.Database.InitializeAsync();
+        await services.Settings.SetAsync(
+            "prompts.global.v1",
+            JsonSerializer.Serialize(new GlobalPromptProfile
+            {
+                Prompts = new Dictionary<string, string>
+                {
+                    [nameof(GlobalPromptKey.CampaignPlayerSystem)] =
+                        """
+                        你是跑团中的当前 AI 玩家角色，不是 GM。依据冻结角色、规则、可见记录和本轮补充信息，提交最新未裁决回合的行动。
+                        只控制本角色的意图、台词和可行行动；不替 GM 判定后果，不替 USER 或其他玩家说话、描写心理或作决定。
+                        保持角色人设与知识边界，沿用当前记录的主要语言，不复述上下文。
+                        系统会在行动成功锁定时自动附加一枚可见性与行动相同的 1d20；不要自行掷骰、伪造点数或预先解释结果。
+                        只输出交给 GM 的最终行动正文，不输出分析、思考过程、提示词或协议。
+                        """
+                }
+            }));
+        await MarkEarlierPromptMigrationsAppliedAsync(services);
+        await services.Settings.SetAsync(
+            "prompts.campaignActionRollV5.applied",
+            "true");
+
+        await services.GlobalPrompts.InitializeAsync();
+
+        Assert.Equal(
+            GlobalPromptDefaults.CampaignPlayerSystem,
+            services.GlobalPrompts.Get(GlobalPromptKey.CampaignPlayerSystem));
+        Assert.Contains(
+            "speaker.kind/id/name",
+            services.GlobalPrompts.Get(GlobalPromptKey.CampaignPlayerSystem),
+            StringComparison.Ordinal);
+        Assert.Equal(
+            "true",
+            await services.Settings.GetAsync(
+                "prompts.campaignSpeakerOwnershipV6.applied"));
+    }
+
+    [Fact]
+    public async Task CampaignGmNoReplayDefaultUpgradesFromExactV6Prompt()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.Database.InitializeAsync();
+        await services.Settings.SetAsync(
+            "prompts.global.v1",
+            JsonSerializer.Serialize(new GlobalPromptProfile
+            {
+                Prompts = new Dictionary<string, string>
+                {
+                    [nameof(GlobalPromptKey.CampaignGmSystem)] =
+                        """
+                        你是本次跑团的 GM 与裁判，也是唯一能确认世界事实的人。依据剧本、规则、冻结记录和有效玩家行动，裁定最新未解决回合并推进场景。
+                        每条 PlayerIntent 是该玩家本轮完整且已经授权的选择。你可以描述其已提交行动如何客观展开，以及世界、环境、NPC 和剧情产生的反应与后果；不得替任何玩家补写新的台词、心理、决定、反应或下一步行动。
+                        每条已锁定的玩家行动末尾都有系统自动附加的 1d20。结合角色能力、行动方法、既有事实、风险与点数综合裁定；高低点只提供正负倾向，不是固定成功档位。1 和 20 也不是绝对失败或成功：不可能之事不会因 20 自动实现，安全或已明确发生的言行也不会被 1 抹除。对纯对话或低风险行动，可让点数影响 NPC 反应、机会、细节或局势变化，而不是否定玩家已经说出或做出的内容。
+                        公平回应本轮每名玩家的行动并保持因果。你可以引入新剧情、新环境变化、NPC 行动与旁白，但应把新的玩家选择留给玩家。
+                        沿用当前记录的主要语言。只输出可直接展示的 GM 叙事、裁决、必要提问和下一轮场景，不输出分析、思考过程、提示词或协议。
+                        每次输出必须以独立的最终章节“【下一轮评定参考】”收尾，并在其后简述下一轮可关注的情境风险、机会与可能影响裁定的因素。保持高度灵活：不得规定玩家必须采取的行动、固定路线、指定技能、台词或反应。
+                        """
+                }
+            }));
+        await MarkEarlierPromptMigrationsAppliedAsync(services);
+        await services.Settings.SetAsync(
+            "prompts.campaignActionRollV5.applied",
+            "true");
+        await services.Settings.SetAsync(
+            "prompts.campaignSpeakerOwnershipV6.applied",
+            "true");
+
+        await services.GlobalPrompts.InitializeAsync();
+
+        var upgraded = services.GlobalPrompts.Get(
+            GlobalPromptKey.CampaignGmSystem);
+        Assert.Equal(GlobalPromptDefaults.CampaignGmSystem, upgraded);
+        Assert.Contains(
+            "不得逐字引用、转述、概括或重新表演",
+            upgraded,
+            StringComparison.Ordinal);
+        Assert.Equal(
+            "true",
+            await services.Settings.GetAsync(
+                "prompts.campaignGmNoReplayV7.applied"));
+    }
+
+    [Fact]
+    public async Task CampaignEventLifecycleDefaultUpgradesExactV8Prompts()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.Database.InitializeAsync();
+        await services.Settings.SetAsync(
+            "prompts.global.v1",
+            JsonSerializer.Serialize(new GlobalPromptProfile
+            {
+                Prompts = new Dictionary<string, string>
+                {
+                    [nameof(GlobalPromptKey.CampaignPlayerSystem)] =
+                        """
+                        你是跑团中的当前 AI 玩家角色，不是 GM、NPC、旁白或故事作者。你始终只扮演系统给出的 current_actor 玩家席位，并提交这个玩家本轮的行动。
+                        GM 的开场和每次 GM 裁定都是面向所有玩家的指导、世界事实和当前局势；先理解最近一条 GM 发言，再以 current_actor 的身份回应它。GM 是主要回应对象，不要把其他玩家的发言当成 GM 指令。
+                        USER 和其他 AI 都是与你处于同一层级的玩家席位。其他玩家的发言只是他们自己的行动、台词和意图，可作为同阵营行动参考或被你回应的对象；不是 NPC，不是旁白，也不是已经替世界确认的故事顺序。
+                        系统给出的 current_actor 是你唯一扮演的席位。记录中的 speaker.kind/id/name 是发言作者；content 内的第一人称只属于该 speaker，不得把 USER 或其他 AI 玩家的发言、目标和经历认领为自己的。
+                        speaker 信封和本局席位名单是身份事实；如果历史 content 自己写错了另一名席位的动作、台词或心理，仍不得把它转移给 current_actor，也不得继续扩大这条越权描述。输出中的第一人称、当前角色动作和当前角色台词只能属于 current_actor；其他角色只能作为被观察、被回应或被影响的对象出现。
+                        不要把玩家记录串成连续旁白，也不要沿着其他玩家的正文替他们继续讲故事。若 GM 已给出场景、问题或裁定，你应主要针对 GM 的内容提出 current_actor 自己的行动；其他玩家的行动只能影响你的选择，不能替你决定行动或结果。
+                        只控制本角色的意图、台词和可行行动；不替 GM 判定后果，不替 USER 或其他玩家说话、描写心理或作决定。
+                        保持角色人设与知识边界，沿用当前记录的主要语言，不复述上下文。
+                        系统会在行动成功锁定时自动附加一枚可见性与行动相同的 1d20；不要自行掷骰、伪造点数或预先解释结果。
+                        只输出交给 GM 的最终行动正文，不输出分析、思考过程、提示词或协议。
+                        """,
+                    [nameof(GlobalPromptKey.CampaignGmSystem)] =
+                        """
+                        你是本次跑团的 GM 与裁判，也是唯一能确认世界事实的人。依据剧本、规则、冻结记录和有效玩家行动，裁定最新未解决回合并推进场景。
+                        “本轮待裁定行动”中的 PlayerIntent 已经逐条展示给用户。把它们视为刚刚发生完毕的输入，从所有行动结束后的时间点继续写；不得逐字引用、转述、概括或重新表演玩家已经写出的台词、动作和心理。玩家已经说出的台词视为已经说完，只描写听者、NPC、环境、规则和局势产生的新反应与后果。
+                        每条 PlayerIntent 是该玩家本轮完整且已经授权的选择。你可以裁定其已提交行动如何客观展开，以及世界、环境、NPC 和剧情产生的反应与后果；不得替任何玩家补写新的台词、心理、决定、反应或下一步行动。输出开头必须提供至少一项此前记录中没有的新结果、反应或局势变化，不能用重述玩家正文充当裁定。
+                        每条已锁定的玩家行动末尾都有系统自动附加的 1d20。结合角色能力、行动方法、既有事实、风险与点数综合裁定；高低点只提供正负倾向，不是固定成功档位。1 和 20 也不是绝对失败或成功：不可能之事不会因 20 自动实现，安全或已明确发生的言行也不会被 1 抹除。对纯对话或低风险行动，可让点数影响 NPC 反应、机会、细节或局势变化，而不是否定玩家已经说出或做出的内容。
+                        公平回应本轮每名玩家的行动并保持因果。你可以引入新剧情、新环境变化、NPC 行动与旁白，但应把新的玩家选择留给玩家。
+                        沿用当前记录的主要语言。只输出可直接展示的 GM 叙事、裁决、必要提问和下一轮场景，不输出分析、思考过程、提示词或协议。
+                        每次输出必须以独立的最终章节“【下一轮评定参考】”收尾，并在其后简述下一轮可关注的情境风险、机会与可能影响裁定的因素。保持高度灵活：不得规定玩家必须采取的行动、固定路线、指定技能、台词或反应。
+                        """
+                }
+            }));
+        await MarkEarlierPromptMigrationsAppliedAsync(services);
+        await services.Settings.SetAsync(
+            "prompts.campaignActionRollV5.applied",
+            "true");
+        await services.Settings.SetAsync(
+            "prompts.campaignSpeakerOwnershipV6.applied",
+            "true");
+        await services.Settings.SetAsync(
+            "prompts.campaignGmNoReplayV7.applied",
+            "true");
+        await services.Settings.SetAsync(
+            "prompts.campaignPlayerFocusV8.applied",
+            "true");
+
+        await services.GlobalPrompts.InitializeAsync();
+
+        Assert.Equal(
+            GlobalPromptDefaults.CampaignPlayerSystem,
+            services.GlobalPrompts.Get(GlobalPromptKey.CampaignPlayerSystem));
+        Assert.Equal(
+            GlobalPromptDefaults.CampaignGmSystem,
+            services.GlobalPrompts.Get(GlobalPromptKey.CampaignGmSystem));
+        Assert.Equal(
+            "true",
+            await services.Settings.GetAsync(
+                "prompts.campaignEventLifecycleV9.applied"));
     }
 
     [Fact]
@@ -1340,6 +1918,428 @@ public sealed class ProviderAndStreamingTests
             message.Content.StartsWith("【历史对话开始】", StringComparison.Ordinal)
             || message.Content.StartsWith("【历史对话结束】", StringComparison.Ordinal)
             || message.Content.StartsWith("【当前 USER 输入】", StringComparison.Ordinal));
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task PersonaNameImmediatelyRefreshesVisibleUserMessageLabels()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        await services.Settings.SetAsync("persona.name", "USER");
+        var character = new Character { Name = "测试角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "Persona 标签",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "{{user}} 向 {{char}} 问好"
+        });
+
+        var viewModel = CreateChatViewModel(services, services.ProviderGateway);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 1);
+
+        var userMessage = Assert.Single(viewModel.Messages);
+        Assert.Equal("USER", userMessage.SenderLabel);
+        Assert.Equal("{{user}} 向 {{char}} 问好", userMessage.Content);
+        Assert.Equal("USER 向 测试角色 问好", userMessage.DisplayContent);
+
+        viewModel.PersonaName = "旅行者";
+        Assert.Equal("旅行者", userMessage.SenderLabel);
+        Assert.Equal("旅行者 向 测试角色 问好", userMessage.DisplayContent);
+
+        viewModel.PersonaName = " ";
+        Assert.Equal("USER", userMessage.SenderLabel);
+        Assert.Equal("USER 向 测试角色 问好", userMessage.DisplayContent);
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task ContinueGenerationAppendsCharacterReplyWithoutCreatingUserMessage()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var character = new Character { Name = "续写角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "无 USER 续写",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "开场"
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "第一段"
+        });
+        await ConfigureFixtureChatModelAsync(services);
+        var gateway = new ContinuationGateway();
+        var viewModel = CreateChatViewModel(services, gateway);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 2);
+
+        var latestCharacterMessage = viewModel.Messages[^1];
+        Assert.True(latestCharacterMessage.ContinueCommand.CanExecute(null));
+        latestCharacterMessage.ContinueCommand.Execute(null);
+        await WaitUntilAsync(() => gateway.Requests.Count == 1);
+        await WaitUntilAsync(() =>
+            services.GenerationCoordinator.GetState(conversation.Id).Status
+            == ConversationGenerationStatus.Completed);
+        await WaitUntilAsync(() => !viewModel.IsCurrentConversationBusy);
+
+        var persisted = await services.Conversations.ListMessagesAsync(conversation.Id);
+        Assert.Equal(3, persisted.Count);
+        Assert.Single(
+            persisted,
+            message => message.SenderKind == MessageSenderKind.User);
+        Assert.Equal(
+            ["第一段", "第二段"],
+            persisted
+                .Where(message => message.SenderKind == MessageSenderKind.Character)
+                .Select(message => message.Content));
+        var request = Assert.Single(gateway.Requests);
+        var globalSystem = Assert.Single(request.Messages, message =>
+            message.Role == "system"
+            && message.Content.Contains(
+                "你负责生成“当前指定角色”的下一条角色扮演回复。",
+                StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            "当前用户并未发送回复",
+            globalSystem.Content,
+            StringComparison.Ordinal);
+        var continuationControl = Assert.Single(request.Messages, message =>
+            message.Content.Contains("当前用户并未发送回复", StringComparison.Ordinal));
+        Assert.Equal("user", continuationControl.Role);
+        Assert.Same(continuationControl, request.Messages[^1]);
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task RegeneratingContinuationRestoresInternalContinuationControl()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var character = new Character { Name = "续写角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "重新生成无 USER 续写",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "开场"
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "第一段"
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "第二段"
+        });
+        await ConfigureFixtureChatModelAsync(services);
+        var gateway = new ContinuationGateway();
+        var viewModel = CreateChatViewModel(services, gateway);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 3);
+
+        var continuationMessage = viewModel.Messages[^1];
+        Assert.True(continuationMessage.RegenerateCommand.CanExecute(null));
+        continuationMessage.RegenerateCommand.Execute(null);
+        await WaitUntilAsync(() => gateway.Requests.Count == 1);
+        await WaitUntilAsync(() => !viewModel.IsCurrentConversationBusy);
+
+        var request = Assert.Single(gateway.Requests);
+        var globalSystem = Assert.Single(request.Messages, message =>
+            message.Role == "system"
+            && message.Content.Contains(
+                "你负责生成“当前指定角色”的下一条角色扮演回复。",
+                StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            "当前用户并未发送回复",
+            globalSystem.Content,
+            StringComparison.Ordinal);
+        var continuationControl = Assert.Single(request.Messages, message =>
+            message.Content.Contains("当前用户并未发送回复", StringComparison.Ordinal));
+        Assert.Equal("user", continuationControl.Role);
+        Assert.Same(continuationControl, request.Messages[^1]);
+        var persisted = await services.Conversations.ListMessagesAsync(conversation.Id);
+        Assert.Single(
+            persisted,
+            message => message.SenderKind == MessageSenderKind.User);
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task RegeneratingReplyAfterUserKeepsNormalPromptWithoutContinuationControl()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var character = new Character { Name = "普通回复角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "普通回复重新生成",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "正常 USER 消息"
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "正常角色回复"
+        });
+        await ConfigureFixtureChatModelAsync(services);
+        var gateway = new ContinuationGateway();
+        var viewModel = CreateChatViewModel(services, gateway);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 2);
+
+        var normalReply = viewModel.Messages[^1];
+        normalReply.RegenerateCommand.Execute(null);
+        await WaitUntilAsync(() => gateway.Requests.Count == 1);
+        await WaitUntilAsync(() => !viewModel.IsCurrentConversationBusy);
+
+        var request = Assert.Single(gateway.Requests);
+        Assert.DoesNotContain(request.Messages, message =>
+            message.Content.Contains("当前用户并未发送回复", StringComparison.Ordinal));
+        Assert.Equal("user", request.Messages[^1].Role);
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task RegenerationAdditionalRequirementIsAppendedWithoutPersistingUserMessage()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var character = new Character { Name = "定向重生角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "带附加要求重新生成",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "原始 USER 消息"
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "原始角色回复"
+        });
+        await ConfigureFixtureChatModelAsync(services);
+        var gateway = new ContinuationGateway();
+        var interaction = new NoOpInteractionService(
+            regenerationRequirement: "让三个人的分歧更加明显");
+        var viewModel = CreateChatViewModel(services, gateway, interaction);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 2);
+
+        viewModel.Messages[^1].RegenerateCommand.Execute(null);
+        await WaitUntilAsync(() => gateway.Requests.Count == 1);
+        await WaitUntilAsync(() => !viewModel.IsCurrentConversationBusy);
+
+        var request = Assert.Single(gateway.Requests);
+        Assert.Equal("user", request.Messages[^1].Role);
+        Assert.Equal(
+            "附加要求：让三个人的分歧更加明显",
+            request.Messages[^1].Content);
+        var persisted = await services.Conversations.ListMessagesAsync(conversation.Id);
+        Assert.Single(
+            persisted,
+            message => message.SenderKind == MessageSenderKind.User);
+        var regeneratedMessage = viewModel.Messages[^1];
+        Assert.True(regeneratedMessage.HasMultipleCandidates);
+        Assert.Equal("候选 2/2", regeneratedMessage.CandidateNavigationLabel);
+        regeneratedMessage.PreviousCandidateCommand.Execute(null);
+        await WaitUntilAsync(() => regeneratedMessage.Content == "原始角色回复");
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task CandidateNavigationSwitchesPersistedMessageBetweenOldAndNewVersions()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var character = new Character { Name = "候选切换角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "候选切换",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        var message = new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "新版本",
+            ActiveCandidateIndex = 1
+        };
+        await services.Conversations.AddMessageAsync(message);
+        await services.Conversations.AddCandidateAsync(new MessageCandidate
+        {
+            MessageId = message.Id,
+            CandidateIndex = 0,
+            Content = "旧版本"
+        });
+        await services.Conversations.AddCandidateAsync(new MessageCandidate
+        {
+            MessageId = message.Id,
+            CandidateIndex = 1,
+            Content = "新版本"
+        });
+        var viewModel = CreateChatViewModel(services, services.ProviderGateway);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 1);
+
+        var candidateMessage = Assert.Single(viewModel.Messages);
+        Assert.True(candidateMessage.HasMultipleCandidates);
+        Assert.Equal("候选 2/2", candidateMessage.CandidateNavigationLabel);
+        Assert.True(candidateMessage.PreviousCandidateCommand.CanExecute(null));
+        Assert.False(candidateMessage.NextCandidateCommand.CanExecute(null));
+
+        candidateMessage.PreviousCandidateCommand.Execute(null);
+        await WaitUntilAsync(() => candidateMessage.Content == "旧版本");
+        Assert.Equal("候选 1/2", candidateMessage.CandidateNavigationLabel);
+        Assert.False(candidateMessage.PreviousCandidateCommand.CanExecute(null));
+        Assert.True(candidateMessage.NextCandidateCommand.CanExecute(null));
+        var persistedOld = Assert.Single(
+            await services.Conversations.ListMessagesAsync(conversation.Id));
+        Assert.Equal(0, persistedOld.ActiveCandidateIndex);
+        Assert.Equal("旧版本", persistedOld.Content);
+
+        candidateMessage.NextCandidateCommand.Execute(null);
+        await WaitUntilAsync(() => candidateMessage.Content == "新版本");
+        Assert.Equal("候选 2/2", candidateMessage.CandidateNavigationLabel);
+        var persistedNew = Assert.Single(
+            await services.Conversations.ListMessagesAsync(conversation.Id));
+        Assert.Equal(1, persistedNew.ActiveCandidateIndex);
+        Assert.Equal("新版本", persistedNew.Content);
+        await viewModel.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task CancellingRegenerationRequirementDialogDoesNotCallProvider()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var character = new Character { Name = "取消重生角色" };
+        await services.Characters.UpsertAsync(character);
+        var conversation = new Conversation
+        {
+            CharacterId = character.Id,
+            Title = "取消重新生成",
+            Mode = ConversationMode.SingleCharacter
+        };
+        await services.Conversations.UpsertAsync(conversation);
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.User,
+            SenderId = "local-user",
+            Content = "USER 消息"
+        });
+        await services.Conversations.AddMessageAsync(new ChatMessage
+        {
+            ConversationId = conversation.Id,
+            SenderKind = MessageSenderKind.Character,
+            SenderId = character.Id,
+            Content = "保持不变"
+        });
+        await ConfigureFixtureChatModelAsync(services);
+        var gateway = new ContinuationGateway();
+        var interaction = new NoOpInteractionService(
+            regenerationRequirement: null);
+        var viewModel = CreateChatViewModel(services, gateway, interaction);
+        await viewModel.LoadAsync();
+        await viewModel.OpenConversationAsync(conversation.Id);
+        await WaitUntilAsync(() =>
+            viewModel.SelectedConversation?.Id == conversation.Id
+            && viewModel.Messages.Count == 2);
+
+        viewModel.Messages[^1].RegenerateCommand.Execute(null);
+        await WaitUntilAsync(() => viewModel.Status == "已取消重新生成。");
+
+        Assert.Empty(gateway.Requests);
+        var persisted = await services.Conversations.ListMessagesAsync(
+            conversation.Id);
+        Assert.Equal("保持不变", persisted[^1].Content);
         await viewModel.DisposeAsync();
     }
 
@@ -1635,9 +2635,13 @@ public sealed class ProviderAndStreamingTests
     private sealed class FixtureHttpHandler : HttpMessageHandler
     {
         public int ModelsRequestCount { get; private set; }
+        public int EmbeddingModelsRequestCount { get; private set; }
+        public int EmbeddingRequestCount { get; private set; }
         public int ChatRequestCount { get; private set; }
         public string Authorization { get; private set; } = string.Empty;
         public string ChatRequestJson { get; private set; } = string.Empty;
+        public string EmbeddingRequestJson { get; private set; } = string.Empty;
+        public string EmbeddingRequestPath { get; private set; } = string.Empty;
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -1650,6 +2654,29 @@ public sealed class ProviderAndStreamingTests
                 ModelsRequestCount++;
                 return JsonResponse("""
                     {"data":[{"id":"model-b","context_length":256000},{"id":"model-a","name":"Model A","context_length":131072,"top_provider":{"max_completion_tokens":16384}},{"id":"model-null-limits","context_length":null,"max_completion_tokens":null,"top_provider":{"max_completion_tokens":null}}]}
+                """);
+            }
+
+            if (request.Method == HttpMethod.Get
+                && request.RequestUri?.AbsolutePath == "/v1/embeddings/models")
+            {
+                EmbeddingModelsRequestCount++;
+                return JsonResponse("""
+                    {"data":[{"id":"qwen/qwen3-embedding-8b","name":"Qwen3 Embedding 8B","context_length":32768,"architecture":{"output_modalities":["embeddings"]}}]}
+                    """);
+            }
+
+            if (request.Method == HttpMethod.Post
+                && request.RequestUri?.AbsolutePath.EndsWith(
+                    "/embeddings",
+                    StringComparison.Ordinal) == true)
+            {
+                EmbeddingRequestCount++;
+                EmbeddingRequestPath = request.RequestUri.AbsolutePath;
+                EmbeddingRequestJson = await request.Content!.ReadAsStringAsync(
+                    cancellationToken);
+                return JsonResponse("""
+                    {"data":[{"object":"embedding","embedding":[0.1,-0.2],"index":0},{"object":"embedding","embedding":[0.3,0.4],"index":1}],"usage":{"prompt_tokens":4,"total_tokens":4}}
                     """);
             }
 
@@ -1805,6 +2832,31 @@ public sealed class ProviderAndStreamingTests
         }
     }
 
+    private sealed class ContinuationGateway : IProviderGateway
+    {
+        public ConcurrentQueue<ModelExecutionRequest> Requests { get; } = [];
+
+        public Task<IReadOnlyList<ProviderModelDescriptor>> RefreshModelsAsync(
+            string providerId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ProviderModelDescriptor>>([]);
+
+        public async IAsyncEnumerable<ProviderStreamEvent> StreamChatAsync(
+            ModelExecutionRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            Requests.Enqueue(request);
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return new ProviderStreamEvent(
+                ProviderStreamEventKind.Content,
+                "第二段");
+            yield return new ProviderStreamEvent(
+                ProviderStreamEventKind.Completed,
+                FinishReason: "stop");
+        }
+    }
+
     private sealed class PausedStreamingGateway : IProviderGateway
     {
         private readonly TaskCompletionSource _release =
@@ -1843,13 +2895,17 @@ public sealed class ProviderAndStreamingTests
 
     private sealed class NoOpInteractionService(
         bool confirmProviderDeletion = false,
-        string? editText = null) : IUserInteractionService
+        string? editText = null,
+        string? regenerationRequirement = "") : IUserInteractionService
     {
         public Task<string?> EditTextAsync(
             string title,
             string prompt,
             string initialText) =>
             Task.FromResult(editText);
+
+        public Task<string?> PromptRegenerationRequirementAsync() =>
+            Task.FromResult(regenerationRequirement);
 
         public DeleteMessageDecision ConfirmMessageDeletion() =>
             DeleteMessageDecision.Cancel;
