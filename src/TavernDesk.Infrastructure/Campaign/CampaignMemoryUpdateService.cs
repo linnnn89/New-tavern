@@ -61,17 +61,51 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         string campaignId,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
-        var lazy = _inFlightUpdates.GetOrAdd(
+        // Keep the old entry point for explicit/manual callers. It is not
+        // used by the runner or by page loading; manual recovery deliberately
+        // bypasses the low-frequency thresholds.
+        return await QueueUpdateAsync(
             campaignId,
-            key => new Lazy<Task<CampaignMemoryUpdateResult>>(
-                () => RunUpdateAsync(key),
+            throughEventSequence: null,
+            force: true,
+            cancellationToken);
+    }
+
+    public async Task<CampaignMemoryUpdateResult> UpdateAsync(
+        string campaignId,
+        long throughEventSequence,
+        bool force = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(throughEventSequence);
+        return await QueueUpdateAsync(
+            campaignId,
+            throughEventSequence,
+            force,
+            cancellationToken);
+    }
+
+    private async Task<CampaignMemoryUpdateResult> QueueUpdateAsync(
+        string campaignId,
+        long? throughEventSequence,
+        bool force,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
+        var requestKey = $"{campaignId}|{throughEventSequence?.ToString() ?? "latest"}|{force}";
+        var lazy = _inFlightUpdates.GetOrAdd(
+            requestKey,
+            _ => new Lazy<Task<CampaignMemoryUpdateResult>>(
+                () => RunUpdateAsync(campaignId, throughEventSequence, force, requestKey),
                 LazyThreadSafetyMode.ExecutionAndPublication));
         return await lazy.Value.WaitAsync(cancellationToken);
     }
 
     private async Task<CampaignMemoryUpdateResult> RunUpdateAsync(
-        string campaignId)
+        string campaignId,
+        long? requestedThroughSequence,
+        bool force,
+        string requestKey)
     {
         var gate = _campaignGates.GetOrAdd(
             campaignId,
@@ -89,6 +123,8 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 {
                     result = await UpdateCoreAsync(
                         campaignId,
+                        requestedThroughSequence,
+                        force || lastUpdated is not null,
                         CancellationToken.None);
                 }
                 catch (OperationCanceledException)
@@ -126,22 +162,47 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         finally
         {
             gate.Release();
-            _inFlightUpdates.TryRemove(campaignId, out _);
+            _inFlightUpdates.TryRemove(requestKey, out _);
         }
     }
 
     private async Task<CampaignMemoryUpdateResult> UpdateCoreAsync(
         string campaignId,
+        long? requestedThroughSequence,
+        bool force,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
         var aggregate = await _campaigns.GetAsync(campaignId, cancellationToken)
                         ?? throw new InvalidOperationException("跑团不存在。");
-        var lockedEvents = aggregate.Events
+        if (!aggregate.Campaign.MemoryEnabled)
+        {
+            return new CampaignMemoryUpdateResult(
+                campaignId,
+                CampaignMemoryUpdateStatus.NoChanges,
+                0);
+        }
+
+        var completedEvents = aggregate.Events
             .Where(item =>
                 item.IsLocked
                 && item.GenerationStatus == CampaignGenerationStatus.Completed)
             .OrderBy(item => item.SequenceNo)
+            .ToArray();
+        var throughResolution = ResolveThroughResolution(
+            completedEvents,
+            requestedThroughSequence);
+        if (throughResolution is null)
+        {
+            return new CampaignMemoryUpdateResult(
+                campaignId,
+                CampaignMemoryUpdateStatus.NoChanges,
+                0);
+        }
+
+        var throughSequence = throughResolution.SequenceNo;
+        var lockedEvents = completedEvents
+            .Where(item => item.SequenceNo <= throughSequence)
             .ToArray();
         var bankTasks = new[]
         {
@@ -172,7 +233,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         var publicBank = bankTasks[1].Result;
         var gmCheckpoint = checkpointTasks[0].Result;
         var publicCheckpoint = checkpointTasks[1].Result;
-        var latestSequence = lockedEvents.LastOrDefault()?.SequenceNo ?? 0;
+        var latestSequence = throughSequence;
         var gmEvents = lockedEvents
             .Where(item => item.SequenceNo > (gmCheckpoint?.LastEventSequence ?? 0))
             .ToArray();
@@ -188,8 +249,25 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         }
 
         var publicVisibleEvents = publicEvents
-            .Where(item => item.Visibility == CampaignVisibility.Public)
+            .Where(item => IsEventVisibleToPublicMemory(
+                aggregate,
+                item,
+                throughSequence))
             .ToArray();
+        if (!force && !ShouldUpdateAutomatically(
+                aggregate,
+                gmCheckpoint,
+                publicCheckpoint,
+                gmEvents,
+                publicVisibleEvents,
+                lockedEvents))
+        {
+            return new CampaignMemoryUpdateResult(
+                campaignId,
+                CampaignMemoryUpdateStatus.NoChanges,
+                latestSequence);
+        }
+
         var needsModel = gmEvents.Length > 0 || publicVisibleEvents.Length > 0;
         var assignment = needsModel
             ? await _assignments.GetAsync(
@@ -284,7 +362,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 gmCheckpoint,
                 gmThroughSequence,
                 lockedEvents,
-                aggregate.Campaign.CurrentRound,
+                aggregate,
                 now));
         }
 
@@ -296,7 +374,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 publicCheckpoint,
                 publicThroughSequence,
                 lockedEvents,
-                aggregate.Campaign.CurrentRound,
+                aggregate,
                 now));
         }
 
@@ -444,6 +522,143 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
             128,
             Math.Max(128, assignment.MaxOutputTokens));
 
+    private static CampaignEvent? ResolveThroughResolution(
+        IReadOnlyList<CampaignEvent> completedEvents,
+        long? requestedThroughSequence)
+    {
+        if (requestedThroughSequence is null)
+        {
+            return completedEvents
+                .Where(item => item.Kind == CampaignEventKind.GmResolution)
+                .LastOrDefault();
+        }
+
+        var resolution = completedEvents.SingleOrDefault(item =>
+            item.SequenceNo == requestedThroughSequence.Value);
+        if (resolution?.Kind != CampaignEventKind.GmResolution)
+        {
+            throw new InvalidOperationException(
+                "跑团记忆更新边界必须是已成功锁定的 GM Resolution。检查点未推进。");
+        }
+
+        return resolution;
+    }
+
+    private static bool IsEventVisibleToPublicMemory(
+        CampaignAggregate aggregate,
+        CampaignEvent campaignEvent,
+        long throughResolutionSequence)
+    {
+        if (campaignEvent.Kind == CampaignEventKind.PlayerIntent
+            && aggregate.Campaign.FlowPreset == CampaignFlowPreset.BlindSubmission)
+        {
+            if (campaignEvent.GenerationStatus
+                != CampaignGenerationStatus.Completed
+                || !campaignEvent.IsLocked)
+            {
+                return false;
+            }
+
+            // Blind submissions become public only after the resolution that
+            // closes their round has been committed. The current-round check
+            // handles normal runner state; the sequence check also covers
+            // recovery/manual processing against a freshly saved aggregate.
+            return campaignEvent.RoundNo < aggregate.Campaign.CurrentRound
+                   || aggregate.Events.Any(item =>
+                       item.Kind == CampaignEventKind.GmResolution
+                       && item.RoundNo == campaignEvent.RoundNo
+                       && item.SequenceNo > campaignEvent.SequenceNo
+                       && item.SequenceNo <= throughResolutionSequence
+                       && item.GenerationStatus
+                       == CampaignGenerationStatus.Completed
+                       && item.IsLocked);
+        }
+
+        if (campaignEvent.Visibility != CampaignVisibility.Public)
+        {
+            return false;
+        }
+
+        return campaignEvent.Kind != CampaignEventKind.PrivateDelivery
+               || campaignEvent.Visibility == CampaignVisibility.Public;
+    }
+
+    private static bool ShouldUpdateAutomatically(
+        CampaignAggregate aggregate,
+        CampaignMemoryCheckpoint? gmCheckpoint,
+        CampaignMemoryCheckpoint? publicCheckpoint,
+        IReadOnlyList<CampaignEvent> gmEvents,
+        IReadOnlyList<CampaignEvent> publicVisibleEvents,
+        IReadOnlyList<CampaignEvent> lockedEvents)
+    {
+        var latestCompleteRound = LatestCompleteRound(
+            aggregate,
+            lockedEvents);
+        var interval = Math.Max(
+            1,
+            aggregate.Campaign.MemoryUpdateIntervalRounds);
+        var roundsSinceCheckpoint = Math.Max(
+            latestCompleteRound - (gmCheckpoint?.ProcessedRound ?? 0),
+            latestCompleteRound - (publicCheckpoint?.ProcessedRound ?? 0));
+        if (roundsSinceCheckpoint >= interval)
+        {
+            return true;
+        }
+
+        var threshold = Math.Max(
+            1_000,
+            aggregate.Campaign.MemoryUpdatePendingTokenThreshold);
+        var gmTokens = EstimateEventTokens(
+            aggregate,
+            CampaignMemoryScope.GameMaster,
+            gmEvents);
+        var publicTokens = EstimateEventTokens(
+            aggregate,
+            CampaignMemoryScope.Public,
+            publicVisibleEvents);
+        return gmTokens >= threshold || publicTokens >= threshold;
+    }
+
+    private static int LatestCompleteRound(
+        CampaignAggregate aggregate,
+        IReadOnlyList<CampaignEvent> lockedEvents)
+    {
+        var enabledParticipantIds = aggregate.Participants
+            .Where(item => item.IsEnabled)
+            .Select(item => item.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        if (enabledParticipantIds.Count == 0)
+        {
+            return lockedEvents
+                .Where(item => item.Kind == CampaignEventKind.GmResolution)
+                .Select(item => item.RoundNo)
+                .DefaultIfEmpty(0)
+                .Max();
+        }
+
+        return lockedEvents
+            .Where(item => item.Kind == CampaignEventKind.GmResolution)
+            .GroupBy(item => item.RoundNo)
+            .Where(group => group.Any()
+                && enabledParticipantIds.All(participantId =>
+                    lockedEvents.Any(item =>
+                        item.RoundNo == group.Key
+                        && item.Kind == CampaignEventKind.PlayerIntent
+                        && enabledParticipantIds.Contains(item.ActorId)
+                        && item.ActorId == participantId)))
+            .Select(group => group.Key)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+
+    private static int EstimateEventTokens(
+        CampaignAggregate aggregate,
+        CampaignMemoryScope scope,
+        IReadOnlyList<CampaignEvent> events) =>
+        events.Count == 0
+            ? 0
+            : ApproximateTokens(BuildEventJsonl(aggregate, scope, events));
+
     private static string BuildInput(
         CampaignAggregate aggregate,
         CampaignMemoryScope scope,
@@ -451,7 +666,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         IReadOnlyList<CampaignEvent> events)
     {
         var visibilityRule = scope == CampaignMemoryScope.Public
-            ? "本批次已经由代码过滤为 visibility=Public；不得推断、补回或暗示隐藏信息。"
+            ? "本批次已经由代码按公开可见性和秘密同投结算生命周期过滤；不得推断、补回或暗示隐藏信息。"
             : "这是 GM 全量记忆，可以使用本批次中已锁定的公开、私有和 GM 专用事件。";
         return $"""
             【记忆范围】
@@ -466,7 +681,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
 
             【本次新增的已锁定事件】
             以下 JSONL 是唯一可以支持新增事实的事件来源；每行的 sequence 必须保留在内部判断中。
-            {BuildEventJsonl(aggregate, events)}
+            {BuildEventJsonl(aggregate, scope, events)}
 
             【更新任务】
             合并旧记忆与新增事件，删除过时或重复内容，保留可持续影响剧情的事实和未解决线索。
@@ -477,6 +692,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
 
     private static string BuildEventJsonl(
         CampaignAggregate aggregate,
+        CampaignMemoryScope scope,
         IReadOnlyList<CampaignEvent> events)
     {
         var participants = aggregate.Participants.ToDictionary(
@@ -485,23 +701,65 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
             StringComparer.Ordinal);
         return string.Join(
             "\n",
-            events.Select(item => JsonSerializer.Serialize(
-                new
-                {
-                    round = item.RoundNo,
-                    sequence = item.SequenceNo,
-                    event_kind = item.Kind.ToString(),
-                    visibility = item.Visibility.ToString(),
-                    speaker = new
-                    {
-                        id = item.ActorId,
-                        name = participants.TryGetValue(item.ActorId, out var name)
-                            ? name
-                            : item.ActorId
-                    },
-                    content = item.Content
-                },
-                JsonOptions)));
+            events.Select(item =>
+            {
+                var speakerName = participants.TryGetValue(
+                    item.ActorId,
+                    out var name)
+                    ? name
+                    : item.ActorId;
+                var recipientName = item.RecipientId is not null
+                    && participants.TryGetValue(item.RecipientId, out var resolvedName)
+                    ? resolvedName
+                    : item.RecipientId;
+                return scope == CampaignMemoryScope.GameMaster
+                    ? JsonSerializer.Serialize(
+                        new
+                        {
+                            round = item.RoundNo,
+                            sequence = item.SequenceNo,
+                            event_kind = item.Kind.ToString(),
+                            visibility = item.Visibility.ToString(),
+                            speaker = new
+                            {
+                                id = item.ActorId,
+                                name = speakerName
+                            },
+                            recipient_id = item.RecipientId,
+                            recipient_name = recipientName,
+                            structured_data = ParseStructuredData(item.StructuredDataJson),
+                            content = item.Content
+                        },
+                        JsonOptions)
+                    : JsonSerializer.Serialize(
+                        new
+                        {
+                            round = item.RoundNo,
+                            sequence = item.SequenceNo,
+                            event_kind = item.Kind.ToString(),
+                            speaker = new
+                            {
+                                id = item.ActorId,
+                                name = speakerName
+                            },
+                            content = item.Content
+                        },
+                        JsonOptions);
+            }));
+    }
+
+    private static JsonElement ParseStructuredData(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(
+                string.IsNullOrWhiteSpace(json) ? "{}" : json);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.SerializeToElement(json ?? string.Empty);
+        }
     }
 
     private static CampaignMemoryBank CreateBank(
@@ -530,7 +788,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         CampaignMemoryCheckpoint? existing,
         long throughSequence,
         IReadOnlyList<CampaignEvent> lockedEvents,
-        int currentRound,
+        CampaignAggregate aggregate,
         DateTimeOffset updatedAt) =>
         new()
         {
@@ -539,11 +797,13 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
             LastEventSequence = Math.Max(
                 existing?.LastEventSequence ?? 0,
                 throughSequence),
-            ProcessedRound = lockedEvents
-                                 .LastOrDefault(item =>
-                                     item.SequenceNo <= throughSequence)
-                                 ?.RoundNo
-                             ?? currentRound,
+            ProcessedRound = Math.Max(
+                existing?.ProcessedRound ?? 0,
+                LatestCompleteRound(
+                    aggregate,
+                    lockedEvents
+                        .Where(item => item.SequenceNo <= throughSequence)
+                        .ToArray())),
             UpdatedAt = updatedAt
         };
 

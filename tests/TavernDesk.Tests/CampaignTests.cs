@@ -129,6 +129,7 @@ public sealed class CampaignTests
         var scenario = CreateScenario();
         await services.CampaignScenarios.UpsertAsync(scenario);
         var campaign = CreateCampaign(scenario.Id);
+        campaign.MemoryEnabled = false;
         var participants = CreateParticipants(campaign.Id);
         await services.Campaigns.SaveDraftAsync(campaign, participants);
 
@@ -151,6 +152,7 @@ public sealed class CampaignTests
         Assert.Equal(campaign.Id, clone.Campaign.ParentCampaignId);
         Assert.Equal(campaign.StoryId, clone.Campaign.StoryId);
         Assert.Equal(CampaignStatus.Draft, clone.Campaign.Status);
+        Assert.False(clone.Campaign.MemoryEnabled);
         Assert.Empty(clone.Events);
         Assert.All(
             clone.Participants,

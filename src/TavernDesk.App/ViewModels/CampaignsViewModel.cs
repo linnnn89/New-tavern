@@ -24,6 +24,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     private readonly IAppSettingsRepository _settings;
     private readonly ICampaignMemoryRepository? _campaignMemories;
     private readonly ICampaignMemoryUpdateService? _campaignMemoryUpdater;
+    private readonly ICampaignContextPlanner? _campaignContextPlanner;
     private readonly IFileDialogService _fileDialog;
     private readonly IUserInteractionService _interaction;
     private readonly IWorldbookService? _worldbooks;
@@ -61,9 +62,14 @@ public sealed class CampaignsViewModel : ViewModelBase
     private bool _isBusy;
     private bool _updatingCharacterSelection;
     private bool _campaignMemoryPending;
+    private bool _campaignMemoryNeedsEstablish;
     private string _campaignMemoryStatusText = "跑团记忆：未检查";
     private string? _campaignMemoryLastError;
-    private readonly HashSet<string> _memoryRecoveryInFlight = [];
+    private string _contextPreviewSummary = "打开后显示本阶段的上下文预算估算。";
+    private bool _contextPreviewBlocked;
+    private string? _contextPreviewBlockingReason;
+    private readonly Dictionary<string, string> _contextBlockedSeatReasons =
+        new(StringComparer.Ordinal);
     private CampaignGameUiState _gameUiState = CampaignGameUiState.Empty;
 
     public CampaignsViewModel(
@@ -82,7 +88,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         IUserInteractionService interaction,
         IWorldbookService? worldbooks = null,
         ICampaignMemoryRepository? campaignMemories = null,
-        ICampaignMemoryUpdateService? campaignMemoryUpdater = null)
+        ICampaignMemoryUpdateService? campaignMemoryUpdater = null,
+        ICampaignContextPlanner? campaignContextPlanner = null)
     {
         _scenarios = scenarios;
         _scenarioCards = scenarioCards;
@@ -97,6 +104,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         _settings = settings;
         _campaignMemories = campaignMemories;
         _campaignMemoryUpdater = campaignMemoryUpdater;
+        _campaignContextPlanner = campaignContextPlanner;
         _fileDialog = fileDialog;
         _interaction = interaction;
         _worldbooks = worldbooks;
@@ -167,6 +175,9 @@ public sealed class CampaignsViewModel : ViewModelBase
         RetryEventCommand = new AsyncRelayCommand(RetryEventAsync);
         RetryCampaignMemoryCommand = new AsyncRelayCommand(
             RetryCampaignMemoryAsync);
+        ToggleCampaignMemoryCommand = new AsyncRelayCommand(
+            ToggleCampaignMemoryAsync,
+            () => CanToggleCampaignMemory);
         ApplySeatRouteCommand = new AsyncRelayCommand(ApplySeatRouteAsync);
         ApplyGmRouteCommand = new AsyncRelayCommand(ApplyGmRouteAsync);
         OpenGlobalPromptCommand = new AsyncRelayCommand(OpenGlobalPromptAsync);
@@ -178,6 +189,8 @@ public sealed class CampaignsViewModel : ViewModelBase
     public ObservableCollection<CampaignModelOption> ModelOptions { get; } = [];
     public ObservableCollection<CampaignSeatViewModel> Seats { get; } = [];
     public ObservableCollection<CampaignEventItemViewModel> Events { get; } = [];
+    public ObservableCollection<CampaignContextPreviewItemViewModel>
+        ContextPreviewItems { get; } = [];
     public ObservableCollection<CampaignWorldbookBindingItem>
         ScenarioWorldbookBindings { get; } = [];
     public IReadOnlyList<CampaignFlowChoice> FlowChoices { get; }
@@ -205,6 +218,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     public AsyncRelayCommand RollDiceCommand { get; }
     public AsyncRelayCommand RetryEventCommand { get; }
     public AsyncRelayCommand RetryCampaignMemoryCommand { get; }
+    public AsyncRelayCommand ToggleCampaignMemoryCommand { get; }
     public AsyncRelayCommand ApplySeatRouteCommand { get; }
     public AsyncRelayCommand ApplyGmRouteCommand { get; }
     public AsyncRelayCommand OpenGlobalPromptCommand { get; }
@@ -234,6 +248,8 @@ public sealed class CampaignsViewModel : ViewModelBase
     public bool CanResolve =>
         !IsBusy
         && _gameUiState.ShowResolveSection
+        && !(_game?.Campaign.GmKind == CampaignGmKind.Ai
+             && _contextPreviewBlocked)
         && (_game?.Campaign.GmKind == CampaignGmKind.Ai
             || !string.IsNullOrWhiteSpace(GmResolutionInput));
     public bool HasUserSeat => _gameUiState.HasUserSeat;
@@ -246,7 +262,9 @@ public sealed class CampaignsViewModel : ViewModelBase
     public bool ShowBlindAiAction =>
         _gameUiState.ShowBlindAiAction;
     public bool CanGenerateBlindAiActions =>
-        !IsBusy && _gameUiState.CanGenerateBlindAiActions;
+        !IsBusy
+        && _gameUiState.CanGenerateBlindAiActions
+        && !_contextPreviewBlocked;
     public bool ShowResolveSection =>
         _gameUiState.ShowResolveSection;
     public string CurrentStepTitle => _gameUiState.CurrentStepTitle;
@@ -263,7 +281,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             ? "先输入你的本回合行动，按钮才会启用。"
             : _gameUiState.UserActionHelpText;
     public string BlindAiActionHelpText =>
-        _gameUiState.BlindAiActionHelpText;
+        _contextPreviewBlocked
+            ? ContextBlockedHelpText()
+            : _gameUiState.BlindAiActionHelpText;
     public string ResolveButtonText =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
             ? AiGmResolutionNeedsRetry
@@ -271,7 +291,10 @@ public sealed class CampaignsViewModel : ViewModelBase
                 : "让 AI GM 裁定本回合"
             : "提交我的 GM 裁定";
     public string ResolveHelpText =>
-        _game?.Campaign.GmKind == CampaignGmKind.User
+        _game?.Campaign.GmKind == CampaignGmKind.Ai
+        && _contextPreviewBlocked
+            ? ContextBlockedHelpText()
+        : _game?.Campaign.GmKind == CampaignGmKind.User
         && _gameUiState.ShowResolveSection
         && string.IsNullOrWhiteSpace(GmResolutionInput)
             ? "先填写本回合的 GM 裁定，按钮才会启用。"
@@ -292,9 +315,21 @@ public sealed class CampaignsViewModel : ViewModelBase
         ? string.Empty
         : $"已自动保存到本地 · 状态版本 {_game.Campaign.StateVersion}";
     public string CampaignMemoryStatusText => _campaignMemoryStatusText;
+    public bool IsCampaignMemoryEnabled => _game?.Campaign.MemoryEnabled == true;
+    public string CampaignMemoryToggleText =>
+        IsCampaignMemoryEnabled ? "记忆 ON" : "记忆 OFF";
+    public bool CanToggleCampaignMemory => IsGame && !IsBusy && _game is not null;
+    public string CampaignMemoryActionText => !IsCampaignMemoryEnabled
+        ? "璁板繂宸插叧闂湇鍔?"
+        : _campaignMemoryNeedsEstablish
+        ? "从已裁定历史建立"
+        : "重试跑团记忆";
+    public string ContextPreviewSummary => _contextPreviewSummary;
+    public bool HasContextPreview => ContextPreviewItems.Count > 0;
     public bool CanRetryCampaignMemory =>
         IsGame
         && !IsBusy
+        && IsCampaignMemoryEnabled
         && _campaignMemoryPending
         && _campaignMemoryUpdater is not null;
 
@@ -1337,49 +1372,91 @@ public sealed class CampaignsViewModel : ViewModelBase
         await OpenPromptSettings(key);
     }
 
-    private async Task RetryCampaignMemoryAsync(object? _)
+    private async Task ToggleCampaignMemoryAsync()
     {
-        if (_game is null || _campaignMemoryUpdater is null)
+        if (_game is null)
         {
             return;
         }
 
         var campaignId = _game.Campaign.Id;
+        var enabled = !_game.Campaign.MemoryEnabled;
+        var expectedStateVersion = _game.Campaign.StateVersion;
+        await RunUiAsync(async () =>
+        {
+            await _campaigns.UpdateMemoryEnabledAsync(
+                campaignId,
+                expectedStateVersion,
+                enabled);
+            await LoadGameAsync(campaignId);
+            StatusText = enabled
+                ? "已开启本局升级版记忆；下一次成功 GM 裁定后按原阈值继续处理。"
+                : "已关闭本局升级版记忆；不会总结或向 API 注入长期记忆。";
+        });
+    }
+
+    private async Task RetryCampaignMemoryAsync(object? _)
+    {
+        if (_game is null
+            || !_game.Campaign.MemoryEnabled
+            || _campaignMemoryUpdater is null)
+        {
+            return;
+        }
+
+        var campaignId = _game.Campaign.Id;
+        var latestResolution = LatestCompletedGmResolution(_game);
+        if (latestResolution is null)
+        {
+            _campaignMemoryPending = false;
+            SetCampaignMemoryStatus("跑团记忆：暂无可建立的 GM 裁定");
+            return;
+        }
+
         await RunUiAsync(async () =>
         {
             _campaignMemoryLastError = null;
             SetCampaignMemoryStatus("跑团记忆：正在更新…");
-            var result = await _campaignMemoryUpdater.UpdateAsync(campaignId);
+            var result = await _campaignMemoryUpdater.UpdateAsync(
+                campaignId,
+                latestResolution.SequenceNo,
+                force: true,
+                CancellationToken.None);
             if (!result.Succeeded)
             {
                 _campaignMemoryLastError = result.ErrorMessage
                                             ?? result.Status.ToString();
             }
 
-            await RefreshCampaignMemoryStatusAsync(scheduleRecovery: false);
+            await RefreshCampaignMemoryStatusAsync();
             StatusText = result.Succeeded
                 ? "跑团记忆已更新。"
                 : $"跑团记忆更新未完成：{_campaignMemoryLastError}";
         });
     }
 
-    private async Task RefreshCampaignMemoryStatusAsync(
-        bool scheduleRecovery)
+    private async Task RefreshCampaignMemoryStatusAsync()
     {
-        if (_game is null || _campaignMemories is null)
+        if (_game is null || !_game.Campaign.MemoryEnabled)
         {
             _campaignMemoryPending = false;
+            _campaignMemoryNeedsEstablish = false;
+            _campaignMemoryLastError = null;
+            SetCampaignMemoryStatus(
+                "升级版记忆：已关闭（不会总结，也不会向 API 注入长期记忆）");
+            return;
+        }
+
+        if (_campaignMemories is null)
+        {
+            _campaignMemoryPending = false;
+            _campaignMemoryNeedsEstablish = false;
             SetCampaignMemoryStatus("跑团记忆：未启用");
             return;
         }
 
-        var latestSequence = _game.Events
-            .Where(item =>
-                item.IsLocked
-                && item.GenerationStatus == CampaignGenerationStatus.Completed)
-            .Select(item => item.SequenceNo)
-            .DefaultIfEmpty(0)
-            .Max();
+        var latestResolution = LatestCompletedGmResolution(_game);
+        var latestResolutionSequence = latestResolution?.SequenceNo ?? 0;
         var gmCheckpointTask = _campaignMemories.GetCheckpointAsync(
             _game.Campaign.Id,
             CampaignMemoryScope.GameMaster);
@@ -1389,72 +1466,52 @@ public sealed class CampaignsViewModel : ViewModelBase
         await Task.WhenAll(gmCheckpointTask, publicCheckpointTask);
         var gmSequence = gmCheckpointTask.Result?.LastEventSequence ?? 0;
         var publicSequence = publicCheckpointTask.Result?.LastEventSequence ?? 0;
-        _campaignMemoryPending = latestSequence > gmSequence
-                                 || latestSequence > publicSequence;
+        _campaignMemoryPending = latestResolutionSequence > gmSequence
+                                 || latestResolutionSequence > publicSequence;
+        _campaignMemoryNeedsEstablish = latestResolution is not null
+                                         && gmCheckpointTask.Result is null
+                                         && publicCheckpointTask.Result is null;
         OnPropertyChanged(nameof(CanRetryCampaignMemory));
+        OnPropertyChanged(nameof(CampaignMemoryActionText));
         if (!string.IsNullOrWhiteSpace(_campaignMemoryLastError)
             && _campaignMemoryPending)
         {
             SetCampaignMemoryStatus(
-                $"跑团记忆：更新失败（最新 #{latestSequence}，可重试）");
+                $"跑团记忆：更新失败（GM 裁定 #{latestResolutionSequence}，可重试）");
         }
-        else if (latestSequence == 0)
+        else if (latestResolution is null)
         {
-            SetCampaignMemoryStatus("跑团记忆：暂无已锁定事件");
+            SetCampaignMemoryStatus("跑团记忆：暂无已完成 GM 裁定");
+        }
+        else if (gmCheckpointTask.Result is null
+                 && publicCheckpointTask.Result is null)
+        {
+            SetCampaignMemoryStatus(
+                $"跑团记忆：尚未建立（GM 裁定 #{latestResolutionSequence}，可手动建立）");
         }
         else if (_campaignMemoryPending)
         {
             SetCampaignMemoryStatus(
-                $"跑团记忆：待更新（GM #{gmSequence} · 公共 #{publicSequence} · 最新 #{latestSequence}）");
+                $"跑团记忆：待更新（GM #{gmSequence} · 公共 #{publicSequence} · 最新 GM 裁定 #{latestResolutionSequence}）");
         }
         else
         {
             _campaignMemoryLastError = null;
             SetCampaignMemoryStatus(
-                $"跑团记忆：已更新到事件 #{latestSequence}");
-        }
-
-        if (scheduleRecovery
-            && _campaignMemoryPending
-            && _campaignMemoryUpdater is not null)
-        {
-            _ = RecoverCampaignMemoryAsync(_game.Campaign.Id);
+                $"跑团记忆：已更新到 GM 裁定 #{latestResolutionSequence}");
         }
     }
 
-    private async Task RecoverCampaignMemoryAsync(string campaignId)
+    private static CampaignEvent? LatestCompletedGmResolution(
+        CampaignAggregate aggregate)
     {
-        if (_campaignMemoryUpdater is null
-            || !_memoryRecoveryInFlight.Add(campaignId))
-        {
-            return;
-        }
-
-        try
-        {
-            var result = await _campaignMemoryUpdater.UpdateAsync(campaignId);
-            if (_game?.Campaign.Id != campaignId)
-            {
-                return;
-            }
-
-            _campaignMemoryLastError = result.Succeeded
-                ? null
-                : result.ErrorMessage ?? result.Status.ToString();
-            await RefreshCampaignMemoryStatusAsync(scheduleRecovery: false);
-        }
-        catch (Exception exception)
-        {
-            if (_game?.Campaign.Id == campaignId)
-            {
-                _campaignMemoryLastError = exception.Message;
-                await RefreshCampaignMemoryStatusAsync(scheduleRecovery: false);
-            }
-        }
-        finally
-        {
-            _memoryRecoveryInFlight.Remove(campaignId);
-        }
+        return aggregate.Events
+            .Where(item =>
+                item.Kind == CampaignEventKind.GmResolution
+                && item.IsLocked
+                && item.GenerationStatus == CampaignGenerationStatus.Completed)
+            .OrderBy(item => item.SequenceNo)
+            .LastOrDefault();
     }
 
     private void SetCampaignMemoryStatus(string value)
@@ -1462,6 +1519,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         if (SetProperty(ref _campaignMemoryStatusText, value))
         {
             OnPropertyChanged(nameof(CanRetryCampaignMemory));
+            OnPropertyChanged(nameof(CampaignMemoryActionText));
         }
     }
 
@@ -1470,7 +1528,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         _game = await _campaigns.GetAsync(campaignId)
                 ?? throw new InvalidOperationException("跑团不存在。");
         _gameUiState = CampaignGameUiState.Create(_game);
-        await RefreshCampaignMemoryStatusAsync(scheduleRecovery: true);
+        await RefreshCampaignMemoryStatusAsync();
         SelectedGm = GmChoices.Single(item => item.Value == _game.Campaign.GmKind);
         SelectedGmRoute = FindRoute(
             _game.Campaign.GmProviderId,
@@ -1544,9 +1602,213 @@ public sealed class CampaignsViewModel : ViewModelBase
                 canRetry));
         }
 
+        await RefreshContextPreviewAsync();
         ShowScreen("game");
         RaiseGameProperties();
     }
+
+    private async Task RefreshContextPreviewAsync()
+    {
+        ContextPreviewItems.Clear();
+        _contextBlockedSeatReasons.Clear();
+        _contextPreviewBlocked = false;
+        _contextPreviewBlockingReason = null;
+        OnPropertyChanged(nameof(HasContextPreview));
+        _contextPreviewSummary = "打开后显示本阶段的上下文预算估算。";
+        OnPropertyChanged(nameof(ContextPreviewSummary));
+
+        if (_game is null || _campaignContextPlanner is null)
+        {
+            return;
+        }
+
+        var campaignId = _game.Campaign.Id;
+        try
+        {
+            if (_game.Campaign.Phase == CampaignPhase.ReadyForResolution
+                && _game.Campaign.GmKind == CampaignGmKind.Ai)
+            {
+                var scenarioTask = _scenarios.GetAsync(_game.Campaign.StoryId);
+                var memoryTask = _game.Campaign.MemoryEnabled
+                    ? _campaignMemories?.GetBankAsync(
+                        campaignId,
+                        CampaignMemoryScope.GameMaster)
+                      ?? Task.FromResult<CampaignMemoryBank?>(null)
+                    : Task.FromResult<CampaignMemoryBank?>(null);
+                await Task.WhenAll(scenarioTask, memoryTask);
+                var plan = await _campaignContextPlanner.BuildGmPlanAsync(
+                    _game,
+                    scenarioTask.Result,
+                    memoryTask.Result,
+                    includeLongTermMemory: _game.Campaign.MemoryEnabled);
+                AddContextPreviewItem("AI GM", plan);
+                SetContextPreviewBlock(plan);
+                _contextPreviewSummary =
+                    $"GM 裁定：输入 {plan.Estimate.InputTokens:N0} · "
+                    + $"预留输出 {plan.Estimate.ReservedOutputTokens:N0} · "
+                    + $"容量 {plan.Estimate.ContextLimit:N0}";
+            }
+            else if (_game.Campaign.Phase == CampaignPhase.AwaitingActions)
+            {
+                var memory = !_game.Campaign.MemoryEnabled || _campaignMemories is null
+                    ? null
+                    : await _campaignMemories.GetBankAsync(
+                        campaignId,
+                        CampaignMemoryScope.Public);
+                var aiParticipants = _game.Participants
+                    .Where(item => item.IsEnabled
+                                   && item.Kind == CampaignParticipantKind.Ai)
+                    .OrderBy(item => item.SortIndex)
+                    .ToArray();
+                var plans = await Task.WhenAll(aiParticipants.Select(
+                    participant =>
+                        _campaignContextPlanner.BuildPlayerPlanAsync(
+                            _game,
+                            participant,
+                            memory,
+                            includeLongTermMemory: _game.Campaign.MemoryEnabled)));
+                for (var index = 0; index < aiParticipants.Length; index++)
+                {
+                    AddContextPreviewItem(
+                        aiParticipants[index].DisplayName,
+                        plans[index]);
+                    if (plans[index].Status
+                        == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge)
+                    {
+                        _contextBlockedSeatReasons[aiParticipants[index].Id] =
+                            plans[index].BlockingReason
+                            ?? "固定资料或当前回合内容超过预算。";
+                    }
+                }
+                _contextPreviewBlocked = plans.Any(plan =>
+                    plan.Status
+                    == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge);
+                _contextPreviewBlockingReason = plans
+                    .Select(plan => plan.BlockingReason)
+                    .FirstOrDefault(reason => !string.IsNullOrWhiteSpace(reason));
+
+                if (_game.Campaign.FlowPreset == CampaignFlowPreset.BlindSubmission)
+                {
+                    _contextPreviewSummary =
+                        $"秘密同投：{plans.Length} 个 AI 请求 · "
+                        + $"输入合计 {plans.Sum(plan => plan.Estimate.InputTokens):N0} · "
+                        + $"输出合计 {plans.Sum(plan => plan.Estimate.ReservedOutputTokens):N0} "
+                        + "（成本提示，不是统一阻断上限）";
+                }
+                else
+                {
+                    _contextPreviewSummary =
+                        $"本阶段 {plans.Length} 个 AI 席位；每个请求独立受本局与模型上限约束。";
+                }
+            }
+
+            if (_game?.Campaign.Id == campaignId)
+            {
+                RefreshSeatActionStates();
+                OnPropertyChanged(nameof(HasContextPreview));
+                OnPropertyChanged(nameof(ContextPreviewSummary));
+                OnPropertyChanged(nameof(CanGenerateBlindAiActions));
+                OnPropertyChanged(nameof(BlindAiActionHelpText));
+                OnPropertyChanged(nameof(CanResolve));
+                OnPropertyChanged(nameof(ResolveHelpText));
+            }
+        }
+        catch (Exception exception)
+        {
+            if (_game?.Campaign.Id != campaignId)
+            {
+                return;
+            }
+
+            ContextPreviewItems.Clear();
+            _contextBlockedSeatReasons.Clear();
+            _contextPreviewBlocked = false;
+            _contextPreviewBlockingReason = null;
+            _contextPreviewSummary = $"上下文估算暂不可用：{exception.Message}";
+            RefreshSeatActionStates();
+            OnPropertyChanged(nameof(HasContextPreview));
+            OnPropertyChanged(nameof(ContextPreviewSummary));
+            OnPropertyChanged(nameof(CanGenerateBlindAiActions));
+            OnPropertyChanged(nameof(BlindAiActionHelpText));
+            OnPropertyChanged(nameof(CanResolve));
+            OnPropertyChanged(nameof(ResolveHelpText));
+        }
+    }
+
+    private void SetContextPreviewBlock(CampaignContextPlan plan)
+    {
+        _contextPreviewBlocked =
+            plan.Status == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge;
+        _contextPreviewBlockingReason = plan.BlockingReason;
+    }
+
+    private void AddContextPreviewItem(
+        string title,
+        CampaignContextPlan plan)
+    {
+        var status = ContextPlanStatusText(plan);
+        var sections = plan.Sections
+            .Where(section => section.IsMandatory
+                             || section.EstimatedTokens > 0
+                             || (section.Kind == ContextSegmentKind.Memory
+                                 && !section.WasIncluded
+                                 && !section.WasTruncated))
+            .Select(section => new CampaignContextSectionItemViewModel(
+                section.Title,
+                $"{section.EstimatedTokens:N0} tokens",
+                ContextSectionStateText(section)))
+            .ToArray();
+        ContextPreviewItems.Add(new CampaignContextPreviewItemViewModel(
+            title,
+            $"输入 {plan.Estimate.InputTokens:N0} · "
+            + $"预留输出 {plan.Estimate.ReservedOutputTokens:N0} · "
+            + $"容量 {plan.Estimate.ContextLimit:N0}",
+            status,
+            sections));
+    }
+
+    private static string ContextPlanStatusText(CampaignContextPlan plan)
+    {
+        var status = plan.Status switch
+        {
+            CampaignContextPlanStatus.Ready => "上下文在预算内",
+            CampaignContextPlanStatus.HistoryTrimmed => "较旧历史已按预算省略",
+            CampaignContextPlanStatus.BlockedMandatoryContextTooLarge =>
+                "固定资料与当前回合内容已超过预算",
+            _ => plan.Status.ToString()
+        };
+        if (plan.Status == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge
+            && !string.IsNullOrWhiteSpace(plan.BlockingReason))
+        {
+            status += $"：{plan.BlockingReason}";
+        }
+
+        return plan.Estimate.IsExact
+            ? status
+            : $"{status} · 当前模型使用启发式 Token 估算";
+    }
+
+    private string ContextBlockedHelpText() =>
+        string.IsNullOrWhiteSpace(_contextPreviewBlockingReason)
+            ? "上下文固定资料或当前回合内容超过预算；请调整模型上限、角色资料或本局预算后重试。"
+            : $"上下文固定资料或当前回合内容超过预算：{_contextPreviewBlockingReason}";
+
+    private static string ContextSectionStateText(
+        CampaignContextSectionEstimate section) =>
+        section.Kind == ContextSegmentKind.Memory
+        && !section.WasIncluded
+        && !section.WasTruncated
+        && section.EstimatedTokens == 0
+            ? "已关闭（0 tokens）"
+            : section.WasIncluded
+            ? section.WasTruncated
+                ? "已纳入（已裁剪）"
+                : "已纳入"
+            : section.IsMandatory
+                ? "固定资料超限"
+                : section.WasTruncated
+                    ? "按预算省略"
+                    : "未纳入";
 
     private static bool CanDisplayEvent(
         CampaignAggregate aggregate,
@@ -1674,10 +1936,15 @@ public sealed class CampaignsViewModel : ViewModelBase
             var actionState = CampaignSeatActionState.Create(
                 _game,
                 seat.Participant);
+            var contextBlocked = _contextBlockedSeatReasons.TryGetValue(
+                seat.Id,
+                out var contextReason);
             seat.ShowActionButton = actionState.ShowButton;
             seat.CanGenerateAction =
-                actionState.CanAct && !IsBusy;
-            seat.ActionHelpText = actionState.HelpText;
+                actionState.CanAct && !IsBusy && !contextBlocked;
+            seat.ActionHelpText = contextBlocked
+                ? $"上下文预算不足：{contextReason}"
+                : actionState.HelpText;
         }
     }
 
@@ -1708,7 +1975,14 @@ public sealed class CampaignsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ScheduleUserJoinButtonText));
         OnPropertyChanged(nameof(ScheduleUserJoinHelpText));
         OnPropertyChanged(nameof(CampaignMemoryStatusText));
+        OnPropertyChanged(nameof(IsCampaignMemoryEnabled));
+        OnPropertyChanged(nameof(CampaignMemoryToggleText));
+        OnPropertyChanged(nameof(CanToggleCampaignMemory));
+        OnPropertyChanged(nameof(CampaignMemoryActionText));
         OnPropertyChanged(nameof(CanRetryCampaignMemory));
+        OnPropertyChanged(nameof(ContextPreviewSummary));
+        OnPropertyChanged(nameof(HasContextPreview));
+        ToggleCampaignMemoryCommand.RaiseCanExecuteChanged();
     }
 
     private async Task RunUiAsync(Func<Task> operation)

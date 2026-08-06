@@ -1627,7 +1627,7 @@ public sealed class ProviderAndStreamingTests
             GlobalPromptKey.CampaignGmSystem);
         Assert.Equal(GlobalPromptDefaults.CampaignGmSystem, upgraded);
         Assert.Contains(
-            "不得逐字引用、转述、概括或重新表演",
+            "不得按玩家顺序重新叙述动作过程、汇集对白或回顾整轮剧情",
             upgraded,
             StringComparison.Ordinal);
         Assert.Equal(
@@ -1852,6 +1852,7 @@ public sealed class ProviderAndStreamingTests
         await WaitUntilAsync(() =>
             services.GenerationCoordinator.GetState(conversation.Id).Status
             == ConversationGenerationStatus.Completed);
+        await WaitUntilAsync(() => !viewModel.IsCurrentConversationBusy);
 
         var request = Assert.Single(gateway.Requests);
         Assert.Equal($"chat:{conversation.Id}", request.SessionId);
@@ -2218,7 +2219,7 @@ public sealed class ProviderAndStreamingTests
             message => message.SenderKind == MessageSenderKind.User);
         var regeneratedMessage = viewModel.Messages[^1];
         Assert.True(regeneratedMessage.HasMultipleCandidates);
-        Assert.Equal("候选 2/2", regeneratedMessage.CandidateNavigationLabel);
+        Assert.Equal("2/2", regeneratedMessage.CandidateNavigationLabel);
         regeneratedMessage.PreviousCandidateCommand.Execute(null);
         await WaitUntilAsync(() => regeneratedMessage.Content == "原始角色回复");
         await viewModel.DisposeAsync();
@@ -2269,13 +2270,13 @@ public sealed class ProviderAndStreamingTests
 
         var candidateMessage = Assert.Single(viewModel.Messages);
         Assert.True(candidateMessage.HasMultipleCandidates);
-        Assert.Equal("候选 2/2", candidateMessage.CandidateNavigationLabel);
+        Assert.Equal("2/2", candidateMessage.CandidateNavigationLabel);
         Assert.True(candidateMessage.PreviousCandidateCommand.CanExecute(null));
         Assert.False(candidateMessage.NextCandidateCommand.CanExecute(null));
 
         candidateMessage.PreviousCandidateCommand.Execute(null);
         await WaitUntilAsync(() => candidateMessage.Content == "旧版本");
-        Assert.Equal("候选 1/2", candidateMessage.CandidateNavigationLabel);
+        Assert.Equal("1/2", candidateMessage.CandidateNavigationLabel);
         Assert.False(candidateMessage.PreviousCandidateCommand.CanExecute(null));
         Assert.True(candidateMessage.NextCandidateCommand.CanExecute(null));
         var persistedOld = Assert.Single(
@@ -2285,7 +2286,7 @@ public sealed class ProviderAndStreamingTests
 
         candidateMessage.NextCandidateCommand.Execute(null);
         await WaitUntilAsync(() => candidateMessage.Content == "新版本");
-        Assert.Equal("候选 2/2", candidateMessage.CandidateNavigationLabel);
+        Assert.Equal("2/2", candidateMessage.CandidateNavigationLabel);
         var persistedNew = Assert.Single(
             await services.Conversations.ListMessagesAsync(conversation.Id));
         Assert.Equal(1, persistedNew.ActiveCandidateIndex);

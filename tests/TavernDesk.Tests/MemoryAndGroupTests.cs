@@ -265,17 +265,18 @@ public sealed class MemoryAndGroupTests
             "【记忆叙述契约】",
             plan.SystemPrompt,
             StringComparison.Ordinal);
+        var normalizedPayload = plan.InputPayload.ReplaceLineEndings("\n");
         Assert.Contains(
             "【记忆主体】\n角色共享记忆 · 角色甲",
-            plan.InputPayload,
+            normalizedPayload,
             StringComparison.Ordinal);
         Assert.Contains(
             "【用户身份】\n小明",
-            plan.InputPayload,
+            normalizedPayload,
             StringComparison.Ordinal);
-        Assert.Contains("[用户：小明 #1]", plan.InputPayload, StringComparison.Ordinal);
-        Assert.Contains("[角色：角色甲 #2]", plan.InputPayload, StringComparison.Ordinal);
-        Assert.DoesNotContain("[USER #1]", plan.InputPayload, StringComparison.Ordinal);
+        Assert.Contains("[用户：小明 #1]", normalizedPayload, StringComparison.Ordinal);
+        Assert.Contains("[角色：角色甲 #2]", normalizedPayload, StringComparison.Ordinal);
+        Assert.DoesNotContain("[USER #1]", normalizedPayload, StringComparison.Ordinal);
     }
 
     private static ChatMessage CreateMessage(

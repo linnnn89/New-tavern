@@ -579,7 +579,21 @@
                                    FontSize="12" />
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="重试跑团记忆"
+                        <StackPanel Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal">
+                            <TextBlock Text="{Binding CampaignMemoryToggleText}"
+                                       Margin="0,0,6,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <ToggleButton IsChecked="{Binding IsCampaignMemoryEnabled}"
+                                          IsEnabled="{Binding CanToggleCampaignMemory}"
+                                          Command="{Binding ToggleCampaignMemoryCommand}"
+                                          ToolTip="切换本局升级版记忆；关闭后不总结、不向 API 注入长期记忆。"
+                                          Style="{StaticResource ReasoningToggleStyle}" />
+                        </StackPanel>
+                        <Button Content="{Binding CampaignMemoryActionText}"
                                 Command="{Binding RetryCampaignMemoryCommand}"
                                 IsEnabled="{Binding CanRetryCampaignMemory}"
                                 ToolTip="重试处理已锁定但尚未进入 GM/Public 记忆的事件。"
@@ -752,6 +766,68 @@
                                                Text="{Binding CurrentStepProgressText}"
                                                FontSize="12"
                                                Foreground="{StaticResource AccentBrush}" />
+
+                                    <Expander Margin="0,12,0,0"
+                                              Header="本轮上下文估算"
+                                              IsExpanded="False"
+                                              Visibility="{Binding HasContextPreview, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <StackPanel Margin="0,8,0,0">
+                                            <TextBlock Text="{Binding ContextPreviewSummary}"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                            <ItemsControl Margin="0,8,0,0"
+                                                          ItemsSource="{Binding ContextPreviewItems}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,0,0,8"
+                                                                Padding="9,7"
+                                                                Background="{StaticResource SurfaceAltBrush}"
+                                                                CornerRadius="7">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Title}"
+                                                                           FontWeight="SemiBold" />
+                                                                <TextBlock Margin="0,3,0,0"
+                                                                           Text="{Binding BudgetText}"
+                                                                           FontSize="12" />
+                                                                <TextBlock Margin="0,3,0,0"
+                                                                           Text="{Binding StatusText}"
+                                                                           FontSize="12"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{StaticResource AccentBrush}" />
+                                                                <ItemsControl Margin="0,6,0,0"
+                                                                              ItemsSource="{Binding Sections}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Grid Margin="0,1,0,0">
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="*" />
+                                                                                    <ColumnDefinition Width="Auto" />
+                                                                                </Grid.ColumnDefinitions>
+                                                                                <TextBlock Text="{Binding Title}"
+                                                                                           FontSize="11"
+                                                                                           TextWrapping="Wrap" />
+                                                                                <StackPanel Grid.Column="1"
+                                                                                            Margin="6,0,0,0">
+                                                                                    <TextBlock Text="{Binding TokenText}"
+                                                                                               FontSize="11"
+                                                                                               HorizontalAlignment="Right" />
+                                                                                    <TextBlock Text="{Binding StateText}"
+                                                                                               FontSize="10"
+                                                                                               HorizontalAlignment="Right"
+                                                                                               Foreground="{StaticResource MutedTextBrush}" />
+                                                                                </StackPanel>
+                                                                            </Grid>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Expander>
 
                                     <StackPanel Margin="0,14,0,0"
                                                 Visibility="{Binding ShowUserActionSection, Converter={StaticResource BooleanToVisibilityConverter}}">

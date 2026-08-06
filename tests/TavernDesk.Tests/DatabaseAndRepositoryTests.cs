@@ -152,6 +152,8 @@ public sealed class DatabaseAndRepositoryTests
                 INSERT INTO schema_info(version, applied_at) VALUES(14, '2026-08-01T00:00:13+08:00');
                 INSERT INTO schema_info(version, applied_at) VALUES(15, '2026-08-01T00:00:14+08:00');
                 INSERT INTO schema_info(version, applied_at) VALUES(16, '2026-08-01T00:00:15+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(17, '2026-08-01T00:00:16+08:00');
+                INSERT INTO schema_info(version, applied_at) VALUES(18, '2026-08-01T00:00:17+08:00');
                 """;
             await command.ExecuteNonQueryAsync();
         }
@@ -206,6 +208,18 @@ public sealed class DatabaseAndRepositoryTests
 
                 ALTER TABLE memory_workflow_settings
                 DROP COLUMN send_only_new_messages;
+
+                ALTER TABLE campaigns
+                DROP COLUMN context_token_budget;
+
+                ALTER TABLE campaigns
+                DROP COLUMN memory_update_interval_rounds;
+
+                ALTER TABLE campaigns
+                DROP COLUMN memory_update_pending_token_threshold;
+
+                ALTER TABLE campaigns
+                DROP COLUMN memory_enabled;
 
                 DELETE FROM schema_info
                 WHERE version >= 10;

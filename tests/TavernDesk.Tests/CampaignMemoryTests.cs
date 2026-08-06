@@ -10,6 +10,277 @@ namespace TavernDesk.Tests;
 public sealed class CampaignMemoryTests
 {
     [Fact]
+    public async Task DisabledCampaignMemoryNeverCallsProviderOrCreatesCheckpoint()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var campaign = await CreateActiveCampaignAsync(
+            services,
+            configure: item => item.MemoryEnabled = false);
+        var resolution = await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.GmResolution,
+            "disabled memory resolution",
+            CampaignVisibility.Public,
+            "disabled-resolution",
+            roundNo: 1);
+        var gateway = new RecordingMemoryGateway();
+        var service = new CampaignMemoryUpdateService(
+            services.Campaigns,
+            services.CampaignMemoryRepository,
+            services.ModelAssignments,
+            gateway,
+            services.GenerationCoordinator);
+
+        var result = await service.UpdateAsync(
+            campaign.Id,
+            resolution.SequenceNo,
+            force: true);
+
+        Assert.Equal(CampaignMemoryUpdateStatus.NoChanges, result.Status);
+        Assert.Empty(gateway.Requests);
+        Assert.Null(await services.CampaignMemoryRepository.GetBankAsync(
+            campaign.Id,
+            CampaignMemoryScope.GameMaster));
+        Assert.Null(await services.CampaignMemoryRepository.GetCheckpointAsync(
+            campaign.Id,
+            CampaignMemoryScope.Public));
+    }
+
+    [Fact]
+    public async Task AutomaticUpdateWaitsForThreeCompleteRoundsAndStopsAtResolutionBoundary()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var campaign = await CreateActiveCampaignAsync(services);
+        await ConfigureMemoryAssignmentAsync(services);
+        var gateway = new RecordingMemoryGateway();
+        var service = new CampaignMemoryUpdateService(
+            services.Campaigns,
+            services.CampaignMemoryRepository,
+            services.ModelAssignments,
+            gateway,
+            services.GenerationCoordinator);
+
+        long lastResolutionSequence = 0;
+        for (var round = 1; round <= 2; round++)
+        {
+            await AppendLockedEventAsync(
+                services,
+                campaign.Id,
+                CampaignEventKind.PlayerIntent,
+                $"第 {round} 轮行动",
+                CampaignVisibility.Public,
+                $"action-{round}",
+                roundNo: round);
+            var resolution = await AppendLockedEventAsync(
+                services,
+                campaign.Id,
+                CampaignEventKind.GmResolution,
+                $"第 {round} 轮裁定",
+                CampaignVisibility.Public,
+                $"resolution-{round}",
+                roundNo: round);
+            lastResolutionSequence = resolution.SequenceNo;
+
+            var result = await service.UpdateAsync(
+                campaign.Id,
+                lastResolutionSequence);
+            Assert.Equal(CampaignMemoryUpdateStatus.NoChanges, result.Status);
+            Assert.Empty(gateway.Requests);
+        }
+
+        await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.PlayerIntent,
+            "第 3 轮行动",
+            CampaignVisibility.Public,
+            "action-3",
+            roundNo: 3);
+        var thirdResolution = await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.GmResolution,
+            "第 3 轮裁定",
+            CampaignVisibility.Public,
+            "resolution-3",
+            roundNo: 3);
+        await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.PlayerIntent,
+            "下一轮尚未裁定，不应进入本次记忆",
+            CampaignVisibility.Public,
+            "action-4",
+            roundNo: 4);
+
+        var updated = await service.UpdateAsync(
+            campaign.Id,
+            thirdResolution.SequenceNo);
+
+        Assert.Equal(CampaignMemoryUpdateStatus.Updated, updated.Status);
+        Assert.Equal(thirdResolution.SequenceNo, updated.SourceThroughEventSequence);
+        Assert.Equal(2, gateway.Requests.Count);
+        Assert.DoesNotContain(
+            "下一轮尚未裁定",
+            gateway.Requests[0].Messages[1].Content,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "下一轮尚未裁定",
+            gateway.Requests[1].Messages[1].Content,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AutomaticUpdateUsesPendingTokenThresholdBeforeRoundInterval()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var campaign = await CreateActiveCampaignAsync(
+            services,
+            configure: item =>
+            {
+                item.MemoryUpdateIntervalRounds = 50;
+                item.MemoryUpdatePendingTokenThreshold = 1_000;
+            });
+        await ConfigureMemoryAssignmentAsync(services);
+        var gateway = new RecordingMemoryGateway();
+        var service = new CampaignMemoryUpdateService(
+            services.Campaigns,
+            services.CampaignMemoryRepository,
+            services.ModelAssignments,
+            gateway,
+            services.GenerationCoordinator);
+        await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.PlayerIntent,
+            new string('长', 6_000),
+            CampaignVisibility.Public,
+            "large-action",
+            roundNo: 1);
+        var resolution = await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.GmResolution,
+            "大输入裁定",
+            CampaignVisibility.Public,
+            "large-resolution",
+            roundNo: 1);
+
+        var result = await service.UpdateAsync(campaign.Id, resolution.SequenceNo);
+
+        Assert.Equal(CampaignMemoryUpdateStatus.Updated, result.Status);
+        Assert.Equal(2, gateway.Requests.Count);
+    }
+
+    [Fact]
+    public async Task BlindSubmissionIsPublicOnlyAfterResolutionAndGmPayloadKeepsRecipientMetadata()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var campaign = await CreateActiveCampaignAsync(
+            services,
+            flowPreset: CampaignFlowPreset.BlindSubmission);
+        var participant = (await services.Campaigns.GetAsync(campaign.Id))!
+            .Participants
+            .Single();
+        await ConfigureMemoryAssignmentAsync(services);
+        var gateway = new RecordingMemoryGateway();
+        var service = new CampaignMemoryUpdateService(
+            services.Campaigns,
+            services.CampaignMemoryRepository,
+            services.ModelAssignments,
+            gateway,
+            services.GenerationCoordinator);
+        await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.PlayerIntent,
+            "秘密行动在裁定后公开",
+            CampaignVisibility.Private,
+            "blind-action",
+            roundNo: 1,
+            actorId: participant.Id,
+            recipientId: participant.Id,
+            structuredDataJson: "{\"roll\":20}");
+        await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.PrivateDelivery,
+            "只给该玩家的私密投递",
+            CampaignVisibility.Private,
+            "private-delivery",
+            roundNo: 1,
+            actorId: "gm:user",
+            recipientId: participant.Id,
+            structuredDataJson: "{\"delivery\":\"secret\"}");
+        var resolution = await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.GmResolution,
+            "秘密行动的公开裁定",
+            CampaignVisibility.Public,
+            "blind-resolution",
+            roundNo: 1,
+            actorId: "gm:user");
+
+        var result = await service.UpdateAsync(
+            campaign.Id,
+            resolution.SequenceNo,
+            force: true);
+
+        Assert.Equal(CampaignMemoryUpdateStatus.Updated, result.Status);
+        Assert.Equal(2, gateway.Requests.Count);
+        var gmInput = gateway.Requests[0].Messages[1].Content;
+        var publicInput = gateway.Requests[1].Messages[1].Content;
+        Assert.Contains("recipient_id", gmInput, StringComparison.Ordinal);
+        Assert.Contains(participant.Id, gmInput, StringComparison.Ordinal);
+        Assert.Contains("structured_data", gmInput, StringComparison.Ordinal);
+        Assert.Contains("秘密行动在裁定后公开", publicInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("只给该玩家的私密投递", publicInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("recipient_id", publicInput, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NonResolutionBoundaryFailsWithoutCallingProvider()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var campaign = await CreateActiveCampaignAsync(services);
+        var action = await AppendLockedEventAsync(
+            services,
+            campaign.Id,
+            CampaignEventKind.PlayerIntent,
+            "只是一条行动",
+            CampaignVisibility.Public,
+            "boundary-action");
+        await ConfigureMemoryAssignmentAsync(services);
+        var gateway = new RecordingMemoryGateway();
+        var service = new CampaignMemoryUpdateService(
+            services.Campaigns,
+            services.CampaignMemoryRepository,
+            services.ModelAssignments,
+            gateway,
+            services.GenerationCoordinator);
+
+        var result = await service.UpdateAsync(campaign.Id, action.SequenceNo);
+
+        Assert.Equal(CampaignMemoryUpdateStatus.Failed, result.Status);
+        Assert.Empty(gateway.Requests);
+        Assert.Null(await services.CampaignMemoryRepository.GetCheckpointAsync(
+            campaign.Id,
+            CampaignMemoryScope.GameMaster));
+    }
+
+    [Fact]
     public async Task UpdateSeparatesPublicMemoryAndAdvancesBothCheckpoints()
     {
         using var workspace = new TestWorkspace();
@@ -130,7 +401,9 @@ public sealed class CampaignMemoryTests
     }
 
     private static async Task<Campaign> CreateActiveCampaignAsync(
-        InfrastructureServices services)
+        InfrastructureServices services,
+        CampaignFlowPreset flowPreset = CampaignFlowPreset.CollaborativeTable,
+        Action<Campaign>? configure = null)
     {
         var scenario = new CampaignScenario
         {
@@ -147,8 +420,10 @@ public sealed class CampaignMemoryTests
             WorldSetting = scenario.WorldSetting,
             Rules = scenario.PublicRules,
             OpeningPrompt = scenario.OpeningSetup,
-            GmKind = CampaignGmKind.User
+            GmKind = CampaignGmKind.User,
+            FlowPreset = flowPreset
         };
+        configure?.Invoke(campaign);
         await services.Campaigns.SaveDraftAsync(
             campaign,
             [new CampaignParticipant
@@ -162,22 +437,39 @@ public sealed class CampaignMemoryTests
         return campaign;
     }
 
-    private static async Task AppendLockedEventAsync(
+    private static async Task<CampaignEvent> AppendLockedEventAsync(
         InfrastructureServices services,
         string campaignId,
         CampaignEventKind kind,
         string content,
         CampaignVisibility visibility,
-        string operationId)
+        string operationId,
+        int roundNo = 1,
+        string? actorId = null,
+        string? recipientId = null,
+        string structuredDataJson = "{}")
     {
-        await services.Campaigns.AppendEventAsync(new CampaignEvent
+        var resolvedActorId = actorId;
+        if (resolvedActorId is null)
+        {
+            resolvedActorId = kind == CampaignEventKind.GmResolution
+                ? "gm:user"
+                : (await services.Campaigns.GetAsync(campaignId))!
+                    .Participants
+                    .First(item => item.IsEnabled)
+                    .Id;
+        }
+
+        return await services.Campaigns.AppendEventAsync(new CampaignEvent
         {
             CampaignId = campaignId,
-            RoundNo = 1,
+            RoundNo = roundNo,
             Kind = kind,
-            ActorId = kind == CampaignEventKind.GmResolution ? "gm:user" : "测试玩家",
+            ActorId = resolvedActorId,
+            RecipientId = recipientId,
             Visibility = visibility,
             Content = content,
+            StructuredDataJson = structuredDataJson,
             GenerationStatus = CampaignGenerationStatus.Completed,
             EndReason = CampaignEndReason.Normal,
             OperationId = operationId,

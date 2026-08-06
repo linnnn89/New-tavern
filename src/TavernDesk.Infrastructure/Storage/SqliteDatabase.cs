@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 15;
+    public const int CurrentSchemaVersion = 17;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -851,6 +851,25 @@ public sealed class SqliteDatabase : IDatabaseInitializer
 
             CREATE INDEX IF NOT EXISTS ix_campaign_memory_checkpoints_campaign
                 ON campaign_memory_checkpoints(campaign_id, scope);
+            """),
+        new(
+            16,
+            """
+            ALTER TABLE campaigns
+                ADD COLUMN context_token_budget INTEGER NOT NULL DEFAULT 15000;
+
+            ALTER TABLE campaigns
+                ADD COLUMN memory_update_interval_rounds INTEGER NOT NULL DEFAULT 3;
+
+            ALTER TABLE campaigns
+                ADD COLUMN memory_update_pending_token_threshold
+                    INTEGER NOT NULL DEFAULT 4000;
+            """),
+        new(
+            17,
+            """
+            ALTER TABLE campaigns
+                ADD COLUMN memory_enabled INTEGER NOT NULL DEFAULT 1;
             """)
     ];
 

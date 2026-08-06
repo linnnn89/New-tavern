@@ -248,13 +248,18 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             UserPersonaDescription = source.Campaign.UserPersonaDescription,
             GmProviderId = source.Campaign.GmProviderId,
             GmModelId = source.Campaign.GmModelId,
-            GmContextLimit = source.Campaign.GmContextLimit,
-            GmMaxOutputTokens = source.Campaign.GmMaxOutputTokens,
-            GmTemperature = source.Campaign.GmTemperature,
-            GmTopP = source.Campaign.GmTopP,
-            PlayerHistoryBudget = source.Campaign.PlayerHistoryBudget,
-            GmHistoryBudget = source.Campaign.GmHistoryBudget,
-            UpdatedAt = now
+             GmContextLimit = source.Campaign.GmContextLimit,
+             GmMaxOutputTokens = source.Campaign.GmMaxOutputTokens,
+             GmTemperature = source.Campaign.GmTemperature,
+             GmTopP = source.Campaign.GmTopP,
+             PlayerHistoryBudget = source.Campaign.PlayerHistoryBudget,
+             GmHistoryBudget = source.Campaign.GmHistoryBudget,
+             ContextTokenBudget = source.Campaign.ContextTokenBudget,
+             MemoryUpdateIntervalRounds = source.Campaign.MemoryUpdateIntervalRounds,
+             MemoryUpdatePendingTokenThreshold =
+                 source.Campaign.MemoryUpdatePendingTokenThreshold,
+             MemoryEnabled = source.Campaign.MemoryEnabled,
+             UpdatedAt = now
         };
         var participants = source.Participants
             .Select(item => new CampaignParticipant
@@ -689,6 +694,37 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         {
             await transaction.RollbackAsync(CancellationToken.None);
             throw;
+        }
+    }
+
+    public async Task UpdateMemoryEnabledAsync(
+        string campaignId,
+        int expectedStateVersion,
+        bool enabled,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE campaigns
+            SET memory_enabled = $memoryEnabled,
+                state_version = state_version + 1,
+                updated_at = $updatedAt
+            WHERE id = $campaignId
+              AND status = $active
+              AND state_version = $expectedStateVersion;
+            """;
+        command.Parameters.AddWithValue("$memoryEnabled", enabled);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.Parameters.AddWithValue("$campaignId", campaignId);
+        command.Parameters.AddWithValue("$active", (int)CampaignStatus.Active);
+        command.Parameters.AddWithValue("$expectedStateVersion", expectedStateVersion);
+        if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+        {
+            throw new InvalidOperationException(
+                "璺戝洟鐘舵€佸凡缁忓彉鍖栵紝璇峰埛鏂板悗閲嶈瘯璁剧疆璁板繂妯″紡銆�");
         }
     }
 
@@ -1219,8 +1255,10 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 state_version, world_summary, user_persona_name,
                 user_persona_description, gm_provider_id, gm_model_id,
                 gm_context_limit, gm_max_output_tokens, gm_temperature, gm_top_p,
-                player_history_budget, gm_history_budget, created_at, updated_at,
-                started_at)
+                player_history_budget, gm_history_budget, context_token_budget,
+                memory_update_interval_rounds, memory_update_pending_token_threshold,
+                memory_enabled,
+                created_at, updated_at, started_at)
             VALUES(
                 $id, $storyId, $parentCampaignId, $title, $worldSetting, $rules,
                 $openingPrompt, $gmKind, $userAlsoPlayer, $flowPreset, $status,
@@ -1228,8 +1266,10 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 $stateVersion, $worldSummary, $userPersonaName,
                 $userPersonaDescription, $gmProviderId, $gmModelId,
                 $gmContextLimit, $gmMaxOutputTokens, $gmTemperature, $gmTopP,
-                $playerHistoryBudget, $gmHistoryBudget, $createdAt, $updatedAt,
-                $startedAt)
+                $playerHistoryBudget, $gmHistoryBudget, $contextTokenBudget,
+                $memoryUpdateIntervalRounds, $memoryUpdatePendingTokenThreshold,
+                $memoryEnabled,
+                $createdAt, $updatedAt, $startedAt)
             ON CONFLICT(id) DO UPDATE SET
                 story_id = excluded.story_id,
                 parent_campaign_id = excluded.parent_campaign_id,
@@ -1245,13 +1285,19 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 user_persona_description = excluded.user_persona_description,
                 gm_provider_id = excluded.gm_provider_id,
                 gm_model_id = excluded.gm_model_id,
-                gm_context_limit = excluded.gm_context_limit,
-                gm_max_output_tokens = excluded.gm_max_output_tokens,
-                gm_temperature = excluded.gm_temperature,
-                gm_top_p = excluded.gm_top_p,
-                player_history_budget = excluded.player_history_budget,
-                gm_history_budget = excluded.gm_history_budget,
-                updated_at = excluded.updated_at
+                 gm_context_limit = excluded.gm_context_limit,
+                 gm_max_output_tokens = excluded.gm_max_output_tokens,
+                 gm_temperature = excluded.gm_temperature,
+                 gm_top_p = excluded.gm_top_p,
+                 player_history_budget = excluded.player_history_budget,
+                 gm_history_budget = excluded.gm_history_budget,
+                 context_token_budget = excluded.context_token_budget,
+                 memory_update_interval_rounds =
+                     excluded.memory_update_interval_rounds,
+                 memory_update_pending_token_threshold =
+                     excluded.memory_update_pending_token_threshold,
+                 memory_enabled = excluded.memory_enabled,
+                 updated_at = excluded.updated_at
             WHERE campaigns.status = $draft;
             """;
         AddCampaignParameters(command, campaign);
@@ -1292,6 +1338,7 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         SqliteCommand command,
         Campaign campaign)
     {
+        campaign.NormalizeContextSettings();
         command.Parameters.AddWithValue("$id", campaign.Id);
         command.Parameters.AddWithValue("$storyId", campaign.StoryId);
         command.Parameters.AddWithValue(
@@ -1327,6 +1374,16 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             "$playerHistoryBudget",
             campaign.PlayerHistoryBudget);
         command.Parameters.AddWithValue("$gmHistoryBudget", campaign.GmHistoryBudget);
+        command.Parameters.AddWithValue(
+            "$contextTokenBudget",
+            campaign.ContextTokenBudget);
+        command.Parameters.AddWithValue(
+            "$memoryUpdateIntervalRounds",
+            campaign.MemoryUpdateIntervalRounds);
+        command.Parameters.AddWithValue(
+            "$memoryUpdatePendingTokenThreshold",
+            campaign.MemoryUpdatePendingTokenThreshold);
+        command.Parameters.AddWithValue("$memoryEnabled", campaign.MemoryEnabled);
         command.Parameters.AddWithValue("$createdAt", campaign.CreatedAt.ToString("O"));
         command.Parameters.AddWithValue("$updatedAt", campaign.UpdatedAt.ToString("O"));
         command.Parameters.AddWithValue(
@@ -1456,8 +1513,10 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                    state_version, world_summary, user_persona_name,
                    user_persona_description, gm_provider_id, gm_model_id,
                    gm_context_limit, gm_max_output_tokens, gm_temperature, gm_top_p,
-                   player_history_budget, gm_history_budget, created_at, updated_at,
-                   started_at
+                   player_history_budget, gm_history_budget, context_token_budget,
+                   memory_update_interval_rounds, memory_update_pending_token_threshold,
+                   memory_enabled,
+                   created_at, updated_at, started_at
             FROM campaigns
             WHERE id = $campaignId;
             """;
@@ -1569,8 +1628,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         return await reader.ReadAsync(cancellationToken) ? ReadEvent(reader) : null;
     }
 
-    private static Campaign ReadCampaign(SqliteDataReader reader) =>
-        new()
+    private static Campaign ReadCampaign(SqliteDataReader reader)
+    {
+        var campaign = new Campaign
         {
             Id = reader.GetString(0),
             StoryId = reader.GetString(1),
@@ -1599,12 +1659,19 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             GmTopP = reader.GetDouble(24),
             PlayerHistoryBudget = reader.GetInt32(25),
             GmHistoryBudget = reader.GetInt32(26),
-            CreatedAt = DateTimeOffset.Parse(reader.GetString(27)),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(28)),
-            StartedAt = reader.IsDBNull(29)
+            ContextTokenBudget = reader.GetInt32(27),
+            MemoryUpdateIntervalRounds = reader.GetInt32(28),
+            MemoryUpdatePendingTokenThreshold = reader.GetInt32(29),
+            MemoryEnabled = reader.GetBoolean(30),
+            CreatedAt = DateTimeOffset.Parse(reader.GetString(31)),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(32)),
+            StartedAt = reader.IsDBNull(33)
                 ? null
-                : DateTimeOffset.Parse(reader.GetString(29))
+                : DateTimeOffset.Parse(reader.GetString(33))
         };
+        campaign.NormalizeContextSettings();
+        return campaign;
+    }
 
     private static CampaignParticipant ReadParticipant(SqliteDataReader reader) =>
         new()

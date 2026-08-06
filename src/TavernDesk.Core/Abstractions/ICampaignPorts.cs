@@ -78,6 +78,12 @@ public interface ICampaignRepository
         CampaignRuntimeUpdate update,
         CancellationToken cancellationToken = default);
 
+    Task UpdateMemoryEnabledAsync(
+        string campaignId,
+        int expectedStateVersion,
+        bool enabled,
+        CancellationToken cancellationToken = default);
+
     Task ScheduleUserJoinAsync(
         string campaignId,
         int expectedStateVersion,

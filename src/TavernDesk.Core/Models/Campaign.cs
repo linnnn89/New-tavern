@@ -112,11 +112,28 @@ public sealed class Campaign
     public double GmTopP { get; set; } = 1;
     public int PlayerHistoryBudget { get; set; } = 12000;
     public int GmHistoryBudget { get; set; } = 20000;
+    public int ContextTokenBudget { get; set; } = 15000;
+    public int MemoryUpdateIntervalRounds { get; set; } = 3;
+    public int MemoryUpdatePendingTokenThreshold { get; set; } = 4000;
+    public bool MemoryEnabled { get; set; } = true;
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset? StartedAt { get; set; }
 
     public bool IsFrozen => Status != CampaignStatus.Draft;
+
+    public void NormalizeContextSettings()
+    {
+        ContextTokenBudget = Math.Clamp(ContextTokenBudget, 8_000, 200_000);
+        MemoryUpdateIntervalRounds = Math.Clamp(
+            MemoryUpdateIntervalRounds,
+            1,
+            50);
+        MemoryUpdatePendingTokenThreshold = Math.Clamp(
+            MemoryUpdatePendingTokenThreshold,
+            1_000,
+            50_000);
+    }
 }
 
 public sealed class CampaignParticipant

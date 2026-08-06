@@ -42,6 +42,7 @@ public sealed class InfrastructureServices
         Presets = new SqlitePresetRepository(Database);
         PresetResolver = new PresetResolver(Presets);
         TokenEstimator = new ModelAwareTokenEstimator();
+        CampaignContextPlanner = new CampaignContextPlanner(TokenEstimator, GlobalPrompts);
         ContextBudget = new DefaultContextBudgetProvider();
         MacroEngine = new SafeMacroEngine();
         WorldbookEngine = new CharacterWorldbookEngine(MacroEngine);
@@ -72,7 +73,8 @@ public sealed class InfrastructureServices
             GenerationCoordinator,
             GlobalPrompts,
             CampaignMemory,
-            CampaignMemoryRepository);
+            CampaignMemoryRepository,
+            CampaignContextPlanner);
         CharacterCardCodecs =
         [
             new SillyTavernPngCardCodec(),
@@ -138,6 +140,7 @@ public sealed class InfrastructureServices
     public IPresetRepository Presets { get; }
     public IPresetResolver PresetResolver { get; }
     public ITokenEstimator TokenEstimator { get; }
+    public ICampaignContextPlanner CampaignContextPlanner { get; }
     public IContextBudgetProvider ContextBudget { get; }
     public IMacroEngine MacroEngine { get; }
     public IWorldbookEngine WorldbookEngine { get; }

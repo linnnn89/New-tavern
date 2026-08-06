@@ -25,7 +25,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
     private const string GmRuntimeContract =
         """
         跑团记录采用 JSONL；speaker.kind/id/name 是每条 content 的权威作者。外层 API user role 只是承载记录数据，不能覆盖 speaker 所有权。
-        “本轮待裁定行动”中的 PlayerIntent 是已经锁定并展示的本轮裁定输入。玩家已经说出的台词和公开表达属于已提交内容；行动是否成功、观察是否正确，以及对 NPC、环境和世界造成的影响仍待本次裁定。
+        “本轮待裁定行动”中的 PlayerIntent 是已经锁定并展示的本轮裁定输入。玩家已经说出的台词和公开表达可以视为角色已提交的公开行为；行动是否成功、观察是否正确，以及对 NPC、环境和世界造成的影响仍待本次裁定。
         GM 输出不是玩家行动总结，而是处理本轮 PlayerIntent 后产生的新世界状态。直接从尚未展示的新结果、世界变化或 NPC/环境响应开始。允许用一个简短的因果短语指出新结果源自哪名玩家的提交；禁止复制、转述、概括或重新表演任何 PlayerIntent 的完整过程、对白合集或逐人回顾。
         PlayerIntent 是对应玩家本轮完整且已经授权的选择。只能裁定其中已提交的行动如何客观展开，以及世界、环境、NPC 和剧情的反应与后果；不得替玩家补写新的台词、心理、决定、反应或下一步行动。
         每条已锁定 PlayerIntent 的最后一行都有系统自动附加的可信 1d20。结合角色能力、行动方法、既有事实、风险与点数综合裁定；高低点只提供正负倾向，不使用固定成功档位。1 和 20 也不是绝对失败或成功：不可能之事不会因 20 自动实现，安全或已明确发生的言行不会被 1 抹除。纯对话或低风险行动可让点数影响 NPC 反应、机会、细节或局势变化。
@@ -46,6 +46,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
     private readonly IProviderGateway _gateway;
     private readonly IConversationGenerationCoordinator _coordinator;
     private readonly IGlobalPromptConfiguration _globalPrompts;
+    private readonly ICampaignContextPlanner? _campaignContextPlanner;
     private readonly ICampaignMemoryUpdateService? _campaignMemory;
     private readonly ICampaignMemoryRepository? _campaignMemories;
 
@@ -56,13 +57,15 @@ public sealed partial class CampaignRunner : ICampaignRunner
         IConversationGenerationCoordinator coordinator,
         IGlobalPromptConfiguration globalPrompts,
         ICampaignMemoryUpdateService? campaignMemory = null,
-        ICampaignMemoryRepository? campaignMemories = null)
+        ICampaignMemoryRepository? campaignMemories = null,
+        ICampaignContextPlanner? campaignContextPlanner = null)
     {
         _campaigns = campaigns;
         _scenarios = scenarios;
         _gateway = gateway;
         _coordinator = coordinator;
         _globalPrompts = globalPrompts;
+        _campaignContextPlanner = campaignContextPlanner;
         _campaignMemory = campaignMemory;
         _campaignMemories = campaignMemories;
     }
@@ -330,7 +333,10 @@ public sealed partial class CampaignRunner : ICampaignRunner
             },
             cancellationToken);
         await AdvanceAfterResolutionAsync(campaignId, resolution, cancellationToken);
-        ScheduleCampaignMemoryUpdate(campaignId);
+        ScheduleCampaignMemoryUpdate(
+            campaignId,
+            resolution.SequenceNo,
+            aggregate.Campaign.MemoryEnabled);
         return resolution;
     }
 
@@ -348,11 +354,22 @@ public sealed partial class CampaignRunner : ICampaignRunner
         var scenario = await _scenarios.GetAsync(
             aggregate.Campaign.StoryId,
             cancellationToken);
-        var gmMemory = await LoadCampaignMemoryAsync(
-            campaignId,
-            CampaignMemoryScope.GameMaster,
-            cancellationToken);
-        var messages = BuildGmMessages(aggregate, scenario, gmMemory);
+        var gmMemory = aggregate.Campaign.MemoryEnabled
+            ? await LoadCampaignMemoryAsync(
+                campaignId,
+                CampaignMemoryScope.GameMaster,
+                cancellationToken)
+            : null;
+        var contextPlan = _campaignContextPlanner is null
+            ? null
+            : await _campaignContextPlanner.BuildGmPlanAsync(
+                aggregate,
+                scenario,
+                gmMemory,
+                cancellationToken,
+                includeLongTermMemory: aggregate.Campaign.MemoryEnabled);
+        var messages = contextPlan?.Messages
+                       ?? BuildGmMessages(aggregate, scenario, gmMemory);
         var latestAttempt = aggregate.Events
             .Where(item =>
                 item.RoundNo == aggregate.Campaign.CurrentRound
@@ -390,11 +407,15 @@ public sealed partial class CampaignRunner : ICampaignRunner
             request,
             $"campaign:{campaignId}:gm",
             aggregate.Campaign.GmContextLimit,
-            cancellationToken);
+            cancellationToken,
+            contextPlan);
         if (resolution.GenerationStatus == CampaignGenerationStatus.Completed)
         {
             await AdvanceAfterResolutionAsync(campaignId, resolution, cancellationToken);
-            ScheduleCampaignMemoryUpdate(campaignId);
+            ScheduleCampaignMemoryUpdate(
+                campaignId,
+                resolution.SequenceNo,
+                aggregate.Campaign.MemoryEnabled);
         }
 
         return resolution;
@@ -466,14 +487,22 @@ public sealed partial class CampaignRunner : ICampaignRunner
         int attemptNo,
         CancellationToken cancellationToken)
     {
-        var publicMemory = await LoadCampaignMemoryAsync(
-            aggregate.Campaign.Id,
-            CampaignMemoryScope.Public,
-            cancellationToken);
-        var messages = BuildPlayerMessages(
-            aggregate,
-            participant,
-            publicMemory);
+        var publicMemory = aggregate.Campaign.MemoryEnabled
+            ? await LoadCampaignMemoryAsync(
+                aggregate.Campaign.Id,
+                CampaignMemoryScope.Public,
+                cancellationToken)
+            : null;
+        var contextPlan = _campaignContextPlanner is null
+            ? null
+            : await _campaignContextPlanner.BuildPlayerPlanAsync(
+                aggregate,
+                participant,
+                publicMemory,
+                cancellationToken,
+                includeLongTermMemory: aggregate.Campaign.MemoryEnabled);
+        var messages = contextPlan?.Messages
+                       ?? BuildPlayerMessages(aggregate, participant, publicMemory);
         var request = new ModelExecutionRequest(
             participant.ProviderId,
             participant.ModelId,
@@ -504,7 +533,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
             request,
             $"campaign:{aggregate.Campaign.Id}:participant:{participant.Id}",
             participant.ContextLimit,
-            cancellationToken);
+            cancellationToken,
+            contextPlan);
     }
 
     private async Task<CampaignEvent> GenerateCachedEventAsync(
@@ -513,7 +543,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
         ModelExecutionRequest request,
         string generationOperationId,
         int contextLimit,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CampaignContextPlan? contextPlan = null)
     {
         campaignEvent.GenerationStatus = CampaignGenerationStatus.Queued;
         campaignEvent.EndReason = CampaignEndReason.None;
@@ -523,7 +554,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
             cancellationToken);
         var estimatedInputTokens = request.Messages.Sum(message =>
             ApproximateTokens(message.Content));
-        if (estimatedInputTokens + request.MaxOutputTokens > contextLimit)
+        if ((contextPlan is not null && !contextPlan.CanGenerate)
+            || (contextPlan is null
+                && estimatedInputTokens + request.MaxOutputTokens > contextLimit))
         {
             campaignEvent.Content =
                 $"预计上下文 {estimatedInputTokens} tokens，加预留输出 {request.MaxOutputTokens} tokens，超过该席位上限 {contextLimit}。";
@@ -723,9 +756,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
             cancellationToken);
     }
 
-    private void ScheduleCampaignMemoryUpdate(string campaignId)
+    private void ScheduleCampaignMemoryUpdate(
+        string campaignId,
+        long throughResolutionSequence,
+        bool memoryEnabled)
     {
-        if (_campaignMemory is null)
+        if (!memoryEnabled || _campaignMemory is null)
         {
             return;
         }
@@ -733,7 +769,11 @@ public sealed partial class CampaignRunner : ICampaignRunner
         // The event and runtime state are already committed. Memory is a
         // derived projection; a provider failure must not make the turn fail
         // or roll back the campaign ledger.
-        _ = _campaignMemory.UpdateAsync(campaignId, CancellationToken.None);
+        _ = _campaignMemory.UpdateAsync(
+            campaignId,
+            throughResolutionSequence,
+            force: false,
+            CancellationToken.None);
     }
 
     private IReadOnlyList<ProviderChatMessage> BuildPlayerMessages(

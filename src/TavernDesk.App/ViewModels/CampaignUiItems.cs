@@ -158,6 +158,17 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     }
 }
 
+public sealed record CampaignContextSectionItemViewModel(
+    string Title,
+    string TokenText,
+    string StateText);
+
+public sealed record CampaignContextPreviewItemViewModel(
+    string Title,
+    string BudgetText,
+    string StatusText,
+    IReadOnlyList<CampaignContextSectionItemViewModel> Sections);
+
 public sealed record CampaignEventItemViewModel(
     CampaignEvent Event,
     string ActorName,

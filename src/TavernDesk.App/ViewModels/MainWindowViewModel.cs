@@ -99,7 +99,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             interaction,
             services.WorldbookService,
             services.CampaignMemoryRepository,
-            services.CampaignMemory);
+            services.CampaignMemory,
+            services.CampaignContextPlanner);
         Chat.OpenPromptSettings = OpenPromptSettingsAsync;
         Campaigns.OpenPromptSettings = OpenPromptSettingsAsync;
         services.GenerationCoordinator.StateChanged += OnGenerationStateChanged;
