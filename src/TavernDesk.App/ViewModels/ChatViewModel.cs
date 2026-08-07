@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -38,6 +39,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private readonly Dictionary<string, Character> _characterLookup =
         new(StringComparer.Ordinal);
     private readonly Func<string, Task>? _openConversationWindow;
+    private readonly PlayerPersonaManagerViewModel _personas;
     private ConversationListItemViewModel? _selectedConversation;
     private CancellationTokenSource? _selectionCancellation;
     private CancellationTokenSource? _contextCancellation;
@@ -89,7 +91,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         IUserInteractionService interaction,
         IChatArchiveService chatArchives,
         IFileDialogService fileDialog,
-        Func<string, Task>? openConversationWindow = null)
+        Func<string, Task>? openConversationWindow = null,
+        PlayerPersonaManagerViewModel? personas = null)
     {
         _repository = repository;
         _characters = characters;
@@ -107,6 +110,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _chatArchives = chatArchives;
         _fileDialog = fileDialog;
         _openConversationWindow = openConversationWindow;
+        _personas = personas ?? new PlayerPersonaManagerViewModel(settings, interaction);
+        _personas.PropertyChanged += OnPersonaManagerPropertyChanged;
         Memory = new MemoryWorkflowViewModel(
             memoryBanks,
             memoryWorkflow,
@@ -154,6 +159,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             StopCurrentGeneration,
             () => IsCurrentConversationGenerating);
         SavePersonaCommand = new AsyncRelayCommand(SavePersonaAsync);
+        CancelPersonaCommand = new RelayCommand(CancelPersonaEdits);
         EditCharacterSystemPromptCommand = new AsyncRelayCommand(
             EditCharacterSystemPromptAsync,
             CanEditCharacterPrompt);
@@ -176,10 +182,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public GroupChatViewModel Group { get; }
     public RetrievalViewModel Retrieval { get; }
     public PresetViewModel Presets { get; }
+    public PlayerPersonaManagerViewModel Personas => _personas;
     public RelayCommand SelectConversationCommand { get; }
     public RelayCommand SendLocalCommand { get; }
     public RelayCommand StopGenerationCommand { get; }
     public AsyncRelayCommand SavePersonaCommand { get; }
+    public RelayCommand CancelPersonaCommand { get; }
     public AsyncRelayCommand EditCharacterSystemPromptCommand { get; }
     public AsyncRelayCommand EditCharacterPostHistoryCommand { get; }
     public AsyncRelayCommand OpenGlobalPromptCommand { get; }
@@ -384,6 +392,26 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         get => _personaStatus;
         private set => SetProperty(ref _personaStatus, value);
+    }
+
+    private void OnPersonaManagerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(PlayerPersonaManagerViewModel.SelectedProfile)
+            or nameof(PlayerPersonaManagerViewModel.ActiveName)
+            or nameof(PlayerPersonaManagerViewModel.ActiveDescription)
+            or nameof(PlayerPersonaManagerViewModel.Status))
+        {
+            ApplyActivePersona();
+            PersonaStatus = _personas.Status;
+        }
+    }
+
+    private void ApplyActivePersona()
+    {
+        PersonaName = _personas.ActiveName;
+        PersonaDescription = _personas.ActiveDescription;
     }
 
     public string ActiveModelText
@@ -1783,8 +1811,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             OnPropertyChanged(nameof(IsNovelMode));
         }
 
-        PersonaName = await _settings.GetAsync("persona.name") ?? "USER";
-        PersonaDescription = await _settings.GetAsync("persona.description") ?? string.Empty;
+        await _personas.LoadAsync();
+        ApplyActivePersona();
+        PersonaStatus = _personas.Status;
         GlobalPreset = _globalPrompts.Get(GlobalPromptKey.ChatSystem);
     }
 
@@ -1802,24 +1831,17 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private async Task SavePersonaAsync()
     {
-        var name = PersonaName.Trim();
-        if (name.Length == 0)
-        {
-            PersonaStatus = "Persona 名称不能为空。";
-            return;
-        }
-
-        if (name.Length > 80)
-        {
-            PersonaStatus = "Persona 名称不能超过 80 个字符。";
-            return;
-        }
-
-        PersonaName = name;
-        await _settings.SetAsync("persona.name", PersonaName);
-        await _settings.SetAsync("persona.description", PersonaDescription);
-        PersonaStatus = $"已保存 Persona“{PersonaName}”；全局提示词请在设置中统一修改。";
+        await _personas.SaveCurrentAsync();
+        ApplyActivePersona();
+        PersonaStatus = _personas.Status;
         await RefreshContextEstimateAsync(immediate: true);
+    }
+
+    private void CancelPersonaEdits()
+    {
+        _personas.CancelEdits();
+        ApplyActivePersona();
+        PersonaStatus = _personas.Status;
     }
 
     private bool CanEditCharacterPrompt() =>
@@ -2542,6 +2564,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _disposed = true;
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
         _generationSessions.SessionChanged -= OnGenerationSessionChanged;
+        _personas.PropertyChanged -= OnPersonaManagerPropertyChanged;
         _selectionCancellation?.Cancel();
         _selectionCancellation?.Dispose();
         _contextCancellation?.Cancel();

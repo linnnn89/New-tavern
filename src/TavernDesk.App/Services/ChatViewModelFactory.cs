@@ -13,16 +13,21 @@ public sealed class ChatViewModelFactory
     private readonly InfrastructureServices _services;
     private readonly IUserInteractionService _interaction;
     private readonly IFileDialogService _fileDialog;
+    private readonly PlayerPersonaManagerViewModel _personas;
 
     public ChatViewModelFactory(
         InfrastructureServices services,
         IUserInteractionService interaction,
-        IFileDialogService fileDialog)
+        IFileDialogService fileDialog,
+        PlayerPersonaManagerViewModel? personas = null)
     {
         _services = services;
         _interaction = interaction;
         _fileDialog = fileDialog;
+        _personas = personas ?? new PlayerPersonaManagerViewModel(services.Settings, interaction);
     }
+
+    public PlayerPersonaManagerViewModel Personas => _personas;
 
     public Func<string, Task>? OpenConversationWindow { get; set; }
     public Func<TavernDesk.Core.Models.GlobalPromptKey, Task>? OpenPromptSettings
@@ -55,7 +60,8 @@ public sealed class ChatViewModelFactory
             _interaction,
             _services.ChatArchives,
             _fileDialog,
-            OpenConversationWindow);
+            OpenConversationWindow,
+            _personas);
         viewModel.OpenPromptSettings = OpenPromptSettings;
         return viewModel;
     }

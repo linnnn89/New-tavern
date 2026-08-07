@@ -15,7 +15,7 @@
         <TabControl Grid.Row="1"
                     TabStripPlacement="Left"
                     SelectedIndex="{Binding SelectedSettingsTabIndex}">
-            <TabItem Header="API 提供商">
+            <TabItem Header="AI 与模型 · 接入商">
                 <Grid Margin="18,4,4,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="290" MinWidth="230" />
@@ -189,7 +189,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="模型目录">
+            <TabItem Header="AI 与模型 · 模型目录">
                 <Grid Margin="18,4,4,4">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -270,7 +270,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="功能分配">
+            <TabItem Header="AI 与模型 · 功能分配">
                 <Grid Margin="18,4,4,4">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -509,12 +509,161 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="提示词管理">
+            <TabItem Header="默认行为">
+                <ScrollViewer Margin="18,4,4,4"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="默认行为"
+                                   Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Margin="0,2,0,14"
+                                   Text="控制应用在常用交互中的默认表现；设置仅保存在本机。"
+                                   Foreground="{StaticResource MutedTextBrush}" />
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="聊天行为"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <CheckBox Margin="0,8,0,0"
+                                          Content="有新消息、切换会话或流式生成时自动滚动到底部"
+                                          IsChecked="{Binding ChatAutoScrollEnabled}" />
+                                <TextBlock Margin="24,5,0,0"
+                                           Text="关闭后，聊天窗口会保持当前阅读位置。"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Margin="0,12,0,0"
+                                    HorizontalAlignment="Right"
+                                    Orientation="Horizontal">
+                            <Button Margin="0,0,8,0"
+                                    Content="恢复默认值"
+                                    Command="{Binding RestoreInterfaceDefaultsCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Content="保存默认行为"
+                                    Command="{Binding SaveInterfaceSettingsCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,10,0,0"
+                                   Text="{Binding InterfaceSettingsStatus}"
+                                   Foreground="{StaticResource MutedTextBrush}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="玩家人设">
                 <Grid Margin="18,4,4,4">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="250" MinWidth="210" />
                         <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="*" MinWidth="400" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource CardStyle}" Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <DockPanel Margin="7,5,7,10">
+                                <TextBlock Text="已保存人设"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold" />
+                                <Button DockPanel.Dock="Right"
+                                        Width="54"
+                                        Padding="6,3"
+                                        Content="新增"
+                                        Command="{Binding Personas.NewCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                            </DockPanel>
+                            <ListBox Grid.Row="1"
+                                     ItemsSource="{Binding Personas.Profiles}"
+                                     SelectedItem="{Binding Personas.SelectedProfile, Mode=TwoWay}"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="8,7" />
+                                        <Setter Property="Margin" Value="0,1,8,1" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Text="{Binding Description}"
+                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Grid.Row="2"
+                                    Margin="7,10,7,2"
+                                    Content="删除当前人设"
+                                    Command="{Binding Personas.DeleteCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <ScrollViewer Margin="18,12,12,12"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="玩家人设"
+                                           Style="{StaticResource PageTitleStyle}" />
+                                <TextBlock Margin="0,2,0,14"
+                                           Text="人设归档在玩家个人数据中；聊天页可以直接选择当前档案并编辑。只有保存后才会更新已保存内容。"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                                <TextBlock Text="人设名称" />
+                                <TextBox Margin="0,5,0,0"
+                                         Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Margin="0,14,0,0" Text="用户设定" />
+                                <TextBox Margin="0,5,0,0"
+                                         MinHeight="180"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalContentAlignment="Top"
+                                         Text="{Binding Personas.EditorDescription, UpdateSourceTrigger=PropertyChanged}" />
+                                <StackPanel Margin="0,14,0,0"
+                                            HorizontalAlignment="Right"
+                                            Orientation="Horizontal">
+                                    <Button Margin="0,0,8,0"
+                                            Content="取消修改"
+                                            Command="{Binding Personas.CancelCommand}"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Content="保存人设"
+                                            Command="{Binding Personas.SaveCommand}"
+                                            Style="{StaticResource PrimaryButtonStyle}" />
+                                </StackPanel>
+                                <TextBlock Margin="0,10,0,0"
+                                           Text="{Binding Personas.Status}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="AI 行为模板">
+                <Grid Margin="18,4,4,4">
+                    <Grid.Resources>
+                        <CollectionViewSource x:Key="PromptNavigationView"
+                                              Source="{Binding Prompts.NavigationItems}">
+                            <CollectionViewSource.GroupDescriptions>
+                                <PropertyGroupDescription PropertyName="CategoryName" />
+                            </CollectionViewSource.GroupDescriptions>
+                        </CollectionViewSource>
+                    </Grid.Resources>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280" MinWidth="230" />
                         <ColumnDefinition Width="16" />
                         <ColumnDefinition Width="*" MinWidth="420" />
                     </Grid.ColumnDefinitions>
@@ -526,35 +675,72 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <TextBlock Margin="7,5,7,10"
-                                       Text="分类"
+                                       Text="模板分类与功能"
                                        Style="{StaticResource SectionTitleStyle}" />
                             <ListBox Grid.Row="1"
+                                     ItemsSource="{Binding Source={StaticResource PromptNavigationView}}"
+                                     SelectedValuePath="Prompt"
+                                     SelectedValue="{Binding Prompts.SelectedPrompt, Mode=TwoWay}"
+                                     SelectionMode="Single"
+                                     IsSynchronizedWithCurrentItem="False"
                                      BorderThickness="0"
-                                     ItemsSource="{Binding Prompts.Categories}"
-                                     SelectedItem="{Binding Prompts.SelectedCategory}"
-                                     DisplayMemberPath="Name" />
+                                     Background="Transparent"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="7,8,7,5"
+                                                           Text="{Binding Name}"
+                                                           FontWeight="SemiBold" />
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ListBox.GroupStyle>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="8,6" />
+                                        <Setter Property="Margin" Value="0,1,10,1" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="SelectionBorder"
+                                                            Padding="{TemplateBinding Padding}"
+                                                            CornerRadius="7"
+                                                            Background="Transparent"
+                                                            BorderBrush="Transparent"
+                                                            BorderThickness="1">
+                                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="SelectionBorder"
+                                                                    Property="Background"
+                                                                    Value="{StaticResource AccentSoftBrush}" />
+                                                            <Setter TargetName="SelectionBorder"
+                                                                    Property="BorderBrush"
+                                                                    Value="{StaticResource AccentBrush}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Prompt.Label}"
+                                                   TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                         </Grid>
                     </Border>
 
-                    <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="8">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Margin="7,5,7,10"
-                                       Text="功能"
-                                       Style="{StaticResource SectionTitleStyle}" />
-                            <ListBox Grid.Row="1"
-                                     BorderThickness="0"
-                                     ItemsSource="{Binding Prompts.SelectedCategory.Prompts}"
-                                     SelectedItem="{Binding Prompts.SelectedPrompt}"
-                                     DisplayMemberPath="Label"
-                                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
-                        </Grid>
-                    </Border>
-
-                    <Border Grid.Column="4" Style="{StaticResource CardStyle}">
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -623,31 +809,17 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="界面设置">
+            <TabItem Header="界面">
                 <ScrollViewer Margin="18,4,4,4"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Text="界面设置"
+                            <TextBlock Text="界面"
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"
-                                   Text="调整聊天滚动行为和应用全局字体；设置仅保存在本机。"
+                                   Text="调整字体、字号和主题；设置仅保存在本机。"
                                    Foreground="{StaticResource MutedTextBrush}" />
 
                         <Border Style="{StaticResource CardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="聊天界面"
-                                           Style="{StaticResource SectionTitleStyle}" />
-                                <CheckBox Margin="0,8,0,0"
-                                          Content="有新消息、切换会话或流式生成时自动滚动到底部"
-                                          IsChecked="{Binding ChatAutoScrollEnabled}" />
-                                <TextBlock Margin="24,5,0,0"
-                                           Text="关闭后，聊天窗口会保持当前阅读位置。"
-                                           Foreground="{StaticResource MutedTextBrush}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Margin="0,12,0,0"
-                                Style="{StaticResource CardStyle}">
                             <StackPanel>
                                 <TextBlock Text="全局字体"
                                            Style="{StaticResource SectionTitleStyle}" />
@@ -715,7 +887,7 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="数据目录">
+            <TabItem Header="数据">
                 <ScrollViewer Margin="18,4,4,4"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>

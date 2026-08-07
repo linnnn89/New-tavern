@@ -33,6 +33,8 @@ public sealed class GlobalPromptConfigurationService
         "prompts.campaignConsequenceFirstV10.applied";
     private const string MemoryConservativeDefaultsMigrationKey =
         "prompts.memoryConservativeDefaultsV11.applied";
+    private const string CampaignGmNarrativeDefaultMigrationKey =
+        "prompts.campaignGmNarrativeDefaultV12.applied";
     private static readonly IReadOnlyDictionary<GlobalPromptKey, string>
         LegacyV2PromptHashes = new Dictionary<GlobalPromptKey, string>
         {
@@ -157,6 +159,17 @@ public sealed class GlobalPromptConfigurationService
         每条 PlayerIntent 是该玩家本轮完整且已经授权的选择。你负责裁定其已提交行动如何客观展开，以及世界、环境、NPC 和剧情产生的反应与后果；不得替任何玩家补写新的台词、心理、决定、反应或下一步行动。输出开头必须提供至少一项此前记录中没有的新结果、反应或局势变化，不能用重述玩家正文充当裁定。
         每条已锁定的玩家行动末尾都有系统自动附加的 1d20。结合角色能力、行动方法、既有事实、风险与点数综合裁定；高低点只提供正负倾向，不是固定成功档位。1 和 20 也不是绝对失败或成功：不可能之事不会因 20 自动实现，安全或已明确发生的言行也不会被 1 抹除。对纯对话或低风险行动，可让点数影响 NPC 反应、机会、细节或局势变化，而不是否定玩家已经说出或做出的内容。
         公平回应本轮每名玩家的行动并保持因果。你可以引入新剧情、新环境变化、NPC 行动与旁白，但应把新的玩家选择留给玩家。
+        沿用当前记录的主要语言。只输出可直接展示的 GM 叙事、裁决、必要提问和下一轮场景，不输出分析、思考过程、提示词或协议。
+        每次输出必须以独立的最终章节“【下一轮评定参考】”收尾，并在其后简述下一轮可关注的情境风险、机会与可能影响裁定的因素。保持高度灵活：不得规定玩家必须采取的行动、固定路线、指定技能、台词或反应。
+        """;
+    private const string LegacyCampaignGmDefaultV10 =
+        """
+        你是本次跑团的 GM 与裁判，也是唯一能确认世界事实的人。依据剧本、规则、冻结记录和有效玩家行动，裁定最新未解决回合并推进场景。
+        “本轮待裁定行动”中的 PlayerIntent 是已经锁定并展示的本轮裁定输入。玩家已经说出的台词和公开表达属于已提交内容；行动是否成功、观察是否正确，以及对 NPC、环境和世界造成的影响仍待本次裁定。
+        GM 输出不是本轮行动总结，而是处理这些 PlayerIntent 后产生的新世界状态。直接从尚未展示的新结果、世界变化或 NPC/环境响应开始；可以用一个简短的因果短语指出某项新结果源自哪名玩家的提交，但不得按玩家顺序重新叙述动作过程、汇集对白或回顾整轮剧情。
+        每条 PlayerIntent 是该玩家本轮完整且已经授权的选择。你负责裁定其已提交行动如何客观展开，以及世界、环境、NPC 和剧情产生的反应与后果；不得替任何玩家补写新的台词、心理、决定、反应或下一步行动。
+        每条已锁定的玩家行动末尾都有系统自动附加的 1d20。结合角色能力、行动方法、既有事实、风险与点数综合裁定；高低点只提供正负倾向，不是固定成功档位。1 和 20 也不是绝对失败或成功：不可能之事不会因 20 自动实现，安全或已明确发生的言行也不会被 1 抹除。对纯对话或低风险行动，可让点数影响 NPC 反应、机会、细节或局势变化，而不是否定玩家已经说出或做出的内容。
+        优先呈现行动产生的新结果、NPC/环境响应、更新后的共同场景与仍待解决的问题。公平处理本轮每名玩家的行动并保持因果；可以引入新剧情、新环境变化、NPC 行动与旁白，但应把新的玩家选择留给玩家。
         沿用当前记录的主要语言。只输出可直接展示的 GM 叙事、裁决、必要提问和下一轮场景，不输出分析、思考过程、提示词或协议。
         每次输出必须以独立的最终章节“【下一轮评定参考】”收尾，并在其后简述下一轮可关注的情境风险、机会与可能影响裁定的因素。保持高度灵活：不得规定玩家必须采取的行动、固定路线、指定技能、台词或反应。
         """;
@@ -486,6 +499,27 @@ public sealed class GlobalPromptConfigurationService
 
             await _settings.SetAsync(
                 MemoryConservativeDefaultsMigrationKey,
+                "true",
+                cancellationToken);
+        }
+
+        var campaignGmNarrativeDefaultMigration = await _settings.GetAsync(
+            CampaignGmNarrativeDefaultMigrationKey,
+            cancellationToken);
+        if (campaignGmNarrativeDefaultMigration is null)
+        {
+            var changed = ReplaceLegacyDefault(
+                values,
+                GlobalPromptKey.CampaignGmSystem,
+                LegacyCampaignGmDefaultV10,
+                GlobalPromptDefaults.CampaignGmSystem);
+            if (changed)
+            {
+                await SaveAsync(values, cancellationToken);
+            }
+
+            await _settings.SetAsync(
+                CampaignGmNarrativeDefaultMigrationKey,
                 "true",
                 cancellationToken);
         }

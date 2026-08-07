@@ -505,6 +505,28 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                         "只能采用当前回合已通过协议校验的 GM 候选。");
                 }
 
+                var commitParticipants = await ReadParticipantsAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    campaignId,
+                    cancellationToken);
+                var commitEvents = await ReadEventsAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    campaignId,
+                    cancellationToken);
+                var currentResolutionScope = new CampaignAggregate(
+                    campaign,
+                    commitParticipants,
+                    commitEvents);
+                if (!CampaignResolutionScope.IsCurrentGmResolution(
+                        currentResolutionScope,
+                        commitEvent))
+                {
+                    throw new InvalidOperationException(
+                        "只能采用当前行动席位对应的 GM 候选，上一席位的裁定不能跨槽位提交。");
+                }
+
                 if (!commitEvent.IsLocked)
                 {
                     await using var lockCommand = connection.CreateCommand();

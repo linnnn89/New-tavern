@@ -78,6 +78,10 @@ public sealed class PromptSettingsViewModel : ViewModelBase
                         "固定 AI 玩家只声明自身行动、不替 GM 判定结果的职责。")
                 ])
         ];
+        NavigationItems = new ObservableCollection<PromptNavigationItemViewModel>(
+            Categories.SelectMany(category =>
+                category.Prompts.Select(prompt =>
+                    new PromptNavigationItemViewModel(category.Name, prompt))));
         SaveCommand = new AsyncRelayCommand(SaveAsync, () => HasUnsavedChanges);
         ExportCommand = new AsyncRelayCommand(ExportAsync);
         RestoreDefaultCommand = new RelayCommand(
@@ -87,6 +91,7 @@ public sealed class PromptSettingsViewModel : ViewModelBase
     }
 
     public ObservableCollection<PromptCategoryViewModel> Categories { get; }
+    public ObservableCollection<PromptNavigationItemViewModel> NavigationItems { get; }
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand ExportCommand { get; }
     public RelayCommand RestoreDefaultCommand { get; }
@@ -112,6 +117,15 @@ public sealed class PromptSettingsViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedPrompt, value))
             {
+                var category = value is null
+                    ? null
+                    : Categories.FirstOrDefault(item => item.Prompts.Contains(value));
+                if (!ReferenceEquals(_selectedCategory, category))
+                {
+                    _selectedCategory = category;
+                    OnPropertyChanged(nameof(SelectedCategory));
+                }
+
                 RestoreDefaultCommand.RaiseCanExecuteChanged();
             }
         }
@@ -236,6 +250,20 @@ public sealed class PromptCategoryViewModel
 
     public string Name { get; }
     public ObservableCollection<PromptEditorItemViewModel> Prompts { get; }
+}
+
+public sealed class PromptNavigationItemViewModel
+{
+    public PromptNavigationItemViewModel(
+        string categoryName,
+        PromptEditorItemViewModel prompt)
+    {
+        CategoryName = categoryName;
+        Prompt = prompt;
+    }
+
+    public string CategoryName { get; }
+    public PromptEditorItemViewModel Prompt { get; }
 }
 
 public sealed class PromptEditorItemViewModel : ViewModelBase

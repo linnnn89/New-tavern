@@ -2490,7 +2490,7 @@ public sealed class ProviderAndStreamingTests
             ReferenceEquals(viewModel.CurrentPage, viewModel.Settings)
             && viewModel.Settings.Prompts.SelectedPrompt?.Key
             == GlobalPromptKey.CampaignGmSystem);
-        Assert.Equal(3, viewModel.Settings.SelectedSettingsTabIndex);
+        Assert.Equal(5, viewModel.Settings.SelectedSettingsTabIndex);
         Assert.Equal("设置 · 提示词管理", viewModel.CurrentSection);
     }
 

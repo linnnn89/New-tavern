@@ -28,4 +28,10 @@ public partial class CampaignsView : UserControl
         };
         dialog.ShowDialog();
     }
+
+    private void GameMenuButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        GameMenuPopup.IsOpen = !GameMenuPopup.IsOpen;
+        e.Handled = true;
+    }
 }

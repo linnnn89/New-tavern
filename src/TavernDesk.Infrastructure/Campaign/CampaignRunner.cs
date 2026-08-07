@@ -321,6 +321,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
         var resolutionContent = EnsureGmEvaluationTail(
             content.Trim(),
             OpeningEvaluationReference);
+        var resolutionAnchor = CampaignResolutionScope.FindCurrentAction(aggregate);
         var resolution = await _campaigns.AppendEventAsync(
             new CampaignEvent
             {
@@ -330,7 +331,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 ActorId = "gm:user",
                 Visibility = CampaignVisibility.Public,
                 Content = resolutionContent,
-                SnapshotSequenceNo = aggregate.Events.LastOrDefault()?.SequenceNo ?? 0,
+                SnapshotSequenceNo = resolutionAnchor?.SequenceNo
+                                     ?? aggregate.Campaign.FrozenSequenceNo,
                 GenerationStatus = CampaignGenerationStatus.Completed,
                 EndReason = CampaignEndReason.Normal,
                 OperationId =
@@ -376,11 +378,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 includeLongTermMemory: aggregate.Campaign.MemoryEnabled);
         var messages = contextPlan?.Messages
                        ?? BuildGmMessages(aggregate, scenario, gmMemory);
-        var latestAttempt = aggregate.Events
-            .Where(item =>
-                item.RoundNo == aggregate.Campaign.CurrentRound
-                && item.Kind == CampaignEventKind.GmResolution)
-            .OrderBy(item => item.SequenceNo)
+        var resolutionAnchor = CampaignResolutionScope.FindCurrentAction(aggregate);
+        var latestAttempt = CampaignResolutionScope
+            .GetCurrentGmResolutions(aggregate)
             .LastOrDefault();
         var attemptNo = latestAttempt?.GenerationStatus is (
                 CampaignGenerationStatus.Failed
@@ -404,7 +404,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 Kind = CampaignEventKind.GmResolution,
                 ActorId = "gm:ai",
                 Visibility = CampaignVisibility.Public,
-                SnapshotSequenceNo = aggregate.Events.LastOrDefault()?.SequenceNo ?? 0,
+                SnapshotSequenceNo = resolutionAnchor?.SequenceNo
+                                     ?? aggregate.Campaign.FrozenSequenceNo,
                 AttemptNo = attemptNo,
                 OperationId =
                     $"ai-gm-resolution:{campaignId}:{aggregate.Campaign.CurrentRound}:{aggregate.Campaign.CurrentTurnIndex}:{Guid.NewGuid():N}",
@@ -449,8 +450,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
         EnsureResolutionPhase(aggregate.Campaign);
         var candidate = aggregate.Events.SingleOrDefault(item =>
                            item.Id == eventId
-                           && item.RoundNo == aggregate.Campaign.CurrentRound
-                           && item.Kind == CampaignEventKind.GmResolution)
+                           && CampaignResolutionScope.IsCurrentGmResolution(
+                               aggregate,
+                               item))
                        ?? throw new InvalidOperationException(
                            "所选 GM 候选不存在或已经离开当前回合。");
         if (candidate.GenerationStatus != CampaignGenerationStatus.Completed

@@ -30,6 +30,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private readonly IFileDialogService _fileDialog;
     private readonly IAppSettingsRepository? _appSettings;
     private readonly AppDataLocationService? _dataLocation;
+    private readonly PlayerPersonaManagerViewModel? _personas;
     private readonly HashSet<string> _persistedProfileIds = new(StringComparer.Ordinal);
     private readonly List<ProviderModel> _allCatalogModels = [];
     private readonly List<ProviderModel> _allAssignmentModels = [];
@@ -76,7 +77,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         IGlobalPromptConfiguration globalPrompts,
         IFileDialogService fileDialog,
         IAppSettingsRepository? appSettings = null,
-        AppDataLocationService? dataLocation = null)
+        AppDataLocationService? dataLocation = null,
+        PlayerPersonaManagerViewModel? personas = null)
     {
         _repository = repository;
         _models = models;
@@ -88,6 +90,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         _fileDialog = fileDialog;
         _appSettings = appSettings;
         _dataLocation = dataLocation;
+        _personas = personas
+                    ?? (appSettings is null
+                        ? null
+                        : new PlayerPersonaManagerViewModel(appSettings, interaction));
         Prompts = new PromptSettingsViewModel(globalPrompts, fileDialog);
         FunctionOptions =
         [
@@ -147,6 +153,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public ObservableCollection<ProviderModel> VisibleAssignmentModels { get; } = [];
     public ObservableCollection<ModelFunctionAssignmentOverview> AssignmentOverview { get; } = [];
     public PromptSettingsViewModel Prompts { get; }
+    public PlayerPersonaManagerViewModel? Personas => _personas;
     public ProviderEditBuffer Editor
     {
         get => _editor;
@@ -434,6 +441,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         LoadDataRootSettings();
         await LoadInterfaceSettingsAsync();
+        if (_personas is not null)
+        {
+            await _personas.LoadAsync();
+        }
         var selectedProfileId = SelectedProfile?.Id;
         var catalogProviderId = CatalogProvider?.Id;
         var assignmentProviderId = AssignmentProvider?.Id;
@@ -454,7 +465,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public void OpenPrompt(GlobalPromptKey key)
     {
-        SelectedSettingsTabIndex = 3;
+        SelectedSettingsTabIndex = 5;
         Prompts.Open(key);
         Status = "已定位到对应的全局提示词；修改后请保存。";
     }

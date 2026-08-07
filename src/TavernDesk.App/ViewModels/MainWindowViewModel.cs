@@ -35,6 +35,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             OpenRecentConversationAsync);
         // Chat owns application-lifetime generation sessions. Navigation only swaps
         // presentation pages; it must never recreate or dispose this instance.
+        var personas = chat?.Personas
+                       ?? new PlayerPersonaManagerViewModel(services.Settings, interaction);
         Chat = chat ?? new ChatViewModel(
             services.Conversations,
             services.Characters,
@@ -56,7 +58,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.GlobalPrompts,
             interaction,
             services.ChatArchives,
-            fileDialog);
+            fileDialog,
+            personas: personas);
         Characters = new CharactersViewModel(
             services.Characters,
             services.CharacterShelves,
@@ -80,7 +83,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.GlobalPrompts,
             fileDialog,
             services.Settings,
-            services.DataLocation);
+            services.DataLocation,
+            personas);
         Worldbooks = new WorldbookViewModel(
             services.WorldbookService,
             services.Characters,

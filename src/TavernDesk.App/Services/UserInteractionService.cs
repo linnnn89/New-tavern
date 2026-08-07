@@ -30,6 +30,16 @@ public sealed record GroupChatDraft(
 
 public interface IUserInteractionService
 {
+    void ShowWarning(string title, string message)
+    {
+        MessageBox.Show(
+            Application.Current?.MainWindow,
+            message,
+            title,
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
     Task<string?> EditTextAsync(string title, string prompt, string initialText);
     Task<string?> PromptModelNameAsync(string initialText = "") =>
         EditTextAsync(
@@ -64,6 +74,14 @@ public sealed class UserInteractionService : IUserInteractionService
     {
         _windowPlacement = windowPlacement;
     }
+
+    public void ShowWarning(string title, string message) =>
+        MessageBox.Show(
+            Application.Current?.MainWindow,
+            message,
+            title,
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
 
     public async Task<string?> EditTextAsync(string title, string prompt, string initialText)
     {

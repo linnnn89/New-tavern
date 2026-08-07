@@ -436,11 +436,8 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     private bool AiGmResolutionNeedsRetry =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
-        && _game.Events
-            .Where(item =>
-                item.RoundNo == _game.Campaign.CurrentRound
-                && item.Kind == CampaignEventKind.GmResolution)
-            .OrderBy(item => item.SequenceNo)
+        && CampaignResolutionScope
+            .GetCurrentGmResolutions(_game)
             .LastOrDefault()
             ?.GenerationStatus is (
                 CampaignGenerationStatus.Failed
@@ -457,12 +454,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     private IReadOnlyList<CampaignEvent> GetGmCandidates() =>
         _game is null
             ? Array.Empty<CampaignEvent>()
-            : _game.Events
-                .Where(item =>
-                    item.RoundNo == _game.Campaign.CurrentRound
-                    && item.Kind == CampaignEventKind.GmResolution)
-                .OrderBy(item => item.SequenceNo)
-                .ToArray();
+            : CampaignResolutionScope.GetCurrentGmResolutions(_game);
 
     private CampaignEvent? GetSelectedGmCandidate()
     {
@@ -1872,11 +1864,8 @@ public sealed class CampaignsViewModel : ViewModelBase
             _memoryReceivedTokens = 0;
             _isMemoryUpdating = false;
         }
-        var gmCandidates = _game.Events
-            .Where(item =>
-                item.RoundNo == _game.Campaign.CurrentRound
-                && item.Kind == CampaignEventKind.GmResolution)
-            .OrderBy(item => item.SequenceNo)
+        var gmCandidates = CampaignResolutionScope
+            .GetCurrentGmResolutions(_game)
             .ToArray();
         if (_game.Campaign.Phase != CampaignPhase.ReadyForResolution
             || _game.Campaign.GmKind != CampaignGmKind.Ai
@@ -1943,6 +1932,9 @@ public sealed class CampaignsViewModel : ViewModelBase
                 .Select(item => item.Id)
                 .ToHashSet(StringComparer.Ordinal)
             : new HashSet<string>(StringComparer.Ordinal);
+        var currentGmResolutionIds = gmCandidates
+            .Select(item => item.Id)
+            .ToHashSet(StringComparer.Ordinal);
         var canonicalGmResolutionIds = _game.Events
             .Where(item =>
                 item.Kind == CampaignEventKind.GmResolution
@@ -1981,7 +1973,8 @@ public sealed class CampaignsViewModel : ViewModelBase
             }
 
             if (campaignEvent.Kind == CampaignEventKind.GmResolution
-                && !canonicalGmResolutionIds.Contains(campaignEvent.Id))
+                && !canonicalGmResolutionIds.Contains(campaignEvent.Id)
+                && !currentGmResolutionIds.Contains(campaignEvent.Id))
             {
                 continue;
             }

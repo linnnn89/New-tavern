@@ -260,16 +260,39 @@
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
                                 Orientation="Horizontal">
-                        <Button Margin="0,0,7,0"
-                                Content="导入 JSONL"
-                                Command="{Binding ImportChatArchiveCommand}"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                ToolTip="导入 SillyTavern 聊天记录并创建独立会话" />
-                        <Button Margin="0,0,7,0"
-                                Content="导出当前"
-                                Command="{Binding ExportChatArchiveCommand}"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                ToolTip="导出当前会话及全部候选回复" />
+                        <Button x:Name="ChatArchiveMenuButton"
+                                Margin="0,0,7,0"
+                                Content="⋯"
+                                Width="34"
+                                Padding="0"
+                                Click="ChatArchiveMenuButton_OnClick"
+                                ToolTip="导入或导出聊天记录"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <Popup x:Name="ChatArchiveMenuPopup"
+                               PlacementTarget="{Binding ElementName=ChatArchiveMenuButton}"
+                               Placement="Bottom"
+                               StaysOpen="False"
+                               AllowsTransparency="True"
+                               PopupAnimation="Fade"
+                               DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                            <Border Width="180"
+                                    Padding="7"
+                                    Background="{StaticResource SurfaceBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
+                                <StackPanel>
+                                    <Button Content="导入聊天 JSONL"
+                                            Command="{Binding ImportChatArchiveCommand}"
+                                            ToolTip="导入 SillyTavern 聊天记录并创建独立会话"
+                                            Style="{StaticResource MessageToolButtonStyle}" />
+                                    <Button Content="导出当前聊天"
+                                            Command="{Binding ExportChatArchiveCommand}"
+                                            ToolTip="导出当前会话及全部候选回复"
+                                            Style="{StaticResource MessageToolButtonStyle}" />
+                                </StackPanel>
+                            </Border>
+                        </Popup>
                         <ComboBox Width="116"
                                   ItemsSource="{Binding DisplayModes}"
                                   DisplayMemberPath="Label"
@@ -650,11 +673,21 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <StackPanel>
                             <TextBlock Text="本次发送结构" Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="已知 Tiktoken 模型使用随软件发布的本地词表；其他模型回退为启发式估算。"
                                        Foreground="{StaticResource MutedTextBrush}" />
+                            <DockPanel Margin="0,8,0,0">
+                                <CheckBox Content="召回"
+                                          IsChecked="{Binding Retrieval.IsEnabled}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Margin="8,0,0,0"
+                                           Text="当前会话开关；详细参数收在下方高级区域。"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </DockPanel>
                         </StackPanel>
                         <TabControl Grid.Row="1" Margin="0,12,0,0">
                             <TabItem Header="分段">
@@ -697,9 +730,106 @@
                                          HorizontalScrollBarVisibility="Auto" />
                             </TabItem>
                         </TabControl>
+                        <Expander Grid.Row="2"
+                                  Margin="0,10,0,0"
+                                  Header="高级召回设置与本轮结果">
+                            <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="0,8,0,0">
+                                    <TextBlock Text="{Binding Retrieval.Status}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                    <TextBlock Margin="0,8,0,0" Text="召回范围" />
+                                    <ComboBox Margin="0,5,0,0"
+                                              ItemsSource="{Binding Retrieval.ScopeOptions}"
+                                              DisplayMemberPath="Label"
+                                              SelectedValuePath="Value"
+                                              SelectedValue="{Binding Retrieval.Scope}" />
+                                    <Grid Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="近期原文消息数" />
+                                            <TextBox Margin="0,5,0,0"
+                                                     Text="{Binding Retrieval.RecentMessageCount, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="最大召回条数" />
+                                            <TextBox Margin="0,5,0,0"
+                                                     Text="{Binding Retrieval.MaximumResults, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Margin="0,10,0,0" Text="召回 Token 预算" />
+                                    <TextBox Margin="0,5,0,0"
+                                             Text="{Binding Retrieval.TokenBudget, UpdateSourceTrigger=PropertyChanged}" />
+                                    <WrapPanel Margin="0,10,0,0">
+                                        <Button Margin="0,0,8,0"
+                                                Content="保存召回设置"
+                                                Command="{Binding Retrieval.SaveSettingsCommand}"
+                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                        <Button Content="清除本轮排除"
+                                                Command="{Binding Retrieval.ClearExclusionsCommand}"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                    </WrapPanel>
+                                    <Separator Margin="0,14,0,10" />
+                                    <DockPanel>
+                                        <TextBlock Text="本轮实际召回" FontWeight="SemiBold" />
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding Retrieval.ExcludedCount, StringFormat=已排除 {0} 条}"
+                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                    </DockPanel>
+                                    <ItemsControl Margin="0,8,0,0"
+                                                  ItemsSource="{Binding Retrieval.Matches}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,0,8"
+                                                        Padding="10"
+                                                        CornerRadius="8"
+                                                        Background="{StaticResource SurfaceAltBrush}">
+                                                    <StackPanel>
+                                                        <DockPanel>
+                                                            <TextBlock Text="{Binding Title}"
+                                                                       FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Margin="8,0,0,0"
+                                                                    Content="排除"
+                                                                    Command="{Binding DataContext.Retrieval.ExcludeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                                        </DockPanel>
+                                                        <TextBlock Margin="0,5,0,0"
+                                                                   MaxHeight="84"
+                                                                   Text="{Binding Content}"
+                                                                   TextWrapping="Wrap"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Expander Margin="0,8,0,0" Header="组装诊断">
+                                        <ItemsControl Margin="0,7,0,0"
+                                                      ItemsSource="{Binding Retrieval.Diagnostics}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Margin="0,0,0,5"
+                                                               Text="{Binding}"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{StaticResource MutedTextBrush}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
                     </Grid>
                 </TabItem>
-                <TabItem Header="召回">
+                <TabItem Header="召回" Visibility="Collapsed">
                     <ScrollViewer Margin="12" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="长期上下文召回"
@@ -810,7 +940,7 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem Header="角色提示词"
+                <TabItem Header="角色"
                          Visibility="{Binding IsSingleCharacterConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="12">
@@ -828,7 +958,7 @@
                                        Text="补充这个角色独有的身份、边界或表演要求；为空时仍会使用全局聊天提示词和角色卡正文。"
                                        TextWrapping="Wrap"
                                        Foreground="{StaticResource MutedTextBrush}" />
-                            <TextBox MinHeight="150"
+                             <TextBox MaxHeight="105"
                                      IsReadOnly="True"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
@@ -848,7 +978,7 @@
                                        Text="在聊天历史之后追加，适合放置每次生成前都需要再次强调的角色要求；为空表示不追加。"
                                        TextWrapping="Wrap"
                                        Foreground="{StaticResource MutedTextBrush}" />
-                            <TextBox MinHeight="130"
+                             <TextBox MaxHeight="95"
                                      IsReadOnly="True"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
@@ -874,35 +1004,52 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem Header="Persona">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="用户 Persona 与全局预设"
-                                   Style="{StaticResource SectionTitleStyle}" />
-                        <StackPanel Grid.Row="1" Margin="0,0,0,10">
-                            <TextBlock Text="Persona 名称" />
+                <TabItem Header="玩家人设">
+                    <ScrollViewer Margin="12" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="玩家人设"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,2,0,12"
+                                       Text="选择当前聊天使用的玩家人设；可在设置 → 玩家人设中新增和归档多个档案。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBlock Text="当前玩家人设" />
+                            <ComboBox Margin="0,5,0,0"
+                                      ItemsSource="{Binding Personas.Profiles}"
+                                      DisplayMemberPath="Name"
+                                      SelectedItem="{Binding Personas.SelectedProfile, Mode=TwoWay}" />
+                            <TextBlock Margin="0,12,0,0" Text="Persona 名称" />
                             <TextBox Margin="0,5,0,0"
-                                     Text="{Binding PersonaName, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                        <StackPanel Grid.Row="2" Margin="0,0,0,10">
-                            <TextBlock Text="用户设定" />
+                                     Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="0,12,0,0" Text="用户设定" />
                             <TextBox Margin="0,5,0,0"
-                                     MinHeight="90"
+                                     MinHeight="110"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalContentAlignment="Top"
-                                     Text="{Binding PersonaDescription, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                        <StackPanel Grid.Row="3">
-                            <TextBlock Text="全局聊天提示词" />
+                                     Text="{Binding Personas.EditorDescription, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Text="只有点击保存才会更新当前人设；取消会恢复上次已保存的文本。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Text="{Binding Personas.Status}"
+                                       Foreground="{StaticResource MutedTextBrush}"
+                                       TextWrapping="Wrap" />
+                            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                                <Button Content="保存玩家人设"
+                                        Command="{Binding SavePersonaCommand}"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Margin="8,0,0,0"
+                                        Content="取消"
+                                        Command="{Binding CancelPersonaCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                            </StackPanel>
+                            <Separator Margin="0,18,0,12" />
+                            <TextBlock Text="全局聊天提示词"
+                                       FontWeight="SemiBold" />
                             <TextBlock Margin="0,5,0,8"
-                                       Text="统一在“设置 → 提示词管理”维护；这里不再保存第二份副本。"
+                                       Text="统一在“设置 → 提示词管理”维护；这里不保存第二份副本。"
                                        TextWrapping="Wrap"
                                        Foreground="{StaticResource MutedTextBrush}" />
                             <Button HorizontalAlignment="Left"
@@ -911,18 +1058,10 @@
                                     CommandParameter="ChatSystem"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
-                        <StackPanel Grid.Row="4" Margin="0,10,0,0">
-                            <TextBlock Margin="0,0,0,8"
-                                       Text="{Binding PersonaStatus}"
-                                       Foreground="{StaticResource MutedTextBrush}" />
-                            <Button Content="保存 Persona"
-                                    Command="{Binding SavePersonaCommand}"
-                                    Style="{StaticResource PrimaryButtonStyle}" />
-                        </StackPanel>
-                    </Grid>
+                    </ScrollViewer>
                 </TabItem>
                 <TabItem Header="记忆">
-                    <TabControl Margin="10">
+                    <TabControl Margin="10,10,0,10">
                         <TabItem Header="正文">
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
@@ -967,8 +1106,8 @@
                                 </Grid>
                             </Grid>
                         </TabItem>
-                        <TabItem Header="工作流">
-                            <ScrollViewer Margin="10" VerticalScrollBarVisibility="Auto">
+                        <TabItem Header="高级工作流">
+                            <ScrollViewer Margin="10,10,0,10" VerticalScrollBarVisibility="Auto">
                                 <StackPanel>
                                     <TextBlock Text="增量更新与压缩"
                                                Style="{StaticResource SectionTitleStyle}" />
@@ -1101,10 +1240,35 @@
                         </TabItem>
                     </TabControl>
                 </TabItem>
-                <TabItem Header="群聊"
-                         Visibility="{Binding Group.IsGroupConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TabItem Header="会话">
                     <ScrollViewer Margin="12" VerticalScrollBarVisibility="Auto">
-                        <StackPanel IsEnabled="{Binding Group.IsGroupConversation}">
+                        <StackPanel>
+                            <Border Padding="10"
+                                    Background="{StaticResource SurfaceAltBrush}"
+                                    CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock Text="当前会话" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Text="{Binding SelectedConversation.Title, TargetNullValue=尚未选择会话}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Text="{Binding Status}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                    <DockPanel Margin="0,8,0,0">
+                                        <TextBlock VerticalAlignment="Center" Text="显示模式" />
+                                        <ComboBox Width="116"
+                                                  Margin="8,0,0,0"
+                                                  ItemsSource="{Binding DisplayModes}"
+                                                  DisplayMemberPath="Label"
+                                                  SelectedValuePath="Value"
+                                                  SelectedValue="{Binding DisplayMode}" />
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Margin="0,12,0,0"
+                                        IsEnabled="{Binding Group.IsGroupConversation}"
+                                        Visibility="{Binding Group.IsGroupConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <TextBlock Text="群聊接力与记忆合并"
                                        Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="{Binding Group.Status}"
@@ -1215,13 +1379,14 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
+                        </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem Header="世界书">
+                <TabItem Header="世界书" Visibility="Collapsed">
                     <TextBlock Margin="12"
                                Text="当前会从角色卡 character_book 中注入 constant 条目和命中关键词的条目；实际发送内容可在“上下文 → API 结构”核对。" />
                 </TabItem>
-                <TabItem Header="工具">
+                <TabItem Header="工具" Visibility="Collapsed">
                     <TextBlock Margin="12" Text="聊天辅助工具与 MCP 将在后续里程碑接入。" />
                 </TabItem>
             </TabControl>

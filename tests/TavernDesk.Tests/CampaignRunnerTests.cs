@@ -738,6 +738,98 @@ public sealed class CampaignRunnerTests
     }
 
     [Fact]
+    public async Task StrictInitiativeKeepsGmRetriesInTheCurrentSeatSlot()
+    {
+        using var workspace = new TestWorkspace();
+        var services = new InfrastructureServices(workspace.Root);
+        await services.InitializeAsync();
+        var scenario = new CampaignScenario
+        {
+            Title = "严格先攻槽位隔离",
+            WorldSetting = "测试场景",
+            PublicRules = "每个席位单独接受 GM 裁定。",
+            OpeningSetup = "开始",
+            OpeningNarration = "测试开始。"
+        };
+        await services.CampaignScenarios.UpsertAsync(scenario);
+        var campaign = new Campaign
+        {
+            StoryId = scenario.Id,
+            Title = scenario.Title,
+            WorldSetting = scenario.WorldSetting,
+            Rules = scenario.PublicRules,
+            OpeningPrompt = scenario.OpeningSetup,
+            GmKind = CampaignGmKind.Ai,
+            FlowPreset = CampaignFlowPreset.StrictInitiative,
+            GmProviderId = "openrouter",
+            GmModelId = "gm-model"
+        };
+        var user = new CampaignParticipant
+        {
+            CampaignId = campaign.Id,
+            Kind = CampaignParticipantKind.User,
+            SortIndex = 0,
+            DisplayName = "USER",
+            PersonaSnapshotJson = """{"name":"USER"}"""
+        };
+        var ai = CreateAiParticipant(campaign.Id, 1, "尼禄", "player-model");
+        await services.Campaigns.SaveDraftAsync(campaign, [user, ai]);
+        var runner = new CampaignRunner(
+            services.Campaigns,
+            services.CampaignScenarios,
+            new StrictInitiativeGmRetryGateway(),
+            services.GenerationCoordinator,
+            services.GlobalPrompts);
+
+        await runner.StartAsync(campaign.Id);
+        var userAction = await runner.SubmitUserActionAsync(
+            campaign.Id,
+            "我先观察入口。 ");
+        var firstResolution = await runner.GenerateGmResolutionAsync(campaign.Id);
+        Assert.Equal(CampaignGenerationStatus.Completed, firstResolution.GenerationStatus);
+        Assert.Equal(userAction.SequenceNo, firstResolution.SnapshotSequenceNo);
+
+        var aiAction = await runner.GenerateAiActionAsync(campaign.Id, ai.Id);
+        var failed = await runner.GenerateGmResolutionAsync(campaign.Id);
+        Assert.Equal(CampaignGenerationStatus.Failed, failed.GenerationStatus);
+        Assert.Equal(CampaignEndReason.ProtocolViolation, failed.EndReason);
+        Assert.Equal(1, failed.AttemptNo);
+        Assert.Equal(aiAction.SequenceNo, failed.SnapshotSequenceNo);
+
+        var pending = await services.Campaigns.GetAsync(campaign.Id);
+        Assert.Equal(1, pending!.Campaign.CurrentRound);
+        Assert.Equal(1, pending.Campaign.CurrentTurnIndex);
+        var currentSlotResolutions = CampaignResolutionScope
+            .GetCurrentGmResolutions(pending);
+        Assert.Single(currentSlotResolutions);
+        Assert.Equal(failed.Id, currentSlotResolutions[0].Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            runner.CommitGmResolutionCandidateAsync(
+                campaign.Id,
+                firstResolution.Id));
+
+        var retried = await runner.GenerateGmResolutionAsync(campaign.Id);
+        Assert.Equal(CampaignGenerationStatus.Completed, retried.GenerationStatus);
+        Assert.Equal(2, retried.AttemptNo);
+        Assert.Equal(failed.Id, retried.ReplacesEventId);
+        Assert.Equal(aiAction.SequenceNo, retried.SnapshotSequenceNo);
+
+        var retrySlotResolutions = CampaignResolutionScope
+            .GetCurrentGmResolutions(
+                (await services.Campaigns.GetAsync(campaign.Id))!);
+        Assert.Equal(
+            [failed.Id, retried.Id],
+            retrySlotResolutions.Select(item => item.Id).ToArray());
+
+        await runner.CommitGmResolutionCandidateAsync(campaign.Id, retried.Id);
+        var nextRound = await services.Campaigns.GetAsync(campaign.Id);
+        Assert.Equal(2, nextRound!.Campaign.CurrentRound);
+        Assert.Equal(0, nextRound.Campaign.CurrentTurnIndex);
+        Assert.True(
+            nextRound.Events.Single(item => item.Id == firstResolution.Id).IsLocked);
+    }
+
+    [Fact]
     public async Task PendingUserJoinsOnlyAtNextFullStrictInitiativeRound()
     {
         using var workspace = new TestWorkspace();
@@ -965,6 +1057,38 @@ public sealed class CampaignRunnerTests
                   【下一轮评定参考】
                   声音的距离、掩护与玩家接下来的做法都可能改变风险。
                   """;
+            yield return new ProviderStreamEvent(
+                ProviderStreamEventKind.Content,
+                content);
+            yield return new ProviderStreamEvent(
+                ProviderStreamEventKind.Completed,
+                FinishReason: "stop");
+        }
+    }
+
+    private sealed class StrictInitiativeGmRetryGateway : IProviderGateway
+    {
+        private int _gmCallCount;
+
+        public Task<IReadOnlyList<ProviderModelDescriptor>> RefreshModelsAsync(
+            string providerId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ProviderModelDescriptor>>([]);
+
+        public async IAsyncEnumerable<ProviderStreamEvent> StreamChatAsync(
+            ModelExecutionRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            var gmCall = request.ModelId == "gm-model"
+                ? Interlocked.Increment(ref _gmCallCount)
+                : 0;
+            var content = request.ModelId != "gm-model"
+                ? $"{request.ModelId} 的公开行动。"
+                : gmCall == 2
+                    ? "尼禄的行动尚未得到裁定。"
+                    : "行动产生了新的场景变化。\n\n【下一轮评定参考】\n风险、机会和后续影响仍取决于玩家下一步选择。";
             yield return new ProviderStreamEvent(
                 ProviderStreamEventKind.Content,
                 content);

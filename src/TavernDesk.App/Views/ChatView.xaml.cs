@@ -30,6 +30,12 @@ public partial class ChatView : UserControl
         DataContextChanged += ChatView_OnDataContextChanged;
     }
 
+    private void ChatArchiveMenuButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        ChatArchiveMenuPopup.IsOpen = !ChatArchiveMenuPopup.IsOpen;
+        e.Handled = true;
+    }
+
     private void RightPanelToggleButton_OnClick(object sender, RoutedEventArgs e)
     {
         if (_isRightPanelCollapsed)

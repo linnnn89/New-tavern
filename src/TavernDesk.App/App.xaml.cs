@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 using TavernDesk.Infrastructure;
@@ -15,6 +16,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ScrollViewerWheelRouter.Register();
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         DispatcherUnhandledException += OnDispatcherUnhandledException;
 
