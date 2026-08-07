@@ -10,10 +10,14 @@ namespace TavernDesk.App.ViewModels;
 public sealed class MainWindowViewModel : ViewModelBase
 {
     private readonly IConversationGenerationCoordinator _generationCoordinator;
-    private readonly HashSet<string> _activeGenerationIds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ConversationGenerationState>
+        _activeGenerationStates = new(StringComparer.Ordinal);
     private object _currentPage;
     private bool _isGenerationActive;
     private bool _isStoppingAll;
+    private bool _isRuntimeReceiving;
+    private int _runtimeReceivedTokens;
+    private string _runtimeReceiveText = string.Empty;
     private string _currentSection = "仪表盘";
     private string _runtimeStatusText = "本地数据已就绪 · 当前无生成请求";
 
@@ -154,6 +158,24 @@ public sealed class MainWindowViewModel : ViewModelBase
         private set => SetProperty(ref _runtimeStatusText, value);
     }
 
+    public bool IsRuntimeReceiving
+    {
+        get => _isRuntimeReceiving;
+        private set => SetProperty(ref _isRuntimeReceiving, value);
+    }
+
+    public int RuntimeReceivedTokens
+    {
+        get => _runtimeReceivedTokens;
+        private set => SetProperty(ref _runtimeReceivedTokens, value);
+    }
+
+    public string RuntimeReceiveText
+    {
+        get => _runtimeReceiveText;
+        private set => SetProperty(ref _runtimeReceiveText, value);
+    }
+
     public AsyncRelayCommand ShowDashboardCommand { get; }
     public AsyncRelayCommand ShowCharactersCommand { get; }
     public AsyncRelayCommand ShowChatCommand { get; }
@@ -201,23 +223,37 @@ public sealed class MainWindowViewModel : ViewModelBase
     private void ApplyGenerationState(ConversationGenerationState state)
     {
         int activeCount;
-        lock (_activeGenerationIds)
+        int receivedTokens;
+        lock (_activeGenerationStates)
         {
             if (state.Status is ConversationGenerationStatus.Queued
                 or ConversationGenerationStatus.Streaming
                 or ConversationGenerationStatus.Stopping)
             {
-                _activeGenerationIds.Add(state.ConversationId);
+                _activeGenerationStates[state.ConversationId] = state;
             }
             else
             {
-                _activeGenerationIds.Remove(state.ConversationId);
+                _activeGenerationStates.Remove(state.ConversationId);
             }
 
-            activeCount = _activeGenerationIds.Count;
+            activeCount = _activeGenerationStates.Count;
+            receivedTokens = _activeGenerationStates.Values
+                .Sum(item => item.ReceivedTokens);
         }
 
         IsGenerationActive = activeCount > 0;
+        IsRuntimeReceiving = activeCount > 0;
+        RuntimeReceivedTokens = receivedTokens;
+        RuntimeReceiveText = activeCount == 0
+            ? string.Empty
+            : $"{activeCount} 个请求 · 已接收约 {receivedTokens:N0} tokens";
+
+        if (IsStoppingAll)
+        {
+            return;
+        }
+
         RuntimeStatusText = activeCount switch
         {
             0 => "本地数据已就绪 · 当前无生成请求",

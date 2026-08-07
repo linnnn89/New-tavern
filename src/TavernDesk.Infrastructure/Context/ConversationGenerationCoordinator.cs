@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
 using TavernDesk.Core.Abstractions;
 
 namespace TavernDesk.Infrastructure.Context;
@@ -22,6 +24,21 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
                 ConversationGenerationStatus.Idle,
                 ErrorMessage: null,
                 DateTimeOffset.Now));
+
+    public void ReportReceivedText(string operationId, string content)
+    {
+        if (string.IsNullOrEmpty(content)
+            || !_runs.TryGetValue(operationId, out var run))
+        {
+            return;
+        }
+
+        UpdateReceivedProgress(
+            run,
+            operationId,
+            run.GenerationId,
+            Encoding.UTF8.GetByteCount(content));
+    }
 
     public Task RunAsync(
         string conversationId,
@@ -55,7 +72,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         Publish(
             operationId,
             run.GenerationId,
-            ConversationGenerationStatus.Stopping);
+            ConversationGenerationStatus.Stopping,
+            receivedTokens: ApproximateTokens(run.ReceivedUtf8Bytes));
         run.Cancellation.Cancel();
         return true;
     }
@@ -77,7 +95,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
                 Publish(
                     run.OperationId,
                     run.GenerationId,
-                    ConversationGenerationStatus.Stopping);
+                    ConversationGenerationStatus.Stopping,
+                    receivedTokens: ApproximateTokens(run.ReceivedUtf8Bytes));
                 run.Cancellation.Cancel();
             }
 
@@ -124,13 +143,23 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
             }
         }
 
-        Publish(operationId, generationId, ConversationGenerationStatus.Queued);
+            Publish(operationId, generationId, ConversationGenerationStatus.Queued);
         try
         {
             Publish(operationId, generationId, ConversationGenerationStatus.Streaming);
             await foreach (var item in streamFactory(linkedCancellation.Token)
                                .WithCancellation(linkedCancellation.Token))
             {
+                var itemBytes = GetStreamItemByteCount(item);
+                if (itemBytes > 0)
+                {
+                    UpdateReceivedProgress(
+                        run,
+                        operationId,
+                        generationId,
+                        itemBytes);
+                }
+
                 await receiveItem(item, linkedCancellation.Token);
             }
 
@@ -139,15 +168,24 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
                 generationId,
                 linkedCancellation.IsCancellationRequested
                     ? ConversationGenerationStatus.Interrupted
-                    : ConversationGenerationStatus.Completed);
+                    : ConversationGenerationStatus.Completed,
+                receivedTokens: ApproximateTokens(run.ReceivedUtf8Bytes));
         }
         catch (OperationCanceledException) when (linkedCancellation.IsCancellationRequested)
         {
-            Publish(operationId, generationId, ConversationGenerationStatus.Interrupted);
+            Publish(
+                operationId,
+                generationId,
+                ConversationGenerationStatus.Interrupted,
+                receivedTokens: ApproximateTokens(run.ReceivedUtf8Bytes));
         }
         catch (Exception) when (linkedCancellation.IsCancellationRequested)
         {
-            Publish(operationId, generationId, ConversationGenerationStatus.Interrupted);
+            Publish(
+                operationId,
+                generationId,
+                ConversationGenerationStatus.Interrupted,
+                receivedTokens: ApproximateTokens(run.ReceivedUtf8Bytes));
         }
         catch (Exception exception)
         {
@@ -155,7 +193,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
                 operationId,
                 generationId,
                 ConversationGenerationStatus.Failed,
-                exception.Message);
+                exception.Message,
+                ApproximateTokens(run.ReceivedUtf8Bytes));
             throw;
         }
         finally
@@ -169,16 +208,63 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         string operationId,
         string generationId,
         ConversationGenerationStatus status,
-        string? errorMessage = null)
+        string? errorMessage = null,
+        int receivedTokens = 0)
     {
         var state = new ConversationGenerationState(
             operationId,
             generationId,
             status,
             errorMessage,
-            DateTimeOffset.Now);
+            DateTimeOffset.Now,
+            receivedTokens);
         _states[operationId] = state;
         StateChanged?.Invoke(this, state);
+    }
+
+    private static long GetStreamItemByteCount<T>(T item) =>
+        item switch
+        {
+            string text => Encoding.UTF8.GetByteCount(text),
+            ProviderStreamEvent streamEvent
+                when streamEvent.Kind is ProviderStreamEventKind.Reasoning
+                    or ProviderStreamEventKind.Content
+                => Encoding.UTF8.GetByteCount(streamEvent.Content),
+            _ => 0
+        };
+
+    private void UpdateReceivedProgress(
+        GenerationRun run,
+        string operationId,
+        string generationId,
+        long itemBytes)
+    {
+        run.ReceivedUtf8Bytes += itemBytes;
+        if (run.LastProgressTimestamp != 0
+            && Stopwatch.GetElapsedTime(run.LastProgressTimestamp)
+                < TimeSpan.FromMilliseconds(120))
+        {
+            return;
+        }
+
+        run.LastProgressTimestamp = Stopwatch.GetTimestamp();
+        Publish(
+            operationId,
+            generationId,
+            ConversationGenerationStatus.Streaming,
+            receivedTokens: ApproximateTokens(run.ReceivedUtf8Bytes));
+    }
+
+    private static int ApproximateTokens(long utf8ByteCount)
+    {
+        if (utf8ByteCount <= 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Min(
+            int.MaxValue,
+            Math.Ceiling(utf8ByteCount / 3.2d) + 4);
     }
 
     private sealed record GenerationRun(
@@ -186,6 +272,9 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         string GenerationId,
         CancellationTokenSource Cancellation)
     {
+        public long ReceivedUtf8Bytes { get; set; }
+        public long LastProgressTimestamp { get; set; }
+
         public TaskCompletionSource Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
     }

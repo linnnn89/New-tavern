@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Text.Json;
+using System.Windows;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -60,11 +61,27 @@ public sealed class CampaignsViewModel : ViewModelBase
     private string _gmResolutionInput = string.Empty;
     private string _diceExpression = "1d20";
     private bool _isBusy;
+    private bool _isMemoryUpdating;
+    private readonly Dictionary<string, CampaignGenerationProgress>
+        _generationProgresses = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _activeMemoryOperations = new(
+        StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _memoryTokensByOperation = new(
+        StringComparer.Ordinal);
+    private string _memoryProgressText = string.Empty;
+    private int _memoryReceivedTokens;
+    private string? _selectedGmCandidateId;
     private bool _updatingCharacterSelection;
     private bool _campaignMemoryPending;
     private bool _campaignMemoryNeedsEstablish;
     private string _campaignMemoryStatusText = "跑团记忆：未检查";
     private string? _campaignMemoryLastError;
+    private string _campaignContextTokenBudgetText = "15000";
+    private string _campaignPlayerHistoryBudgetText = "12000";
+    private string _campaignGmHistoryBudgetText = "20000";
+    private string _campaignMemoryUpdateIntervalRoundsText = "3";
+    private string _campaignMemoryPendingTokenThresholdText = "4000";
+    private string _campaignMemorySettingsStatusText = string.Empty;
     private string _contextPreviewSummary = "打开后显示本阶段的上下文预算估算。";
     private bool _contextPreviewBlocked;
     private string? _contextPreviewBlockingReason;
@@ -108,6 +125,13 @@ public sealed class CampaignsViewModel : ViewModelBase
         _fileDialog = fileDialog;
         _interaction = interaction;
         _worldbooks = worldbooks;
+
+        _runner.ProgressChanged += OnCampaignGenerationProgressChanged;
+        if (_campaignMemoryUpdater is not null)
+        {
+            _campaignMemoryUpdater.ProgressChanged +=
+                OnCampaignMemoryProgressChanged;
+        }
 
         FlowChoices =
         [
@@ -169,6 +193,12 @@ public sealed class CampaignsViewModel : ViewModelBase
         GenerateAiSeatActionCommand = new AsyncRelayCommand(
             GenerateAiSeatActionAsync);
         ResolveRoundCommand = new AsyncRelayCommand(ResolveRoundAsync);
+        PreviousGmCandidateCommand = new AsyncRelayCommand(
+            () => MoveGmCandidateAsync(-1),
+            () => CanMoveGmCandidate(-1));
+        NextGmCandidateCommand = new AsyncRelayCommand(
+            () => MoveGmCandidateAsync(1),
+            () => CanMoveGmCandidate(1));
         ScheduleUserJoinCommand = new AsyncRelayCommand(
             ScheduleUserJoinAsync);
         RollDiceCommand = new AsyncRelayCommand(RollDiceAsync);
@@ -178,6 +208,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         ToggleCampaignMemoryCommand = new AsyncRelayCommand(
             ToggleCampaignMemoryAsync,
             () => CanToggleCampaignMemory);
+        SaveCampaignMemorySettingsCommand = new AsyncRelayCommand(
+            SaveCampaignMemorySettingsAsync);
         ApplySeatRouteCommand = new AsyncRelayCommand(ApplySeatRouteAsync);
         ApplyGmRouteCommand = new AsyncRelayCommand(ApplyGmRouteAsync);
         OpenGlobalPromptCommand = new AsyncRelayCommand(OpenGlobalPromptAsync);
@@ -214,11 +246,14 @@ public sealed class CampaignsViewModel : ViewModelBase
     public AsyncRelayCommand GenerateAiActionsCommand { get; }
     public AsyncRelayCommand GenerateAiSeatActionCommand { get; }
     public AsyncRelayCommand ResolveRoundCommand { get; }
+    public AsyncRelayCommand PreviousGmCandidateCommand { get; }
+    public AsyncRelayCommand NextGmCandidateCommand { get; }
     public AsyncRelayCommand ScheduleUserJoinCommand { get; }
     public AsyncRelayCommand RollDiceCommand { get; }
     public AsyncRelayCommand RetryEventCommand { get; }
     public AsyncRelayCommand RetryCampaignMemoryCommand { get; }
     public AsyncRelayCommand ToggleCampaignMemoryCommand { get; }
+    public AsyncRelayCommand SaveCampaignMemorySettingsCommand { get; }
     public AsyncRelayCommand ApplySeatRouteCommand { get; }
     public AsyncRelayCommand ApplyGmRouteCommand { get; }
     public AsyncRelayCommand OpenGlobalPromptCommand { get; }
@@ -241,28 +276,45 @@ public sealed class CampaignsViewModel : ViewModelBase
     public string LobbyRosterText =>
         $"当前阵容：1 GM + {(UserAlsoPlayer ? 1 : 0)} USER 玩家"
         + $" + {SelectedAiPlayerCount} AI 玩家";
+    public bool IsMemoryUpdating => _isMemoryUpdating;
+    public bool IsRequestReceiving =>
+        _generationProgresses.Values.Any(item =>
+            item.Status == CampaignGenerationStatus.Streaming);
+    public string RequestProgressText => IsRequestReceiving
+        ? $"正在接收模型输出（{_generationProgresses.Count} 个请求）"
+        : string.Empty;
+    public string RequestReceivedTokenText => IsRequestReceiving
+        ? $"已接收约 {_generationProgresses.Values.Sum(item => item.ReceivedTokens):N0} tokens"
+        : string.Empty;
+    public string MemoryProgressText => _memoryProgressText;
+    public string MemoryReceivedTokenText => _isMemoryUpdating
+        ? $"已接收约 {_memoryReceivedTokens:N0} tokens"
+        : string.Empty;
+    public bool IsCampaignOperationBusy => IsBusy || _isMemoryUpdating;
     public bool CanSubmitUserAction =>
-        !IsBusy
+        !IsCampaignOperationBusy
         && _gameUiState.UserSeatCanAct
         && !string.IsNullOrWhiteSpace(ActionInput);
     public bool CanResolve =>
-        !IsBusy
+        !IsCampaignOperationBusy
         && _gameUiState.ShowResolveSection
-        && !(_game?.Campaign.GmKind == CampaignGmKind.Ai
-             && _contextPreviewBlocked)
-        && (_game?.Campaign.GmKind == CampaignGmKind.Ai
-            || !string.IsNullOrWhiteSpace(GmResolutionInput));
+        && (IsGmCandidatePending
+            ? IsSelectedGmCandidateValid
+            : !(_game?.Campaign.GmKind == CampaignGmKind.Ai
+                && _contextPreviewBlocked)
+              && (_game?.Campaign.GmKind == CampaignGmKind.Ai
+                  || !string.IsNullOrWhiteSpace(GmResolutionInput)));
     public bool HasUserSeat => _gameUiState.HasUserSeat;
     public bool HasPendingUserJoin => _gameUiState.HasPendingUserJoin;
     public bool ShowUserJoinSection => !HasUserSeat;
     public bool CanScheduleUserJoin =>
-        !IsBusy && _gameUiState.CanScheduleUserJoin;
+        !IsCampaignOperationBusy && _gameUiState.CanScheduleUserJoin;
     public bool ShowUserActionSection =>
         _gameUiState.ShowUserActionSection;
     public bool ShowBlindAiAction =>
         _gameUiState.ShowBlindAiAction;
     public bool CanGenerateBlindAiActions =>
-        !IsBusy
+        !IsCampaignOperationBusy
         && _gameUiState.CanGenerateBlindAiActions
         && !_contextPreviewBlocked;
     public bool ShowResolveSection =>
@@ -286,11 +338,18 @@ public sealed class CampaignsViewModel : ViewModelBase
             : _gameUiState.BlindAiActionHelpText;
     public string ResolveButtonText =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
-            ? AiGmResolutionNeedsRetry
+            ? IsGmCandidatePending
+                ? "采用当前 GM 候选并进入下一回合"
+                : AiGmResolutionNeedsRetry
                 ? "重试 AI GM 裁定"
                 : "让 AI GM 裁定本回合"
             : "提交我的 GM 裁定";
     public string ResolveHelpText =>
+        IsGmCandidatePending
+            ? IsSelectedGmCandidateValid
+                ? "当前只会采用屏幕上选中的 GM 候选；确认后进入下一回合，上一回合候选将不可再切换。"
+                : "当前候选未通过 GM 协议校验，不能发送到下一次 API；请切换到已通过校验的候选。"
+        :
         _game?.Campaign.GmKind == CampaignGmKind.Ai
         && _contextPreviewBlocked
             ? ContextBlockedHelpText()
@@ -318,20 +377,62 @@ public sealed class CampaignsViewModel : ViewModelBase
     public bool IsCampaignMemoryEnabled => _game?.Campaign.MemoryEnabled == true;
     public string CampaignMemoryToggleText =>
         IsCampaignMemoryEnabled ? "记忆 ON" : "记忆 OFF";
-    public bool CanToggleCampaignMemory => IsGame && !IsBusy && _game is not null;
-    public string CampaignMemoryActionText => !IsCampaignMemoryEnabled
-        ? "璁板繂宸插叧闂湇鍔?"
-        : _campaignMemoryNeedsEstablish
+    public bool CanToggleCampaignMemory =>
+        IsGame && !IsCampaignOperationBusy && _game is not null;
+    public string CampaignMemoryActionText => _campaignMemoryNeedsEstablish
         ? "从已裁定历史建立"
         : "重试跑团记忆";
+    public bool ShowCampaignMemoryAction =>
+        IsGame
+        && IsCampaignMemoryEnabled
+        && _campaignMemoryUpdater is not null
+        && (_campaignMemoryNeedsEstablish
+            || (!string.IsNullOrWhiteSpace(_campaignMemoryLastError)
+                && _campaignMemoryPending));
     public string ContextPreviewSummary => _contextPreviewSummary;
     public bool HasContextPreview => ContextPreviewItems.Count > 0;
     public bool CanRetryCampaignMemory =>
-        IsGame
-        && !IsBusy
-        && IsCampaignMemoryEnabled
-        && _campaignMemoryPending
-        && _campaignMemoryUpdater is not null;
+        ShowCampaignMemoryAction && !IsCampaignOperationBusy;
+
+    public string CampaignContextTokenBudgetText
+    {
+        get => _campaignContextTokenBudgetText;
+        set => SetProperty(ref _campaignContextTokenBudgetText, value);
+    }
+
+    public string CampaignPlayerHistoryBudgetText
+    {
+        get => _campaignPlayerHistoryBudgetText;
+        set => SetProperty(ref _campaignPlayerHistoryBudgetText, value);
+    }
+
+    public string CampaignGmHistoryBudgetText
+    {
+        get => _campaignGmHistoryBudgetText;
+        set => SetProperty(ref _campaignGmHistoryBudgetText, value);
+    }
+
+    public string CampaignMemoryUpdateIntervalRoundsText
+    {
+        get => _campaignMemoryUpdateIntervalRoundsText;
+        set => SetProperty(ref _campaignMemoryUpdateIntervalRoundsText, value);
+    }
+
+    public string CampaignMemoryPendingTokenThresholdText
+    {
+        get => _campaignMemoryPendingTokenThresholdText;
+        set => SetProperty(
+            ref _campaignMemoryPendingTokenThresholdText,
+            value);
+    }
+
+    public string CampaignMemorySettingsStatusText
+    {
+        get => _campaignMemorySettingsStatusText;
+        private set => SetProperty(
+            ref _campaignMemorySettingsStatusText,
+            value);
+    }
 
     private bool AiGmResolutionNeedsRetry =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
@@ -343,7 +444,79 @@ public sealed class CampaignsViewModel : ViewModelBase
             .LastOrDefault()
             ?.GenerationStatus is (
                 CampaignGenerationStatus.Failed
-                or CampaignGenerationStatus.Interrupted);
+            or CampaignGenerationStatus.Interrupted);
+
+    private bool IsGmCandidatePending =>
+        _game?.Campaign.GmKind == CampaignGmKind.Ai
+        && _game.Campaign.Phase == CampaignPhase.ReadyForResolution
+        && GetGmCandidates().Count > 1
+        && GetGmCandidates().Any(item =>
+            item.GenerationStatus == CampaignGenerationStatus.Completed
+            && item.EndReason == CampaignEndReason.Normal);
+
+    private IReadOnlyList<CampaignEvent> GetGmCandidates() =>
+        _game is null
+            ? Array.Empty<CampaignEvent>()
+            : _game.Events
+                .Where(item =>
+                    item.RoundNo == _game.Campaign.CurrentRound
+                    && item.Kind == CampaignEventKind.GmResolution)
+                .OrderBy(item => item.SequenceNo)
+                .ToArray();
+
+    private CampaignEvent? GetSelectedGmCandidate()
+    {
+        var candidates = GetGmCandidates();
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        return candidates.FirstOrDefault(item => item.Id == _selectedGmCandidateId)
+               ?? candidates[^1];
+    }
+
+    private int SelectedGmCandidateIndex(
+        IReadOnlyList<CampaignEvent> candidates)
+    {
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            if (candidates[index].Id == _selectedGmCandidateId)
+            {
+                return index;
+            }
+        }
+
+        return candidates.Count - 1;
+    }
+
+    public bool HasGmCandidateNavigation =>
+        IsGmCandidatePending;
+
+    public string GmCandidateNavigationLabel
+    {
+        get
+        {
+            if (!HasGmCandidateNavigation)
+            {
+                return string.Empty;
+            }
+
+            var candidates = GetGmCandidates();
+            if (candidates.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var index = SelectedGmCandidateIndex(candidates);
+            return $"{index + 1}/{candidates.Count}";
+        }
+    }
+
+    public bool IsSelectedGmCandidateValid =>
+        GetSelectedGmCandidate()?.GenerationStatus
+            == CampaignGenerationStatus.Completed
+        && GetSelectedGmCandidate()?.EndReason == CampaignEndReason.Normal;
 
     public CampaignScenario? SelectedScenario
     {
@@ -564,7 +737,7 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     public async Task LoadAsync()
     {
-        await RunUiAsync(async () =>
+        try
         {
             await LoadReferenceDataAsync();
             await RefreshLibraryAsync();
@@ -572,7 +745,11 @@ public sealed class CampaignsViewModel : ViewModelBase
             {
                 await LoadGameAsync(_game.Campaign.Id);
             }
-        });
+        }
+        catch (Exception exception)
+        {
+            StatusText = exception.Message;
+        }
     }
 
     private async Task LoadReferenceDataAsync()
@@ -1070,7 +1247,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                 choice.Character,
                 memory,
                 choice.IncludeMemory,
-                choice.IncludeOriginalWorldKnowledge);
+                includeOriginalWorldKnowledge: false);
             var route = choice.SelectedRoute!;
             participants.Add(new CampaignParticipant
             {
@@ -1132,8 +1309,6 @@ public sealed class CampaignsViewModel : ViewModelBase
 
             choice.IsSelected = true;
             choice.IncludeMemory = !string.IsNullOrWhiteSpace(participant.MemorySnapshot);
-            choice.IncludeOriginalWorldKnowledge =
-                participant.OriginalWorldKnowledgeSnapshot is not ("" or "{}");
             choice.SelectedRoute = FindRoute(
                                        participant.ProviderId,
                                        participant.ModelId)
@@ -1227,7 +1402,17 @@ public sealed class CampaignsViewModel : ViewModelBase
         await RunUiAsync(async () =>
         {
             CampaignEvent resolution;
-            if (_game.Campaign.GmKind == CampaignGmKind.User)
+            var committingCandidate = IsGmCandidatePending;
+            if (committingCandidate)
+            {
+                var candidate = GetSelectedGmCandidate()
+                                ?? throw new InvalidOperationException(
+                                    "当前没有可采用的 GM 候选。");
+                resolution = await _runner.CommitGmResolutionCandidateAsync(
+                    _game.Campaign.Id,
+                    candidate.Id);
+            }
+            else if (_game.Campaign.GmKind == CampaignGmKind.User)
             {
                 resolution = await _runner.SubmitUserGmResolutionAsync(
                     _game.Campaign.Id,
@@ -1241,9 +1426,16 @@ public sealed class CampaignsViewModel : ViewModelBase
             }
 
             await LoadGameAsync(_game.Campaign.Id);
+            var waitingForGmCandidate =
+                _game.Campaign.GmKind == CampaignGmKind.Ai
+                && IsGmCandidatePending;
             StatusText = resolution.GenerationStatus
                          == CampaignGenerationStatus.Completed
-                ? "GM 裁定已保存，已进入下一行动阶段。"
+                 ? committingCandidate
+                     ? "已采用当前 GM 候选并进入下一行动阶段；上一回合候选已锁定。"
+                     : waitingForGmCandidate
+                         ? "AI GM 重试成功；请选择候选并确认后进入下一行动阶段。"
+                     : "GM 裁定已保存，已进入下一行动阶段。"
                 : resolution.EndReason == CampaignEndReason.ProtocolViolation
                     ? "本次 AI GM 输出缺少有效的“下一轮评定参考”；原文已保留，回合未推进，请重试。"
                     : $"本次 GM 裁定未完成：{EndReasonName(resolution.EndReason)}。原记录已保留，请重试。";
@@ -1316,7 +1508,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                 item.Event.Id);
             await LoadGameAsync(_game.Campaign.Id);
             StatusText = retry.GenerationStatus == CampaignGenerationStatus.Completed
-                ? "AI 行动重试成功，新缓存已锁定；旧失败缓存保留用于审计。"
+                ? "AI 行动重试成功；旧失败记录已从当前跑团记录隐藏，仅保留用于审计。"
                 : "重试仍未完成，可再次重试或更换该席位模型。";
         });
     }
@@ -1370,6 +1562,142 @@ public sealed class CampaignsViewModel : ViewModelBase
         }
 
         await OpenPromptSettings(key);
+    }
+
+    public void PrepareCampaignMemorySettings()
+    {
+        if (_game is null)
+        {
+            return;
+        }
+
+        CampaignContextTokenBudgetText =
+            _game.Campaign.ContextTokenBudget.ToString();
+        CampaignPlayerHistoryBudgetText =
+            _game.Campaign.PlayerHistoryBudget.ToString();
+        CampaignGmHistoryBudgetText =
+            _game.Campaign.GmHistoryBudget.ToString();
+        CampaignMemoryUpdateIntervalRoundsText =
+            _game.Campaign.MemoryUpdateIntervalRounds.ToString();
+        CampaignMemoryPendingTokenThresholdText =
+            _game.Campaign.MemoryUpdatePendingTokenThreshold.ToString();
+        CampaignMemorySettingsStatusText = string.Empty;
+    }
+
+    private async Task SaveCampaignMemorySettingsAsync()
+    {
+        if (_game is null)
+        {
+            return;
+        }
+
+        if (!TryParseSetting(
+                CampaignContextTokenBudgetText,
+                8_000,
+                200_000,
+                "单次总上下文预算",
+                out var contextTokenBudget)
+            || !TryParseSetting(
+                CampaignPlayerHistoryBudgetText,
+                512,
+                200_000,
+                "AI 玩家历史预算",
+                out var playerHistoryBudget)
+            || !TryParseSetting(
+                CampaignGmHistoryBudgetText,
+                512,
+                200_000,
+                "GM 历史预算",
+                out var gmHistoryBudget)
+            || !TryParseSetting(
+                CampaignMemoryUpdateIntervalRoundsText,
+                1,
+                50,
+                "自动更新间隔",
+                out var memoryUpdateIntervalRounds)
+            || !TryParseSetting(
+                CampaignMemoryPendingTokenThresholdText,
+                1_000,
+                50_000,
+                "待处理事件阈值",
+                out var memoryUpdatePendingTokenThreshold))
+        {
+            return;
+        }
+
+        await RunUiAsync(async () =>
+        {
+            try
+            {
+                var campaignId = _game.Campaign.Id;
+                await _campaigns.UpdateContextSettingsAsync(
+                    campaignId,
+                    _game.Campaign.StateVersion,
+                    new CampaignContextSettingsUpdate(
+                        playerHistoryBudget,
+                        gmHistoryBudget,
+                        contextTokenBudget,
+                        memoryUpdateIntervalRounds,
+                        memoryUpdatePendingTokenThreshold));
+                await LoadGameAsync(campaignId);
+                PrepareCampaignMemorySettings();
+                CampaignMemorySettingsStatusText =
+                    "已保存。本轮预估和后续模型请求将使用新设置。";
+                StatusText = "跑团记忆与上下文设置已保存。";
+            }
+            catch (Exception exception)
+            {
+                CampaignMemorySettingsStatusText = exception.Message;
+            }
+        });
+    }
+
+    private bool CanMoveGmCandidate(int offset)
+    {
+        if (!IsGmCandidatePending || IsCampaignOperationBusy)
+        {
+            return false;
+        }
+
+        var candidates = GetGmCandidates();
+        var targetIndex = SelectedGmCandidateIndex(candidates) + offset;
+        return targetIndex >= 0 && targetIndex < candidates.Count;
+    }
+
+    private async Task MoveGmCandidateAsync(int offset)
+    {
+        if (!CanMoveGmCandidate(offset))
+        {
+            return;
+        }
+
+        var candidates = GetGmCandidates();
+        var targetIndex = SelectedGmCandidateIndex(candidates) + offset;
+        await RunUiAsync(async () =>
+        {
+            _selectedGmCandidateId = candidates[targetIndex].Id;
+            await LoadGameAsync(_game!.Campaign.Id);
+            StatusText = $"已切换到 GM 候选 {targetIndex + 1}/{candidates.Count}；只有当前选中的已通过校验候选可以进入下一回合。";
+        });
+    }
+
+    private bool TryParseSetting(
+        string value,
+        int minimum,
+        int maximum,
+        string label,
+        out int result)
+    {
+        if (!int.TryParse(value, out result)
+            || result < minimum
+            || result > maximum)
+        {
+            CampaignMemorySettingsStatusText =
+                $"{label}必须是 {minimum:N0} 到 {maximum:N0} 之间的整数。";
+            return false;
+        }
+
+        return true;
     }
 
     private async Task ToggleCampaignMemoryAsync()
@@ -1473,6 +1801,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                                          && publicCheckpointTask.Result is null;
         OnPropertyChanged(nameof(CanRetryCampaignMemory));
         OnPropertyChanged(nameof(CampaignMemoryActionText));
+        OnPropertyChanged(nameof(ShowCampaignMemoryAction));
         if (!string.IsNullOrWhiteSpace(_campaignMemoryLastError)
             && _campaignMemoryPending)
         {
@@ -1520,13 +1849,50 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             OnPropertyChanged(nameof(CanRetryCampaignMemory));
             OnPropertyChanged(nameof(CampaignMemoryActionText));
+            OnPropertyChanged(nameof(ShowCampaignMemoryAction));
         }
     }
 
     private async Task LoadGameAsync(string campaignId)
     {
+        foreach (var stale in _generationProgresses
+                     .Where(pair => pair.Value.CampaignId != campaignId)
+                     .Select(pair => pair.Key)
+                     .ToArray())
+        {
+            _generationProgresses.Remove(stale);
+        }
+        var previousCampaignId = _game?.Campaign.Id;
         _game = await _campaigns.GetAsync(campaignId)
                 ?? throw new InvalidOperationException("跑团不存在。");
+        if (!string.Equals(previousCampaignId, campaignId, StringComparison.Ordinal))
+        {
+            _activeMemoryOperations.Clear();
+            _memoryTokensByOperation.Clear();
+            _memoryReceivedTokens = 0;
+            _isMemoryUpdating = false;
+        }
+        var gmCandidates = _game.Events
+            .Where(item =>
+                item.RoundNo == _game.Campaign.CurrentRound
+                && item.Kind == CampaignEventKind.GmResolution)
+            .OrderBy(item => item.SequenceNo)
+            .ToArray();
+        if (_game.Campaign.Phase != CampaignPhase.ReadyForResolution
+            || _game.Campaign.GmKind != CampaignGmKind.Ai
+            || gmCandidates.Length <= 1)
+        {
+            _selectedGmCandidateId = null;
+        }
+        else if (gmCandidates.All(item => item.Id != _selectedGmCandidateId))
+        {
+            _selectedGmCandidateId = gmCandidates
+                .LastOrDefault(item =>
+                    item.GenerationStatus == CampaignGenerationStatus.Completed
+                    && item.EndReason == CampaignEndReason.Normal)
+                ?.Id
+                ?? gmCandidates[^1].Id;
+        }
         _gameUiState = CampaignGameUiState.Create(_game);
         await RefreshCampaignMemoryStatusAsync();
         SelectedGm = GmChoices.Single(item => item.Value == _game.Campaign.GmKind);
@@ -1548,7 +1914,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                 participant);
             seat.ShowActionButton = actionState.ShowButton;
             seat.CanGenerateAction =
-                actionState.CanAct && !IsBusy;
+                actionState.CanAct && !IsCampaignOperationBusy;
             seat.ActionHelpText = actionState.HelpText;
             Seats.Add(seat);
         }
@@ -1572,8 +1938,59 @@ public sealed class CampaignsViewModel : ViewModelBase
                     .Last()
                     .Id,
                 StringComparer.Ordinal);
+        var gmCandidateIds = IsGmCandidatePending
+            ? gmCandidates
+                .Select(item => item.Id)
+                .ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+        var canonicalGmResolutionIds = _game.Events
+            .Where(item =>
+                item.Kind == CampaignEventKind.GmResolution
+                && item.GenerationStatus == CampaignGenerationStatus.Completed
+                && item.IsLocked)
+            .Select(item => item.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var replacedEventIds = BuildReplacedAncestorIds(_game.Events);
+        var addedGmCandidateGroup = false;
         foreach (var campaignEvent in _game.Events.OrderBy(item => item.SequenceNo))
         {
+            if (gmCandidateIds.Contains(campaignEvent.Id))
+            {
+                if (addedGmCandidateGroup)
+                {
+                    continue;
+                }
+
+                addedGmCandidateGroup = true;
+                var selectedCandidate = gmCandidates.FirstOrDefault(item =>
+                                            item.Id == _selectedGmCandidateId)
+                                        ?? gmCandidates[^1];
+                Events.Add(new CampaignEventItemViewModel(
+                    selectedCandidate,
+                    "GM",
+                    EventKindName(selectedCandidate.Kind),
+                    GenerationStatusName(selectedCandidate),
+                    selectedCandidate.GenerationStatus
+                        == CampaignGenerationStatus.Completed
+                        ? selectedCandidate.Content
+                        : "该 GM 候选未通过协议校验；未锁定，也不会进入下一次 API 请求。",
+                    CanRetry: false,
+                    gmCandidates,
+                    SelectedGmCandidateIndex(gmCandidates)));
+                continue;
+            }
+
+            if (campaignEvent.Kind == CampaignEventKind.GmResolution
+                && !canonicalGmResolutionIds.Contains(campaignEvent.Id))
+            {
+                continue;
+            }
+
+            if (replacedEventIds.Contains(campaignEvent.Id))
+            {
+                continue;
+            }
+
             var canRetry = campaignEvent.Kind == CampaignEventKind.PlayerIntent
                            && campaignEvent.GenerationStatus is (
                                CampaignGenerationStatus.Failed
@@ -1605,6 +2022,31 @@ public sealed class CampaignsViewModel : ViewModelBase
         await RefreshContextPreviewAsync();
         ShowScreen("game");
         RaiseGameProperties();
+    }
+
+    private static HashSet<string> BuildReplacedAncestorIds(
+        IReadOnlyList<CampaignEvent> events)
+    {
+        var eventsById = events.ToDictionary(
+            item => item.Id,
+            StringComparer.Ordinal);
+        var replacedIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var successfulEvent in events.Where(item =>
+                     item.GenerationStatus == CampaignGenerationStatus.Completed
+                     && item.IsLocked))
+        {
+            var ancestorId = successfulEvent.ReplacesEventId;
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            while (!string.IsNullOrWhiteSpace(ancestorId)
+                   && visited.Add(ancestorId)
+                   && eventsById.TryGetValue(ancestorId, out var ancestor))
+            {
+                replacedIds.Add(ancestor.Id);
+                ancestorId = ancestor.ReplacesEventId;
+            }
+        }
+
+        return replacedIds;
     }
 
     private async Task RefreshContextPreviewAsync()
@@ -1860,7 +2302,6 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             choice.IsSelected = false;
             choice.IncludeMemory = false;
-            choice.IncludeOriginalWorldKnowledge = false;
         }
         RefreshCharacterSelectionState();
     }
@@ -1941,7 +2382,9 @@ public sealed class CampaignsViewModel : ViewModelBase
                 out var contextReason);
             seat.ShowActionButton = actionState.ShowButton;
             seat.CanGenerateAction =
-                actionState.CanAct && !IsBusy && !contextBlocked;
+                actionState.CanAct
+                && !IsCampaignOperationBusy
+                && !contextBlocked;
             seat.ActionHelpText = contextBlocked
                 ? $"上下文预算不足：{contextReason}"
                 : actionState.HelpText;
@@ -1972,6 +2415,16 @@ public sealed class CampaignsViewModel : ViewModelBase
         OnPropertyChanged(nameof(BlindAiActionHelpText));
         OnPropertyChanged(nameof(ResolveButtonText));
         OnPropertyChanged(nameof(ResolveHelpText));
+        OnPropertyChanged(nameof(HasGmCandidateNavigation));
+        OnPropertyChanged(nameof(GmCandidateNavigationLabel));
+        OnPropertyChanged(nameof(IsSelectedGmCandidateValid));
+        OnPropertyChanged(nameof(IsMemoryUpdating));
+        OnPropertyChanged(nameof(IsCampaignOperationBusy));
+        OnPropertyChanged(nameof(IsRequestReceiving));
+        OnPropertyChanged(nameof(RequestProgressText));
+        OnPropertyChanged(nameof(RequestReceivedTokenText));
+        OnPropertyChanged(nameof(MemoryProgressText));
+        OnPropertyChanged(nameof(MemoryReceivedTokenText));
         OnPropertyChanged(nameof(ScheduleUserJoinButtonText));
         OnPropertyChanged(nameof(ScheduleUserJoinHelpText));
         OnPropertyChanged(nameof(CampaignMemoryStatusText));
@@ -1979,15 +2432,18 @@ public sealed class CampaignsViewModel : ViewModelBase
         OnPropertyChanged(nameof(CampaignMemoryToggleText));
         OnPropertyChanged(nameof(CanToggleCampaignMemory));
         OnPropertyChanged(nameof(CampaignMemoryActionText));
+        OnPropertyChanged(nameof(ShowCampaignMemoryAction));
         OnPropertyChanged(nameof(CanRetryCampaignMemory));
         OnPropertyChanged(nameof(ContextPreviewSummary));
         OnPropertyChanged(nameof(HasContextPreview));
         ToggleCampaignMemoryCommand.RaiseCanExecuteChanged();
+        PreviousGmCandidateCommand.RaiseCanExecuteChanged();
+        NextGmCandidateCommand.RaiseCanExecuteChanged();
     }
 
     private async Task RunUiAsync(Func<Task> operation)
     {
-        if (IsBusy)
+        if (IsCampaignOperationBusy)
         {
             return;
         }
@@ -2005,6 +2461,121 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    private void OnCampaignGenerationProgressChanged(
+        object? sender,
+        CampaignGenerationProgress progress)
+    {
+        if (_game is null || progress.CampaignId != _game.Campaign.Id)
+        {
+            return;
+        }
+
+        RunOnUi(() =>
+        {
+            if (progress.Status is CampaignGenerationStatus.Queued
+                or CampaignGenerationStatus.Streaming)
+            {
+                _generationProgresses[progress.EventId] = progress;
+            }
+            else
+            {
+                _generationProgresses.Remove(progress.EventId);
+            }
+            OnPropertyChanged(nameof(IsRequestReceiving));
+            OnPropertyChanged(nameof(RequestProgressText));
+            OnPropertyChanged(nameof(RequestReceivedTokenText));
+        });
+    }
+
+    private void OnCampaignMemoryProgressChanged(
+        object? sender,
+        CampaignMemoryUpdateProgress progress)
+    {
+        if (_game is null || progress.CampaignId != _game.Campaign.Id)
+        {
+            return;
+        }
+
+        RunOnUi(() =>
+        {
+            var operationId = progress.OperationId
+                              ?? $"{progress.CampaignId}|memory";
+            switch (progress.Status)
+            {
+                case CampaignMemoryUpdateProgressStatus.Started:
+                    _activeMemoryOperations.Add(operationId);
+                    _memoryTokensByOperation[operationId] = 0;
+                    _isMemoryUpdating = true;
+                    _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
+                    _memoryProgressText = progress.Message
+                                           ?? "跑团记忆更新中；本局操作暂时锁定。";
+                    StatusText = _memoryProgressText;
+                    break;
+                case CampaignMemoryUpdateProgressStatus.Receiving:
+                    _activeMemoryOperations.Add(operationId);
+                    _memoryTokensByOperation[operationId] = Math.Max(
+                        _memoryTokensByOperation.GetValueOrDefault(operationId),
+                        progress.ReceivedTokens);
+                    _isMemoryUpdating = true;
+                    _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
+                    _memoryProgressText = progress.Scope is null
+                        ? "正在更新跑团记忆"
+                        : $"正在更新{MemoryScopeName(progress.Scope.Value)}跑团记忆";
+                    break;
+                case CampaignMemoryUpdateProgressStatus.Completed:
+                    CompleteMemoryOperation(
+                        operationId,
+                        "跑团记忆更新完成；本局操作已解锁。");
+                    break;
+                case CampaignMemoryUpdateProgressStatus.Failed:
+                    CompleteMemoryOperation(
+                        operationId,
+                        string.IsNullOrWhiteSpace(progress.Message)
+                            ? "跑团记忆更新失败；本局操作已解锁。"
+                            : $"跑团记忆更新失败：{progress.Message}");
+                    break;
+            }
+
+            OnPropertyChanged(nameof(IsMemoryUpdating));
+            OnPropertyChanged(nameof(MemoryProgressText));
+            OnPropertyChanged(nameof(MemoryReceivedTokenText));
+            RefreshSeatActionStates();
+            RaiseGameProperties();
+            PreviousGmCandidateCommand.RaiseCanExecuteChanged();
+            NextGmCandidateCommand.RaiseCanExecuteChanged();
+        });
+    }
+
+    private void CompleteMemoryOperation(
+        string operationId,
+        string terminalMessage)
+    {
+        _activeMemoryOperations.Remove(operationId);
+        _memoryTokensByOperation.Remove(operationId);
+        _isMemoryUpdating = _activeMemoryOperations.Count > 0;
+        _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
+        if (!_isMemoryUpdating)
+        {
+            _memoryProgressText = terminalMessage;
+            StatusText = _memoryProgressText;
+        }
+    }
+
+    private static string MemoryScopeName(CampaignMemoryScope scope) =>
+        scope == CampaignMemoryScope.GameMaster ? "GM" : "公共";
+
+    private static void RunOnUi(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        dispatcher.BeginInvoke(action);
     }
 
     private static string RoundStatus(
@@ -2040,7 +2611,9 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             CampaignGenerationStatus.Queued => "排队中",
             CampaignGenerationStatus.Streaming => "接收中",
-            CampaignGenerationStatus.Completed => "已锁定",
+            CampaignGenerationStatus.Completed => campaignEvent.IsLocked
+                ? "已锁定"
+                : "已完成，待确认",
             CampaignGenerationStatus.Interrupted => "已中断，可重试",
             CampaignGenerationStatus.Failed =>
                 $"失败：{EndReasonName(campaignEvent.EndReason)}",

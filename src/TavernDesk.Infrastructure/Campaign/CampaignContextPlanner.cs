@@ -375,18 +375,13 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         Add(sections, "player.identity", "席位身份与名单", ContextSegmentKind.Character,
             BuildPlayerIdentity(aggregate, participant), true, "system");
         Add(sections, "player.character-card", "冻结角色卡", ContextSegmentKind.Character,
-            $"【你的冻结角色快照】\n{participant.CharacterSnapshotJson}", true, "system");
+            $"【你的冻结角色卡】\n{CampaignCharacterPromptFormatter.Format(participant.DisplayName, participant.CharacterSnapshotJson)}",
+            true,
+            "system");
         AddOptional(sections, "player.initial-memory", "初始角色记忆", ContextSegmentKind.Memory,
             string.IsNullOrWhiteSpace(participant.MemorySnapshot)
                 ? string.Empty
                 : $"【经用户选择导入的角色记忆】\n{participant.MemorySnapshot}",
-            true,
-            "system");
-        AddOptional(sections, "player.original-knowledge", "原世界知识", ContextSegmentKind.Knowledge,
-            string.IsNullOrWhiteSpace(participant.OriginalWorldKnowledgeSnapshot)
-                || participant.OriginalWorldKnowledgeSnapshot == "{}"
-                ? string.Empty
-                : $"【经用户选择导入的原世界知识】\n{participant.OriginalWorldKnowledgeSnapshot}",
             true,
             "system");
         Add(sections, "player.history-header", "已裁定共同历史说明", ContextSegmentKind.History,
@@ -778,8 +773,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
     private static IEnumerable<CampaignEvent> EligibleEvents(CampaignAggregate aggregate) =>
         aggregate.Events
             .Where(item => item.IsLocked)
-            .Where(item => item.GenerationStatus is CampaignGenerationStatus.None
-                or CampaignGenerationStatus.Completed);
+            .Where(item => item.GenerationStatus == CampaignGenerationStatus.Completed);
 
     private static bool IsVisibleToPlayer(
         Campaign campaign,
@@ -883,7 +877,9 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
     {
         var snapshot = participant.Kind == CampaignParticipantKind.User
             ? participant.PersonaSnapshotJson
-            : participant.CharacterSnapshotJson;
+            : CampaignCharacterPromptFormatter.Format(
+                participant.DisplayName,
+                participant.CharacterSnapshotJson);
         if (!string.IsNullOrWhiteSpace(snapshot)
             && !string.Equals(snapshot.Trim(), "{}", StringComparison.Ordinal))
         {

@@ -10,11 +10,7 @@ internal static class TavernDeskRootLauncher
     {
         var target = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory,
-            "src",
-            "TavernDesk.App",
-            "bin",
-            "Release",
-            "net10.0-windows",
+            "app",
             "TavernDesk.App.exe");
 
         if (args.Length == 1
@@ -29,9 +25,8 @@ internal static class TavernDeskRootLauncher
         if (!File.Exists(target))
         {
             MessageBox.Show(
-                "尚未找到 TavernDesk Release 程序。\r\n\r\n"
-                + "请先在项目根目录执行：\r\n"
-                + "dotnet build TavernDesk.sln -c Release --no-restore",
+                "尚未找到 TavernDesk 自包含发布程序。\r\n\r\n"
+                + "请先生成 app 发布目录，或重新解压完整发布包。",
                 "TavernDesk",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);

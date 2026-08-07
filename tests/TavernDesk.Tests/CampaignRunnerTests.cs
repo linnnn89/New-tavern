@@ -714,9 +714,19 @@ public sealed class CampaignRunnerTests
 
         Assert.Equal(CampaignGenerationStatus.Completed, retried.GenerationStatus);
         Assert.Equal(CampaignEndReason.Normal, retried.EndReason);
-        Assert.True(retried.IsLocked);
+        Assert.False(retried.IsLocked);
         Assert.Equal(2, retried.AttemptNo);
         Assert.Equal(failed.Id, retried.ReplacesEventId);
+
+        var pending = await services.Campaigns.GetAsync(campaign.Id);
+        Assert.Equal(CampaignPhase.ReadyForResolution, pending!.Campaign.Phase);
+        Assert.Equal(1, pending.Campaign.CurrentRound);
+
+        var committed = await runner.CommitGmResolutionCandidateAsync(
+            campaign.Id,
+            retried.Id);
+        Assert.True(committed.IsLocked);
+
         var nextRound = await services.Campaigns.GetAsync(campaign.Id);
         Assert.Equal(CampaignPhase.AwaitingActions, nextRound!.Campaign.Phase);
         Assert.Equal(2, nextRound.Campaign.CurrentRound);

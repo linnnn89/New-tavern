@@ -84,6 +84,12 @@ public interface ICampaignRepository
         bool enabled,
         CancellationToken cancellationToken = default);
 
+    Task UpdateContextSettingsAsync(
+        string campaignId,
+        int expectedStateVersion,
+        CampaignContextSettingsUpdate settings,
+        CancellationToken cancellationToken = default);
+
     Task ScheduleUserJoinAsync(
         string campaignId,
         int expectedStateVersion,
@@ -113,6 +119,8 @@ public interface ICampaignRepository
 
 public interface ICampaignRunner
 {
+    event EventHandler<CampaignGenerationProgress>? ProgressChanged;
+
     Task<CampaignAggregate> StartAsync(
         string campaignId,
         CancellationToken cancellationToken = default);
@@ -143,6 +151,11 @@ public interface ICampaignRunner
 
     Task<CampaignEvent> GenerateGmResolutionAsync(
         string campaignId,
+        CancellationToken cancellationToken = default);
+
+    Task<CampaignEvent> CommitGmResolutionCandidateAsync(
+        string campaignId,
+        string eventId,
         CancellationToken cancellationToken = default);
 
     Task<CampaignEvent> RollDiceAsync(

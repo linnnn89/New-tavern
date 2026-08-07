@@ -8,6 +8,8 @@ TavernDesk 是面向 Windows 10/11 的本地酒馆角色聊天客户端，使用
 
 当前已经形成角色卡导入、角色书架、多会话聊天、云端 OpenAI-compatible API、Grok CLI 订阅后端、长期记忆、群聊、本地检索和独立跑团的可运行闭环，但尚不等同于SillyTavern 的全部功能。
 
+当前“跑团记忆升级版”已经完成 R2-B 跑团上下文预算、发送前分项估算、低频 GM/Public 长期记忆和每局独立 ON/OFF 开关。跑团预览与实际请求由同一个 Planner 生成，默认单次请求容量为 15,000 tokens（输入与输出预留合计）。
+
 ### 角色卡与书架
 
 - 导入和同容器导出 PNG `ccv3`/`chara`、JSON V1/V2/V3、CHARX；
@@ -84,6 +86,13 @@ TavernDesk 是面向 Windows 10/11 的本地酒馆角色聊天客户端，使用
 - 支持协作圆桌、秘密同投、严格先攻；每个席位有独立的排队、流式、完成、失败或中止缓存，可单独重试，失败正文不会进入 GM 上下文；
 - 支持 AI GM、USER GM 和“裁判下场踢球了”兼任模式；USER/AI 的每条完整玩家行动在同一事件内自动附带可信 `1d20`，额外 `NdM±K` 公开掷骰保留为独立工具；
 - GM 与 AI 玩家职责使用可编辑的全局提示词，并在跑团大厅提供直达入口；GM 提示词未自定义时自动跟随当前内置默认，恢复内置默认会取消显式覆盖；玩家请求按事件生命周期区分已裁定共同历史、最新 GM 行动依据和本轮待裁定席位内容，公开台词与行动意图可以被同席玩家感知或回应，但成败、观察结论和世界影响必须等待 GM 裁定；AI GM 必须以 `【下一轮评定参考】` 收尾，否则留存失败原文但不推进回合；
+- GM 和 AI 玩家请求统一通过 `ICampaignContextPlanner` 生成；跑团右侧预览与 `CampaignRunner` 实际发送使用同一份 `CampaignContextPlan.Messages`，Planner 本身不调用 Provider、不写数据库、不更新记忆；
+- 每局默认 `ContextTokenBudget = 15000`，表示单个 GM 或 AI 玩家请求的“输入上下文 + 输出预留”容量，不是整轮所有请求的合计。有效容量取本局预算与模型 ContextLimit 的较小值；
+- 上下文优先保留系统规则、身份与席位、角色/剧本/世界资料、最新 GM 场景和当前回合行动；GM/Public 长期记忆与较旧历史使用剩余预算。预算不足时只按事件整体省略较旧历史；固定资料或当前回合本身超限时阻止对应生成并显示原因；
+- 跑团游玩页右侧提供默认折叠的“本轮上下文估算”，按当前阶段显示各 AI 席位或 GM 的输入、输出预留、容量、分区明细及历史裁剪/超限状态。预估不会调用 Provider、Embedding 或记忆模型；
+- GM/Public 跑团记忆只在成功锁定 GM 裁定后检查。默认累计 3 个完整轮次，或上次 checkpoint 后已裁定事件达到约 4,000 tokens 时更新；玩家行动、单独掷骰、打开页面、重新载入和切换模型不会触发记忆模型；
+- 记忆更新严格截止到最新成功的 `GmResolution`，不会吸入下一轮尚未裁定的玩家行动。旧跑团没有 bank/checkpoint 时，打开页面不会自动产生 API 调用，可由用户从最新已裁定历史手动建立；
+- 每个跑团右上角有独立保存的“记忆 ON/OFF”胶囊开关。OFF 时不调用记忆总结模型，也不向 GM/AI 玩家请求注入 GM/Public 长期记忆或其结构包装；角色卡、规则、当前行动和近期原始历史仍保留。OFF 不删除既有 bank/checkpoint，重新 ON 后从原 checkpoint 继续，并不会因切换开关立即追溯调用模型；
 - 已保存跑团列表支持对单局右键永久删除，二次确认后级联清除该局席位与事件，不删除剧本卡、角色卡或其他跑团；
 - GM 请求把“已裁定历史”和“本轮待裁定行动”分区发送；本轮玩家已经提交的公开台词或表达不由 GM 重演，但行动成败、观察是否成立及其对 NPC、环境和世界的影响仍由 GM 在本轮首次确认；
 - 游戏途中可单独更换任一 AI 玩家或 GM 的 Provider/模型；变更作为审计事件保存，不改写既有事件；
@@ -91,15 +100,16 @@ TavernDesk 是面向 Windows 10/11 的本地酒馆角色聊天客户端，使用
 
 ### 本地数据可靠性
 
-- SQLite 当前 schema 为 v15，按版本执行事务化顺序迁移；失败回滚，并拒绝以旧软件打开更高版本数据库；v10 会永久清理旧版本回收箱遗留消息，v11 为模型目录增加来源元数据字段，v14 为记忆工作流增加单次发送上限和“仅发送新增对话”边界，v15 增加跑团 GM/Public 记忆银行及事件检查点；
-- 记忆银行自动更新默认开启：每新增 20 个用户轮次触发一次，单次最多发送 20 个用户轮次（含对应角色回复），并默认只发送自上次检查点后的新增对话；更新仍先生成草稿，必须人工保存才会覆盖正文并推进检查点；
+- SQLite 当前 schema 为 v17，按版本执行事务化顺序迁移；失败回滚，并拒绝以旧软件打开更高版本数据库。v15 增加跑团 GM/Public 记忆银行及事件检查点，v16 增加本局上下文预算、记忆轮次间隔和待处理 Token 阈值，v17 增加每局 `MemoryEnabled`；旧跑团迁移后默认 ON，不删除已有记忆或检查点；
+- 普通聊天角色记忆银行自动更新默认开启：每新增 20 个用户轮次触发一次，单次最多发送 20 个用户轮次（含对应角色回复），并默认只发送自上次检查点后的新增对话；更新仍先生成草稿，必须人工保存才会覆盖正文并推进检查点；
 - 消息使用会话内稳定 `sequence_no` 排序，删除后续消息、复制分支、候选回复和上下文组装不依赖 SQLite `rowid`；
 - 角色卡和剧本卡导入都使用数据根内的工作副本，不修改原文件；损坏的聊天归档会在数据库写入前拒绝；
-- 跑团使用 `campaign_scenarios`、`campaigns`、`campaign_participants` 和 `campaign_events` 四张独立表；操作 ID、终态守卫和乐观版本共同防止重试、迟到分片或并发收尾重复生效。
+- 跑团核心使用 `campaign_scenarios`、`campaigns`、`campaign_participants` 和 `campaign_events`，GM/Public 长期记忆与边界分别保存在 `campaign_memory_banks` 和 `campaign_memory_checkpoints`；操作 ID、终态守卫和乐观版本共同防止重试、迟到分片或并发收尾重复生效。
 
 ## 工程结构
 
 ```text
+app/                         明确发布时生成的 Windows 运行快照，不是源码
 src/
   TavernDesk.App/             WPF 界面、窗口和 ViewModel
   TavernDesk.Core/            领域模型与稳定接口
@@ -110,11 +120,37 @@ tests/
 docs/
   architecture.md             模块、数据与生命周期约束
   campaign_mode_design.md     独立跑团的已确认规则、R1 边界与后续证据门槛
+  TavernDesk-R2-B-Campaign-Context-Budget.md
+                              R2-B 预算、低频记忆、ON/OFF 与验证记录
   codex_worklog.md            按时间追加的实施和验证记录
   handoff.md                  新对话优先读取的当前快照与接手顺序
 tools/
   TavernDesk.RootLauncher.cs  根目录 EXE 的最小启动器源码
 ```
+
+### 跑团 R2-B 核心链路
+
+```text
+CampaignEvent / CampaignMemory / CharacterSnapshot
+                         │
+                         ▼
+              CampaignContextPlanner
+                         │
+             CampaignContextPlan
+                 ┌───────┴────────┐
+                 ▼                ▼
+       跑团右侧 Token 预览   CampaignRunner 实际请求
+
+成功锁定 GmResolution
+           │
+           ▼
+CampaignMemoryUpdateService
+           │
+           ▼
+GM/Public bank + checkpoint
+```
+
+`src/` 是唯一源码基准。`CampaignContextPlanner` 负责组装、预算分配、历史选择和 Token 估算；`CampaignRunner` 只消费计划并调用 Provider；`CampaignsViewModel` 展示同一计划的分区结果；`CampaignMemoryUpdateService` 只在权威 GM 裁定边界处理长期记忆。
 
 ## 构建与运行
 
@@ -125,32 +161,40 @@ tools/
 - NuGet 包缓存使用项目目录 `.packages/`。
 
 ```powershell
-cd "D:\Documents\女主角搜索器\TavernDesk"
+cd "<TavernDesk 仓库目录>"
 dotnet restore TavernDesk.sln
 dotnet build TavernDesk.sln -c Debug --no-restore
 dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj --no-build
 ```
 
-当前根目录已经生成 `TavernDesk.exe`。完成 Release 构建后，可以直接双击它，或运行：
+当前根目录已经生成 `TavernDesk.exe`。它是面向用户的薄启动器，只启动确定性发布目录 `app` 中的自包含版本：
 
 ```powershell
 .\TavernDesk.exe
 ```
 
-该文件是一个不包含应用代码和 DLL 的薄启动器；它启动
-`src\TavernDesk.App\bin\Release\net10.0-windows\TavernDesk.App.exe`。
-如果 Release 输出尚不存在，启动器会显示需要执行的构建命令。
+该文件不包含应用代码和 DLL；它只启动
+`app\TavernDesk.App.exe`。如果完整 `app` 发布目录不存在，启动器会显示可操作的提示。
 
-如果要把目录交给没有安装 .NET 10 的 Windows 设备使用，必须生成自包含发布输出，不能只执行普通 `dotnet build`：
+仓库中的 `app\TavernDesk.App.exe` 是明确发布时生成的确定性运行快照，可直接运行：
+
+```powershell
+.\app\TavernDesk.App.exe
+```
+
+当前 `app/` 是 `win-x64` 自包含发布，不要求目标设备预先安装 .NET 10；日常构建只更新 `src/**/bin`，不会自动同步 `app/`。只有准备更新确定性发布快照时才重新执行下面的 `dotnet publish`。不要编辑 `app/` 内的 DLL，也不要把它反向同步回 `src/`。
+
+更新确定性 `app/` 发布目录：
 
 ```powershell
 dotnet publish src\TavernDesk.App\TavernDesk.App.csproj `
   -c Release --no-restore -r win-x64 --self-contained true `
   -p:PublishSingleFile=false `
-  -o src\TavernDesk.App\bin\Release\net10.0-windows
+  -p:DebugType=None `
+  -o app
 ```
 
-自包含发布目录中的 `TavernDesk.App.runtimeconfig.json` 应包含 `includedFrameworks`；普通构建生成的 `frameworks` 配置仍会要求设备安装 .NET 10 Windows Desktop Runtime。
+发布目录必须保留 EXE、DLL、`coreclr.dll`、`hostfxr.dll`、WPF 运行库和 `runtimes/` 等文件；不能只复制 `TavernDesk.App.exe`。
 
 指定独立数据根：
 
@@ -163,7 +207,7 @@ dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj --no-build -- --da
 集中验证：
 
 ```powershell
-dotnet test TavernDesk.sln -c Debug --no-restore
+dotnet test TavernDesk.sln -c Release --no-restore
 dotnet build TavernDesk.sln -c Release --no-restore
 ```
 
@@ -173,7 +217,7 @@ dotnet build TavernDesk.sln -c Release --no-restore
 dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-build -- --storage-smoke ".\user-data\verification-local"
 ```
 
-最近完整基线（2026-08-04）：跑团事件生命周期与提示词迁移定向回归 `11/11` 通过，完整 Release 测试 `126/126` 通过，标准 Release 构建为 0 个警告、0 个错误，根目录 `TavernDesk.exe --probe` 退出码 0。AI 玩家请求按“已裁定共同历史 → 最新 GM 行动依据 → 本轮其他席位待裁定内容 → 当前角色任务”组装；JSONL 运行时附带 `confirmed_by_gm`、`resolved_round_record` 或 `pending_gm_resolution` 状态，保留原始事件正文且不增加摘要模型或 Agent 流程。公开台词与行动意图可以被平级玩家感知和回应，行动成败、观察结论及世界影响仍等待 GM；角色卡可定义性格、背景、知识、能力与表达风格，但不能改写当前席位为 GM、NPC、旁白或其他玩家。GM 请求禁止重演玩家已提交内容，只裁定尚未确认的结果并产生新的 NPC、环境和局势变化。旧内置玩家/GM 提示词可安全迁移，自定义提示词保持不变。本轮未读取 API Key、刷新模型目录或调用真实 Provider。
+最近完整基线（2026-08-06）：完整并行 Release 测试 `149/149` 通过，标准 Release 构建为 0 个警告、0 个错误，`git diff --check` 通过。覆盖 schema v17、R2-B Planner 与 Runner 消息一致性、固定上下文阻断、旧历史裁剪、GM/Public 可见性、低频记忆阈值、每局 ON/OFF、旧跑团手动建立、失败重试以及并行 SQLite 测试清理。本轮自动化验证未读取 API Key、刷新远端模型目录或调用真实 Provider。
 
 ## 稳定产品约束
 
@@ -182,11 +226,11 @@ dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-b
 - 默认浅色皮肤；“界面设置”提供聊天自动滚动、系统字体和字号，保留与业务逻辑解耦的 Skin 扩展边界，暂不开发动态主题；
 - 默认数据根位于“文档”目录，并允许用户整体修改；
 - API Key 不进入应用导出的备份，模型列表不自动联网刷新；
-- 上下文超限时阻止发送，不自动裁剪或截断；
+- 普通聊天上下文超限时阻止发送；跑团只允许按预算省略较旧事件历史，固定资料、身份和当前回合内容不自动压缩或删除，仍然超限时阻止对应生成；
 - 修改角色设定只影响后续上下文，不改写既有消息；
 - 分支是完全独立的会话副本，不共享消息节点；
 - 消息删除在明确范围和最终确认后立即永久生效，不提供回收、恢复或隐藏的软删除入口；
-- 记忆正文由用户确认保存，不由模型直接覆盖；
+- 普通聊天记忆先生成草稿并由用户确认保存；跑团 GM/Public 记忆按权威 GM 裁定和本局阈值自动更新，并由每局 ON/OFF 开关控制；
 - Agent/MCP 只服务酒馆聊天，不建设代码工程 Agent；
 - 不内置自动更新器，不注册文件关联，不使用 Windows 系统通知。
 
@@ -203,6 +247,7 @@ dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-b
 - MCP、有限聊天工具及权限交互；
 - 强制结束进程后的流式断点续传；当前只将遗留请求安全收尾为可重试终态，不续传、不自动重试；
 - 大型真实数据库迁移、长时间压力、DPI/键盘无障碍和长列表性能基线；
+- R2-B 已通过自动化回归和界面截图检查，但多人真实长局、不同 Provider 的实际 Token usage、三轮/4,000-token 自动更新触发和 ON/OFF 成本差异仍需用户桌面实测；
 - 跑团的角色属性、背包、地图、战斗棋盘、规则 DSL、战役分支/回滚和跨设备同步；
 - SillyTavern 插件私有扩展及所有第三方 Provider 变体。
 - DeepSeek 推理目前只提供明确的 OFF/ON，不增加 `low`/`high`/`max` 强度档位；真实使用证明需要时再扩展。
@@ -225,4 +270,5 @@ dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-b
 2. 本 README 的状态与边界；
 3. [架构约束](docs/architecture.md)；
 4. 涉及跑团时再读 [跑团设计](docs/campaign_mode_design.md)；
-5. [工作日志](docs/codex_worklog.md) 的最新记录。
+5. 涉及 R2-B 时再读 [跑团上下文预算与低频记忆实施方案](docs/TavernDesk-R2-B-Campaign-Context-Budget.md)；
+6. [工作日志](docs/codex_worklog.md) 的最新记录。

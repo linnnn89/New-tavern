@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -36,25 +37,28 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
     private readonly IModelAssignmentRepository _assignments;
     private readonly IProviderGateway _gateway;
     private readonly IConversationGenerationCoordinator _coordinator;
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _campaignGates = new(
-        StringComparer.Ordinal);
+    private readonly ICampaignOperationGate _operationGate;
     private readonly ConcurrentDictionary<
         string,
         Lazy<Task<CampaignMemoryUpdateResult>>> _inFlightUpdates = new(
         StringComparer.Ordinal);
+
+    public event EventHandler<CampaignMemoryUpdateProgress>? ProgressChanged;
 
     public CampaignMemoryUpdateService(
         ICampaignRepository campaigns,
         ICampaignMemoryRepository memories,
         IModelAssignmentRepository assignments,
         IProviderGateway gateway,
-        IConversationGenerationCoordinator coordinator)
+        IConversationGenerationCoordinator coordinator,
+        ICampaignOperationGate? operationGate = null)
     {
         _campaigns = campaigns;
         _memories = memories;
         _assignments = assignments;
         _gateway = gateway;
         _coordinator = coordinator;
+        _operationGate = operationGate ?? new CampaignOperationGate();
     }
 
     public async Task<CampaignMemoryUpdateResult> UpdateAsync(
@@ -107,13 +111,22 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         bool force,
         string requestKey)
     {
-        var gate = _campaignGates.GetOrAdd(
+        var isAutomatic = !force;
+        PublishProgress(
             campaignId,
-            static _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(CancellationToken.None);
+            null,
+            CampaignMemoryUpdateProgressStatus.Started,
+            0,
+            isAutomatic,
+            "跑团记忆更新已开始；正在锁定本局相关操作。",
+            requestKey);
+        IAsyncDisposable? operationLease = null;
+        CampaignMemoryUpdateResult? lastUpdated = null;
         try
         {
-            CampaignMemoryUpdateResult? lastUpdated = null;
+            operationLease = await _operationGate.EnterMemoryAsync(
+                campaignId,
+                CancellationToken.None);
             for (var batchNo = 0;
                  batchNo < MaxCatchUpBatchesPerInvocation;
                  batchNo++)
@@ -125,23 +138,29 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                         campaignId,
                         requestedThroughSequence,
                         force || lastUpdated is not null,
-                        CancellationToken.None);
+                        isAutomatic,
+                        CancellationToken.None,
+                        requestKey);
                 }
                 catch (OperationCanceledException)
                 {
-                    return new CampaignMemoryUpdateResult(
+                    var failed = new CampaignMemoryUpdateResult(
                         campaignId,
                         CampaignMemoryUpdateStatus.Failed,
                         lastUpdated?.SourceThroughEventSequence ?? 0,
                         "跑团记忆更新被中断，检查点未继续推进。");
+                    PublishTerminalProgress(failed, isAutomatic, requestKey);
+                    return failed;
                 }
                 catch (Exception exception)
                 {
-                    return new CampaignMemoryUpdateResult(
+                    var failed = new CampaignMemoryUpdateResult(
                         campaignId,
                         CampaignMemoryUpdateStatus.Failed,
                         lastUpdated?.SourceThroughEventSequence ?? 0,
                         exception.Message);
+                    PublishTerminalProgress(failed, isAutomatic, requestKey);
+                    return failed;
                 }
 
                 if (result.Status == CampaignMemoryUpdateStatus.Updated)
@@ -150,18 +169,36 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                     continue;
                 }
 
-                return lastUpdated ?? result;
+                var completed = lastUpdated ?? result;
+                PublishTerminalProgress(completed, isAutomatic, requestKey);
+                return completed;
             }
 
-            return lastUpdated
-                   ?? new CampaignMemoryUpdateResult(
+            var final = lastUpdated
+                        ?? new CampaignMemoryUpdateResult(
                        campaignId,
                        CampaignMemoryUpdateStatus.NoChanges,
                        0);
+            PublishTerminalProgress(final, isAutomatic, requestKey);
+            return final;
+        }
+        catch (Exception exception)
+        {
+            var failed = new CampaignMemoryUpdateResult(
+                campaignId,
+                CampaignMemoryUpdateStatus.Failed,
+                lastUpdated?.SourceThroughEventSequence ?? 0,
+                exception.Message);
+            PublishTerminalProgress(failed, isAutomatic, requestKey);
+            return failed;
         }
         finally
         {
-            gate.Release();
+            if (operationLease is not null)
+            {
+                await operationLease.DisposeAsync();
+            }
+
             _inFlightUpdates.TryRemove(requestKey, out _);
         }
     }
@@ -170,7 +207,9 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         string campaignId,
         long? requestedThroughSequence,
         bool force,
-        CancellationToken cancellationToken)
+        bool isAutomatic,
+        CancellationToken cancellationToken,
+        string progressOperationId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
         var aggregate = await _campaigns.GetAsync(campaignId, cancellationToken)
@@ -323,6 +362,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 gmBank?.TargetTokens ?? DefaultTargetTokens,
                 gmBatch,
                 assignment!,
+                isAutomatic,
                 cancellationToken);
             banks.Add(CreateBank(
                 gmBank,
@@ -343,6 +383,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 publicBank?.TargetTokens ?? DefaultTargetTokens,
                 publicBatch,
                 assignment!,
+                isAutomatic,
                 cancellationToken);
             banks.Add(CreateBank(
                 publicBank,
@@ -392,6 +433,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         int targetTokens,
         IReadOnlyList<CampaignEvent> events,
         ModelFunctionAssignment assignment,
+        bool isAutomatic,
         CancellationToken cancellationToken)
     {
         var input = BuildInput(aggregate, scope, oldBody, events);
@@ -417,6 +459,8 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
             assignment.ReasoningEnabled,
             SessionId: $"campaign:{aggregate.Campaign.Id}:memory:{scope}");
         var buffer = new StringBuilder();
+        long receivedUtf8Bytes = 0;
+        long lastProgressTimestamp = 0;
         ProviderStreamEvent? completion = null;
         var operationId =
             $"campaign-memory:{aggregate.Campaign.Id}:{scope}:{events.Last().SequenceNo}";
@@ -428,6 +472,22 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 if (streamEvent.Kind == ProviderStreamEventKind.Content)
                 {
                     buffer.Append(streamEvent.Content);
+                    receivedUtf8Bytes +=
+                        Encoding.UTF8.GetByteCount(streamEvent.Content);
+                    var now = Stopwatch.GetTimestamp();
+                    if (lastProgressTimestamp == 0
+                        || Stopwatch.GetElapsedTime(lastProgressTimestamp)
+                           >= TimeSpan.FromMilliseconds(120))
+                    {
+                        lastProgressTimestamp = now;
+                        PublishProgress(
+                            aggregate.Campaign.Id,
+                            scope,
+                            CampaignMemoryUpdateProgressStatus.Receiving,
+                            ApproximateTokens(receivedUtf8Bytes),
+                            isAutomatic,
+                             operationId: operationId);
+                    }
                 }
                 else if (streamEvent.Kind == ProviderStreamEventKind.Completed)
                 {
@@ -470,6 +530,52 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
             events[^1].SequenceNo,
             scope,
             targetTokens);
+    }
+
+    private void PublishProgress(
+        string campaignId,
+        CampaignMemoryScope? scope,
+        CampaignMemoryUpdateProgressStatus status,
+        int receivedTokens,
+        bool isAutomatic,
+        string? message = null,
+        string? operationId = null)
+    {
+        try
+        {
+            ProgressChanged?.Invoke(
+                this,
+                new CampaignMemoryUpdateProgress(
+                    campaignId,
+                    scope,
+                    status,
+                    Math.Max(0, receivedTokens),
+                    isAutomatic,
+                    message,
+                    operationId));
+        }
+        catch
+        {
+            // UI telemetry must never change the memory update result.
+        }
+    }
+
+    private void PublishTerminalProgress(
+        CampaignMemoryUpdateResult result,
+        bool isAutomatic,
+        string operationId)
+    {
+        PublishProgress(
+            result.CampaignId,
+            null,
+            result.Status is CampaignMemoryUpdateStatus.Failed
+                or CampaignMemoryUpdateStatus.SkippedNoAssignment
+                ? CampaignMemoryUpdateProgressStatus.Failed
+                : CampaignMemoryUpdateProgressStatus.Completed,
+            0,
+            isAutomatic,
+            result.ErrorMessage,
+            operationId);
     }
 
     private static IReadOnlyList<CampaignEvent> SelectEventBatch(
@@ -868,7 +974,12 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
     }
 
     private static int ApproximateTokens(string content) =>
-        (int)Math.Ceiling(Encoding.UTF8.GetByteCount(content) / 3.2d) + 4;
+        ApproximateTokens(Encoding.UTF8.GetByteCount(content));
+
+    private static int ApproximateTokens(long utf8ByteCount) =>
+        (int)Math.Min(
+            int.MaxValue,
+            Math.Ceiling(Math.Max(0L, utf8ByteCount) / 3.2d) + 4);
 
     private static string ScopeLabel(CampaignMemoryScope scope) =>
         scope == CampaignMemoryScope.GameMaster ? "GM 全量" : "公共";

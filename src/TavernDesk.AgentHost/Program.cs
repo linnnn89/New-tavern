@@ -547,7 +547,8 @@ static async Task RunCampaignLiveSmokeAsync(
             isolatedServices.GenerationCoordinator,
             sourceServices.GlobalPrompts,
             isolatedServices.CampaignMemory,
-            isolatedServices.CampaignMemoryRepository);
+            isolatedServices.CampaignMemoryRepository,
+            operationGate: isolatedServices.CampaignOperationGate);
 
         stage = "start-campaign";
         var started = await runner.StartAsync(campaign.Id);

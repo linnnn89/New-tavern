@@ -61,7 +61,6 @@ public sealed class CampaignCharacterChoiceViewModel : ViewModelBase
 {
     private bool _isSelected;
     private bool _includeMemory;
-    private bool _includeOriginalWorldKnowledge;
     private bool _isSelectionEnabled = true;
     private CampaignModelOption? _selectedRoute;
 
@@ -85,12 +84,6 @@ public sealed class CampaignCharacterChoiceViewModel : ViewModelBase
     {
         get => _includeMemory;
         set => SetProperty(ref _includeMemory, value);
-    }
-
-    public bool IncludeOriginalWorldKnowledge
-    {
-        get => _includeOriginalWorldKnowledge;
-        set => SetProperty(ref _includeOriginalWorldKnowledge, value);
     }
 
     public bool IsSelectionEnabled
@@ -175,11 +168,22 @@ public sealed record CampaignEventItemViewModel(
     string KindLabel,
     string StatusLabel,
     string DisplayContent,
-    bool CanRetry)
+    bool CanRetry,
+    IReadOnlyList<CampaignEvent>? Candidates = null,
+    int ActiveCandidateIndex = 0)
 {
     public string RetryButtonText => $"重试 {ActorName} 的本回合行动";
     public string RetryHelpText =>
         $"重新调用 {ActorName} 当前使用的模型；失败记录会保留，新结果另存为一次重试。";
+    public bool HasCandidates => Candidates is { Count: > 1 };
+    public string CandidateNavigationLabel => HasCandidates
+        ? $"{ActiveCandidateIndex + 1}/{Candidates!.Count}"
+        : string.Empty;
+    public string CandidateHelpText => Event.GenerationStatus
+        == CampaignGenerationStatus.Completed
+        && Event.EndReason == CampaignEndReason.Normal
+        ? "当前候选已通过协议校验；确认后才会进入下一回合。"
+        : "该候选未通过协议校验，不会被发送到下一次 API。";
 }
 
 public sealed record CampaignSeatActionState(
@@ -353,6 +357,18 @@ public sealed record CampaignGameUiState(
             && latestGmResolution?.GenerationStatus is (
                 CampaignGenerationStatus.Failed
                 or CampaignGenerationStatus.Interrupted);
+        var gmCandidates = aggregate.Events
+            .Where(item =>
+                item.RoundNo == campaign.CurrentRound
+                && item.Kind == CampaignEventKind.GmResolution)
+            .ToArray();
+        var gmCandidatePending =
+            campaign.GmKind == CampaignGmKind.Ai
+            && campaign.Phase == CampaignPhase.ReadyForResolution
+            && gmCandidates.Length > 1
+            && gmCandidates.Any(item =>
+                item.GenerationStatus == CampaignGenerationStatus.Completed
+                && item.EndReason == CampaignEndReason.Normal);
         var userHasAction = userSeat is not null
                             && latestActions.ContainsKey(userSeat.Id);
         var current = campaign.FlowPreset
@@ -389,14 +405,18 @@ public sealed record CampaignGameUiState(
             campaign,
             current,
             failures,
-            gmResolutionFailed);
+            gmResolutionFailed,
+            gmCandidatePending);
         var stepDescription = StepDescription(
             campaign,
             current,
             failures,
             gmResolutionFailed,
+            gmCandidatePending,
             userSeat is not null);
-        var progress = gmResolutionFailed
+        var progress = gmCandidatePending
+            ? $"GM 已生成 {gmCandidates.Length} 个候选；请选择当前版本后确认进入下一回合。"
+            : gmResolutionFailed
             ? "上一次 AI GM 请求未完成；原失败记录已保留。"
             : campaign.Phase == CampaignPhase.ReadyForResolution
             ? $"已收齐 {enabled.Length} 个玩家席位的行动，可以交给 GM。"
@@ -415,7 +435,9 @@ public sealed record CampaignGameUiState(
                 ? "至少一个 AI 行动失败；必须先重试失败记录。"
                 : "当前没有需要生成的秘密 AI 行动。";
         var resolveHelp = showResolveSection
-            ? gmResolutionFailed
+            ? gmCandidatePending
+                ? "先在跑团记录中切换 GM 候选；只有当前选中的已通过校验候选可以进入下一回合。"
+                : gmResolutionFailed
                 ? "重新调用当前 GM 模型；也可先在下方切换模型。失败记录不会被删除。"
                 : campaign.GmKind == CampaignGmKind.Ai
                 ? "调用已选择的 GM 模型，结合每条行动末尾的自动 1d20 统一裁定；GM 不会替玩家决定下一步。"
@@ -452,8 +474,14 @@ public sealed record CampaignGameUiState(
         Campaign campaign,
         CampaignParticipant? current,
         int failures,
-        bool gmResolutionFailed)
+        bool gmResolutionFailed,
+        bool gmCandidatePending)
     {
+        if (gmCandidatePending)
+        {
+            return "选择 GM 候选并确认";
+        }
+
         if (gmResolutionFailed)
         {
             return "重试 AI GM 裁定";
@@ -489,8 +517,14 @@ public sealed record CampaignGameUiState(
         CampaignParticipant? current,
         int failures,
         bool gmResolutionFailed,
+        bool gmCandidatePending,
         bool hasUserSeat)
     {
+        if (gmCandidatePending)
+        {
+            return "GM 重试已成功但尚未提交选择。切换同一回合内的候选版本；确认后才会推进下一回合。";
+        }
+
         if (gmResolutionFailed)
         {
             return "上一次 AI GM 裁定未完成。可以直接重试，或先在下方切换 GM 模型；本回合不能跳过。";

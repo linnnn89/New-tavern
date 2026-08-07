@@ -133,10 +133,52 @@
                                 Foreground="{StaticResource DangerBrush}"
                                 ToolTip="立即取消当前应用内所有正在进行的模型请求；不会删除已保存记录。"
                                 Style="{StaticResource SecondaryButtonStyle}" />
-                        <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" />
-                        <TextBlock Margin="7,0,0,0"
-                                   Text="{Binding RuntimeStatusText}"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{StaticResource SuccessBrush}" />
+                                <TextBlock Margin="6,0,0,0"
+                                           FontSize="11"
+                                           Text="{Binding RuntimeStatusText}"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </StackPanel>
+                            <StackPanel Margin="13,2,0,0"
+                                        Orientation="Horizontal"
+                                        Visibility="{Binding IsRuntimeReceiving, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Border Width="64"
+                                        Height="12"
+                                        Background="{StaticResource SurfaceAltBrush}"
+                                        CornerRadius="6"
+                                        ClipToBounds="True">
+                                    <Canvas Width="64" Height="12">
+                                        <Ellipse Width="7"
+                                                 Height="7"
+                                                 Canvas.Left="2"
+                                                 Canvas.Top="2.5"
+                                                 Fill="{StaticResource AccentBrush}">
+                                            <Ellipse.RenderTransform>
+                                                <TranslateTransform />
+                                            </Ellipse.RenderTransform>
+                                            <Ellipse.Triggers>
+                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                    <BeginStoryboard>
+                                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                             From="0"
+                                                                             To="53"
+                                                                             Duration="0:0:0.8" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </Ellipse.Triggers>
+                                        </Ellipse>
+                                    </Canvas>
+                                </Border>
+                                <TextBlock Margin="7,0,0,0"
+                                           FontSize="10"
+                                           Text="{Binding RuntimeReceiveText}"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>

@@ -51,6 +51,7 @@ public sealed class InfrastructureServices
         // window must share it so closing a view cannot cancel an in-flight stream.
         GenerationCoordinator = new ConversationGenerationCoordinator();
         GenerationSessions = new ConversationGenerationSessionStore();
+        CampaignOperationGate = new CampaignOperationGate();
         Secrets = new WindowsDpapiSecretStore(Paths);
         var openAiCompatibleGateway =
             new OpenAiCompatibleProviderGateway(Providers, Secrets);
@@ -65,7 +66,8 @@ public sealed class InfrastructureServices
             CampaignMemoryRepository,
             ModelAssignments,
             ProviderGateway,
-            GenerationCoordinator);
+            GenerationCoordinator,
+            CampaignOperationGate);
         CampaignRunner = new CampaignRunner(
             Campaigns,
             CampaignScenarios,
@@ -74,7 +76,8 @@ public sealed class InfrastructureServices
             GlobalPrompts,
             CampaignMemory,
             CampaignMemoryRepository,
-            CampaignContextPlanner);
+            CampaignContextPlanner,
+            CampaignOperationGate);
         CharacterCardCodecs =
         [
             new SillyTavernPngCardCodec(),
@@ -123,6 +126,7 @@ public sealed class InfrastructureServices
     public ICampaignRepository Campaigns { get; }
     public ICampaignMemoryRepository CampaignMemoryRepository { get; }
     public ICampaignMemoryUpdateService CampaignMemory { get; }
+    public ICampaignOperationGate CampaignOperationGate { get; }
     public IConversationRepository Conversations { get; }
     public IProviderProfileRepository Providers { get; }
     public IModelCatalogRepository Models { get; }

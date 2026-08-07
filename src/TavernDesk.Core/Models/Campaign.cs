@@ -205,7 +205,15 @@ public sealed record CampaignRuntimeUpdate(
     long FrozenSequenceNo,
     string WorldSummary,
     bool MarkCompleted = false,
-    bool ActivatePendingUser = false);
+    bool ActivatePendingUser = false,
+    string? CommitEventId = null);
+
+public sealed record CampaignContextSettingsUpdate(
+    int PlayerHistoryBudget,
+    int GmHistoryBudget,
+    int ContextTokenBudget,
+    int MemoryUpdateIntervalRounds,
+    int MemoryUpdatePendingTokenThreshold);
 
 public sealed record CampaignModelRoute(
     string ProviderId,

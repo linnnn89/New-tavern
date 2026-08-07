@@ -106,13 +106,16 @@ public sealed record ConversationGenerationState(
     string? GenerationId,
     ConversationGenerationStatus Status,
     string? ErrorMessage,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int ReceivedTokens = 0);
 
 public interface IConversationGenerationCoordinator
 {
     event EventHandler<ConversationGenerationState>? StateChanged;
 
     ConversationGenerationState GetState(string conversationId);
+
+    void ReportReceivedText(string operationId, string content);
 
     Task RunAsync(
         string conversationId,

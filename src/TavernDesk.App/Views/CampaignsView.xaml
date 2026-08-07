@@ -517,7 +517,6 @@
                                                     <ColumnDefinition Width="180" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox Content="{Binding Name}"
                                                           FontWeight="SemiBold"
@@ -532,9 +531,6 @@
                                                 <CheckBox Grid.Column="2" Margin="8,0"
                                                           Content="导入聊天记忆"
                                                           IsChecked="{Binding IncludeMemory}" />
-                                                <CheckBox Grid.Column="3" Margin="8,0,0,0"
-                                                          Content="导入原世界知识"
-                                                          IsChecked="{Binding IncludeOriginalWorldKnowledge}" />
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -574,31 +570,14 @@
                     <StackPanel>
                         <TextBlock Text="{Binding GameTitle}" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="{Binding GamePhaseText}" Foreground="{StaticResource MutedTextBrush}" />
-                        <TextBlock Text="{Binding CampaignMemoryStatusText}"
-                                   Foreground="{StaticResource AccentBrush}"
-                                   FontSize="12" />
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <StackPanel Margin="0,0,10,0"
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal">
-                            <TextBlock Text="{Binding CampaignMemoryToggleText}"
-                                       Margin="0,0,6,0"
-                                       VerticalAlignment="Center"
-                                       FontSize="12"
-                                       Foreground="{StaticResource MutedTextBrush}" />
-                            <ToggleButton IsChecked="{Binding IsCampaignMemoryEnabled}"
-                                          IsEnabled="{Binding CanToggleCampaignMemory}"
-                                          Command="{Binding ToggleCampaignMemoryCommand}"
-                                          ToolTip="切换本局升级版记忆；关闭后不总结、不向 API 注入长期记忆。"
-                                          Style="{StaticResource ReasoningToggleStyle}" />
-                        </StackPanel>
-                        <Button Content="{Binding CampaignMemoryActionText}"
-                                Command="{Binding RetryCampaignMemoryCommand}"
-                                IsEnabled="{Binding CanRetryCampaignMemory}"
-                                ToolTip="重试处理已锁定但尚未进入 GM/Public 记忆的事件。"
+                        <Button Content="记忆设置"
+                                Click="MemorySettingsButton_OnClick"
+                                ToolTip="管理当前跑团的上下文预算与升级版跑团记忆。"
                                 Style="{StaticResource SecondaryButtonStyle}" />
                         <Button Content="重新载入本局"
+                                Margin="8,0,0,0"
                                 Command="{Binding RefreshGameCommand}"
                                 ToolTip="从本地数据库重新载入当前跑团；不会调用任何模型。"
                                 Style="{StaticResource SecondaryButtonStyle}" />
@@ -714,6 +693,36 @@
                                                                    Text="{Binding StatusLabel}"
                                                                    Foreground="{StaticResource AccentBrush}" />
                                                     </Grid>
+                                                    <StackPanel Margin="0,6,0,0"
+                                                                HorizontalAlignment="Right"
+                                                                Orientation="Horizontal"
+                                                                Visibility="{Binding HasCandidates, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Margin="0,0,6,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="GM 候选"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                                        <Button Content="‹"
+                                                                Command="{Binding DataContext.PreviousGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                Style="{StaticResource CandidateNavigationButtonStyle}"
+                                                                ToolTip="查看上一个 GM 候选" />
+                                                        <TextBlock MinWidth="32"
+                                                                   VerticalAlignment="Center"
+                                                                   TextAlignment="Center"
+                                                                   Text="{Binding CandidateNavigationLabel}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                                        <Button Content="›"
+                                                                Command="{Binding DataContext.NextGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                Style="{StaticResource CandidateNavigationButtonStyle}"
+                                                                ToolTip="查看下一个 GM 候选" />
+                                                    </StackPanel>
+                                                    <TextBlock Margin="0,4,0,0"
+                                                               Text="{Binding CandidateHelpText}"
+                                                               FontSize="11"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{StaticResource MutedTextBrush}"
+                                                               Visibility="{Binding HasCandidates, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                     <TextBlock Margin="0,7,0,0"
                                                                Text="{Binding DisplayContent}"
                                                                TextWrapping="Wrap" />

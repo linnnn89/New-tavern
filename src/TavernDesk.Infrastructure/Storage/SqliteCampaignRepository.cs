@@ -482,6 +482,54 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                     "跑团状态已经变化，旧操作没有覆盖新的世界状态。请重新载入。");
             }
 
+            if (!string.IsNullOrWhiteSpace(update.CommitEventId))
+            {
+                var commitEventId = update.CommitEventId;
+                var commitEvent = await ReadEventByIdAsync(
+                                      connection,
+                                      (SqliteTransaction)transaction,
+                                      commitEventId,
+                                      cancellationToken)
+                                  ?? throw new InvalidOperationException(
+                                      "要采用的 GM 候选不存在。");
+                if (!string.Equals(
+                        commitEvent.CampaignId,
+                        campaignId,
+                        StringComparison.Ordinal)
+                    || commitEvent.RoundNo != campaign.CurrentRound
+                    || commitEvent.Kind != CampaignEventKind.GmResolution
+                    || commitEvent.GenerationStatus
+                       != CampaignGenerationStatus.Completed)
+                {
+                    throw new InvalidOperationException(
+                        "只能采用当前回合已通过协议校验的 GM 候选。");
+                }
+
+                if (!commitEvent.IsLocked)
+                {
+                    await using var lockCommand = connection.CreateCommand();
+                    lockCommand.Transaction = (SqliteTransaction)transaction;
+                    lockCommand.CommandText = """
+                        UPDATE campaign_events
+                        SET is_locked = 1,
+                            updated_at = $updatedAt
+                        WHERE id = $eventId
+                          AND campaign_id = $campaignId
+                          AND is_locked = 0;
+                        """;
+                    lockCommand.Parameters.AddWithValue(
+                        "$updatedAt",
+                        DateTimeOffset.Now.ToString("O"));
+                    lockCommand.Parameters.AddWithValue("$eventId", commitEvent.Id);
+                    lockCommand.Parameters.AddWithValue("$campaignId", campaignId);
+                    if (await lockCommand.ExecuteNonQueryAsync(cancellationToken) != 1)
+                    {
+                        throw new InvalidOperationException(
+                            "GM 候选在提交前已经发生变化，请重新载入跑团。");
+                    }
+                }
+            }
+
             var frozenSequenceNo = Math.Max(0, update.FrozenSequenceNo);
             var activatedPendingUser = false;
             if (update.ActivatePendingUser)
@@ -725,6 +773,61 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         {
             throw new InvalidOperationException(
                 "璺戝洟鐘舵€佸凡缁忓彉鍖栵紝璇峰埛鏂板悗閲嶈瘯璁剧疆璁板繂妯″紡銆�");
+        }
+    }
+
+    public async Task UpdateContextSettingsAsync(
+        string campaignId,
+        int expectedStateVersion,
+        CampaignContextSettingsUpdate settings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
+        ArgumentNullException.ThrowIfNull(settings);
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE campaigns
+            SET player_history_budget = $playerHistoryBudget,
+                gm_history_budget = $gmHistoryBudget,
+                context_token_budget = $contextTokenBudget,
+                memory_update_interval_rounds = $memoryUpdateIntervalRounds,
+                memory_update_pending_token_threshold =
+                    $memoryUpdatePendingTokenThreshold,
+                state_version = state_version + 1,
+                updated_at = $updatedAt
+            WHERE id = $campaignId
+              AND status = $active
+              AND state_version = $expectedStateVersion;
+            """;
+        command.Parameters.AddWithValue(
+            "$playerHistoryBudget",
+            settings.PlayerHistoryBudget);
+        command.Parameters.AddWithValue(
+            "$gmHistoryBudget",
+            settings.GmHistoryBudget);
+        command.Parameters.AddWithValue(
+            "$contextTokenBudget",
+            settings.ContextTokenBudget);
+        command.Parameters.AddWithValue(
+            "$memoryUpdateIntervalRounds",
+            settings.MemoryUpdateIntervalRounds);
+        command.Parameters.AddWithValue(
+            "$memoryUpdatePendingTokenThreshold",
+            settings.MemoryUpdatePendingTokenThreshold);
+        command.Parameters.AddWithValue(
+            "$updatedAt",
+            DateTimeOffset.Now.ToString("O"));
+        command.Parameters.AddWithValue("$campaignId", campaignId);
+        command.Parameters.AddWithValue("$active", (int)CampaignStatus.Active);
+        command.Parameters.AddWithValue(
+            "$expectedStateVersion",
+            expectedStateVersion);
+        if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+        {
+            throw new InvalidOperationException(
+                "跑团状态已经变化，请重新载入后再保存跑团记忆与上下文设置。");
         }
     }
 

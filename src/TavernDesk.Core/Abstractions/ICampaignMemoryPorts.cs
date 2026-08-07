@@ -22,6 +22,8 @@ public interface ICampaignMemoryRepository
 
 public interface ICampaignMemoryUpdateService
 {
+    event EventHandler<CampaignMemoryUpdateProgress>? ProgressChanged;
+
     // Compatibility entry point for an explicit/manual update request. New
     // automatic callers must use the authoritative GM-resolution boundary
     // overload below.

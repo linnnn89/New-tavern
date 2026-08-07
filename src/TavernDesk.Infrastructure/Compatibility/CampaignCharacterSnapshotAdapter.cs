@@ -47,15 +47,16 @@ public sealed class CampaignCharacterSnapshotAdapter
             },
             ["behavior"] = new JsonObject
             {
-                ["system_prompt"] = ReadString(data, "system_prompt"),
-                ["post_history_instructions"] =
-                    ReadString(data, "post_history_instructions"),
                 ["dialogue_examples"] = ReadString(data, "mes_example")
             },
             ["excluded_from_campaign_prompt"] = new JsonArray
             {
                 "first_mes",
                 "alternate_greetings",
+                "scenario",
+                "system_prompt",
+                "post_history_instructions",
+                "character_book",
                 "creator_notes",
                 "source_import_report"
             }
@@ -72,7 +73,8 @@ public sealed class CampaignCharacterSnapshotAdapter
 
         var warnings = new List<string>
         {
-            "first_mes 与 alternate_greetings 已排除；它们不是当前跑团历史。",
+            "跑团角色卡只发送 name、description、personality 和 mes_example。",
+            "first_mes、alternate_greetings、scenario、系统提示词、后置提示词和角色世界书已排除。",
             "源角色卡 RawCardJson 保持原样，跑团只读取独立快照。"
         };
         if (!includeMemory && !string.IsNullOrWhiteSpace(memoryBody))

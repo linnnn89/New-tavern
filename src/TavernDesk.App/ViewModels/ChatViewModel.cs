@@ -2265,6 +2265,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             switch (streamEvent.Kind)
             {
                 case ProviderStreamEventKind.Reasoning:
+                    _generationCoordinator.ReportReceivedText(
+                        operationId,
+                        streamEvent.Content);
                     SetStatusForConversation(
                         conversationId,
                         "模型正在思考；思考过程不会写入聊天记录。");

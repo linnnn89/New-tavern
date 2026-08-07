@@ -1,389 +1,291 @@
-# TavernDesk R2-B：跑团上下文预算与低频记忆更新实施方案
+# TavernDesk 跑团上下文与记忆升级计划
 
-> 来源：ChatGPT 会话“跑团记忆银行设计”（conversation ID：`6a73fed1-8164-83e8-a2e3-8d99189f2584`）的最后一条 AI 方案回复。
+> 来源：ChatGPT 会话“跑团记忆银行设计”（conversation ID：`6a73fed1-8164-83e8-a2e3-8d99189f2584`）截至 2026-08-06 的最新代码审核与建设建议。
 >
-> 本文件是当前项目的执行基准。每进入下一个工作包前，必须重新阅读本文件中对应的范围、约束、验收标准和当前执行状态；不得只凭上一次对话摘要继续实现。
+> 当前基线：GitHub 分支 `跑团记忆升级版`，审核提交 `ad6d3c517e2797d544911c2c326161b2f0d64795`。
+>
+> 执行规则：每开始一个新阶段前，重新阅读本文的“当前结论、下一阶段和边界”，确认上一阶段结果后再继续。
 
-## 一、版本定位
+## 一、当前结论
 
-版本名称：`R2-B Campaign Context Budget`
-
-核心目标：
-
-1. GM 和 AI 玩家请求使用统一上下文预算。
-2. 默认单次模型请求上限为 15,000 tokens。
-3. 发送前显示分项 Token 估算。
-4. 保证当前回合、最新 GM 场景和角色身份优先。
-5. 历史根据剩余预算动态截取。
-6. 固定资料超限时明确阻止生成，不静默删改角色卡。
-7. 跑团记忆不再每轮必更新。
-8. 记忆只处理已经完成 GM 裁定的事实区间。
-
-## 二、范围定义
-
-### 2.1 15,000 Token 的含义
-
-15,000 tokens 定义为单次 AI GM 或单个 AI 玩家生成请求的“输入上下文 + 预留输出”容量上限，不是整个回合所有模型调用的合计上限。界面可以显示本阶段总输入估算和输出上限合计，但合计只用于成本提示，不作为阻止生成的统一限额。
-
-### 2.2 本版本明确不实现
-
-- `CampaignFact`；
-- Participant Memory；
-- 向量检索；
-- 自动压缩角色卡；
-- 自动改写剧本或世界书；
-- 通用工作流引擎；
-- 新 Agent 或子 Agent；
-- 持久化后台队列；
-- Provider 专用 Token 规则矩阵；
-- 每个上下文分区几十项可配置参数。
-
-## 三、架构方案
+R2-B 已经完成代码实现，当前系统不再是简单的“事件历史转记忆”，而是由同一个 Planner 同时驱动模型请求与界面预览：
 
 ```text
 CampaignEvent / CampaignMemory / CharacterSnapshot
                          │
                          ▼
               CampaignContextPlanner
-                         │
-        ┌────────────────┴────────────────┐
-        │                                 │
-GM Context Plan                   Player Context Plan
-        │                                 │
-        └────────────────┬────────────────┘
+                    ┌────┴────┐
+                    ▼         ▼
+             Player Plan    GM Plan
+                    └────┬────┘
                          ▼
                   ITokenEstimator
-                         │
-          ┌──────────────┴──────────────┐
-          │                             │
-ProviderChatMessages             Token Breakdown
-          │                             │
-          ▼                             ▼
-    实际模型请求                    跑团界面预览
+                    ┌────┴────┐
+                    ▼         ▼
+             Provider Request  UI Token Breakdown
 ```
 
-关键原则：预览和实际发送必须使用同一个 Context Planner。Planner 不得调用 Provider，只负责组装、预算分配、历史筛选、Token 估算和诊断返回。
+已经确认的架构优点：
 
-### 3.1 核心接口
+- UI 预览和实际发送共用 `ICampaignContextPlanner`，避免两套上下文逻辑漂移；
+- 固定资料、当前回合、长期记忆和旧历史按优先级分配预算；
+- 固定资料或当前回合超限时明确阻止，不静默裁剪角色卡和规则；
+- 旧历史允许按预算退出上下文，最新 GM 场景和当前行动优先保留；
+- 长期记忆有容量上限，不会无限挤压近期原始历史；
+- GM 记忆与公共记忆在生成前按可见性分流；
+- 每局可独立关闭升级版记忆，关闭后不调用总结模型，也不注入长期记忆结构。
 
-```csharp
-public interface ICampaignContextPlanner
-{
-    Task<CampaignContextPlan> BuildPlayerPlanAsync(
-        CampaignAggregate aggregate,
-        CampaignParticipant participant,
-        CampaignMemoryBank? publicMemory,
-        CancellationToken cancellationToken = default);
+R2-B 现阶段不合并到 `main`。先保留在 `跑团记忆升级版` 分支，完成真实长局验证后再决定。
 
-    Task<CampaignContextPlan> BuildGmPlanAsync(
-        CampaignAggregate aggregate,
-        CampaignScenario? scenario,
-        CampaignMemoryBank? gmMemory,
-        CancellationToken cancellationToken = default);
-}
-```
+## 二、已实现行为
 
-```csharp
-public sealed record CampaignContextPlan(
-    IReadOnlyList<ProviderChatMessage> Messages,
-    IReadOnlyList<CampaignContextSectionEstimate> Sections,
-    TokenEstimate Estimate,
-    CampaignContextPlanStatus Status,
-    string? BlockingReason = null);
-```
+### 2.1 上下文预算
 
-```csharp
-public sealed record CampaignContextSectionEstimate(
-    string Id,
-    string Title,
-    ContextSegmentKind Kind,
-    int EstimatedTokens,
-    bool IsMandatory,
-    bool WasIncluded,
-    bool WasTruncated);
-```
-
-```csharp
-public enum CampaignContextPlanStatus
-{
-    Ready,
-    HistoryTrimmed,
-    BlockedMandatoryContextTooLarge
-}
-```
-
-## 四、持久化设置
-
-### 4.1 Campaign 新增字段
-
-```csharp
-public int ContextTokenBudget { get; set; } = 15000;
-public int MemoryUpdateIntervalRounds { get; set; } = 3;
-public int MemoryUpdatePendingTokenThreshold { get; set; } = 4000;
-```
-
-| 字段 | 默认值 | 用途 |
-|---|---:|---|
-| `ContextTokenBudget` | 15000 | 单次 GM/玩家请求容量上限 |
-| `MemoryUpdateIntervalRounds` | 3 | 每累计多少完整轮次允许触发一次记忆更新 |
-| `MemoryUpdatePendingTokenThreshold` | 4000 | 未进入记忆的已裁定事件达到此规模时提前更新 |
-
-最终容量为 `min(模型 ContextLimit, campaign.ContextTokenBudget)`。保留已有 `GmContextLimit`、`Participant.ContextLimit`、`GmMaxOutputTokens`、`Participant.MaxOutputTokens`、`PlayerHistoryBudget` 和 `GmHistoryBudget`。
-
-### 4.2 数据库迁移
-
-新增 schema v16：
-
-```sql
-ALTER TABLE campaigns ADD COLUMN context_token_budget INTEGER NOT NULL DEFAULT 15000;
-ALTER TABLE campaigns ADD COLUMN memory_update_interval_rounds INTEGER NOT NULL DEFAULT 3;
-ALTER TABLE campaigns ADD COLUMN memory_update_pending_token_threshold INTEGER NOT NULL DEFAULT 4000;
-```
-
-应用边界读取限制：`ContextTokenBudget` 8000–200000；`MemoryUpdateIntervalRounds` 1–50；`MemoryUpdatePendingTokenThreshold` 1000–50000。迁移不得修改旧跑团记忆或自动调用模型。
-
-## 五、上下文预算算法
+- `ContextTokenBudget` 默认值：`15000`；
+- 15,000 tokens 表示单次 AI GM 或单个 AI 玩家请求的“输入上下文 + 输出预留”上限，不是整回合所有模型调用的合计；
+- 有效总容量：
 
 ```text
-有效总预算 = min(跑团设置预算, 模型 ContextLimit)
-输入预算 = 有效总预算 - 预留输出 MaxOutputTokens
+EffectiveLimit = min(ModelContextLimit, CampaignContextTokenBudget)
+InputBudget = EffectiveLimit - MaxOutputTokens
 ```
 
-如果 `MaxOutputTokens >= 有效总预算`，直接阻止生成并提示模型配置不合理。
+- `MaxOutputTokens >= EffectiveLimit` 时阻止生成；
+- 固定资料与当前回合属于 mandatory context，超限时返回 `BlockedMandatoryContextTooLarge`；
+- 旧历史不足时返回 `HistoryTrimmed`，仍可继续生成；
+- 长期记忆最多使用 3,000 tokens，且不超过 mandatory context 后剩余容量的 40%。
 
-### 5.1 必须保留的固定上下文
+### 2.2 低频记忆更新
 
-AI 玩家：全局玩家 Prompt、运行协议、actor 身份、玩家席位名单、世界设定和公开规则、冻结角色卡、导入的初始角色记忆、原世界知识。
+- `CampaignEvent` 仍是权威事实源，记忆只是派生结果；
+- 自动更新只在成功保存并锁定 `GmResolution` 后检查；
+- 默认满足任一条件才更新：
+  - checkpoint 后累计 3 个完整轮次；
+  - checkpoint 后已裁定事件达到约 4,000 tokens；
+- 玩家提交、AI 玩家重试、骰点、页面打开/重载和模型切换不触发记忆总结；
+- 更新边界只到刚完成的 `GmResolution`，其后的新一轮 `PlayerIntent` 不进入本次记忆；
+- 公共记忆先过滤事件可见性，再调用模型，不能由 GM 完整记忆二次脱敏生成；
+- 失败不推进 checkpoint，也不回滚已经保存的跑团事件；
+- 旧跑团不会仅因打开页面就自动产生 API 成本，可由用户显式建立或补齐记忆。
 
-GM：全局 GM Prompt、GM 协议、世界设定和公开规则、GM 专用剧本说明、开场设置、玩家席位和角色能力资料。
+### 2.3 每局记忆 ON/OFF
 
-固定内容不自动压缩、不静默删除。固定内容超过输入预算时必须阻止生成并显示具体超限分区。
+- schema v17 增加每局持久化的 `MemoryEnabled`，默认 `ON`；
+- `ON`：按 R2-B 的阈值更新 GM/Public 记忆，并注入对应上下文；
+- `OFF`：
+  - 不调用记忆总结模型；
+  - 不向 GM/AI 玩家请求加入长期记忆正文或其结构化包装；
+  - 仍保留角色卡、规则、当前行动和近期原始事件；
+  - 不删除已有 memory bank/checkpoint；
+- 重新打开后从旧 checkpoint 继续，不因切换开关立即追溯调用模型；
+- Runner、Planner、MemoryUpdateService 和 UI 均检查真实持久化开关，不能只靠按钮禁用来保证行为。
 
-### 5.2 必须保留的当前状态
+### 2.4 请求运行态与重试边界（2026-08-07）
 
-AI 玩家：最新 GM 开场或裁定、对该角色可见的本轮待裁定行动、当前行动任务。GM：本轮所有已锁定 `PlayerIntent`、本轮行动骰、当前 GM 裁定任务。当前状态超过预算时也必须阻止生成。
+- 普通聊天、群聊、AI 玩家、AI GM 和记忆更新的所有流式请求统一经过全局生成协调器，按 UTF-8 增量估算接收 tokens，并以约 120ms 节流发布状态；
+- 主窗口右上角统一显示空闲/等待/接收/停止状态、活动请求数、动态接收 tokens 和左右回弹的小珠动画；跑团内容区不再重复显示独立接收卡；
+- 页面切换、重新载入、设置弹窗和普通 UI 刷新只影响界面数据读取，不取消后台 API；用户可见的 API 取消入口只保留“停止全部 API”；
+- 自动或手动记忆更新仍通过共享操作门与本局生成互斥；操作门获取、模型流和外围异常均发送终态进度并释放操作门，避免记忆状态永久停留在“更新中”；
+- 成功替换的 AI 玩家失败记录及其完整替换链不再显示在当前活动记录流中，但数据库仍保留失败记录用于审计；Planner/Runner 的历史筛选只发送已完成且已锁定事件；
+- AI GM 协议失败后的成功重试留在当前回合，跑团记录内提供同一回合候选前后切换；候选在确认前不锁定，只有当前选中的、通过协议校验的候选在提交事务中锁定并进入下一回合，进入下一回合后候选选择状态清除；
+- 记忆更新仍只由成功锁定的 GM 裁定触发，用户手动恢复走同一状态提示和操作锁。
 
-### 5.3 弹性上下文和顺序
+## 三、已执行工作（旧计划收敛）
 
-弹性上下文为 GM/Public 长期记忆和过去已完成裁定的事件历史。预算顺序为：预留输出 → 固定资料 → 当前回合 → 长期记忆 → 旧历史。长期记忆动态上限：
+| 原工作包 | 状态 | 结果 |
+|---|---|---|
+| A 数据模型与迁移 | 已完成 | schema v16：预算和低频更新参数 |
+| B 纯 Context Planner | 已完成 | 统一消息组装、预算、估算和诊断 |
+| C Runner 接入 | 已完成 | 实际 GM/玩家请求使用 Planner 结果 |
+| D Token 预估 UI | 已完成 | 右侧显示本轮估算和分区明细 |
+| E 低频记忆与权威边界 | 已完成 | 3 轮/4,000 tokens、只到最新 GM 裁定 |
+| F 自动回归 | 已完成 | Release 全量测试 149/149；人工长局仍待完成 |
+| G 每局记忆 ON/OFF | 已完成 | schema v17、关闭时不总结且不注入长期记忆 |
+| H 跑团记忆设置入口 | 已完成 | 游戏页改为“记忆设置”入口；弹窗集中管理普通跑团上下文预算、升级版记忆开关、阈值和恢复操作 |
+| I 请求/记忆运行态与重试边界 | 已完成 | 流式 token 进度、记忆更新操作锁、成功重试旧记录隐藏、GM 候选确认与回合边界 |
 
-```csharp
-memoryBudget = Math.Min(
-    memory.TargetTokens,
-    3000,
-    remainingAfterMandatory * 40 / 100);
-```
+旧计划中的接口草图、逐文件实现清单、分工作包提交顺序和重复测试记录已经移除。它们已经转化为现有代码，不再作为未来任务。
 
-历史从最新向旧事件回溯，每条事件整体保留；最新 GM 裁定属于当前状态区；跳过被替换的失败尝试并遵守角色可见性。历史耗尽时返回 `HistoryTrimmed`，不是错误。
+## 四、当前验证基线
 
-## 六、上下文分区建议
+- Release 全量并行测试：149/149 通过；
+- Release 构建：0 warning，0 error；
+- 原有 4 项旧模板断言已经修复；
+- SQLite 并行测试的临时目录释放锁问题已经修复；
+- 用户截图已确认基础上下文估算卡、展开明细、多 AI 席位滚动和超预算提示能够显示；
+- 发布目录：`D:\CODEX PROJECT\TavernDesk\app`；
+- 启动路径已统一：根目录 `TavernDesk.exe` 只启动 `app\TavernDesk.App.exe`；`app` 已重新生成 `win-x64` 自包含运行时，目标设备不要求预装 .NET 10；`src\...\bin` 仅作为开发构建输出，不再作为用户启动入口；
+- 2026-08-06 启动故障复核：曾因 `app` 混入旧 framework-dependent `deps.json` 导致 CoreCLR 无法解析，已用同批自包含发布文件覆盖并验证根入口和直接 EXE 均可启动；
+- 2026-08-06 ON/OFF UI 绑定修复：`CampaignsView` 的 ToggleButton 改为单向显示绑定，由 `ToggleCampaignMemoryCommand` 负责持久化和重新加载，避免 WPF 对只读 `IsCampaignMemoryEnabled` 属性执行 TwoWay 绑定；
+- 2026-08-06 OFF 文案修复：将 `CampaignMemoryActionText` 中的错误编码字符串改为“记忆已关闭”，避免关闭记忆后右侧按钮显示乱码；
+- 2026-08-06 跑团记忆设置弹窗：顶部不再常驻 ON/OFF 和“重试”按钮，改为“记忆设置”入口；弹窗内集中展示单次总上下文预算、AI 玩家/GM 历史预算、记忆开关、自动更新间隔、待处理 Token 阈值、当前状态和建立/重试操作；这些设置只作用于当前跑团，不接入普通聊天记忆；
+- 2026-08-06 发布构建：`app` 已重新生成 win-x64 自包含版本；根目录 `TavernDesk.exe` 使用 `src/TavernDesk.App/Assets/Icons/TavernDesk.ico` 重编，入口图标已补齐；
+- 2026-08-07 酒吞童子数据修复：角色库原始 `RawCardJson`、内嵌世界书、开场白和原始 PNG 保持不变，以免影响普通单人聊天和群聊；仅修复现有跑团参与者的冻结快照，删除旧原世界知识快照，并将跑团角色快照限定为 name、description、personality、mes_example；该局状态版本已递增到 18，数据库完整性检查通过；
+- 2026-08-07 请求与记忆运行态修复：增加流式接收 token 进度、记忆更新期间的 UI 操作锁和提示；成功 AI 玩家重试不再在活动流重复展示完整旧失败链；AI GM 协议失败后的成功重试停留在当前回合，候选确认前不进入上下文或记忆，确认事务完成后才推进并清除上一回合选择；同一跑团的记忆更新与模型生成通过共享操作门协调；流式 Token 改为增量统计并节流进度通知；`dotnet build TavernDesk.sln -c Release --no-restore` 通过，0 warning、0 error；按用户要求未运行测试；
+- 2026-08-07 全局接收状态修复：顶部状态栏统一接收统计，跑团局部接收卡移除；页面加载不再因记忆更新状态短路；仅保留“停止全部 API”作为用户可见的 API 取消入口；Release 编译和 `app` 自包含发布均已完成，未运行测试或启动程序；
+- 尚未完成：用户实际操作记忆 ON/OFF，以及 10–20 轮真实长局行为验证。
 
-AI 玩家：系统规则、角色与席位身份、世界和规则、角色卡快照、初始角色记忆、原世界知识、公共长期记忆、旧历史、最新 GM 场景、本轮其他玩家公开提交、当前角色任务。
+以上是当前基线记录。后续阶段不得用未经执行的新结果覆盖它。
 
-GM：系统规则、GM 专用说明、世界和规则、玩家席位及角色资料、GM 长期记忆、旧历史、本轮全部 `PlayerIntent`、当前 GM 裁定任务。
+## 五、最新审核发现的剩余风险
 
-稳定资料在前，动态资料在后，以利用 Provider 前缀缓存。
+### 5.1 真实长局行为仍未知
 
-## 七、跑团 Token 预估界面
+单元测试证明了规则边界，但不能代替 10–20 轮真实跑团。当前最重要的问题是：
 
-在跑团游玩页右侧“当前步骤”区域新增默认折叠的“本轮上下文估算” Expander。
+- 历史在长期运行中何时开始裁剪；
+- GM/Public 记忆更新后是否稳定、是否出现事实漂移；
+- 新一轮未裁定行动是否始终不进入上一批记忆；
+- Token 分区是否符合实际模型、角色卡和多人局的使用情况；
+- 关闭记忆后 API 请求是否完全不含升级版长期记忆结构。
 
-AwaitingActions 阶段逐个显示 AI 席位的输入估算、预留输出、容量和状态；秘密同投显示请求数、输入合计和输出合计（只作成本提示）。ReadyForResolution 阶段显示 GM 估算和分区明细。
+### 5.2 预算设置已提供入口
 
-状态文案：`上下文在预算内`、`较旧历史已按预算省略`、`固定资料与当前回合内容已超过预算`、`当前模型使用启发式 Token 估算`。
+当前跑团的“记忆设置”弹窗已经提供总上下文预算、玩家/GM 历史预算以及低频记忆更新阈值的持久化入口；普通聊天记忆仍与该入口隔离。后续只根据真实长局反馈调整可用范围，不继续拆分更多算法参数。
 
-仅在打开/重载、行动完成、GM 裁定完成、模型切换、预算修改或记忆更新完成后刷新。预估不得调用 Provider、Embedding 或记忆模型。
+### 5.3 Planner 体积偏大
 
-## 八、记忆更新策略
+`CampaignContextPlanner` 已同时承担玩家/GM 构建、预算、历史筛选、JSONL 和可见性处理。当前版本不为“代码好看”立即重构，但禁止继续把新功能堆入该文件。下一次大功能前应做行为不变拆分。
 
-### 8.1 权威边界
+### 5.4 基础估算卡与 Context Inspector 的边界
 
-只处理“上次 checkpoint 后到最新成功锁定的 `GmResolution`”，不得吸入最新 GM 裁定之后的新一轮 `PlayerIntent`。
+基础 Token 估算已经完成。后续 Context Inspector 不能重复做一套卡片，而应在现有 Planner 结果上补足“哪些分区被纳入、裁剪或阻止”的可检查信息。
 
-```csharp
-Task<CampaignMemoryUpdateResult> UpdateAsync(
-    string campaignId,
-    long throughEventSequence,
-    bool force = false,
-    CancellationToken cancellationToken = default);
-```
+## 六、下一阶段计划
 
-`throughEventSequence` 必须来自刚刚成功保存的 GM 裁定。
+严格按以下顺序推进；每一阶段完成并确认后，才能开始下一阶段。
 
-### 8.2 自动触发
+### 阶段 0：真实长局验证（当前下一步）
 
-只在成功完成 GM 裁定后检查，满足任一条件时更新：checkpoint 后至少 3 个完整轮次，或 checkpoint 后到最新 GM 裁定的已裁定事件估算达到 4000 tokens。不因玩家提交、AI 玩家提交/重试、单独掷骰、打开/重载或切换模型触发。
+目标：不改架构，先验证 R2-B 在真实使用中的行为。
 
-### 8.3 严格先攻、旧跑团和失败恢复
+建议场景：
 
-严格先攻使用 `checkpoint.ProcessedRound` 和最新已完成完整 `RoundNo`，不能统计 `GmResolution` 数量。没有 bank/checkpoint 的旧跑团打开时显示“尚未建立”和“从已裁定历史建立”按钮，不自动调用模型；用户点击时使用 `force=true` 和最新 GM Resolution sequence。初始化失败只显示“更新失败，可重试”，打开页面不自动重复调用。
+1. `1 USER + 1 AI + AI GM` 连续运行 10–20 轮；
+2. 至少跨过一次 3 完整轮次的记忆更新阈值；
+3. 中途将记忆切换为 `OFF`，完成 2–3 轮后再切回 `ON`；
+4. 观察每轮上下文估算、历史裁剪、GM/Public 记忆内容和 checkpoint；
+5. 确认 OFF 期间没有记忆总结请求，也没有长期记忆上下文分区；
+6. 确认重新 ON 后不会立即追溯调用，而是在后续 GM 裁定后按阈值处理。
 
-## 九、记忆正确性边界
+验收输出：
 
-公共记忆不能只判断 `Visibility == Public`，应复用：
+- 记录首次记忆更新发生的轮次和原因；
+- 记录历史首次被裁剪的轮次；
+- 保存一组 ON、OFF、重新 ON 的界面/API 请求证据；
+- 列出事实漂移、秘密泄露、重复总结或成本异常。
 
-```csharp
-bool IsEventVisibleToPublicMemory(
-    Campaign campaign,
-    CampaignEvent campaignEvent,
-    long throughResolutionSequence);
-```
+阶段 0 未完成前，不合并到 `main`，也不开始 `CampaignFact`。
 
-GM 记忆事件载荷补充 `recipient_id`、`recipient_name`、`structured_data`；Public 记忆只接收经过可见性过滤的安全字段。
+### 阶段 1：上下文总预算设置 UI（已完成）
 
-## 十、工作包
+目标：允许用户修改 `ContextTokenBudget`，不改变 Planner 算法。已合并进“跑团记忆与上下文设置”弹窗。
 
-每个工作包单独完成、单独验证，禁止一次性全改。
+范围：
 
-### 工作包 A：数据模型和迁移
+- 游戏页提供“记忆设置”入口和滚动弹窗；
+- 保存后通过当前跑团的 state version guard 持久化并重新载入；
+- 修改后影响 UI 预览与后续 Planner 请求；
+- 弹窗解释有效上限取模型 ContextLimit 与跑团预算的较小值，并同时展示历史预算和低频记忆阈值；
+- 不接入普通聊天记忆设置。
 
-目标：新增三个 Campaign 设置字段和 schema v16。
+必要验证：
 
-主要文件：`Campaign.cs`、`SqliteDatabase.cs`、`SqliteCampaignRepository.cs`、`DatabaseAndRepositoryTests.cs`、`CampaignTests.cs`。
+- 用户手动验收保存、重载和非法输入；
+- 预览与实际请求仍来自同一个 Plan。
 
-必须测试：新数据库默认值；v15→v16 默认值；保存/重读一致；重复初始化幂等；非法值在应用边界限制。完成标准：定向测试通过、Release 构建 0 error、不修改 Runner 和 UI。
+### 阶段 2：在现有估算卡上补足 Context Inspector
 
-### 工作包 B：纯上下文 Planner
+目标：让用户理解“AI 本轮实际看到了什么”，不新增第二套请求组装逻辑。
 
-目标：实现 `ICampaignContextPlanner` 和结果模型，不接入 Runner。
+开始前先做差距检查；现有 UI 已能满足的内容直接复用。只补：
 
-主要文件：`ICampaignContextPorts.cs`、`CampaignContextPlan.cs`、`CampaignContextPlanner.cs`、`InfrastructureServices.cs`、`CampaignContextPlannerTests.cs`。
+- 分区是否纳入；
+- 分区是否被裁剪；
+- mandatory 超限的具体分区；
+- 输入、输出预留、有效总容量和最终状态；
+- GM 与各 AI 席位分别查看。
 
-实现要求：复用 `ITokenEstimator` 和现有上下文语义；返回最终 `ProviderChatMessage` 和分项估算；不调用 Provider、不改数据库、不更新记忆。
+约束：
 
-必须测试：默认 15,000；采用较小模型上限；最新 GM 场景保留；GM 本轮全部玩家行动保留；AI 玩家隔离 GM-only；只裁剪旧历史；固定角色卡超限返回 Blocked；不静默删除固定资料/当前行动；长期记忆动态上限；角色卡分项差异；GPT tokenizer 与非 GPT 回退估算。
+- Inspector 只消费 `CampaignContextPlan`；
+- 打开、展开和刷新 Inspector 不调用 Provider、Embedding 或记忆模型；
+- 不在 UI 中重新估算 Token；
+- 不默认展示 GM-only 正文给普通玩家视角。
 
-完成标准：Planner 定向测试通过；不修改 `CampaignRunner`；不添加 NuGet 依赖。
+### 阶段 3：记忆边界与 Token 压力测试增强
 
-### 工作包 C：接入 CampaignRunner
+补足最新审核建议的高价值用例：
 
-替换 `BuildPlayerMessages`、`BuildGmMessages` 和本地 `ApproximateTokens` 判断。流程为 Build Plan → 检查状态 → 使用 `Plan.Messages` 创建请求；实际发送前重新 Build Plan。必须验证 Planner/Runner 消息完全一致、Blocked 不调用 Provider、HistoryTrimmed 仍生成、行动/模型切换重算，以及现有身份隔离/秘密同投/GM 尾部协议测试不退化。
+1. 超大角色卡约 20,000 tokens：必须阻止，不得静默裁卡；
+2. 100 轮历史：允许 `HistoryTrimmed`，但最新 GM 场景必须存在；
+3. 4 个 AI 玩家同时提交：GM 当前轮行动不得被旧历史挤掉；
+4. 最新 `GmResolution` 后的新 `PlayerIntent`：不得进入本批 GM/Public 记忆；
+5. Memory OFF：无总结 Provider 调用、无长期记忆结构，近期事件仍存在；
+6. Memory ON 恢复：沿用 checkpoint，不重复处理已完成区间。
 
-### 工作包 D：跑团 Token 预估 UI
+只新增可证明当前约束的测试，不建立新的大型测试框架。
 
-页面加载调用 Planner 但不调用 Provider 或自动更新记忆；按 AI 席位和 GM 阶段显示估算；异常不崩溃；超限禁用对应生成按钮并显示原因。必须做小窗口、多 AI 滚动、默认折叠和不挤压记录区的人工截图检查。
+### 阶段 4：行为不变拆分 CampaignContextPlanner
 
-### 工作包 E：低频记忆更新和边界修复
+此阶段最后执行，且只在准备加入下一项大功能前启动。
 
-修改 `CampaignMemoryUpdateService`、`CampaignRunner`、`CampaignsViewModel` 和对应测试；可新增纯策略类 `CampaignMemoryUpdatePolicy`。覆盖行动/骰点不更新、3 完整轮次或 4000 Token 阈值、只到最新 GM Resolution、严格先攻、秘密同投公开生命周期、PrivateDelivery recipient、非法输出 checkpoint、并发去重、旧跑团无自动模型调用、手动 force 建立。
-
-### 工作包 F：最终回归
-
-回归命令：三个按 `CampaignContext`、`CampaignMemory`、`CampaignRunner` 过滤的 Release 测试；完整 `dotnet test TavernDesk.sln -c Release --no-restore`；`dotnet build TavernDesk.sln -c Release --no-restore`；`git diff --check`。
-
-人工短局：1 USER + 1 AI + AI GM 协作圆桌 4 轮；2 AI + AI GM 秘密同投 2 轮；1 USER + 2 AI + AI GM 严格先攻完整 1 轮；大角色卡超限；模型上限小于 15,000。检查预览、消息一致性、超限不发请求、3 轮前不更新记忆、阈值后更新、下一轮未裁定内容不入记忆和 GM-only 隔离。
-
-### 工作包 G：每局升级版记忆 ON/OFF
-
-目标：在跑团游玩页右侧提供每个跑团独立保存的胶囊式 `ON/OFF` 开关。
-
-ON 时保持当前 R2-B 记忆更新、长期记忆上下文注入和 Token 预估行为；OFF 时不调用记忆总结模型，也不向 GM/AI 玩家请求注入 GM/Public 长期记忆分区或其结构化包装，但仍保留角色卡、规则、当前行动和近期原始历史。
-
-主要文件：`Campaign.cs`、`SqliteDatabase.cs`、`SqliteCampaignRepository.cs`、`CampaignMemoryUpdateService.cs`、`CampaignRunner.cs`、`CampaignContextPlanner.cs`、`CampaignsViewModel.cs`、`CampaignsView.xaml` 及对应测试。
-
-实现约束：
-
-- 新增 `MemoryEnabled`，默认值为 `true`；schema v17 迁移旧跑团为 ON，不删除已有 bank/checkpoint。
-- UI、Runner、Planner 和 MemoryUpdateService 都要检查开关，不能只依赖按钮状态阻止 Provider 调用。
-- OFF 后的新 GM 裁定、玩家行动、骰点、页面打开、重载和模型切换均不得触发记忆模型；已在进行中的 Provider 请求不承诺可撤回。
-- 重新 ON 后从原 checkpoint 继续；不因切换 ON 自动追溯调用模型，下一次成功 GM Resolution 才按既有阈值检查；用户可使用手动 force 建立/补齐。
-- OFF 不清除已有记忆数据；上下文预估仍显示，但长期记忆分区为禁用/0，不把 OFF 误报成固定资料超限。
-
-必须测试：v16→v17 默认 ON、保存/重读开关、克隆继承开关；OFF 不调用 Provider 且不出现长期记忆结构；OFF 仍保留近期事件和身份隔离；ON 恢复后从 checkpoint 继续；Runner 自动触发和 UI 手动按钮均遵守开关。
-
-## 十一、执行约束
+建议职责：
 
 ```text
-只完成当前工作包，不扩大范围。
-禁止引入 Agent、多智能体、消息总线、通用状态框架、向量数据库、
-新缓存系统、新 Provider 适配器和新 NuGet 依赖。
-优先复用 ITokenEstimator、ContextSegment、TokenEstimate、
-CampaignEvent 可见性和 ProviderChatMessage。
-不要顺带重构无关聊天、世界书、Provider 或角色书架代码。
-固定资料超限时返回明确错误，不自动摘要或删除角色卡、剧本规则、当前回合行动。
-每个工作包先跑定向测试，再跑相关回归；不得为通过测试而弱化断言。
-需求与现有代码冲突时停止该部分修改，报告文件、现有行为、冲突和最小备选方案。
-不要下载 Hugging Face 模型，不进行系统级安装。
+CampaignContextPlanner
+├─ CampaignPlayerContextBuilder
+├─ CampaignGmContextBuilder
+├─ CampaignContextBudgetAllocator
+└─ CampaignHistorySelector
 ```
 
-## 十二、验收定义
+约束：
 
-- 单次 GM 和 AI 玩家请求默认受 15,000 Token 预算控制；
-- 实际请求和界面预览由同一个 Planner 生成；
-- 分项包含角色卡、世界、Prompt、记忆、历史、当前回合和输出预留；
-- 固定资料或当前回合超限时明确阻止；历史超限只裁剪旧历史；
-- 不再每个 GM 裁定都必然更新记忆；默认每 3 个完整轮次或 4000 Token 已裁定内容更新；
-- 记忆只处理到最新 GM Resolution；旧跑团打开不产生 API 成本；
-- 身份、可见性、失败重试和事件锁定语义不退化；
-- Release 构建、定向测试和完整回归通过；真实 UI 截图无布局溢出或按钮状态错误。
+- 不改变消息顺序、可见性、Token 数、状态或阻止原因；
+- 先用现有 Planner/Runner 测试锁定行为；
+- 不同时加入缓存、结构化事实或新 UI；
+- 不新增 NuGet 依赖。
 
-## 十三、推荐提交顺序
+## 七、延后事项
+
+以下内容不是当前执行任务：
+
+- 上下文缓存：先通过真实长局数据确认收益，再研究 Provider 兼容性和静态上下文 Hash；
+- Memory Quality Guard：未来可评估结构化输出 `body / confirmedFacts / openThreads`，但需要单独设计和确认；
+- `CampaignFact`、Participant Memory、关系图、任务图和向量检索；
+- 自动压缩或改写角色卡、剧本、世界书；
+- 新 Agent、多智能体框架、后台队列、通用工作流引擎；
+- Provider 专用 Token 规则矩阵。
+
+这些事项不得在阶段 0–4 中顺带实现。
+
+## 八、合并判断
+
+满足以下条件后再评估合并到 `main`：
+
+- 完成至少一次 10–20 轮真实长局；
+- 验证记忆阈值、ON/OFF、checkpoint 和 GM/Public 可见性；
+- 未发现固定资料被静默裁剪；
+- 未发现未裁定行动进入长期记忆；
+- 未发现 OFF 状态仍向模型发送升级版长期记忆结构；
+- 长局 Token 分布和历史裁剪符合预期。
+
+当前推荐路线：
 
 ```text
-1 feat: persist campaign context budget settings
-2 feat: add campaign context planner and token breakdown
-3 refactor: route campaign generation through context planner
-4 feat: show campaign token preview before generation
-5 fix: update campaign memory only at authoritative thresholds
-6 test: cover campaign budget and memory update boundaries
+R2-B 已完成
+    ↓
+真实长局验证
+    ↓
+上下文预算设置 UI
+    ↓
+补足 Context Inspector
+    ↓
+记忆边界与压力测试
+    ↓
+行为不变拆分 Planner
+    ↓
+再评估缓存、Memory Quality Guard 或 CampaignFact
 ```
-
-每个提交必须保持可编译，避免把数据库、Runner、UI 和记忆服务合成一个巨大提交。
-
-## 当前执行状态
-
-- [x] 已读取会话最后一条 AI 方案。
-- [x] 已将方案写入本文件。
-- [x] 工作包 A：数据模型和 schema v16（已复核并通过迁移、持久化、边界限制和幂等相关定向测试）。
-- [x] 工作包 B：纯上下文 Planner（已复核并通过预算、模型上限、历史裁剪、固定资料阻止、可见性和动态记忆上限定向测试）。
-- [x] 工作包 C：Runner 接入（已通过既有 Runner 身份隔离、秘密同投、GM 尾部协议及 Planner 定向回归）。
-- [x] 工作包 D：Token 预估 UI（代码、构建、定向回归及用户实际截图确认已完成）。
-- [x] 工作包 E：低频记忆更新和边界修复（已完成并通过定向回归）。
-- [ ] 工作包 F：最终回归和人工短局。
-- [x] 工作包 G：每局升级版记忆 ON/OFF（已实现；待用户实际打开 EXE 验证交互）。
-
-### A+B 本次验证记录
-
-- 定向测试：18 个通过，0 失败，0 跳过。
-- Release 构建：0 warning，0 error。
-- `git diff --check`：通过（仅有 Git 的 LF/CRLF 提示）。
-- A+B 阶段未修改 Runner、跑团 UI 或记忆更新触发链；C 阶段已将应用服务的 CampaignRunner 接入同一个 Planner，UI 和记忆触发链仍未改。
-
-### C 本次验证记录
-
-- `CampaignRunnerTests` 与 `CampaignR2BDataAndPlannerTests`：16 个通过，0 失败，0 跳过。
-- 加上 `DatabaseAndRepositoryTests` 与 `CampaignMemoryTests` 的相关回归：26 个通过，0 失败，0 跳过。
-- Planner 生成的实际消息保留既有两条 system/user 结构、身份隔离、秘密同投可见性和 GM 尾部协议；HistoryTrimmed 仍允许生成，固定资料阻断时不调用 Provider。
-- 通过后续 Release 构建：0 warning，0 error。
-
-### D 当前验证记录
-
-- 源码 Release 构建：0 warning，0 error；项目引用从 `src` 项目文件解析正常。
-- Campaign/Planner/Runner/数据库/UI 相关回归：32 个通过，0 失败，0 跳过。
-- 已实现默认折叠的“本轮上下文估算”面板、AI 席位/AI GM 分区明细、秘密同投成本汇总、启发式估算文案，以及固定上下文超限时禁用对应生成按钮并显示原因。
-- 用户提供实际游玩页截图，确认默认折叠、展开明细、多 AI 席位滚动、超预算原因文案和记录区布局；截图未触发 Provider。
-- 全量测试仍有 4 个与本次 R2-B 文件无改动的既有失败：记忆提示词主体标签、候选导航前缀文案、Campaign GM 默认提示词迁移断言；未在本工作包扩大范围修复。
-
-### E 当前验证记录
-
-- `CampaignMemoryUpdateService` 只接受已成功锁定的 `GmResolution` 作为自动更新边界；行动、骰点、页面打开、重载和模型切换不会直接触发记忆模型。
-- 默认按 checkpoint 后完整轮次达到 3 轮，或已裁定事件启发式估算达到 4000 tokens 触发；严格先攻按完整轮次而非 `GmResolution` 数量计算。
-- 公共记忆复用秘密同投结算后的可见性生命周期；GM 输入包含 `recipient_id`、`recipient_name`、`structured_data`，公共输入只保留安全字段。
-- 页面打开不再自动恢复；旧跑团显示“尚未建立”，手动按钮使用最新 GM Resolution 和 `force=true`。非法模型输出或非法边界均不推进 checkpoint，并保留并发请求去重。
-- `CampaignMemoryTests`、`CampaignRunnerTests`、`CampaignR2BDataAndPlannerTests`、`DatabaseAndRepositoryTests`、`CampaignTests`：38 个通过，0 失败，0 跳过。
-- 源码 Release 构建：0 warning，0 error；`git diff --check` 通过（仅有 Git 的 LF/CRLF 提示）。
-
-### F 当前验证记录（未完成）
-
-- 三组定向 Release 测试：CampaignR2BDataAndPlannerTests 8 个、CampaignMemoryTests 6 个、CampaignRunnerTests 8 个，合计 22 个通过，0 失败，0 跳过。
-- 源码 Release 构建：0 warning，0 error；`git diff --check` 通过（仅有 Git 的 LF/CRLF 提示）。
-- 已修复此前记录的 4 个基线断言：记忆提示词测试统一换行后匹配结构；候选导航测试采用当前 UI 的 `2/2` 文案；GM 迁移测试验证当前版本的防复述语义。4 个修复后的测试定向运行通过。
-- 修复 `ChatApiMessagesLabelRoleCardPersonaHistoryAndCurrentInput` 测试在释放临时数据库前等待界面后台刷新完成，消除并行 SQLite 释放锁。
-- 完整并行 `dotnet test TavernDesk.sln -c Release --no-restore`：149 个通过、0 个失败、0 个跳过。
-- 根目录发布已重新执行到 `D:\CODEX PROJECT\TavernDesk\app`；没有执行人工短局，保留给用户实际打开 EXE 验证。
-
-### G 当前验证记录（已实施）
-
-- 已确认需求：开关按跑团独立保存；OFF 不进行记忆总结，也不向 API 注入长期记忆结构；保留必要的近期原始历史和当前上下文。
-- G 本次实现：schema v17、每局 `MemoryEnabled`、Planner/Runner/MemoryUpdateService 闭环与右侧 ON/OFF 胶囊开关已完成；定向测试通过。
-- G 定向验证：数据/Planner/记忆服务 17 个通过，CampaignTests 合并回归 25 个通过，CampaignRunnerTests 8 个通过；此前 4 个非本工作包断言及并行 SQLite 释放锁均已修复。Release 完整并行回归为 149 个中 149 个通过，发布目录为 `D:\CODEX PROJECT\TavernDesk\app`。
