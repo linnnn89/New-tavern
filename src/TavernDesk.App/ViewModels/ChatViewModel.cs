@@ -457,10 +457,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     public bool IsCurrentConversationGenerating =>
         SelectedConversation is not null
-        && _generationCoordinator.GetState(SelectedConversation.Id).Status
-            is ConversationGenerationStatus.Queued
-            or ConversationGenerationStatus.Streaming
-            or ConversationGenerationStatus.Stopping;
+        && (_generationSessions.Get(SelectedConversation.Id).IsBusy
+            || _generationCoordinator.GetState(SelectedConversation.Id).Status
+                is ConversationGenerationStatus.Queued
+                or ConversationGenerationStatus.Streaming
+                or ConversationGenerationStatus.Stopping);
 
     public bool IsCurrentConversationBusy =>
         SelectedConversation is not null
@@ -862,15 +863,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             }
 
             var loadedMessages = messagesTask.Result;
-            var candidateTasks = loadedMessages
-                .Select(message =>
-                    message.SenderKind == MessageSenderKind.Character
-                        ? _repository.ListCandidatesAsync(
-                            message.Id,
-                            cancellationToken)
-                        : Task.FromResult<IReadOnlyList<MessageCandidate>>([]))
-                .ToArray();
-            await Task.WhenAll(candidateTasks);
+            var candidatesByMessage =
+                await _repository.ListCandidatesForConversationAsync(
+                    conversation.Id,
+                    cancellationToken);
             if (cancellationToken.IsCancellationRequested
                 || version != _selectionVersion
                 || SelectedConversation?.Id != conversation.Id)
@@ -881,9 +877,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             Messages.Clear();
             for (var index = 0; index < loadedMessages.Count; index++)
             {
+                var message = loadedMessages[index];
                 Messages.Add(CreateMessageItem(
-                    loadedMessages[index],
-                    candidateTasks[index].Result));
+                    message,
+                    candidatesByMessage.GetValueOrDefault(message.Id) ?? []));
             }
             RefreshContinueGenerationCommands();
             ApplyLiveSession(_generationSessions.Get(conversation.Id));
@@ -989,6 +986,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
 
         RaiseCurrentConversationBusyChanged(selected.Id);
+        var operationCancellation = _generationSessions.GetCancellationToken(
+            selected.Id,
+            operationId);
         try
         {
             var assignment = _groupChatAssignment;
@@ -1009,7 +1009,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     _contextBudget.GetCurrentBudget(),
                     manualSpeakerId),
                 operationId);
-            var messages = await _repository.ListMessagesAsync(selected.Id);
+            var messages = await _repository.ListMessagesAsync(
+                selected.Id,
+                operationCancellation);
             var decision = DecideGroupNext(snapshot.Context, messages);
             if (decision.NextSpeakerId is null)
             {
@@ -1021,7 +1023,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     string.Empty,
                     0,
                     isPaused: true,
-                    decision.Reason);
+                    decision.Reason,
+                    operationCancellation);
                 SetStatusForConversation(selected.Id, decision.Reason);
                 return;
             }
@@ -1033,7 +1036,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot: snapshot.Context with
                 {
                     SpeakerCharacterId = decision.NextSpeakerId
-                });
+                },
+                cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
                 SetStatusForConversation(
@@ -1060,6 +1064,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 await ContinueGroupRelayAsync(snapshot, assistant);
             }
         }
+        catch (OperationCanceledException)
+            when (operationCancellation.IsCancellationRequested)
+        {
+            SetStatusForConversation(selected.Id, "群聊接力已停止。");
+        }
         catch (Exception exception)
         {
             SetStatusForConversation(
@@ -1077,6 +1086,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private async Task SendAsync(SendSnapshot snapshot)
     {
         var conversationId = snapshot.ConversationId;
+        var operationCancellation = _generationSessions.GetCancellationToken(
+            conversationId,
+            snapshot.OperationId);
         try
         {
             if (snapshot.Input.Length == 0
@@ -1090,7 +1102,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             if (snapshot.Mode == ConversationMode.Group
                 && snapshot.SendMode == ChatSendMode.SendAndGenerate)
             {
-                var messages = (await _repository.ListMessagesAsync(conversationId))
+                var messages = (await _repository.ListMessagesAsync(
+                        conversationId,
+                        operationCancellation))
                     .Append(new ChatMessage
                     {
                         ConversationId = conversationId,
@@ -1114,7 +1128,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 conversationId,
                 snapshot.Input,
                 historyBeforeSequenceNo: null,
-                snapshot: snapshot.Context with { SpeakerCharacterId = speakerId });
+                snapshot: snapshot.Context with { SpeakerCharacterId = speakerId },
+                cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
                 SetStatusForConversation(
@@ -1130,7 +1145,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 SenderId = "local-user",
                 Content = snapshot.Input
             };
-            await _repository.AddMessageAsync(message);
+            await _repository.AddMessageAsync(message, operationCancellation);
             if (SelectedConversation?.Id == conversationId
                 && string.Equals(
                     ComposerText.Trim(),
@@ -1168,6 +1183,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 await ContinueGroupRelayAsync(snapshot, assistant);
             }
+        }
+        catch (OperationCanceledException)
+            when (operationCancellation.IsCancellationRequested)
+        {
+            SetStatusForConversation(conversationId, "发送已停止；消息未提交。");
         }
         catch (Exception exception)
         {
@@ -1221,7 +1241,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 buffer.Append(chunk);
                 assistant.Content = buffer.ToString();
                 return ValueTask.CompletedTask;
-            });
+            },
+            _generationSessions.GetCancellationToken(
+                snapshot.ConversationId,
+                snapshot.OperationId));
         var telemetry = _generationSessions.Get(snapshot.ConversationId);
 
         if (buffer.Length == 0)
@@ -1233,8 +1256,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
 
         assistant.Content = buffer.ToString();
-        await _repository.AddMessageAsync(assistant);
-        await _repository.AddCandidateAsync(new MessageCandidate
+        await _repository.AddMessageWithCandidateAsync(
+            assistant,
+            new MessageCandidate
         {
             MessageId = assistant.Id,
             CandidateIndex = 0,
@@ -1253,13 +1277,18 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         SendSnapshot snapshot,
         ChatMessage currentSpeakerMessage)
     {
+        var operationCancellation = _generationSessions.GetCancellationToken(
+            snapshot.ConversationId,
+            snapshot.OperationId);
         var group = snapshot.Context.Group
                     ?? throw new InvalidOperationException("群聊上下文快照不存在。");
         var automaticTurns = 0;
         var current = currentSpeakerMessage;
         while (true)
         {
-            var messages = await _repository.ListMessagesAsync(snapshot.ConversationId);
+            var messages = await _repository.ListMessagesAsync(
+                snapshot.ConversationId,
+                operationCancellation);
             var decision = DecideGroupNext(snapshot.Context, messages);
             var shouldPause = decision.PauseForUser || decision.NextSpeakerId is null;
             await SaveGroupStateAsync(
@@ -1268,7 +1297,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 decision.NextSpeakerId ?? string.Empty,
                 automaticTurns,
                 shouldPause,
-                decision.Reason);
+                decision.Reason,
+                operationCancellation);
             if (shouldPause)
             {
                 SetStatusForConversation(snapshot.ConversationId, decision.Reason);
@@ -1292,7 +1322,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     decision.NextSpeakerId!,
                     automaticTurns,
                     isPaused: true,
-                    reason);
+                    reason,
+                    operationCancellation);
                 SetStatusForConversation(snapshot.ConversationId, reason);
                 return;
             }
@@ -1305,7 +1336,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot: snapshot.Context with
                 {
                     SpeakerCharacterId = decision.NextSpeakerId
-                });
+                },
+                cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
                 const string reason = "下一轮群聊上下文超过模型上限，自动接力已暂停。";
@@ -1315,7 +1347,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     decision.NextSpeakerId!,
                     automaticTurns,
                     isPaused: true,
-                    reason);
+                    reason,
+                    operationCancellation);
                 SetStatusForConversation(snapshot.ConversationId, reason);
                 return;
             }
@@ -1359,7 +1392,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string nextSpeakerId,
         int automaticTurns,
         bool isPaused,
-        string reason)
+        string reason,
+        CancellationToken cancellationToken = default)
     {
         var state = new GroupChatState
         {
@@ -1370,7 +1404,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             IsPaused = isPaused,
             PauseReason = reason
         };
-        await _groupChats.SaveStateAsync(state);
+        await _groupChats.SaveStateAsync(state, cancellationToken);
         Group.ApplyState(state);
     }
 
@@ -1578,6 +1612,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return;
         }
 
+        RaiseCurrentConversationBusyChanged(conversationId);
+        var operationCancellation = _generationSessions.GetCancellationToken(
+            conversationId,
+            operationId);
+
         var original = item.Message.Content;
         var originalCandidateIndex = item.Message.ActiveCandidateIndex;
         var contextSnapshot = CreateContextSnapshot(_contextBudget.GetCurrentBudget())
@@ -1585,7 +1624,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         try
         {
             var conversationMessages = await _repository.ListMessagesAsync(
-                conversationId);
+                conversationId,
+                operationCancellation);
             var precedingMessage = conversationMessages
                 .Where(message => message.SequenceNo < item.Message.SequenceNo)
                 .OrderByDescending(message => message.SequenceNo)
@@ -1605,7 +1645,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 userInput: regenerationInput,
                 historyBeforeSequenceNo: item.Message.SequenceNo,
                 snapshot: contextSnapshot,
-                continuationInstruction: continuationInstruction);
+                continuationInstruction: continuationInstruction,
+                cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
                 Status = "重新生成所需上下文超过模型上限，未调用模型。";
@@ -1636,7 +1677,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     item.Message.Content = buffer.ToString();
                     item.RefreshContent();
                     return ValueTask.CompletedTask;
-                });
+                },
+                operationCancellation);
             var telemetry = _generationSessions.Get(conversationId);
 
             if (buffer.Length == 0)
@@ -1688,6 +1730,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 generationInterrupted
                     ? $"生成已中断；已把部分正文保存为候选 {nextIndex + 1}，后续消息未截断。"
                     : $"已生成并切换到候选 {nextIndex + 1}；后续消息未截断{suffix}。");
+        }
+        catch (OperationCanceledException)
+            when (operationCancellation.IsCancellationRequested)
+        {
+            item.Message.Content = original;
+            item.RefreshContent();
+            SetStatusForConversation(conversationId, "重新生成已停止。");
         }
         catch (Exception exception)
         {
@@ -1743,6 +1792,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             CreateContextSnapshot(_contextBudget.GetCurrentBudget()),
             operationId);
         RaiseCurrentConversationBusyChanged(selected.Id);
+        var operationCancellation = _generationSessions.GetCancellationToken(
+            selected.Id,
+            operationId);
         try
         {
             var context = await AssembleContextAsync(
@@ -1750,7 +1802,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 userInput: string.Empty,
                 historyBeforeSequenceNo: null,
                 snapshot: snapshot.Context,
-                continuationInstruction: ContinueWithoutUserInstruction);
+                continuationInstruction: ContinueWithoutUserInstruction,
+                cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
                 Status = "继续生成所需上下文超过当前模型上限。";
@@ -1769,6 +1822,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
             await ReloadGroupsPreservingSelectionAsync();
             TriggerAutoMemory(snapshot);
+        }
+        catch (OperationCanceledException)
+            when (operationCancellation.IsCancellationRequested)
+        {
+            SetStatusForConversation(selected.Id, "继续生成已停止。");
         }
         catch (Exception exception)
         {
@@ -1794,8 +1852,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void StopCurrentGeneration()
     {
-        if (SelectedConversation is not null
-            && _generationCoordinator.Cancel(SelectedConversation.Id))
+        if (SelectedConversation is null)
+        {
+            return;
+        }
+
+        var conversationId = SelectedConversation.Id;
+        var stopped = _generationSessions.Cancel(conversationId);
+        stopped = _generationCoordinator.Cancel(conversationId) || stopped;
+        if (stopped)
         {
             Status = "正在中断当前会话的生成；其他会话的流不会受影响。";
         }
@@ -2542,6 +2607,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         if (SelectedConversation?.Id == conversationId)
         {
             OnPropertyChanged(nameof(IsCurrentConversationBusy));
+            OnPropertyChanged(nameof(IsCurrentConversationGenerating));
+            StopGenerationCommand.RaiseCanExecuteChanged();
             RefreshContinueGenerationCommands();
         }
     }

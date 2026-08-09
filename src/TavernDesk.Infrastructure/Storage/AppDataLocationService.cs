@@ -24,15 +24,18 @@ public sealed class AppDataLocationService
     private readonly AppDataConfiguration _configuration;
     private readonly SqliteDatabase _database;
     private readonly AppDataPaths _paths;
+    private readonly Func<string, string, CancellationToken, Task> _copyFile;
 
     public AppDataLocationService(
         AppDataConfiguration configuration,
         AppDataPaths paths,
-        SqliteDatabase database)
+        SqliteDatabase database,
+        Func<string, string, CancellationToken, Task>? copyFile = null)
     {
         _configuration = configuration;
         _paths = paths;
         _database = database;
+        _copyFile = copyFile ?? CopyFileAsync;
     }
 
     public string CurrentRoot => _paths.RootDirectory;
@@ -145,62 +148,104 @@ public sealed class AppDataLocationService
                     $"目标个人资料目录非空，为避免覆盖已有资料而停止迁移：{targetRoot}");
             }
         }
-        else
-        {
-            Directory.CreateDirectory(targetRoot);
-        }
+        var targetInfo = new DirectoryInfo(targetRoot);
+        var targetParent = targetInfo.Parent?.FullName
+                           ?? throw new InvalidOperationException(
+                               "目标个人资料目录缺少父目录。");
+        Directory.CreateDirectory(targetParent);
+        var stagingRoot = Path.Combine(
+            targetParent,
+            $".{targetInfo.Name}.migration-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(stagingRoot);
 
         var files = 0;
         long bytes = 0;
         var sourceDatabase = Path.Combine(sourceRoot, "taverndesk.db");
-        var targetDatabase = Path.Combine(targetRoot, "taverndesk.db");
-        if (File.Exists(sourceDatabase))
+        var targetDatabase = Path.Combine(stagingRoot, "taverndesk.db");
+        try
         {
-            await BackupDatabaseAsync(
-                sourceDatabase,
-                targetDatabase,
-                cancellationToken);
-            files++;
-            bytes += new FileInfo(targetDatabase).Length;
-        }
-
-        foreach (var directory in Directory.EnumerateDirectories(
-                     sourceRoot,
-                     "*",
-                     SearchOption.AllDirectories))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var relative = Path.GetRelativePath(sourceRoot, directory);
-            Directory.CreateDirectory(Path.Combine(targetRoot, relative));
-        }
-
-        foreach (var sourceFile in Directory.EnumerateFiles(
-                     sourceRoot,
-                     "*",
-                     SearchOption.AllDirectories))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (string.Equals(
-                    Path.GetFullPath(sourceFile),
-                    Path.GetFullPath(sourceDatabase),
-                    StringComparison.OrdinalIgnoreCase)
-                || IsSqliteSidecar(sourceFile))
+            if (File.Exists(sourceDatabase))
             {
-                continue;
+                await BackupDatabaseAsync(
+                    sourceDatabase,
+                    targetDatabase,
+                    cancellationToken);
+                files++;
+                bytes += new FileInfo(targetDatabase).Length;
             }
 
-            var relative = Path.GetRelativePath(sourceRoot, sourceFile);
-            var targetFile = Path.Combine(targetRoot, relative);
-            Directory.CreateDirectory(
-                Path.GetDirectoryName(targetFile)
-                ?? throw new InvalidOperationException(
-                    "个人资料文件缺少目标父目录。"));
-            await CopyFileAsync(sourceFile, targetFile, cancellationToken);
-            files++;
-            bytes += new FileInfo(targetFile).Length;
-        }
+            foreach (var directory in Directory.EnumerateDirectories(
+                         sourceRoot,
+                         "*",
+                         SearchOption.AllDirectories))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var relative = Path.GetRelativePath(sourceRoot, directory);
+                Directory.CreateDirectory(Path.Combine(stagingRoot, relative));
+            }
 
-        return (files, bytes);
+            foreach (var sourceFile in Directory.EnumerateFiles(
+                         sourceRoot,
+                         "*",
+                         SearchOption.AllDirectories))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (string.Equals(
+                        Path.GetFullPath(sourceFile),
+                        Path.GetFullPath(sourceDatabase),
+                        StringComparison.OrdinalIgnoreCase)
+                    || IsSqliteSidecar(sourceFile))
+                {
+                    continue;
+                }
+
+                var relative = Path.GetRelativePath(sourceRoot, sourceFile);
+                var targetFile = Path.Combine(stagingRoot, relative);
+                Directory.CreateDirectory(
+                    Path.GetDirectoryName(targetFile)
+                    ?? throw new InvalidOperationException(
+                        "个人资料文件缺少目标父目录。"));
+                await _copyFile(sourceFile, targetFile, cancellationToken);
+                files++;
+                bytes += new FileInfo(targetFile).Length;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Directory.Exists(targetRoot))
+            {
+                if (Directory.EnumerateFileSystemEntries(targetRoot).Any())
+                {
+                    throw new IOException(
+                        $"目标个人资料目录在迁移期间变为非空，已停止切换：{targetRoot}");
+                }
+
+                Directory.Delete(targetRoot);
+            }
+
+            Directory.Move(stagingRoot, targetRoot);
+            return (files, bytes);
+        }
+        catch
+        {
+            TryDeleteStagingDirectory(stagingRoot);
+            throw;
+        }
+    }
+
+    private static void TryDeleteStagingDirectory(string stagingRoot)
+    {
+        try
+        {
+            if (Directory.Exists(stagingRoot))
+            {
+                Directory.Delete(stagingRoot, recursive: true);
+            }
+        }
+        catch
+        {
+            // Preserve the original migration error. The staging path uses a
+            // unique internal name and is never accepted as an active root.
+        }
     }
 
     private async Task<int> RepairCharactersAsync(

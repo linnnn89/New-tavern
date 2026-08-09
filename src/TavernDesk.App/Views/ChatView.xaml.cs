@@ -217,7 +217,11 @@ public partial class ChatView : UserControl
                 _scrollScheduled = false;
                 if (IsLoaded && InterfaceSettingsRuntime.ChatAutoScrollEnabled)
                 {
-                    ConversationScrollViewer.ScrollToEnd();
+                    var lastMessage = _observedViewModel?.Messages.LastOrDefault();
+                    if (lastMessage is not null)
+                    {
+                        ConversationMessageList.ScrollIntoView(lastMessage);
+                    }
                 }
             }));
     }

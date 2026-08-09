@@ -7,11 +7,14 @@ namespace TavernDesk.Infrastructure.Context;
 
 public sealed class ConversationGenerationCoordinator : IConversationGenerationCoordinator
 {
+    private const int MaximumRetainedTerminalStates = 256;
     private readonly ConcurrentDictionary<string, GenerationRun> _runs = new();
     private readonly ConcurrentDictionary<string, ConversationGenerationState> _states = new();
+    private readonly ConcurrentQueue<CompletedStateKey> _terminalStateOrder = new();
     private readonly object _registrationGate = new();
     private readonly SemaphoreSlim _cancelAllGate = new(1, 1);
     private bool _acceptingRuns = true;
+    private int _retainedTerminalStates;
 
     public event EventHandler<ConversationGenerationState>? StateChanged;
 
@@ -219,7 +222,41 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
             DateTimeOffset.Now,
             receivedTokens);
         _states[operationId] = state;
+        if (status is ConversationGenerationStatus.Completed
+            or ConversationGenerationStatus.Interrupted
+            or ConversationGenerationStatus.Failed)
+        {
+            _terminalStateOrder.Enqueue(new CompletedStateKey(
+                operationId,
+                generationId));
+            Interlocked.Increment(ref _retainedTerminalStates);
+            TrimTerminalStates();
+        }
+
         StateChanged?.Invoke(this, state);
+    }
+
+    private void TrimTerminalStates()
+    {
+        while (Volatile.Read(ref _retainedTerminalStates)
+               > MaximumRetainedTerminalStates
+               && _terminalStateOrder.TryDequeue(out var oldest))
+        {
+            Interlocked.Decrement(ref _retainedTerminalStates);
+            if (!_states.TryGetValue(oldest.OperationId, out var state)
+                || !string.Equals(
+                    state.GenerationId,
+                    oldest.GenerationId,
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            ((ICollection<KeyValuePair<string, ConversationGenerationState>>)
+                _states).Remove(new KeyValuePair<string, ConversationGenerationState>(
+                oldest.OperationId,
+                state));
+        }
     }
 
     private static long GetStreamItemByteCount<T>(T item) =>
@@ -278,4 +315,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         public TaskCompletionSource Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
+
+    private sealed record CompletedStateKey(
+        string OperationId,
+        string GenerationId);
 }

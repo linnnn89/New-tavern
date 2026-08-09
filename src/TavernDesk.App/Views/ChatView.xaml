@@ -304,12 +304,40 @@
                 </Grid>
             </Border>
 
-            <ScrollViewer x:Name="ConversationScrollViewer"
-                          Grid.Row="1"
-                          VerticalScrollBarVisibility="Auto"
-                          Padding="24,18">
-                <ItemsControl ItemsSource="{Binding Messages}">
-                    <ItemsControl.ItemTemplate>
+            <ListBox x:Name="ConversationMessageList"
+                     Grid.Row="1"
+                     ItemsSource="{Binding Messages}"
+                     Padding="24,18"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="IsTabStop" Value="False" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid x:Name="MessageContainer"
                                   Margin="0,0,24,18"
@@ -488,9 +516,8 @@
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <!-- A provider reasoning stream is only a transient progress signal.
                  Staggered transforms form one quiet, continuous stadium-wave motion. -->

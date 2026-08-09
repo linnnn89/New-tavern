@@ -77,6 +77,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
     private readonly IAppSettingsRepository _settings;
     private readonly IUserInteractionService? _interaction;
     private readonly SemaphoreSlim _loadGate = new(1, 1);
+    private readonly SemaphoreSlim _persistGate = new(1, 1);
     private PlayerPersonaProfileViewModel? _selectedProfile;
     private string _editorName = string.Empty;
     private string _editorDescription = string.Empty;
@@ -85,6 +86,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
     private bool _suppressSelectionPersistence;
     private bool _isNewProfile;
     private PlayerPersonaProfileViewModel? _profileBeforeNew;
+    private long _persistRevision;
 
     public PlayerPersonaManagerViewModel(
         IAppSettingsRepository settings,
@@ -127,7 +129,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
 
             if (_loaded && !_suppressSelectionPersistence && value is not null)
             {
-                _ = PersistAsync();
+                _ = PersistSelectionAsync();
             }
         }
     }
@@ -491,16 +493,47 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
                 .ToList()
         };
         var json = JsonSerializer.Serialize(document, JsonOptions);
-        await _settings.SetAsync(StorageKey, json, cancellationToken);
+        var activeName = _selectedProfile?.Name ?? "用户";
+        var activeDescription = _selectedProfile?.Description ?? string.Empty;
+        var revision = Interlocked.Increment(ref _persistRevision);
+        await _persistGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (revision != Volatile.Read(ref _persistRevision))
+            {
+                return;
+            }
 
-        // Keep the old single-persona keys synchronized for older builds and
-        // for any local data import that still reads those keys.
-        await Task.WhenAll(
-            _settings.SetAsync("persona.name", ActiveName, cancellationToken),
-            _settings.SetAsync(
+            await _settings.SetAsync(StorageKey, json, cancellationToken);
+
+            // Keep the old single-persona keys synchronized for older builds
+            // and for local imports that still read those keys. The gate keeps
+            // all three keys in the same selection order.
+            await _settings.SetAsync(
+                "persona.name",
+                activeName,
+                cancellationToken);
+            await _settings.SetAsync(
                 "persona.description",
-                ActiveDescription,
-                cancellationToken));
+                activeDescription,
+                cancellationToken);
+        }
+        finally
+        {
+            _persistGate.Release();
+        }
+    }
+
+    private async Task PersistSelectionAsync()
+    {
+        try
+        {
+            await PersistAsync();
+        }
+        catch (Exception exception)
+        {
+            Status = $"当前玩家人设选择未保存：{exception.Message}";
+        }
     }
 
     private static PersonaDocument Deserialize(string? json)

@@ -45,6 +45,24 @@ public sealed class ConversationGenerationSessionStore
         return true;
     }
 
+    public CancellationToken GetCancellationToken(
+        string conversationId,
+        string operationId) =>
+        TryResolve(conversationId, operationId, out var entry)
+            ? entry.CancellationToken
+            : new CancellationToken(canceled: true);
+
+    public bool Cancel(string conversationId)
+    {
+        if (!_active.TryGetValue(conversationId, out var entry))
+        {
+            return false;
+        }
+
+        entry.Cancel();
+        return true;
+    }
+
     public bool BeginReply(
         string conversationId,
         string operationId,
@@ -150,6 +168,7 @@ public sealed class ConversationGenerationSessionStore
         private ProviderTokenUsage? _usage;
         private string? _finishReason;
         private DateTimeOffset _updatedAt = DateTimeOffset.Now;
+        private readonly CancellationTokenSource _cancellation = new();
 
         public SessionEntry(string conversationId, string operationId)
         {
@@ -159,6 +178,9 @@ public sealed class ConversationGenerationSessionStore
 
         public string ConversationId { get; }
         public string OperationId { get; }
+        public CancellationToken CancellationToken => _cancellation.Token;
+
+        public void Cancel() => _cancellation.Cancel();
 
         public ConversationGenerationSession BeginReply(
             string messageId,

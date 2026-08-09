@@ -170,7 +170,9 @@ campaign_events
 
 schema v3 增加角色卡源文件/导入报告和自定义书架。角色卡导入先解析并校验，再把原文件原样复制到数据根目录的 `character-cards/{character_id}/`；编辑只改变可编辑字段和数据库记录，不原位改写导入文件。PNG 同格式导出保持非 `ccv3`/`chara` chunk，CHARX 同格式导出保持全部非 `card.json` 文件，JSON 保持未知节点。
 
-schema v4 增加模型目录和按功能分配。API Key 不进入 SQLite；`provider_profiles.secret_reference` 只保存项目数据根目录内 DPAPI 保护文件的受校验引用。密钥轮换先写新保护文件，数据库提交成功后才清理旧引用。
+schema v4 增加模型目录和按功能分配。API Key 不进入 SQLite；`provider_profiles.secret_reference` 只保存项目数据根目录内 DPAPI 保护文件的受校验引用。密钥轮换先写新保护文件，数据库提交成功后才清理旧引用。删除 Provider 时同样先提交数据库级联删除，再清理保护文件；数据库失败不得提前删除仍被引用的 Key。
+
+个人资料目录迁移不直接写入最终目标。复制和 SQLite backup 先进入目标同级的唯一暂存目录；全部成功且最终目标仍为空时才通过目录移动切换。复制失败只清理暂存目录，当前数据根和配置保持不变，目标可直接重试。
 
 schema v5 增加记忆工作流、处理检查点、可编辑草稿、群聊设置/成员/接力状态。记忆生成永远先落入草稿；只有显式提交更新草稿时，才在同一事务中覆盖记忆正文并推进检查点。压缩与群聊合并草稿不推进对话处理检查点。
 
@@ -202,7 +204,7 @@ schema v19 只修正仍保留旧默认值的 AI GM 输出上限：当 `gm_max_ou
 
 群聊记忆的 owner ID 为 `group:{conversation_id}`。群聊分支复制截止消息、全部消息候选、群聊设置和成员并重建 ID；新分支不复制原群聊记忆，防止分支起点之后形成的摘要泄漏到新分支。群聊状态在分支中重置。
 
-手工编辑只覆盖当前候选文本，不保留编辑历史；重新生成产生新的候选版本。独立分支复制消息及全部候选并重建 ID，不共享消息节点。消息删除必须先选择范围并最终确认，随后永久生效；不提供回收、恢复或隐藏软删除入口。
+手工编辑只覆盖当前候选文本，不保留编辑历史；重新生成产生新的候选版本。新助手消息与首个候选必须在同一事务中提交。独立分支复制消息及全部候选并重建 ID，不共享消息节点。消息删除必须先选择范围并最终确认，随后永久生效；不提供回收、恢复或隐藏软删除入口。
 
 ## 4. 请求组装顺序
 
@@ -224,7 +226,7 @@ M4.1 已接入 global → character → conversation 预设栈、群聊额外指
 
 OpenAI-compatible Provider 使用 `/models` 与 `/chat/completions`，支持专用目录的接入商另使用 `/embeddings/models` 读取目录；调用者选择 `Embedding 向量化` 功能后，Embedding 网关固定把请求发送到 `/embeddings`，不检查模型目录类型，普通聊天功能仍通过 `/chat/completions`。所有接口支持既有 SSE 和非流式 JSON 回退路径。裸服务根地址自动补全 `/v1`；已经包含 `/v1` 或其他显式兼容路径时不改写该路径。OpenRouter 请求按普通聊天会话或跑团 GM/玩家席位传递稳定 `session_id`，并从 `prompt_tokens_details.cached_tokens` 读取缓存命中量；DeepSeek 直连兼容字段 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` 也在同一 usage 解析处处理，不新增第二套 Provider。`ReasoningStreamNormalizer` 在 Infrastructure 边界执行服务商无关的语义归一化：优先读取 `reasoning`、`reasoning_content`、`thinking`、`analysis` 及受控的 reasoning/thinking 前缀变体，并递归确认结构化数组/对象中存在有效值；若服务只把思考写入正文，则仅在响应开头识别 `<think>`、`<thinking>`、`<analysis>` 成对标签。状态机可跨 SSE chunk 识别标签，且只暂存可能组成闭合标签的最短后缀。结构化字段优先，正文中途出现的字面标签按普通正文保留，避免过宽通配误吞用户内容。
 
-归一化后的流在 Infrastructure 内统一拆为 reasoning 信号、最终正文和 completed/usage；reasoning 原文不越过 Provider 边界，App 只用信号驱动临时状态。模型目录只在用户主动刷新时请求。`ConversationGenerationSessionStore` 以会话 ID 保存应用级生成快照和临时正文；多个 `ChatViewModel` 可附着同一会话，不同会话可同时流式生成，同一会话拒绝重入。默认目录固定为 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 `http://127.0.0.1:6543` LM Studio；后四项复用 OpenAI-compatible 适配器。设置页还允许新增自定义 OpenAI-compatible Provider。专用 Ollama、LM Studio 原生、Anthropic 或 Gemini 适配器尚未实现。
+归一化后的流在 Infrastructure 内统一拆为 reasoning 信号、最终正文和 completed/usage；reasoning 原文不越过 Provider 边界，App 只用信号驱动临时状态。模型目录只在用户主动刷新时请求。`ConversationGenerationSessionStore` 以会话 ID 保存应用级生成快照、取消令牌和临时正文；多个 `ChatViewModel` 可附着同一会话，不同会话可同时流式生成，同一会话拒绝重入。跑团请求必须在等待记忆操作锁之前登记到 `ConversationGenerationCoordinator`；协调器只保留最近 256 个终态，活跃请求不参与终态淘汰。默认目录固定为 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 `http://127.0.0.1:6543` LM Studio；后四项复用 OpenAI-compatible 适配器。设置页还允许新增自定义 OpenAI-compatible Provider。专用 Ollama、LM Studio 原生、Anthropic 或 Gemini 适配器尚未实现。
 
 记忆更新、压缩和群聊记忆合并分别使用独立功能模型分配，每项只有一份可编辑全局职责提示词；旧记忆、新消息、角色名和目标 Token 等动态资料由 `MemoryPromptComposer` 构造固定输入载荷，不存在第二份可配置 User 模板。提示词、目标 Token 和完整发送结构仍可在生成前查看；请求中的 `user` role 只是 OpenAI-compatible 协议的数据承载消息，不是另一项用户配置。记忆银行的自动阈值更新默认开启，但只创建待确认草稿，不自动覆盖记忆正文。群聊使用独立的“群聊接力”和“群聊记忆合并”功能分配；`@` 接力只读取上一角色输出的最后一句，识别 `@USER` 或 Persona 名后持久化暂停状态。模型功能分配另设与生成任务平行的 `Embedding` 项，只持久化 Provider 与模型；上下文上限、最大输出、temperature、top_p 和 reasoning 对该项无效。实际 Embedding 请求已经固定走 `/embeddings`；世界书向量索引、混合 RAG、内容哈希复用和索引事务已接入，角色卡内置世界书导入时自动建立/复用工作副本。
 

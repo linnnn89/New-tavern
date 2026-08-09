@@ -908,21 +908,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
 
         var secretReference = profile.SecretReference;
-        if (secretReference.Length > 0)
-        {
-            try
-            {
-                await _secrets.DeleteAsync(secretReference);
-                profile.SecretReference = string.Empty;
-            }
-            catch (Exception exception)
-            {
-                Status =
-                    $"删除已取消：未能清除“{profile.Name}”的 DPAPI Key 文件：{exception.Message}";
-                return;
-            }
-        }
-
         try
         {
             if (_persistedProfileIds.Contains(profile.Id))
@@ -932,22 +917,25 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            if (secretReference.Length > 0)
-            {
-                try
-                {
-                    await _repository.UpsertAsync(profile);
-                }
-                catch
-                {
-                    // The Key is already gone. Keep the primary delete error visible.
-                }
-            }
-
-            Status = secretReference.Length > 0
-                ? $"DPAPI Key 已清除，但接入商删除失败：{exception.Message}"
-                : $"接入商删除失败：{exception.Message}";
+            Status = $"接入商删除失败，配置和 DPAPI Key 均已保留：{exception.Message}";
             return;
+        }
+
+        string? secretCleanupWarning = null;
+        if (secretReference.Length > 0)
+        {
+            try
+            {
+                await _secrets.DeleteAsync(secretReference);
+            }
+            catch (Exception exception)
+            {
+                // The database deletion already removed this provider and its
+                // dependent rows. An encrypted orphan is safer than restoring
+                // a partial provider without its models and assignments.
+                secretCleanupWarning =
+                    $"接入商已删除，但本地加密 Key 文件清理失败：{exception.Message}";
+            }
         }
 
         Profiles.Remove(profile);
@@ -970,8 +958,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
         await LoadFunctionAssignmentSafeAsync(++_assignmentLoadVersion);
         await RefreshAssignmentOverviewAsync();
-        Status =
-            $"已删除“{profile.Name}”；模型目录、功能分配和本地 DPAPI Key 已清理。";
+        Status = secretCleanupWarning
+                 ?? $"已删除“{profile.Name}”；模型目录、功能分配和本地 DPAPI Key 已清理。";
     }
 
     public async Task<bool> SelectProfileAsync(ProviderProfile profile)

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -684,17 +685,6 @@ public sealed partial class CampaignRunner : ICampaignRunner
             return campaignEvent;
         }
 
-        await using var operationLease =
-            await _operationGate.EnterGenerationAsync(
-                campaignEvent.CampaignId,
-                CancellationToken.None);
-        campaignEvent.GenerationStatus = CampaignGenerationStatus.Streaming;
-        await _campaigns.UpdateEventAsync(campaignEvent, cancellationToken);
-        PublishProgress(
-            campaignEvent,
-            CampaignGenerationStatus.Streaming,
-            receivedTokens: 0);
-
         var buffer = new StringBuilder();
         long receivedUtf8Bytes = 0;
         long lastProgressTimestamp = 0;
@@ -703,7 +693,10 @@ public sealed partial class CampaignRunner : ICampaignRunner
         {
             await _coordinator.RunProviderAsync(
                 generationOperationId,
-                token => _gateway.StreamChatAsync(request, token),
+                token => StreamCampaignProviderAsync(
+                    campaignEvent,
+                    request,
+                    token),
                 (streamEvent, _) =>
                 {
                     if (streamEvent.Kind == ProviderStreamEventKind.Content)
@@ -859,6 +852,31 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 ? null
                 : campaignEvent.EndReason.ToString());
         return campaignEvent;
+    }
+
+    private async IAsyncEnumerable<ProviderStreamEvent>
+        StreamCampaignProviderAsync(
+            CampaignEvent campaignEvent,
+            ModelExecutionRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using var operationLease =
+            await _operationGate.EnterGenerationAsync(
+                campaignEvent.CampaignId,
+                cancellationToken);
+        campaignEvent.GenerationStatus = CampaignGenerationStatus.Streaming;
+        await _campaigns.UpdateEventAsync(campaignEvent, cancellationToken);
+        PublishProgress(
+            campaignEvent,
+            CampaignGenerationStatus.Streaming,
+            receivedTokens: 0);
+
+        await foreach (var streamEvent in _gateway
+                           .StreamChatAsync(request, cancellationToken)
+                           .WithCancellation(cancellationToken))
+        {
+            yield return streamEvent;
+        }
     }
 
     private static int EffectiveInputBudget(

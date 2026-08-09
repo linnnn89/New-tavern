@@ -63,12 +63,20 @@ public interface IConversationRepository
 
     Task UpsertAsync(Conversation conversation, CancellationToken cancellationToken = default);
     Task AddMessageAsync(ChatMessage message, CancellationToken cancellationToken = default);
+    Task AddMessageWithCandidateAsync(
+        ChatMessage message,
+        MessageCandidate candidate,
+        CancellationToken cancellationToken = default);
     Task AddCandidateAsync(
         MessageCandidate candidate,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MessageCandidate>> ListCandidatesAsync(
         string messageId,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<string, IReadOnlyList<MessageCandidate>>>
+        ListCandidatesForConversationAsync(
+            string conversationId,
+            CancellationToken cancellationToken = default);
     Task AddAndActivateCandidateAsync(
         MessageCandidate candidate,
         CancellationToken cancellationToken = default);

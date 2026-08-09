@@ -18,6 +18,7 @@ public sealed class RetrievalViewModel : ViewModelBase
     private int _tokenBudget = 1200;
     private string _status = "选择会话后可配置长期上下文召回。";
     private bool _loading;
+    private long _loadVersion;
 
     public RetrievalViewModel(
         IMessageRetrievalRepository repository,
@@ -89,9 +90,16 @@ public sealed class RetrievalViewModel : ViewModelBase
         Conversation conversation,
         CancellationToken cancellationToken = default)
     {
+        var version = Interlocked.Increment(ref _loadVersion);
         var settings = await _repository.GetSettingsAsync(
             conversation.Id,
             cancellationToken);
+        if (cancellationToken.IsCancellationRequested
+            || version != Volatile.Read(ref _loadVersion))
+        {
+            return;
+        }
+
         _loading = true;
         try
         {
@@ -122,6 +130,7 @@ public sealed class RetrievalViewModel : ViewModelBase
 
     public void Clear()
     {
+        Interlocked.Increment(ref _loadVersion);
         _loading = true;
         try
         {

@@ -246,12 +246,61 @@ public sealed class SqliteConversationRepository : IConversationRepository
     {
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)
+            await connection.BeginTransactionAsync(cancellationToken);
+
+        await InsertMessageAsync(
+            connection,
+            transaction,
+            message,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task AddMessageWithCandidateAsync(
+        ChatMessage message,
+        MessageCandidate candidate,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.Equals(
+                candidate.MessageId,
+                message.Id,
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "首个候选必须引用同一条消息。",
+                nameof(candidate));
+        }
+
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)
+            await connection.BeginTransactionAsync(cancellationToken);
+
+        await InsertMessageAsync(
+            connection,
+            transaction,
+            message,
+            cancellationToken);
+        await InsertCandidateAsync(
+            connection,
+            transaction,
+            candidate,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task InsertMessageAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        ChatMessage message,
+        CancellationToken cancellationToken)
+    {
 
         if (message.SequenceNo <= 0)
         {
             await using var sequenceCommand = connection.CreateCommand();
-            sequenceCommand.Transaction = (SqliteTransaction)transaction;
+            sequenceCommand.Transaction = transaction;
             sequenceCommand.CommandText = """
                 SELECT COALESCE(MAX(sequence_no), 0) + 1
                 FROM messages
@@ -264,7 +313,7 @@ public sealed class SqliteConversationRepository : IConversationRepository
 
         await using (var command = connection.CreateCommand())
         {
-            command.Transaction = (SqliteTransaction)transaction;
+            command.Transaction = transaction;
             command.CommandText = """
                 INSERT INTO messages(
                     id, conversation_id, sequence_no, sender_kind, sender_id, content,
@@ -286,11 +335,15 @@ public sealed class SqliteConversationRepository : IConversationRepository
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await InsertSearchRowAsync(connection, (SqliteTransaction)transaction, message, cancellationToken);
+        await InsertSearchRowAsync(
+            connection,
+            transaction,
+            message,
+            cancellationToken);
 
         await using (var updateConversation = connection.CreateCommand())
         {
-            updateConversation.Transaction = (SqliteTransaction)transaction;
+            updateConversation.Transaction = transaction;
             updateConversation.CommandText = """
                 UPDATE conversations
                 SET updated_at = $updatedAt
@@ -301,7 +354,6 @@ public sealed class SqliteConversationRepository : IConversationRepository
             await updateConversation.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task AddCandidateAsync(
@@ -352,6 +404,52 @@ public sealed class SqliteConversationRepository : IConversationRepository
         }
 
         return result;
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<MessageCandidate>>>
+        ListCandidatesForConversationAsync(
+            string conversationId,
+            CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, List<MessageCandidate>>(
+            StringComparer.Ordinal);
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT mc.id, mc.message_id, mc.candidate_index, mc.content, mc.created_at
+            FROM message_candidates mc
+            INNER JOIN messages m ON m.id = mc.message_id
+            WHERE m.conversation_id = $conversationId
+              AND m.is_deleted = 0
+            ORDER BY m.sequence_no, mc.candidate_index;
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        await using var reader = await command.ExecuteReaderAsync(
+            cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var candidate = new MessageCandidate
+            {
+                Id = reader.GetString(0),
+                MessageId = reader.GetString(1),
+                CandidateIndex = reader.GetInt32(2),
+                Content = reader.GetString(3),
+                CreatedAt = DateTimeOffset.Parse(reader.GetString(4))
+            };
+            if (!result.TryGetValue(candidate.MessageId, out var candidates))
+            {
+                candidates = [];
+                result.Add(candidate.MessageId, candidates);
+            }
+
+            candidates.Add(candidate);
+        }
+
+        return result.ToDictionary(
+            item => item.Key,
+            item => (IReadOnlyList<MessageCandidate>)item.Value,
+            StringComparer.Ordinal);
     }
 
     public async Task AddAndActivateCandidateAsync(

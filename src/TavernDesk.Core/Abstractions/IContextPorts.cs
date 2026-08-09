@@ -163,6 +163,12 @@ public interface IConversationGenerationSessionStore
 
     bool TryBegin(string conversationId, out string operationId);
 
+    CancellationToken GetCancellationToken(
+        string conversationId,
+        string operationId);
+
+    bool Cancel(string conversationId);
+
     bool BeginReply(
         string conversationId,
         string operationId,
