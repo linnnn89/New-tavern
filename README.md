@@ -4,10 +4,11 @@ TavernDesk 是面向 Windows 10/11 的本地酒馆客户端，使用 .NET 10、C
 
 ## 当前版本
 
-当前代码包含两条已落地的设计线：
+当前代码包含三条已落地的设计线：
 
-- R2-B 跑团上下文与记忆：单次 GM/AI 玩家请求默认 15,000 tokens（输入上下文与输出预留合计），发送前预览与实际请求共用同一个 Planner；GM/Public 记忆按成功裁定后的低频阈值更新，并由每局独立的记忆 ON/OFF 控制。
+- R2-B 跑团上下文与记忆：单次 GM/AI 玩家请求默认输入预算 15,000 tokens，输出上限按 GM 或席位模型设置单独计算（GM 默认最高 6,000）；发送前预览与实际请求共用同一个 Planner。GM/Public 记忆按成功裁定后的低频阈值更新，并由每局独立的记忆 ON/OFF 控制。
 - R2-C UI 信息架构整理：保留既有业务和数据绑定，减少高频页面的重复入口，把低频设置收进页面内的分类、折叠区或弹出菜单。
+- R2-D 跑团叙事权限：三种跑团模式分别编译 GM 权限契约；剧本的 GM 指令与叙事权限在开局时冻结，GM 候选只有通过确定性权限校验后才能锁定、推进回合和进入长期记忆。
 
 R2-C 的原则是“重排现有功能，不新增业务层”：不改 Provider 协议、数据库语义、记忆模型、角色卡导入格式或普通聊天记忆规则。
 
@@ -22,7 +23,7 @@ R2-C 的原则是“重排现有功能，不新增业务层”：不改 Provider
 | 页面 | 高频工作区 | 低频入口 |
 | --- | --- | --- |
 | 聊天 | 会话、消息、生成、候选回复 | 顶部 ⋯：JSONL 导入/导出；右侧五个页签：上下文、角色、玩家人设、记忆、会话 |
-| 跑团 | 三栏游玩页：玩家席位、跑团记录、当前步骤 | 跑团设置；顶部 ⋯ 只放重新载入；大厅的高级设置和本局剧本覆盖 |
+| 跑团 | 三栏游玩页：玩家席位、跑团记录、当前步骤 | 从剧本统一开新局并按 `剧本名-1/-2/-3` 编号；跑团列表右键重命名；未开始大厅离开前询问是否保存且默认不保存；游玩页提供跑团设置和本地“↻ 刷新” |
 | 角色 | 书架、角色主页、聊天入口 | 角色编辑器四页：基础、对话、提示词、元数据 |
 | 世界书 | 世界书选择、词条查看和编辑 | 导入范围弹出菜单；管理挂载…弹出角色/跑团剧本绑定 |
 | 设置 | AI 与模型、默认行为、AI 行为模板、界面、数据 | 各页面只保留已有持久化能力，不创建空的“高级”页 |
@@ -41,13 +42,13 @@ R2-C 的原则是“重排现有功能，不新增业务层”：不改 Provider
 
 ### 跑团
 
-剧本编辑器使用四个页签：
+剧本编辑器使用五个页签：
 
 ```text
-基础 · 世界与规则 · 主持与开场 · 资料
+基础 · 世界与规则 · 主持与开场 · 叙事权限 · 资料
 ```
 
-资料页保留世界书绑定和旧示例/历史归档折叠区。起始大厅直接展示开局必需的剧本、GM、参与方式、USER 名称、AI 玩家、每席模型、记忆导入和开始/保存动作；历史预算与全局 GM/AI 玩家提示词集中在一个“高级设置”区，剧本正文默认以摘要显示，只有“本局覆盖剧本内容…”才展开编辑框。
+“叙事权限”页分别控制新增 NPC、角色关系变化和独立剧情线，可设为禁止、仅限玩家本轮明确提交或由 GM 自主裁定。资料页保留世界书绑定和旧示例/历史归档折叠区。起始大厅直接展示开局必需的剧本、GM、参与方式、USER 名称、AI 玩家、每席模型、记忆导入和开始/保存动作；历史预算与全局 GM/AI 玩家提示词集中在一个“高级设置”区，剧本正文默认以摘要显示，只有“本局覆盖剧本内容…”才展开编辑框。
 
 ### 角色
 
@@ -74,7 +75,15 @@ R2-C 的原则是“重排现有功能，不新增业务层”：不改 Provider
 CampaignEvent / CampaignMemory / CharacterSnapshot
                          │
                          ▼
+               CampaignFlowEngine
+        （协作 / 秘密同投 / 严格先攻策略）
+                         │
+                         ▼
               CampaignContextPlanner
+                         │
+                         ▼
+       CampaignNarrativeAuthorityCompiler
+       （按协作 / 秘密同投 / 严格先攻编译）
                          │
                          ▼
               CampaignContextPlan.Messages
@@ -84,6 +93,10 @@ CampaignEvent / CampaignMemory / CharacterSnapshot
                                       │
                                       ▼
                                   Provider
+                                      │
+                                      ▼
+                         CampaignGmOutputValidator
+                     （权限声明校验 + 隐藏元数据剥离）
 
 成功锁定 GmResolution
           │
@@ -96,6 +109,8 @@ CampaignMemoryUpdateService
 
 - Planner 只负责分区、预算、历史截取和估算，不调用 Provider、不写数据库。
 - Runner 消费同一份 CampaignContextPlan.Messages，避免预览和实际发送不一致。
+- GM 请求在最后一段系统上下文中加入当前模式、当前行动者、冻结场景状态和叙事权限；严格先攻只授权处理当前席位，不允许代写其他 AI 玩家。
+- GM 输出先提交机器可读的叙事变化声明。权限校验失败的候选保留为失败诊断，但不能锁定、推进回合或触发记忆更新；通过后声明会从玩家可见正文中剥离。
 - 默认预算是单次请求上限，不是整轮所有席位请求的总和；有效容量取本局预算与模型 ContextLimit 的较小值。
 - 固定资料、身份和当前回合内容不能被静默删除；预算不足时只省略较旧事件历史，固定区或当前回合自身超限则阻止对应生成。
 - 记忆只在成功锁定 GM 裁定后检查阈值，默认累计 3 个完整轮次或约 4,000 个待处理 tokens；打开页面、切换模型、单独掷骰和 AI 玩家按钮不会触发记忆 API。
@@ -111,8 +126,6 @@ src/
   TavernDesk.Core            领域模型、稳定接口和上下文计划契约
   TavernDesk.Infrastructure SQLite、角色卡、Provider、世界书和本地服务
   TavernDesk.AgentHost       本地存储自检入口
-tests/
-  TavernDesk.Tests           自动化回归测试
 docs/
   architecture.md            模块、数据和生命周期约束
   campaign_mode_design.md    独立跑团规则和边界
@@ -132,7 +145,6 @@ src/ 是唯一源码基准。根目录 TavernDesk.exe 是薄启动器，只启�
 要求：Windows 10/11 x64、.NET SDK 10（仓库的 global.json 指定版本）和项目目录内的 NuGet 缓存 .packages/。
 
 ```powershell
-cd "D:\CODEX PROJECT\TavernDesk"
 dotnet restore TavernDesk.sln
 dotnet build TavernDesk.sln -c Release --no-restore
 dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj --no-build
@@ -147,10 +159,11 @@ dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj --no-build
 确定性 app/ 发布快照：
 
 ```powershell
+dotnet restore src\TavernDesk.App\TavernDesk.App.csproj -r win-x64
 dotnet publish src\TavernDesk.App\TavernDesk.App.csproj -c Release --no-restore -r win-x64 --self-contained true -p:PublishSingleFile=false -p:DebugType=None -o app
 ```
 
-发布目录必须保留 EXE、DLL、coreclr.dll、hostfxr.dll、WPF 运行库和 runtimes/ 等文件，不能只复制 EXE。
+发布目录必须保留 EXE、DLL、coreclr.dll、hostfxr.dll、WPF 运行库和当前发布 RID 对应的 `runtimes/win-x64/` 原生依赖，不能只复制 EXE；其他操作系统或 CPU 架构的 `runtimes/` 资产不属于此发布包。
 
 可用命令行或环境变量指定数据根：
 
@@ -167,7 +180,6 @@ $env:TAVERNDESK_DATA_ROOT = "D:\TavernDeskData"
 
 ```powershell
 dotnet build TavernDesk.sln -c Release --no-restore
-dotnet test TavernDesk.sln -c Release --no-restore
 ```
 
 本地存储自检不会连接 API：
@@ -179,10 +191,11 @@ dotnet run --project src\TavernDesk.AgentHost\TavernDesk.AgentHost.csproj --no-b
 本轮 UI 整理不做截图自动化；建议人工打开以下页面确认布局与入口存在：
 
 1. 聊天：右侧五个页签、顶部 ⋯、玩家人设下拉编辑和召回高级折叠区；修改后验证取消不会写回。
-2. 跑团剧本编辑、起始大厅和游玩页：四个剧本 Tab、高级设置、剧本覆盖 Expander、顶部 跑团设置/⋯。
-3. 角色编辑：基础、对话、提示词、元数据四个 Tab，切换后字段仍可编辑并能保存。
-4. 世界书：正文工作区、导入范围弹出菜单、管理挂载弹出窗口。
-5. 设置：AI 与模型、默认行为、玩家人设、AI 行为模板、界面、数据；提示词树和人设档案选择后右侧编辑器随之切换。
+2. 跑团：顶栏“↻ 刷新”只从本地数据库重载当前局，不调用模型、不新增事件；跑团设置和返回剧本库仍可直接操作。
+3. 跑团剧本编辑、起始大厅和游玩页：五个剧本 Tab、高级设置、剧本覆盖 Expander、顶部跑团设置/↻ 刷新/返回剧本库。
+4. 角色编辑：基础、对话、提示词、元数据四个 Tab，切换后字段仍可编辑并能保存。
+5. 世界书：正文工作区、导入范围弹出菜单、管理挂载弹出窗口。
+6. 设置：AI 与模型、默认行为、玩家人设、AI 行为模板、界面、数据；提示词树和人设档案选择后右侧编辑器随之切换。
 
 ## 稳定边界
 

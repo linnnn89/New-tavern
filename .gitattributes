@@ -1,0 +1,17 @@
+# Keep repository text deterministic across operating systems.
+* text=auto eol=lf
+
+# Windows command scripts require CRLF for broad compatibility.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Generated and packaged assets must never be line-ending normalized.
+*.a binary
+*.db binary
+*.dll binary
+*.dylib binary
+*.exe binary
+*.ico binary
+*.png binary
+*.so binary
+*.sqlite binary

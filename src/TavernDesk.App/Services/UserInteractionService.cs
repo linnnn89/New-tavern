@@ -51,6 +51,8 @@ public interface IUserInteractionService
     DeleteMessageDecision ConfirmMessageDeletion();
     UnsavedChangesDecision ConfirmUnsavedCharacterChanges(string characterName);
     UnsavedChangesDecision ConfirmUnsavedProviderChanges(string providerName);
+    UnsavedChangesDecision ConfirmUnsavedCampaignLobby(string campaignTitle) =>
+        UnsavedChangesDecision.Discard;
     bool ConfirmCharacterDeletion(string characterName, int conversationCount);
     bool ConfirmShelfDeletion(string shelfName);
     bool ConfirmPresetDeletion(string presetName);
@@ -173,6 +175,25 @@ public sealed class UserInteractionService : IUserInteractionService
             "未保存的模型设置",
             MessageBoxButton.YesNoCancel,
             MessageBoxImage.Question);
+        return result switch
+        {
+            MessageBoxResult.Yes => UnsavedChangesDecision.Save,
+            MessageBoxResult.No => UnsavedChangesDecision.Discard,
+            _ => UnsavedChangesDecision.Cancel
+        };
+    }
+
+    public UnsavedChangesDecision ConfirmUnsavedCampaignLobby(
+        string campaignTitle)
+    {
+        var result = MessageBox.Show(
+            Application.Current.MainWindow,
+            $"跑团“{campaignTitle}”尚未开始。是否在离开前保存为大厅草稿？\n\n"
+            + "选择“是”保存草稿；选择“否”不保存本次大厅内容；选择“取消”留在当前界面。",
+            "未开始的跑团",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
         return result switch
         {
             MessageBoxResult.Yes => UnsavedChangesDecision.Save,

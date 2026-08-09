@@ -108,7 +108,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.WorldbookService,
             services.CampaignMemoryRepository,
             services.CampaignMemory,
-            services.CampaignContextPlanner);
+            services.CampaignContextPlanner,
+            services.CampaignFlowEngine);
         Chat.OpenPromptSettings = OpenPromptSettingsAsync;
         Campaigns.OpenPromptSettings = OpenPromptSettingsAsync;
         services.GenerationCoordinator.StateChanged += OnGenerationStateChanged;
@@ -384,6 +385,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         CurrentSection = "设置 · 提示词管理";
     }
 
+    public Task<bool> ConfirmCanCloseAsync() => ConfirmPageChangeAsync();
+
     private async Task OpenCharacterChatAsync(Character character)
     {
         await Chat.OpenCharacterChatAsync(character);
@@ -410,6 +413,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(CurrentPage, Characters))
         {
             return Characters.ConfirmCanLeaveAsync();
+        }
+
+        if (ReferenceEquals(CurrentPage, Campaigns))
+        {
+            return Campaigns.ConfirmCanLeaveAsync();
         }
 
         return ReferenceEquals(CurrentPage, Settings)

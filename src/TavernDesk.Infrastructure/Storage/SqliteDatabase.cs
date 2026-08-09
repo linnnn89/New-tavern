@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 17;
+    public const int CurrentSchemaVersion = 19;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -870,6 +870,69 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             """
             ALTER TABLE campaigns
                 ADD COLUMN memory_enabled INTEGER NOT NULL DEFAULT 1;
+            """),
+        new(
+            18,
+            """
+            ALTER TABLE campaign_scenarios
+                ADD COLUMN new_npc_permission INTEGER NOT NULL DEFAULT 2;
+            ALTER TABLE campaign_scenarios
+                ADD COLUMN relationship_change_permission INTEGER NOT NULL DEFAULT 1;
+            ALTER TABLE campaign_scenarios
+                ADD COLUMN independent_plot_permission INTEGER NOT NULL DEFAULT 1;
+
+            ALTER TABLE campaigns
+                ADD COLUMN gm_instructions TEXT NOT NULL DEFAULT '';
+            ALTER TABLE campaigns
+                ADD COLUMN new_npc_permission INTEGER NOT NULL DEFAULT 2;
+            ALTER TABLE campaigns
+                ADD COLUMN relationship_change_permission INTEGER NOT NULL DEFAULT 1;
+            ALTER TABLE campaigns
+                ADD COLUMN independent_plot_permission INTEGER NOT NULL DEFAULT 1;
+            ALTER TABLE campaigns
+                ADD COLUMN narrative_state_json TEXT NOT NULL DEFAULT '{}';
+
+            UPDATE campaigns
+            SET gm_instructions = COALESCE(
+                    (SELECT gm_instructions
+                     FROM campaign_scenarios
+                     WHERE campaign_scenarios.id = campaigns.story_id),
+                    ''),
+                new_npc_permission = COALESCE(
+                    (SELECT new_npc_permission
+                     FROM campaign_scenarios
+                     WHERE campaign_scenarios.id = campaigns.story_id),
+                    2),
+                relationship_change_permission = COALESCE(
+                    (SELECT relationship_change_permission
+                     FROM campaign_scenarios
+                     WHERE campaign_scenarios.id = campaigns.story_id),
+                    1),
+                independent_plot_permission = COALESCE(
+                    (SELECT independent_plot_permission
+                     FROM campaign_scenarios
+                     WHERE campaign_scenarios.id = campaigns.story_id),
+                    1);
+            """),
+        new(
+            19,
+            """
+            UPDATE campaigns
+            SET gm_max_output_tokens = MIN(
+                    6000,
+                    COALESCE(
+                        (SELECT provider_models.max_output_tokens
+                         FROM provider_models
+                         WHERE provider_models.provider_id = campaigns.gm_provider_id
+                           AND provider_models.model_id = campaigns.gm_model_id),
+                        gm_max_output_tokens))
+            WHERE gm_max_output_tokens = 4096
+              AND EXISTS (
+                    SELECT 1
+                    FROM provider_models
+                    WHERE provider_models.provider_id = campaigns.gm_provider_id
+                      AND provider_models.model_id = campaigns.gm_model_id
+                      AND provider_models.max_output_tokens > 4096);
             """)
     ];
 

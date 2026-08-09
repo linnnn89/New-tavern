@@ -13,6 +13,7 @@ public interface ICampaignContextPlanner
 
     Task<CampaignContextPlan> BuildGmPlanAsync(
         CampaignAggregate aggregate,
+        CampaignResolutionPlan resolutionPlan,
         CampaignScenario? scenario,
         CampaignMemoryBank? gmMemory,
         CancellationToken cancellationToken = default,

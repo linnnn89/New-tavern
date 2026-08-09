@@ -8,6 +8,12 @@ public sealed class CampaignScenario
     public string WorldSetting { get; set; } = string.Empty;
     public string PublicRules { get; set; } = string.Empty;
     public string GmInstructions { get; set; } = string.Empty;
+    public CampaignNarrativePermission NewNpcPermission { get; set; } =
+        CampaignNarrativePermission.GmDiscretion;
+    public CampaignNarrativePermission RelationshipChangePermission { get; set; } =
+        CampaignNarrativePermission.PlayerIntentOnly;
+    public CampaignNarrativePermission IndependentPlotPermission { get; set; } =
+        CampaignNarrativePermission.PlayerIntentOnly;
     public string OpeningSetup { get; set; } = string.Empty;
     public string OpeningNarration { get; set; } = string.Empty;
     public string LegacyExamplesArchive { get; set; } = string.Empty;

@@ -26,6 +26,8 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
         command.CommandText = """
             SELECT id, title, summary, world_setting, public_rules,
                    gm_instructions, opening_setup, opening_narration,
+                   new_npc_permission, relationship_change_permission,
+                   independent_plot_permission,
                    legacy_examples_archive,
                    source_card_json, source_file_name, cover_path,
                    created_at, updated_at
@@ -51,6 +53,8 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
         command.CommandText = """
             SELECT id, title, summary, world_setting, public_rules,
                    gm_instructions, opening_setup, opening_narration,
+                   new_npc_permission, relationship_change_permission,
+                   independent_plot_permission,
                    legacy_examples_archive,
                    source_card_json, source_file_name, cover_path,
                    created_at, updated_at
@@ -76,12 +80,16 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
             INSERT INTO campaign_scenarios(
                 id, title, summary, world_setting, public_rules,
                 gm_instructions, opening_setup, opening_narration,
+                new_npc_permission, relationship_change_permission,
+                independent_plot_permission,
                 lobby_instructions, legacy_examples_archive,
                 source_card_json, source_file_name, cover_path,
                 created_at, updated_at)
             VALUES(
                 $id, $title, $summary, $worldSetting, $publicRules,
                 $gmInstructions, $openingSetup, $openingNarration,
+                $newNpcPermission, $relationshipChangePermission,
+                $independentPlotPermission,
                 '', $legacyExamplesArchive,
                 $sourceCardJson, $sourceFileName, $coverPath,
                 $createdAt, $updatedAt)
@@ -93,6 +101,9 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
                 gm_instructions = excluded.gm_instructions,
                 opening_setup = excluded.opening_setup,
                 opening_narration = excluded.opening_narration,
+                new_npc_permission = excluded.new_npc_permission,
+                relationship_change_permission = excluded.relationship_change_permission,
+                independent_plot_permission = excluded.independent_plot_permission,
                 legacy_examples_archive = excluded.legacy_examples_archive,
                 source_card_json = excluded.source_card_json,
                 source_file_name = excluded.source_file_name,
@@ -109,6 +120,15 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
         command.Parameters.AddWithValue(
             "$openingNarration",
             scenario.OpeningNarration);
+        command.Parameters.AddWithValue(
+            "$newNpcPermission",
+            (int)scenario.NewNpcPermission);
+        command.Parameters.AddWithValue(
+            "$relationshipChangePermission",
+            (int)scenario.RelationshipChangePermission);
+        command.Parameters.AddWithValue(
+            "$independentPlotPermission",
+            (int)scenario.IndependentPlotPermission);
         command.Parameters.AddWithValue(
             "$legacyExamplesArchive",
             scenario.LegacyExamplesArchive);
@@ -138,15 +158,20 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
             GmInstructions = reader.GetString(5),
             OpeningSetup = reader.GetString(6),
             OpeningNarration = reader.GetString(7),
-            LegacyExamplesArchive = reader.GetString(8),
-            SourceCardJson = reader.GetString(9),
-            SourceFileName = reader.GetString(10),
+            NewNpcPermission = (CampaignNarrativePermission)reader.GetInt32(8),
+            RelationshipChangePermission =
+                (CampaignNarrativePermission)reader.GetInt32(9),
+            IndependentPlotPermission =
+                (CampaignNarrativePermission)reader.GetInt32(10),
+            LegacyExamplesArchive = reader.GetString(11),
+            SourceCardJson = reader.GetString(12),
+            SourceFileName = reader.GetString(13),
             CoverPath = _paths.ResolveManagedPath(
-                reader.GetString(11),
+                reader.GetString(14),
                 AppDataPaths.CampaignScenarioCardsDirectoryName,
                 id),
-            CreatedAt = DateTimeOffset.Parse(reader.GetString(12)),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(13))
+            CreatedAt = DateTimeOffset.Parse(reader.GetString(15)),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(16))
         };
     }
 }

@@ -61,6 +61,11 @@ public interface ICampaignRepository
         string campaignId,
         CancellationToken cancellationToken = default);
 
+    Task UpdateTitleAsync(
+        string campaignId,
+        string title,
+        CancellationToken cancellationToken = default);
+
     Task<CampaignEvent> AppendEventAsync(
         CampaignEvent campaignEvent,
         CancellationToken cancellationToken = default);

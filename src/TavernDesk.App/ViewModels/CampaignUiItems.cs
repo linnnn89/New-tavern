@@ -1,4 +1,5 @@
 using TavernDesk.App.Presentation;
+using TavernDesk.Core.Flow;
 using TavernDesk.Core.Models;
 
 namespace TavernDesk.App.ViewModels;
@@ -15,18 +16,24 @@ public sealed record CampaignModelOption(
 
     public CampaignModelRoute ToRoute(
         double temperature = 0.8,
-        double topP = 1) =>
+        double topP = 1,
+        int maximumOutputTokens = int.MaxValue) =>
         new(
             ProviderId,
             ModelId,
             ContextLimit,
-            MaxOutputTokens,
+            Math.Min(MaxOutputTokens, maximumOutputTokens),
             temperature,
             topP);
 }
 
 public sealed record CampaignFlowChoice(
     CampaignFlowPreset Value,
+    string Name,
+    string Description);
+
+public sealed record CampaignNarrativePermissionChoice(
+    CampaignNarrativePermission Value,
     string Name,
     string Description);
 
@@ -105,6 +112,8 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     private string _roundStatus = "等待行动";
     private bool _showActionButton;
     private bool _canGenerateAction;
+    private bool _isRetryAction;
+    private string? _retryEventId;
     private string _actionHelpText = string.Empty;
 
     public CampaignSeatViewModel(CampaignParticipant participant)
@@ -118,7 +127,9 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     public bool IsAi => Participant.Kind == CampaignParticipantKind.Ai;
     public string KindLabel =>
         Participant.Kind == CampaignParticipantKind.User ? "USER" : "AI";
-    public string ActionButtonText => $"让 {Name} 行动";
+    public string ActionButtonText => IsRetryAction
+        ? $"重试 {Name}"
+        : $"让 {Name} 行动";
 
     public CampaignModelOption? SelectedRoute
     {
@@ -142,6 +153,24 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     {
         get => _canGenerateAction;
         set => SetProperty(ref _canGenerateAction, value);
+    }
+
+    public bool IsRetryAction
+    {
+        get => _isRetryAction;
+        set
+        {
+            if (SetProperty(ref _isRetryAction, value))
+            {
+                OnPropertyChanged(nameof(ActionButtonText));
+            }
+        }
+    }
+
+    public string? RetryEventId
+    {
+        get => _retryEventId;
+        set => SetProperty(ref _retryEventId, value);
     }
 
     public string ActionHelpText
@@ -189,11 +218,23 @@ public sealed record CampaignEventItemViewModel(
 public sealed record CampaignSeatActionState(
     bool ShowButton,
     bool CanAct,
-    string HelpText)
+    string HelpText,
+    bool IsRetry = false,
+    string? RetryEventId = null)
 {
     public static CampaignSeatActionState Create(
         CampaignAggregate aggregate,
-        CampaignParticipant participant)
+        CampaignParticipant participant) =>
+        Create(
+            aggregate,
+            participant,
+            CampaignFlowEngineFactory.CreateDefault().Inspect(aggregate));
+
+    public static CampaignSeatActionState Create(
+        CampaignAggregate aggregate,
+        CampaignParticipant participant,
+        CampaignFlowSnapshot snapshot,
+        CampaignActionPlan? participantPlan = null)
     {
         if (participant.Kind != CampaignParticipantKind.Ai
             || !participant.IsEnabled)
@@ -204,8 +245,8 @@ public sealed record CampaignSeatActionState(
                 "USER 席位不调用角色模型。");
         }
 
-        if (aggregate.Campaign.FlowPreset
-            == CampaignFlowPreset.BlindSubmission)
+        if (snapshot.ActionPlan.ExecutionMode
+            == CampaignActionExecutionMode.Parallel)
         {
             return new CampaignSeatActionState(
                 ShowButton: false,
@@ -213,25 +254,11 @@ public sealed record CampaignSeatActionState(
                 "秘密同投会从“当前步骤”一次并发生成全部 AI 行动，确保彼此不可见。");
         }
 
-        if (aggregate.Campaign.Status != CampaignStatus.Active)
-        {
-            return new CampaignSeatActionState(
-                ShowButton: true,
-                CanAct: false,
-                "这局跑团当前不是进行中状态。");
-        }
-
-        if (aggregate.Campaign.Phase != CampaignPhase.AwaitingActions)
-        {
-            return new CampaignSeatActionState(
-                ShowButton: true,
-                CanAct: false,
-                "当前正在等待 GM 裁定，不能再增加玩家行动。");
-        }
-
         var latest = LatestAction(aggregate, participant.Id);
         if (latest is not null)
         {
+            participantPlan ??= CampaignFlowEngineFactory.CreateDefault()
+                .PlanAction(aggregate, participant.Id);
             var help = latest.GenerationStatus switch
             {
                 CampaignGenerationStatus.Completed =>
@@ -241,28 +268,39 @@ public sealed record CampaignSeatActionState(
                     $"{participant.DisplayName} 的生成未完成；请在跑团记录中重试原行动。",
                 _ => $"{participant.DisplayName} 的行动正在生成或等待处理。"
             };
+            var canRetry = latest.GenerationStatus is
+                               CampaignGenerationStatus.Failed
+                               or CampaignGenerationStatus.Interrupted
+                           && participantPlan.BlockReason
+                           == CampaignFlowBlockReason.FailedAttemptRequiresRetry
+                           && participantPlan.AllowedParticipantIds.Contains(
+                               participant.Id,
+                               StringComparer.Ordinal);
+            return new CampaignSeatActionState(
+                ShowButton: true,
+                CanAct: canRetry,
+                help,
+                IsRetry: canRetry,
+                RetryEventId: canRetry ? latest.Id : null);
+        }
+
+        var canAct = snapshot.ActionPlan.CanSubmit
+                     && snapshot.ActionPlan.AllowedParticipantIds.Contains(
+                         participant.Id,
+                         StringComparer.Ordinal);
+        if (!canAct)
+        {
+            var currentName = aggregate.Participants.FirstOrDefault(item =>
+                string.Equals(
+                    item.Id,
+                    snapshot.CurrentParticipantId,
+                    StringComparison.Ordinal))?.DisplayName;
             return new CampaignSeatActionState(
                 ShowButton: true,
                 CanAct: false,
-                help);
-        }
-
-        if (aggregate.Campaign.FlowPreset
-            == CampaignFlowPreset.StrictInitiative)
-        {
-            var enabled = aggregate.Participants
-                .Where(item => item.IsEnabled)
-                .OrderBy(item => item.SortIndex)
-                .ToArray();
-            var current =
-                enabled[aggregate.Campaign.CurrentTurnIndex % enabled.Length];
-            if (current.Id != participant.Id)
-            {
-                return new CampaignSeatActionState(
-                    ShowButton: true,
-                    CanAct: false,
-                    $"严格先攻当前轮到 {current.DisplayName}，尚未轮到 {participant.DisplayName}。");
-            }
+                snapshot.CurrentParticipantId is not null
+                    ? $"当前轮到 {currentName ?? snapshot.CurrentParticipantId}，尚未轮到 {participant.DisplayName}。"
+                    : $"当前流程不允许该席位行动（{snapshot.ActionPlan.BlockReason}）。");
         }
 
         return new CampaignSeatActionState(
@@ -320,6 +358,13 @@ public sealed record CampaignGameUiState(
         string.Empty);
 
     public static CampaignGameUiState Create(CampaignAggregate aggregate)
+        => Create(
+            aggregate,
+            CampaignFlowEngineFactory.CreateDefault().Inspect(aggregate));
+
+    public static CampaignGameUiState Create(
+        CampaignAggregate aggregate,
+        CampaignFlowSnapshot snapshot)
     {
         var campaign = aggregate.Campaign;
         var enabled = aggregate.Participants
@@ -357,41 +402,32 @@ public sealed record CampaignGameUiState(
             && latestGmResolution?.GenerationStatus is (
                 CampaignGenerationStatus.Failed
                 or CampaignGenerationStatus.Interrupted);
+        var candidateIds = snapshot.ResolutionPlan.CandidateResolutionIds
+            .ToHashSet(StringComparer.Ordinal);
         var gmCandidates = aggregate.Events
-            .Where(item =>
-                item.RoundNo == campaign.CurrentRound
-                && item.Kind == CampaignEventKind.GmResolution)
+            .Where(item => candidateIds.Contains(item.Id))
             .ToArray();
         var gmCandidatePending =
             campaign.GmKind == CampaignGmKind.Ai
             && campaign.Phase == CampaignPhase.ReadyForResolution
-            && gmCandidates.Length > 1
-            && gmCandidates.Any(item =>
-                item.GenerationStatus == CampaignGenerationStatus.Completed
-                && item.EndReason == CampaignEndReason.Normal);
+            && snapshot.ResolutionPlan.CanCommit;
         var userHasAction = userSeat is not null
                             && latestActions.ContainsKey(userSeat.Id);
-        var current = campaign.FlowPreset
-                      == CampaignFlowPreset.StrictInitiative
-                      && enabled.Length > 0
-            ? enabled[campaign.CurrentTurnIndex % enabled.Length]
-            : null;
+        var current = snapshot.CurrentParticipantId is null
+            ? null
+            : enabled.FirstOrDefault(item => item.Id == snapshot.CurrentParticipantId);
         var userSeatCanAct =
             campaign.Status == CampaignStatus.Active
-            && campaign.Phase == CampaignPhase.AwaitingActions
             && userSeat is not null
-            && !userHasAction
-            && (current is null || current.Id == userSeat.Id);
+            && snapshot.ActionPlan.CanSubmit
+            && snapshot.ActionPlan.AllowedParticipantIds.Contains(userSeat.Id, StringComparer.Ordinal);
         var showUserActionSection =
-            campaign.Phase == CampaignPhase.AwaitingActions
-            && userSeat is not null
-            && !userHasAction
-            && (current is null || current.Id == userSeat.Id);
+            userSeat is not null && userSeatCanAct;
         var unattemptedAiCount = enabled.Count(item =>
             item.Kind == CampaignParticipantKind.Ai
             && !latestActions.ContainsKey(item.Id));
         var showBlindAiAction =
-            campaign.FlowPreset == CampaignFlowPreset.BlindSubmission
+            snapshot.ActionPlan.ExecutionMode == CampaignActionExecutionMode.Parallel
             && campaign.Phase == CampaignPhase.AwaitingActions
             && unattemptedAiCount > 0;
         var canGenerateBlindAiActions =
@@ -400,15 +436,19 @@ public sealed record CampaignGameUiState(
             && failures == 0;
         var showResolveSection =
             campaign.Status == CampaignStatus.Active
-            && campaign.Phase == CampaignPhase.ReadyForResolution;
+            && snapshot.Stage is CampaignFlowStage.ReadyForResolution
+                or CampaignFlowStage.RetryingResolution
+                or CampaignFlowStage.SelectingResolutionCandidate;
         var stepTitle = StepTitle(
             campaign,
+            snapshot.ActionPlan.ExecutionMode,
             current,
             failures,
             gmResolutionFailed,
             gmCandidatePending);
         var stepDescription = StepDescription(
             campaign,
+            snapshot.ActionPlan.ExecutionMode,
             current,
             failures,
             gmResolutionFailed,
@@ -472,6 +512,7 @@ public sealed record CampaignGameUiState(
 
     private static string StepTitle(
         Campaign campaign,
+        CampaignActionExecutionMode executionMode,
         CampaignParticipant? current,
         int failures,
         bool gmResolutionFailed,
@@ -495,8 +536,7 @@ public sealed record CampaignGameUiState(
         return campaign.Phase switch
         {
             CampaignPhase.AwaitingActions
-                when campaign.FlowPreset
-                     == CampaignFlowPreset.BlindSubmission =>
+                when executionMode == CampaignActionExecutionMode.Parallel =>
                 "收集秘密行动",
             CampaignPhase.AwaitingActions
                 when current is not null =>
@@ -514,6 +554,7 @@ public sealed record CampaignGameUiState(
 
     private static string StepDescription(
         Campaign campaign,
+        CampaignActionExecutionMode executionMode,
         CampaignParticipant? current,
         int failures,
         bool gmResolutionFailed,
@@ -538,8 +579,7 @@ public sealed record CampaignGameUiState(
         return campaign.Phase switch
         {
             CampaignPhase.AwaitingActions
-                when campaign.FlowPreset
-                     == CampaignFlowPreset.BlindSubmission =>
+                when executionMode == CampaignActionExecutionMode.Parallel =>
                 hasUserSeat
                     ? "你单独提交自己的行动；AI 玩家由下方按钮一次并发生成，彼此看不到本轮选择。"
                     : "使用下方按钮一次并发生成全部 AI 行动；它们基于同一冻结记录，彼此看不到本轮选择。",

@@ -84,11 +84,6 @@ public static class ModelFeatureSupport
             StringComparison.OrdinalIgnoreCase);
 }
 
-public sealed record PersonaProfile(
-    string Name,
-    string Description,
-    string GlobalPreset);
-
 public enum ChatSendMode
 {
     SendAndGenerate,

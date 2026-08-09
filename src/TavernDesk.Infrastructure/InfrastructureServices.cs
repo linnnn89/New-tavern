@@ -1,4 +1,5 @@
 using TavernDesk.Core.Abstractions;
+using TavernDesk.Core.Flow;
 using TavernDesk.Infrastructure.Campaigns;
 using TavernDesk.Infrastructure.Compatibility;
 using TavernDesk.Infrastructure.Context;
@@ -42,7 +43,11 @@ public sealed class InfrastructureServices
         Presets = new SqlitePresetRepository(Database);
         PresetResolver = new PresetResolver(Presets);
         TokenEstimator = new ModelAwareTokenEstimator();
-        CampaignContextPlanner = new CampaignContextPlanner(TokenEstimator, GlobalPrompts);
+        CampaignFlowEngine = CampaignFlowEngineFactory.CreateDefault();
+        CampaignContextPlanner = new CampaignContextPlanner(
+            TokenEstimator,
+            GlobalPrompts,
+            CampaignFlowEngine);
         ContextBudget = new DefaultContextBudgetProvider();
         MacroEngine = new SafeMacroEngine();
         WorldbookEngine = new CharacterWorldbookEngine(MacroEngine);
@@ -77,7 +82,8 @@ public sealed class InfrastructureServices
             CampaignMemory,
             CampaignMemoryRepository,
             CampaignContextPlanner,
-            CampaignOperationGate);
+            CampaignOperationGate,
+            CampaignFlowEngine);
         CharacterCardCodecs =
         [
             new SillyTavernPngCardCodec(),
@@ -145,6 +151,7 @@ public sealed class InfrastructureServices
     public IPresetResolver PresetResolver { get; }
     public ITokenEstimator TokenEstimator { get; }
     public ICampaignContextPlanner CampaignContextPlanner { get; }
+    public ICampaignFlowEngine CampaignFlowEngine { get; }
     public IContextBudgetProvider ContextBudget { get; }
     public IMacroEngine MacroEngine { get; }
     public IWorldbookEngine WorldbookEngine { get; }

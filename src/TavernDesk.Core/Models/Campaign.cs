@@ -79,7 +79,17 @@ public enum CampaignEndReason
     RepetitionDetected,
     ProviderError,
     ProcessExited,
-    ProtocolViolation
+    ProtocolViolation,
+    NarrativeAuthorityViolation
+}
+
+public static class CampaignTokenLimits
+{
+    public const int MaximumGmOutputTokens = 6_000;
+    public const int GmRetrySafetyMarginTokens = 800;
+
+    public static int ClampGmOutputTokens(int configuredTokens) =>
+        Math.Clamp(configuredTokens, 1, MaximumGmOutputTokens);
 }
 
 public sealed class Campaign
@@ -91,6 +101,14 @@ public sealed class Campaign
     public string WorldSetting { get; set; } = string.Empty;
     public string Rules { get; set; } = string.Empty;
     public string OpeningPrompt { get; set; } = string.Empty;
+    public string GmInstructions { get; set; } = string.Empty;
+    public CampaignNarrativePermission NewNpcPermission { get; set; } =
+        CampaignNarrativePermission.GmDiscretion;
+    public CampaignNarrativePermission RelationshipChangePermission { get; set; } =
+        CampaignNarrativePermission.PlayerIntentOnly;
+    public CampaignNarrativePermission IndependentPlotPermission { get; set; } =
+        CampaignNarrativePermission.PlayerIntentOnly;
+    public string NarrativeStateJson { get; set; } = "{}";
     public CampaignGmKind GmKind { get; set; } = CampaignGmKind.Ai;
     public bool UserAlsoPlayer { get; set; } = true;
     public CampaignFlowPreset FlowPreset { get; set; } =
@@ -198,105 +216,13 @@ public sealed record CampaignAggregate(
     IReadOnlyList<CampaignParticipant> Participants,
     IReadOnlyList<CampaignEvent> Events);
 
-/// <summary>
-/// Resolves the action slot that the current GM request is adjudicating.
-/// <para>
-/// A strict-initiative round contains one slot per enabled participant, while
-/// collaborative and blind-submission flows use the latest locked action in
-/// the current round as their single slot.  The slot is intentionally derived
-/// from existing event data so no persistence/schema change is required.
-/// </para>
-/// </summary>
-public static class CampaignResolutionScope
-{
-    public static CampaignEvent? FindCurrentAction(CampaignAggregate aggregate)
-    {
-        ArgumentNullException.ThrowIfNull(aggregate);
-
-        var actions = aggregate.Events
-            .Where(item =>
-                item.RoundNo == aggregate.Campaign.CurrentRound
-                && item.Kind == CampaignEventKind.PlayerIntent
-                && item.GenerationStatus == CampaignGenerationStatus.Completed
-                && item.IsLocked)
-            .OrderByDescending(item => item.SequenceNo);
-
-        if (aggregate.Campaign.FlowPreset != CampaignFlowPreset.StrictInitiative)
-        {
-            return actions.FirstOrDefault();
-        }
-
-        var enabled = aggregate.Participants
-            .Where(item => item.IsEnabled)
-            .OrderBy(item => item.SortIndex)
-            .ToArray();
-        if (enabled.Length == 0)
-        {
-            return null;
-        }
-
-        var currentParticipant =
-            enabled[aggregate.Campaign.CurrentTurnIndex % enabled.Length];
-        return actions.FirstOrDefault(item =>
-            string.Equals(
-                item.ActorId,
-                currentParticipant.Id,
-                StringComparison.Ordinal));
-    }
-
-    public static IReadOnlyList<CampaignEvent> GetCurrentGmResolutions(
-        CampaignAggregate aggregate)
-    {
-        ArgumentNullException.ThrowIfNull(aggregate);
-        var action = FindCurrentAction(aggregate);
-        if (action is null)
-        {
-            return Array.Empty<CampaignEvent>();
-        }
-
-        var resolutions = aggregate.Events
-            .Where(item =>
-                item.RoundNo == aggregate.Campaign.CurrentRound
-                && item.Kind == CampaignEventKind.GmResolution)
-            .OrderBy(item => item.SequenceNo)
-            .ToArray();
-        var includedIds = new HashSet<string>(StringComparer.Ordinal);
-        var includedSequences = new HashSet<long> { action.SequenceNo };
-
-        // New attempts keep the action sequence as their snapshot.  The
-        // chained checks also keep retries from older data readable when they
-        // pointed at the previous failed GM event instead.
-        foreach (var resolution in resolutions)
-        {
-            if (!includedSequences.Contains(resolution.SnapshotSequenceNo)
-                && (string.IsNullOrWhiteSpace(resolution.ReplacesEventId)
-                    || !includedIds.Contains(resolution.ReplacesEventId)))
-            {
-                continue;
-            }
-
-            includedIds.Add(resolution.Id);
-            includedSequences.Add(resolution.SequenceNo);
-        }
-
-        return resolutions
-            .Where(item => includedIds.Contains(item.Id))
-            .ToArray();
-    }
-
-    public static bool IsCurrentGmResolution(
-        CampaignAggregate aggregate,
-        CampaignEvent campaignEvent) =>
-        GetCurrentGmResolutions(aggregate)
-            .Any(item => string.Equals(item.Id, campaignEvent.Id, StringComparison.Ordinal));
-}
-
 public sealed record CampaignRuntimeUpdate(
     CampaignPhase Phase,
     int CurrentRound,
     int CurrentTurnIndex,
     long FrozenSequenceNo,
     string WorldSummary,
+    string? NarrativeStateJson = null,
     bool MarkCompleted = false,
     bool ActivatePendingUser = false,
     string? CommitEventId = null);

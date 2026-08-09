@@ -33,7 +33,7 @@
                         <TextBlock Text="普通跑团上下文"
                                    Style="{StaticResource SectionTitleStyle}" />
                         <TextBlock Margin="0,5,0,14"
-                                   Text="控制 GM 和 AI 玩家每次请求可使用的近期事件范围。有效总上限取这里的值与当前模型上下文上限中的较小值。"
+                                   Text="控制 GM 和 AI 玩家每次请求可使用的输入范围；输出上限单独设置。模型自身上下文不足时，输入预算会相应收紧。"
                                    Foreground="{StaticResource MutedTextBrush}"
                                    TextWrapping="Wrap" />
 
@@ -44,11 +44,11 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="单次总上下文预算" />
+                                <TextBlock Text="单次输入预算" />
                                 <TextBox Margin="0,5,0,0"
                                          Text="{Binding CampaignContextTokenBudgetText, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Text="8,000–200,000 tokens；包含输入和输出预留。"
+                                           Text="8,000–200,000 tokens；只限制输入，输出上限在 GM 或席位模型设置中单独配置。"
                                            FontSize="12"
                                            Foreground="{StaticResource MutedTextBrush}"
                                            TextWrapping="Wrap" />

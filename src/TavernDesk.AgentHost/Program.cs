@@ -483,6 +483,11 @@ static async Task RunCampaignLiveSmokeAsync(
             WorldSetting = scenario.WorldSetting,
             Rules = scenario.PublicRules,
             OpeningPrompt = scenario.OpeningSetup,
+            GmInstructions = scenario.GmInstructions,
+            NewNpcPermission = scenario.NewNpcPermission,
+            RelationshipChangePermission =
+                scenario.RelationshipChangePermission,
+            IndependentPlotPermission = scenario.IndependentPlotPermission,
             GmKind = CampaignGmKind.Ai,
             UserAlsoPlayer = true,
             FlowPreset = CampaignFlowPreset.CollaborativeTable,
@@ -1611,9 +1616,9 @@ static IReadOnlyList<string> CreateCampaignUserActions(
     string firstCharacterName,
     string secondCharacterName) =>
 [
-    $"我停在安全距离外，先观察禁术卷轴及周围封印痕迹；请{firstCharacterName}分析规则与风险，请{secondCharacterName}留意现场容易被忽略的变化。在 GM 裁定前，我不触碰卷轴，也不预设观察结果。",
+    $"我停在安全距离外，先观察目标物及周围痕迹；请{firstCharacterName}分析规则与风险，请{secondCharacterName}留意现场容易被忽略的变化。在 GM 裁定前，我不触碰目标物，也不预设观察结果。",
     $"依据上一回合 GM 已公开的局面，我提议做最小风险分工：我警戒入口，请{firstCharacterName}检查现有线索之间是否矛盾，请{secondCharacterName}观察我们可能漏掉的细节。所有实际发现和成败仍交由 GM 裁定。",
-    $"面对当前公开局面，我先示意停止冒进，并与{firstCharacterName}、{secondCharacterName}确认共同目标；随后只执行现有证据支持的最保守协同行动。若必须接触卷轴，我仅做最低限度辅助，把具体后果留给 GM 裁定。"
+    $"面对当前公开局面，我先示意停止冒进，并与{firstCharacterName}、{secondCharacterName}确认共同目标；随后只执行现有证据支持的最保守协同行动。若必须接触目标物，我仅做最低限度辅助，把具体后果留给 GM 裁定。"
 ];
 
 static void CopyDirectoryFiles(string sourcePath, string destinationPath)

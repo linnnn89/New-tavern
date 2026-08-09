@@ -118,7 +118,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
             CampaignMemoryUpdateProgressStatus.Started,
             0,
             isAutomatic,
-            "跑团记忆更新已开始；正在锁定本局相关操作。",
+            "跑团记忆更新已开始；后台处理中，不影响本地导航。",
             requestKey);
         IAsyncDisposable? operationLease = null;
         CampaignMemoryUpdateResult? lastUpdated = null;
@@ -363,6 +363,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 gmBatch,
                 assignment!,
                 isAutomatic,
+                progressOperationId,
                 cancellationToken);
             banks.Add(CreateBank(
                 gmBank,
@@ -384,6 +385,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                 publicBatch,
                 assignment!,
                 isAutomatic,
+                progressOperationId,
                 cancellationToken);
             banks.Add(CreateBank(
                 publicBank,
@@ -434,6 +436,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
         IReadOnlyList<CampaignEvent> events,
         ModelFunctionAssignment assignment,
         bool isAutomatic,
+        string progressOperationId,
         CancellationToken cancellationToken)
     {
         var input = BuildInput(aggregate, scope, oldBody, events);
@@ -486,7 +489,7 @@ public sealed class CampaignMemoryUpdateService : ICampaignMemoryUpdateService
                             CampaignMemoryUpdateProgressStatus.Receiving,
                             ApproximateTokens(receivedUtf8Bytes),
                             isAutomatic,
-                             operationId: operationId);
+                             operationId: progressOperationId);
                     }
                 }
                 else if (streamEvent.Kind == ProviderStreamEventKind.Completed)

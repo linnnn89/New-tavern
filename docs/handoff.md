@@ -1,6 +1,6 @@
 # TavernDesk 当前交接摘要
 
-状态日期：2026-08-04（北京时间）
+状态日期：2026-08-09（北京时间）
 
 用途：新对话接手时先读本文件，避免重新全库调查、重复已完成工作或恢复已经否决的设计。
 
@@ -87,7 +87,13 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 
 ## 4. 最新可信验证
 
-2026-08-04 当前工作区：
+2026-08-09 PR 前清理验证：
+
+- 完整 Release 测试 `179/179` 通过，构建 0 个警告、0 个错误；
+- `win-x64` 自包含发布快照已同步，根目录 `TavernDesk.exe --probe` 退出码 0；
+- 未连接 Provider、未读取 API Key；跟踪文件与当前新增源码未发现真实 Key、邮箱、手机号、旧机器用户路径或已知用户姓名。
+
+以下功能级证据来自 2026-08-04，未在本次清理中逐项重跑：
 
 - 跑团事件生命周期与提示词迁移定向测试：`11/11` 通过；本轮单线程完整 Release 测试 `126/126` 通过；
 - 标准 Release 解决方案构建：0 个警告、0 个错误；
@@ -159,7 +165,7 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
    - 确认本机 CLI 与登录状态 → ACP 单轮普通聊天 → 取消。
    - 不开放 CLI 工具权限。
 5. **跑团真实短局**
-   - 使用现有 Naruto 剧本和 1–2 张角色卡；
+   - 使用现有真实剧本和 1–2 张角色卡；
    - 可给不同 AI 席位分配不同 OpenRouter 模型；
    - 分别验证一个协作回合和一个技术失败/重试，不扩建 R2。
 6. **只根据真实故障追加局部修复**
@@ -181,8 +187,7 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 优先使用项目内 SDK，因为某些终端的 `PATH` 不包含 `dotnet`：
 
 ```powershell
-cd "D:\Documents\女主角搜索器\TavernDesk"
-& .\.dotnet\dotnet.exe test TavernDesk.sln -c Release --no-build --no-restore
+Set-Location "<TavernDesk 仓库目录>"
 & .\.dotnet\dotnet.exe build TavernDesk.sln -c Release --no-restore
 .\TavernDesk.exe
 ```
@@ -190,7 +195,7 @@ cd "D:\Documents\女主角搜索器\TavernDesk"
 注意：
 
 - 启动 GUI 前先确认用户是否希望打开；遇到 Release 文件锁时先用只读进程检查，不擅自结束用户窗口。
-- TavernDesk 是独立 Git 项目，仓库根目录为 `D:\Documents\女主角搜索器\TavernDesk`，正式本地分支为 `main`。
+- TavernDesk 是独立 Git 项目；以当前仓库根目录和当前 PR 分支为准。
 - 父目录中的“女主角索引”仓库当前冻结；同级 APP 反编码目录也是独立项目。不要使用父仓库状态解释 TavernDesk，也不要把二者纳入 TavernDesk 提交。
 - TavernDesk 当前未配置远端；未经用户明确授权，不创建远端、不推送。
 - 工作记录继续追加到 `docs/codex_worklog.md`，不要静默改写已有历史。

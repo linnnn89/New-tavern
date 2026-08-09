@@ -77,29 +77,15 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
         var systemPrompt = ReadString(data, "system_prompt");
         var postHistory = ReadString(data, "post_history_instructions");
         var sourceName = Path.GetFileName(sourceFullPath);
-        var isNaruto = name.Contains("RPG", StringComparison.OrdinalIgnoreCase)
-                       && (sourceName.Contains(
-                               "naruto",
-                               StringComparison.OrdinalIgnoreCase)
-                           || scenarioText.Contains(
-                               "Hidden Leaf",
-                               StringComparison.OrdinalIgnoreCase));
-        var scenario = isNaruto
-            ? CreateNarutoScenario(
-                description,
-                scenarioText,
-                examples,
-                json,
-                sourceName)
-            : CreateGenericScenario(
-                name,
-                description,
-                scenarioText,
-                examples,
-                systemPrompt,
-                postHistory,
-                json,
-                sourceName);
+        var scenario = CreateGenericScenario(
+            name,
+            description,
+            scenarioText,
+            examples,
+            systemPrompt,
+            postHistory,
+            json,
+            sourceName);
         var targetDirectory = ResolveScenarioDirectory(scenario.Id);
         Directory.CreateDirectory(targetDirectory);
         try
@@ -142,10 +128,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
             "first_mes 不再作为独立剧本字段保存或显示。",
             "mes_example 已改存为历史样例档案，不会伪装成当前跑团历史。"
         };
-        if (isNaruto)
-        {
-            warnings.Add("已应用“火影忍者：禁术卷轴”专用 GM 模板。");
-        }
 
         return new CampaignScenarioImportResult(scenario, warnings);
     }
@@ -164,46 +146,6 @@ public sealed class CampaignScenarioCardImporter : ICampaignScenarioCardImporter
 
         return candidate;
     }
-
-    private static CampaignScenario CreateNarutoScenario(
-        string description,
-        string sourceScenario,
-        string examples,
-        string rawJson,
-        string sourceName) =>
-        new()
-        {
-            Title = "火影忍者：禁术卷轴",
-            Summary = string.IsNullOrWhiteSpace(description)
-                ? "围绕一份可能打破忍界平衡的古老禁术卷轴展开的跨村任务。"
-                : description.Trim(),
-            WorldSetting =
-                "故事发生在火影忍者的忍界。木叶、其他忍村、查克拉、忍术、"
-                + "血继限界、任务等级和村落政治遵循同一套世界因果；"
-                + "外来角色保留自身人格与既有能力，但其力量必须由 GM "
-                + "根据忍界规则解释、限制并逐步验证。",
-            PublicRules =
-                "玩家只声明角色的行动、对白和意图，不自行宣布成功、伤害或世界变化。\n"
-                + "每条玩家行动由系统自动附带一枚 1d20；GM 负责结合角色、方法与局势解释点数，并裁定 NPC、环境、情报与后果。\n"
-                + "未公开情报只能发送给对应玩家；秘密同投时不得互相读取本轮草稿。\n"
-                + "所有能力必须服从已建立的查克拉、距离、时间与代价约束。",
-            GmInstructions =
-                "你是本剧本唯一的 GM 和世界事实写入者。围绕古老卷轴、禁术预言、"
-                + "幕后势力与跨村追查推进主线，但允许玩家选择改变路线。\n"
-                + "保持火影忍界的组织关系、战斗因果和信息边界；不要替玩家决定主观行动，"
-                + "也不要让任何玩家自行裁定成功。\n"
-                + "使用每条行动末尾由 TavernDesk 自动生成的真实 1d20；高低点只提供倾向，"
-                + "需结合能力、方法、风险与既有事实灵活裁定，不使用固定成功档位。\n"
-                + "裁决应同时说明可观察结果、必要的私密情报和简短世界状态增量。",
-            OpeningSetup = sourceScenario.Trim(),
-            OpeningNarration =
-                "反常的乌云压在木叶上空。你们被紧急召往火影办公室；"
-                + "一份来历不明、封印古老的卷轴正安静地躺在桌上，"
-                + "而它所记载的禁术预言可能打破整个忍界的平衡。",
-            LegacyExamplesArchive = examples,
-            SourceCardJson = rawJson,
-            SourceFileName = sourceName
-        };
 
     private static CampaignScenario CreateGenericScenario(
         string name,

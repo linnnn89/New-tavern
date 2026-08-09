@@ -16,6 +16,33 @@ internal static class CampaignCharacterPromptFormatter
 
     public static string Format(string displayName, string? snapshotJson)
     {
+        var fields = ReadFields(displayName, snapshotJson);
+        return JsonSerializer.Serialize(
+            new
+            {
+                name = fields.Name,
+                description = fields.Description,
+                personality = fields.Personality,
+                dialogue_examples = fields.DialogueExamples
+            },
+            JsonOptions);
+    }
+
+    public static string FormatForGm(string displayName, string? snapshotJson)
+    {
+        var fields = ReadFields(displayName, snapshotJson);
+        return JsonSerializer.Serialize(
+            new
+            {
+                name = fields.Name,
+                description = Limit(fields.Description, 1200),
+                personality = Limit(fields.Personality, 800)
+            },
+            JsonOptions);
+    }
+
+    private static CardFields ReadFields(string displayName, string? snapshotJson)
+    {
         var name = displayName ?? string.Empty;
         var description = string.Empty;
         var personality = string.Empty;
@@ -55,16 +82,19 @@ internal static class CampaignCharacterPromptFormatter
             name = displayName ?? string.Empty;
         }
 
-        return JsonSerializer.Serialize(
-            new
-            {
-                name,
-                description,
-                personality,
-                dialogue_examples = dialogueExamples
-            },
-            JsonOptions);
+        return new CardFields(name, description, personality, dialogueExamples);
     }
+
+    private static string Limit(string value, int maximumLength) =>
+        value.Length <= maximumLength
+            ? value
+            : $"{value[..maximumLength].TrimEnd()}…";
+
+    private sealed record CardFields(
+        string Name,
+        string Description,
+        string Personality,
+        string DialogueExamples);
 
     private static JsonElement Property(JsonElement source, string name) =>
         source.ValueKind == JsonValueKind.Object

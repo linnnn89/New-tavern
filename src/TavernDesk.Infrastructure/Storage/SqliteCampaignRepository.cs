@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using TavernDesk.Core.Abstractions;
+using TavernDesk.Core.Flow;
 using TavernDesk.Core.Models;
 
 namespace TavernDesk.Infrastructure.Storage;
@@ -240,6 +241,13 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             WorldSetting = source.Campaign.WorldSetting,
             Rules = source.Campaign.Rules,
             OpeningPrompt = source.Campaign.OpeningPrompt,
+            GmInstructions = source.Campaign.GmInstructions,
+            NewNpcPermission = source.Campaign.NewNpcPermission,
+            RelationshipChangePermission =
+                source.Campaign.RelationshipChangePermission,
+            IndependentPlotPermission =
+                source.Campaign.IndependentPlotPermission,
+            NarrativeStateJson = "{}",
             GmKind = source.Campaign.GmKind,
             UserAlsoPlayer = source.Campaign.UserAlsoPlayer,
             FlowPreset = source.Campaign.FlowPreset,
@@ -286,6 +294,43 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         await SaveDraftAsync(clone, participants, cancellationToken);
         return await GetAsync(clone.Id, cancellationToken)
                ?? throw new InvalidOperationException("另开一局后无法重新读取草稿。");
+    }
+
+    public async Task UpdateTitleAsync(
+        string campaignId,
+        string title,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
+        var normalized = (title ?? string.Empty).Trim();
+        if (normalized.Length == 0)
+        {
+            throw new InvalidOperationException("跑团名称不能为空。");
+        }
+
+        if (normalized.Length > 120)
+        {
+            throw new InvalidOperationException("跑团名称不能超过 120 个字符。");
+        }
+
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE campaigns
+            SET title = $title,
+                updated_at = $updatedAt
+            WHERE id = $campaignId;
+            """;
+        command.Parameters.AddWithValue("$title", normalized);
+        command.Parameters.AddWithValue(
+            "$updatedAt",
+            DateTimeOffset.Now.ToString("O"));
+        command.Parameters.AddWithValue("$campaignId", campaignId);
+        if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+        {
+            throw new InvalidOperationException("要重命名的跑团不存在。");
+        }
     }
 
     public async Task<CampaignEvent> AppendEventAsync(
@@ -519,9 +564,11 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                     campaign,
                     commitParticipants,
                     commitEvents);
-                if (!CampaignResolutionScope.IsCurrentGmResolution(
-                        currentResolutionScope,
-                        commitEvent))
+                var resolutionPlan = CampaignFlowEngineFactory.CreateDefault()
+                    .PlanResolution(currentResolutionScope);
+                if (!resolutionPlan.CandidateResolutionIds.Contains(
+                        commitEvent.Id,
+                        StringComparer.Ordinal))
                 {
                     throw new InvalidOperationException(
                         "只能采用当前行动席位对应的 GM 候选，上一席位的裁定不能跨槽位提交。");
@@ -708,6 +755,10 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                     current_turn_index = $currentTurnIndex,
                     frozen_sequence_no = $frozenSequenceNo,
                     world_summary = $worldSummary,
+                    narrative_state_json =
+                        CASE WHEN $narrativeStateJson IS NULL
+                             THEN narrative_state_json
+                             ELSE $narrativeStateJson END,
                     user_also_player =
                         CASE WHEN $activatedPendingUser = 1
                              THEN 1 ELSE user_also_player END,
@@ -733,6 +784,11 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             command.Parameters.AddWithValue(
                 "$worldSummary",
                 update.WorldSummary ?? string.Empty);
+            command.Parameters.AddWithValue(
+                "$narrativeStateJson",
+                update.NarrativeStateJson is null
+                    ? DBNull.Value
+                    : update.NarrativeStateJson);
             command.Parameters.AddWithValue(
                 "$activatedPendingUser",
                 activatedPendingUser);
@@ -794,7 +850,7 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
         if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
         {
             throw new InvalidOperationException(
-                "璺戝洟鐘舵€佸凡缁忓彉鍖栵紝璇峰埛鏂板悗閲嶈瘯璁剧疆璁板繂妯″紡銆�");
+                "跑团状态已经变化，请刷新后重试设置记忆模式。");
         }
     }
 
@@ -1382,7 +1438,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 gm_context_limit, gm_max_output_tokens, gm_temperature, gm_top_p,
                 player_history_budget, gm_history_budget, context_token_budget,
                 memory_update_interval_rounds, memory_update_pending_token_threshold,
-                memory_enabled,
+                memory_enabled, gm_instructions, new_npc_permission,
+                relationship_change_permission, independent_plot_permission,
+                narrative_state_json,
                 created_at, updated_at, started_at)
             VALUES(
                 $id, $storyId, $parentCampaignId, $title, $worldSetting, $rules,
@@ -1393,7 +1451,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 $gmContextLimit, $gmMaxOutputTokens, $gmTemperature, $gmTopP,
                 $playerHistoryBudget, $gmHistoryBudget, $contextTokenBudget,
                 $memoryUpdateIntervalRounds, $memoryUpdatePendingTokenThreshold,
-                $memoryEnabled,
+                $memoryEnabled, $gmInstructions, $newNpcPermission,
+                $relationshipChangePermission, $independentPlotPermission,
+                $narrativeStateJson,
                 $createdAt, $updatedAt, $startedAt)
             ON CONFLICT(id) DO UPDATE SET
                 story_id = excluded.story_id,
@@ -1422,6 +1482,13 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                  memory_update_pending_token_threshold =
                      excluded.memory_update_pending_token_threshold,
                  memory_enabled = excluded.memory_enabled,
+                 gm_instructions = excluded.gm_instructions,
+                 new_npc_permission = excluded.new_npc_permission,
+                 relationship_change_permission =
+                     excluded.relationship_change_permission,
+                 independent_plot_permission =
+                     excluded.independent_plot_permission,
+                 narrative_state_json = excluded.narrative_state_json,
                  updated_at = excluded.updated_at
             WHERE campaigns.status = $draft;
             """;
@@ -1509,6 +1576,21 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             "$memoryUpdatePendingTokenThreshold",
             campaign.MemoryUpdatePendingTokenThreshold);
         command.Parameters.AddWithValue("$memoryEnabled", campaign.MemoryEnabled);
+        command.Parameters.AddWithValue("$gmInstructions", campaign.GmInstructions);
+        command.Parameters.AddWithValue(
+            "$newNpcPermission",
+            (int)campaign.NewNpcPermission);
+        command.Parameters.AddWithValue(
+            "$relationshipChangePermission",
+            (int)campaign.RelationshipChangePermission);
+        command.Parameters.AddWithValue(
+            "$independentPlotPermission",
+            (int)campaign.IndependentPlotPermission);
+        command.Parameters.AddWithValue(
+            "$narrativeStateJson",
+            string.IsNullOrWhiteSpace(campaign.NarrativeStateJson)
+                ? "{}"
+                : campaign.NarrativeStateJson);
         command.Parameters.AddWithValue("$createdAt", campaign.CreatedAt.ToString("O"));
         command.Parameters.AddWithValue("$updatedAt", campaign.UpdatedAt.ToString("O"));
         command.Parameters.AddWithValue(
@@ -1640,7 +1722,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                    gm_context_limit, gm_max_output_tokens, gm_temperature, gm_top_p,
                    player_history_budget, gm_history_budget, context_token_budget,
                    memory_update_interval_rounds, memory_update_pending_token_threshold,
-                   memory_enabled,
+                   memory_enabled, gm_instructions, new_npc_permission,
+                   relationship_change_permission, independent_plot_permission,
+                   narrative_state_json,
                    created_at, updated_at, started_at
             FROM campaigns
             WHERE id = $campaignId;
@@ -1788,11 +1872,18 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             MemoryUpdateIntervalRounds = reader.GetInt32(28),
             MemoryUpdatePendingTokenThreshold = reader.GetInt32(29),
             MemoryEnabled = reader.GetBoolean(30),
-            CreatedAt = DateTimeOffset.Parse(reader.GetString(31)),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(32)),
-            StartedAt = reader.IsDBNull(33)
+            GmInstructions = reader.GetString(31),
+            NewNpcPermission = (CampaignNarrativePermission)reader.GetInt32(32),
+            RelationshipChangePermission =
+                (CampaignNarrativePermission)reader.GetInt32(33),
+            IndependentPlotPermission =
+                (CampaignNarrativePermission)reader.GetInt32(34),
+            NarrativeStateJson = reader.GetString(35),
+            CreatedAt = DateTimeOffset.Parse(reader.GetString(36)),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(37)),
+            StartedAt = reader.IsDBNull(38)
                 ? null
-                : DateTimeOffset.Parse(reader.GetString(33))
+                : DateTimeOffset.Parse(reader.GetString(38))
         };
         campaign.NormalizeContextSettings();
         return campaign;

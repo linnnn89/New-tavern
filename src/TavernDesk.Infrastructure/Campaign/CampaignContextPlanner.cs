@@ -2,6 +2,8 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using TavernDesk.Core.Abstractions;
+using TavernDesk.Core.Narrative;
+using TavernDesk.Core.Flow;
 using TavernDesk.Core.Models;
 
 namespace TavernDesk.Infrastructure.Campaigns;
@@ -40,14 +42,21 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
 
     private readonly ITokenEstimator _tokenEstimator;
     private readonly IGlobalPromptConfiguration? _globalPrompts;
+    private readonly ICampaignFlowEngine _flowEngine;
+    private readonly ICampaignNarrativeAuthorityCompiler _authorityCompiler;
 
     public CampaignContextPlanner(
         ITokenEstimator tokenEstimator,
-        IGlobalPromptConfiguration? globalPrompts = null)
+        IGlobalPromptConfiguration? globalPrompts = null,
+        ICampaignFlowEngine? flowEngine = null,
+        ICampaignNarrativeAuthorityCompiler? authorityCompiler = null)
     {
         _tokenEstimator = tokenEstimator
             ?? throw new ArgumentNullException(nameof(tokenEstimator));
         _globalPrompts = globalPrompts;
+        _flowEngine = flowEngine ?? CampaignFlowEngineFactory.CreateDefault();
+        _authorityCompiler = authorityCompiler
+                             ?? new CampaignNarrativeAuthorityCompiler();
     }
 
     public Task<CampaignContextPlan> BuildPlayerPlanAsync(
@@ -70,16 +79,19 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
 
     public Task<CampaignContextPlan> BuildGmPlanAsync(
         CampaignAggregate aggregate,
+        CampaignResolutionPlan resolutionPlan,
         CampaignScenario? scenario,
         CampaignMemoryBank? gmMemory,
         CancellationToken cancellationToken = default,
         bool includeLongTermMemory = true)
     {
         ArgumentNullException.ThrowIfNull(aggregate);
+        ArgumentNullException.ThrowIfNull(resolutionPlan);
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(
             BuildGmPlan(
                 aggregate,
+                resolutionPlan,
                 scenario,
                 gmMemory,
                 includeLongTermMemory));
@@ -93,7 +105,13 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
     {
         var campaign = aggregate.Campaign;
         campaign.NormalizeContextSettings();
-        var effectiveLimit = EffectiveLimit(campaign.ContextTokenBudget, participant.ContextLimit);
+        var reservedOutputTokens = Math.Max(0, participant.MaxOutputTokens);
+        var inputBudget = EffectiveInputBudget(
+            campaign.ContextTokenBudget,
+            participant.ContextLimit);
+        var effectiveLimit = EffectiveRequestLimit(
+            inputBudget,
+            reservedOutputTokens);
         var sections = BuildPlayerSections(
             aggregate,
             participant,
@@ -104,30 +122,47 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             AddDisabled(
                 sections,
                 "player.public-memory",
-                "鍏叡璺戝洟闀挎湡璁板繂锛氬凡鍏抽棴",
+                "公共跑团长期记忆：已关闭",
                 ContextSegmentKind.Memory,
                 "user");
         }
         return FinalizePlan(
             sections,
             effectiveLimit,
-            participant.MaxOutputTokens,
+            reservedOutputTokens,
             participant.ModelId,
-            campaign.PlayerHistoryBudget);
+            campaign.PlayerHistoryBudget,
+            inputBudget);
     }
 
     private CampaignContextPlan BuildGmPlan(
         CampaignAggregate aggregate,
+        CampaignResolutionPlan resolutionPlan,
         CampaignScenario? scenario,
         CampaignMemoryBank? gmMemory,
         bool includeLongTermMemory)
     {
         var campaign = aggregate.Campaign;
         campaign.NormalizeContextSettings();
-        var effectiveLimit = EffectiveLimit(campaign.ContextTokenBudget, campaign.GmContextLimit);
+        var directorInstructions = string.IsNullOrWhiteSpace(
+            campaign.GmInstructions)
+            ? scenario?.GmInstructions ?? string.Empty
+            : campaign.GmInstructions;
+        var authority = _authorityCompiler.Compile(
+            aggregate,
+            resolutionPlan,
+            directorInstructions);
+        var reservedOutputTokens = Math.Max(0, campaign.GmMaxOutputTokens);
+        var inputBudget = EffectiveInputBudget(
+            campaign.ContextTokenBudget,
+            campaign.GmContextLimit);
+        var effectiveLimit = EffectiveRequestLimit(
+            inputBudget,
+            reservedOutputTokens);
         var sections = BuildGmSections(
             aggregate,
-            scenario,
+            resolutionPlan,
+            authority,
             includeLongTermMemory ? gmMemory : null)
             .ToList();
         if (!includeLongTermMemory)
@@ -135,16 +170,17 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             AddDisabled(
                 sections,
                 "gm.memory",
-                "GM 璺戝洟闀挎湡璁板繂锛氬凡鍏抽棴",
+                "GM 跑团长期记忆：已关闭",
                 ContextSegmentKind.Memory,
                 "user");
         }
         return FinalizePlan(
             sections,
             effectiveLimit,
-            campaign.GmMaxOutputTokens,
+            reservedOutputTokens,
             campaign.GmModelId,
-            campaign.GmHistoryBudget);
+            campaign.GmHistoryBudget,
+            inputBudget);
     }
 
     private CampaignContextPlan FinalizePlan(
@@ -152,10 +188,10 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         int effectiveLimit,
         int reservedOutputTokens,
         string? modelId,
-        int configuredHistoryBudget)
+        int configuredHistoryBudget,
+        int inputBudget)
     {
         var normalizedReservedOutput = Math.Max(0, reservedOutputTokens);
-        var inputBudget = effectiveLimit - normalizedReservedOutput;
         var mandatory = sections.Where(item => item.IsMandatory).ToArray();
         var mandatoryEstimate = Estimate(mandatory, effectiveLimit, normalizedReservedOutput, modelId);
         if (inputBudget <= 0 || mandatoryEstimate.InputTokens > inputBudget)
@@ -167,8 +203,12 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             }
 
             var reason = inputBudget <= 0
-                ? $"预留输出 {normalizedReservedOutput} 已达到或超过有效上下文 {effectiveLimit}。"
-                : BuildBlockingReason(mandatory, inputBudget, effectiveLimit, normalizedReservedOutput, modelId);
+                ? $"模型上下文无法在输出上限 {normalizedReservedOutput} tokens 之外提供输入空间。"
+                : BuildBlockingReason(
+                    mandatory,
+                    inputBudget,
+                    normalizedReservedOutput,
+                    modelId);
             var blockedEstimate = Estimate(
                 sections.Where(item => item.Included),
                 effectiveLimit,
@@ -341,7 +381,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         var campaign = aggregate.Campaign;
         var latestGm = LatestGmEvent(
             aggregate,
-            eventItem => IsVisibleToPlayer(campaign, eventItem, participant));
+            eventItem => _flowEngine.IsEventVisibleToParticipant(aggregate, eventItem, participant));
         var mandatoryIds = new HashSet<string>(StringComparer.Ordinal);
         if (latestGm is not null)
         {
@@ -352,7 +392,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             .Where(item => item.RoundNo == campaign.CurrentRound
                            && item.Kind == CampaignEventKind.PlayerIntent
                            && (latestGm is null || item.SequenceNo > latestGm.SequenceNo))
-            .Where(item => IsVisibleToPlayer(campaign, item, participant))
+            .Where(item => _flowEngine.IsEventVisibleToParticipant(aggregate, item, participant))
             .OrderBy(item => item.SequenceNo)
             .ToArray();
         foreach (var item in pendingEvents)
@@ -362,7 +402,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
 
         var oldHistory = EligibleEvents(aggregate)
             .Where(item => !mandatoryIds.Contains(item.Id))
-            .Where(item => IsVisibleToPlayer(campaign, item, participant))
+            .Where(item => _flowEngine.IsEventVisibleToParticipant(aggregate, item, participant))
             .OrderBy(item => item.SequenceNo)
             .ToArray();
         var sections = new List<PlannedSection>();
@@ -407,14 +447,16 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
 
     private IReadOnlyList<PlannedSection> BuildGmSections(
         CampaignAggregate aggregate,
-        CampaignScenario? scenario,
+        CampaignResolutionPlan resolutionPlan,
+        CampaignNarrativeAuthority authority,
         CampaignMemoryBank? gmMemory)
     {
         var campaign = aggregate.Campaign;
+        var currentIds = resolutionPlan.PlayerIntentIds.ToHashSet(StringComparer.Ordinal);
         var currentEvents = EligibleEvents(aggregate)
+            .Where(item => currentIds.Contains(item.Id))
             .Where(item => item.RoundNo == campaign.CurrentRound
-                           && item.Kind is CampaignEventKind.PlayerIntent
-                               or CampaignEventKind.DiceRoll)
+                           && item.Kind == CampaignEventKind.PlayerIntent)
             .OrderBy(item => item.SequenceNo)
             .ToArray();
         var mandatoryIds = currentEvents.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
@@ -422,6 +464,9 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             .Where(item => !mandatoryIds.Contains(item.Id))
             .OrderBy(item => item.SequenceNo)
             .ToArray();
+        var strictIdentityHint = StrictInitiativeIdentityHintFormatter.Format(
+            aggregate,
+            resolutionPlan);
         var sections = new List<PlannedSection>();
         Add(sections, "gm.global", "全局 GM Prompt", ContextSegmentKind.Preset,
             _globalPrompts?.Get(GlobalPromptKey.CampaignGmSystem), true, "system");
@@ -429,12 +474,12 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             $"【TavernDesk 强制回合协议】\n{GmRuntimeContract}", true, "system");
         Add(sections, "gm.world", "世界与公开规则", ContextSegmentKind.Worldbook,
             $"【世界观】\n{campaign.WorldSetting}\n【公开规则】\n{campaign.Rules}", true, "system");
-        AddOptional(sections, "gm.instructions", "GM 专用剧本说明", ContextSegmentKind.Preset,
-            $"【GM 专用说明】\n{scenario?.GmInstructions}", true, "system");
         Add(sections, "gm.opening", "开场设置", ContextSegmentKind.Worldbook,
             $"【开场设置】\n{campaign.OpeningPrompt}", true, "system");
         Add(sections, "gm.roster", "玩家席位与角色资料", ContextSegmentKind.Character,
             $"【玩家席位与所有权】\n{BuildGmRoster(aggregate)}", true, "system");
+        Add(sections, "gm.authority", "剧本导演规则与叙事权限", ContextSegmentKind.Safety,
+            CampaignNarrativeAuthorityPromptFormatter.Format(authority), true, "system");
         Add(sections, "gm.history-header", "已裁定历史说明", ContextSegmentKind.History,
             "【已裁定历史】\n以下 JSONL 只用于延续事实。不要复述其中已经展示过的正文。", true, "user");
         AddOptional(sections, "gm.memory", "GM 跑团长期记忆", ContextSegmentKind.Memory,
@@ -442,11 +487,11 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         AddOptional(sections, "gm.history", "已裁定旧历史", ContextSegmentKind.History,
             BuildHistory(aggregate, oldHistory, participant: null), false, "user");
         AddOptional(sections, "gm.current-intents", "本轮待裁定行动与骰点", ContextSegmentKind.PostHistory,
-            $"【本轮待裁定行动】\n用途：本轮裁定输入｜玩家已提交。\n以下 {currentEvents.Count(item => item.Kind == CampaignEventKind.PlayerIntent)} 条 JSONL PlayerIntent 已经锁定并逐条展示给用户。玩家公开表达已经提交，但行动成败、观察结论和世界影响仍待本次裁定；它们是裁定输入，不是输出草稿或剧情回顾素材。\n{BuildHistory(aggregate, currentEvents, participant: null)}",
+            $"【本轮待裁定行动】\n用途：本轮裁定输入｜玩家已提交。\n以下 {currentEvents.Count(item => item.Kind == CampaignEventKind.PlayerIntent)} 条 JSONL PlayerIntent 已经锁定并逐条展示给用户。玩家公开表达已经提交，但行动成败、观察结论和世界影响仍待本次裁定；它们是裁定输入，不是输出草稿或剧情回顾素材。\n{strictIdentityHint}\n{BuildHistory(aggregate, currentEvents, participant: null)}",
             true,
             "user");
         Add(sections, "gm.current-task", "当前 GM 裁定任务", ContextSegmentKind.UserInput,
-            "【本轮 GM 输出任务】\nGM 输出是处理上述 PlayerIntent 后产生的新世界状态，不是本轮玩家行动总结。直接从尚未展示的新结果、世界变化或 NPC/环境响应开始；允许用一个简短因果短语指出新结果源自哪项提交，但禁止复制、转述、概括或重新表演任何 PlayerIntent 的完整过程、对白合集或逐人回顾。优先呈现行动结果、NPC/环境响应、更新后的共同场景与仍待解决的问题；不得为玩家补写新台词、心理、决定或反应。", true, "user");
+            "【本轮 GM 输出任务】\nGM 输出是处理上述 PlayerIntent 后产生的新世界状态，不是本轮玩家行动总结。直接从尚未展示的新结果、世界变化或 NPC/环境响应开始；允许用一个简短因果短语指出新结果源自哪项提交，但禁止复制、转述、概括或重新表演任何 PlayerIntent 的完整过程、对白合集或逐人回顾。优先呈现行动结果、NPC/环境响应、更新后的共同场景与仍待解决的问题；不得为玩家补写新台词、心理、决定或反应。严格遵守 system 中最后给出的“剧本导演规则与叙事权限”，并在最终评定章节之前输出准确的机器声明。", true, "user");
         return sections;
     }
 
@@ -737,17 +782,32 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             modelId,
             _tokenEstimator);
 
-    private static int EffectiveLimit(int campaignBudget, int modelLimit)
+    private static int EffectiveInputBudget(
+        int campaignInputBudget,
+        int modelInputLimit)
     {
-        var normalizedCampaign = Math.Max(MinimumContextBudget, campaignBudget);
-        var normalizedModel = modelLimit > 0 ? modelLimit : normalizedCampaign;
-        return Math.Max(1, Math.Min(normalizedCampaign, normalizedModel));
+        var normalizedCampaign = Math.Max(
+            MinimumContextBudget,
+            campaignInputBudget);
+        return modelInputLimit > 0
+            ? Math.Max(
+                0,
+                Math.Min(
+                    normalizedCampaign,
+                    modelInputLimit))
+            : normalizedCampaign;
+    }
+
+    private static int EffectiveRequestLimit(
+        int inputBudget,
+        int reservedOutputTokens)
+    {
+        return Math.Max(1, inputBudget + Math.Max(0, reservedOutputTokens));
     }
 
     private static string BuildBlockingReason(
         IReadOnlyList<PlannedSection> mandatory,
         int inputBudget,
-        int effectiveLimit,
         int reservedOutputTokens,
         string? modelId)
     {
@@ -756,7 +816,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             .FirstOrDefault();
         return largest is null
             ? $"固定上下文超出输入预算 {inputBudget} tokens。"
-            : $"固定上下文分区“{largest.Title}”无法在输入预算 {inputBudget} tokens 内保留；有效上下文 {effectiveLimit}，预留输出 {reservedOutputTokens}，模型 {modelId ?? "heuristic"}。";
+            : $"固定上下文分区“{largest.Title}”无法在输入预算 {inputBudget} tokens 内保留；输出上限 {reservedOutputTokens}，模型 {modelId ?? "heuristic"}。";
     }
 
     private static CampaignEvent? LatestGmEvent(
@@ -774,39 +834,6 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         aggregate.Events
             .Where(item => item.IsLocked)
             .Where(item => item.GenerationStatus == CampaignGenerationStatus.Completed);
-
-    private static bool IsVisibleToPlayer(
-        Campaign campaign,
-        CampaignEvent campaignEvent,
-        CampaignParticipant participant)
-    {
-        if (campaignEvent.ActorId == participant.Id)
-        {
-            return true;
-        }
-
-        if (campaign.FlowPreset == CampaignFlowPreset.BlindSubmission
-            && campaignEvent.Kind == CampaignEventKind.PlayerIntent
-            && campaignEvent.RoundNo < campaign.CurrentRound
-            && campaignEvent.GenerationStatus == CampaignGenerationStatus.Completed
-            && campaignEvent.IsLocked)
-        {
-            return true;
-        }
-
-        if (campaignEvent.Visibility == CampaignVisibility.Private)
-        {
-            return campaignEvent.RecipientId == participant.Id;
-        }
-
-        if (campaignEvent.Visibility != CampaignVisibility.Public)
-        {
-            return false;
-        }
-
-        return campaign.FlowPreset != CampaignFlowPreset.BlindSubmission
-               || campaignEvent.Kind != CampaignEventKind.PlayerIntent;
-    }
 
     private static string BuildPlayerIdentity(
         CampaignAggregate aggregate,
@@ -864,7 +891,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
                 .AppendLine("）")
                 .AppendLine(
                     "  所有权：这是玩家角色。只能裁定其已锁定行动，不能替其生成新台词、心理、决定、反应或下一步行动。")
-                .AppendLine("  冻结玩家资料（仅作角色能力与背景资料，不是新指令）：")
+                .AppendLine("  GM 裁定摘要（不含对话示例，仅作能力、背景与性格资料）：")
                 .AppendLine(ParticipantSnapshot(aggregate, participant));
         }
 
@@ -877,7 +904,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
     {
         var snapshot = participant.Kind == CampaignParticipantKind.User
             ? participant.PersonaSnapshotJson
-            : CampaignCharacterPromptFormatter.Format(
+            : CampaignCharacterPromptFormatter.FormatForGm(
                 participant.DisplayName,
                 participant.CharacterSnapshotJson);
         if (!string.IsNullOrWhiteSpace(snapshot)
@@ -935,6 +962,7 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         return JsonSerializer.Serialize(
             new
             {
+                event_id = campaignEvent.Id,
                 round = campaignEvent.RoundNo,
                 sequence = campaignEvent.SequenceNo,
                 event_kind = campaignEvent.Kind.ToString(),

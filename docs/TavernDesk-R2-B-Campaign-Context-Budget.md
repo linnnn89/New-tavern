@@ -43,15 +43,14 @@ R2-B 现阶段不合并到 `main`。先保留在 `跑团记忆升级版` 分支�
 ### 2.1 上下文预算
 
 - `ContextTokenBudget` 默认值：`15000`；
-- 15,000 tokens 表示单次 AI GM 或单个 AI 玩家请求的“输入上下文 + 输出预留”上限，不是整回合所有模型调用的合计；
-- 有效总容量：
+- 15,000 tokens 表示单次 AI GM 或单个 AI 玩家请求的输入预算；输出上限独立配置，不从这 15,000 中扣除，也不是整回合所有模型调用的合计；
+- 有效输入预算：
 
 ```text
-EffectiveLimit = min(ModelContextLimit, CampaignContextTokenBudget)
-InputBudget = EffectiveLimit - MaxOutputTokens
+EffectiveInputBudget = min(CampaignContextTokenBudget, ModelInputLimit)
 ```
 
-- `MaxOutputTokens >= EffectiveLimit` 时阻止生成；
+- 输入和输出分别设置；跑团内的模型上下文上限按输入上限参与取小值，输出上限不从输入预算中扣除；
 - 固定资料与当前回合属于 mandatory context，超限时返回 `BlockedMandatoryContextTooLarge`；
 - 旧历史不足时返回 `HistoryTrimmed`，仍可继续生成；
 - 长期记忆最多使用 3,000 tokens，且不超过 mandatory context 后剩余容量的 40%。
@@ -114,12 +113,12 @@ InputBudget = EffectiveLimit - MaxOutputTokens
 - 原有 4 项旧模板断言已经修复；
 - SQLite 并行测试的临时目录释放锁问题已经修复；
 - 用户截图已确认基础上下文估算卡、展开明细、多 AI 席位滚动和超预算提示能够显示；
-- 发布目录：`D:\CODEX PROJECT\TavernDesk\app`；
+- 发布目录：仓库根目录下的 `app/`；
 - 启动路径已统一：根目录 `TavernDesk.exe` 只启动 `app\TavernDesk.App.exe`；`app` 已重新生成 `win-x64` 自包含运行时，目标设备不要求预装 .NET 10；`src\...\bin` 仅作为开发构建输出，不再作为用户启动入口；
 - 2026-08-06 启动故障复核：曾因 `app` 混入旧 framework-dependent `deps.json` 导致 CoreCLR 无法解析，已用同批自包含发布文件覆盖并验证根入口和直接 EXE 均可启动；
 - 2026-08-06 ON/OFF UI 绑定修复：`CampaignsView` 的 ToggleButton 改为单向显示绑定，由 `ToggleCampaignMemoryCommand` 负责持久化和重新加载，避免 WPF 对只读 `IsCampaignMemoryEnabled` 属性执行 TwoWay 绑定；
 - 2026-08-06 OFF 文案修复：将 `CampaignMemoryActionText` 中的错误编码字符串改为“记忆已关闭”，避免关闭记忆后右侧按钮显示乱码；
-- 2026-08-06 跑团记忆设置弹窗：顶部不再常驻 ON/OFF 和“重试”按钮，改为“记忆设置”入口；弹窗内集中展示单次总上下文预算、AI 玩家/GM 历史预算、记忆开关、自动更新间隔、待处理 Token 阈值、当前状态和建立/重试操作；这些设置只作用于当前跑团，不接入普通聊天记忆；
+- 2026-08-06 跑团记忆设置弹窗：顶部不再常驻 ON/OFF 和“重试”按钮，改为“记忆设置”入口；弹窗内集中展示单次输入预算、AI 玩家/GM 历史预算、记忆开关、自动更新间隔、待处理 Token 阈值、当前状态和建立/重试操作；这些设置只作用于当前跑团，不接入普通聊天记忆；
 - 2026-08-06 发布构建：`app` 已重新生成 win-x64 自包含版本；根目录 `TavernDesk.exe` 使用 `src/TavernDesk.App/Assets/Icons/TavernDesk.ico` 重编，入口图标已补齐；
 - 2026-08-07 酒吞童子数据修复：角色库原始 `RawCardJson`、内嵌世界书、开场白和原始 PNG 保持不变，以免影响普通单人聊天和群聊；仅修复现有跑团参与者的冻结快照，删除旧原世界知识快照，并将跑团角色快照限定为 name、description、personality、mes_example；该局状态版本已递增到 18，数据库完整性检查通过；
 - 2026-08-07 请求与记忆运行态修复：增加流式接收 token 进度、记忆更新期间的 UI 操作锁和提示；成功 AI 玩家重试不再在活动流重复展示完整旧失败链；AI GM 协议失败后的成功重试停留在当前回合，候选确认前不进入上下文或记忆，确认事务完成后才推进并清除上一回合选择；同一跑团的记忆更新与模型生成通过共享操作门协调；流式 Token 改为增量统计并节流进度通知；`dotnet build TavernDesk.sln -c Release --no-restore` 通过，0 warning、0 error；按用户要求未运行测试；
@@ -142,7 +141,7 @@ InputBudget = EffectiveLimit - MaxOutputTokens
 
 ### 5.2 预算设置已提供入口
 
-当前跑团的“记忆设置”弹窗已经提供总上下文预算、玩家/GM 历史预算以及低频记忆更新阈值的持久化入口；普通聊天记忆仍与该入口隔离。后续只根据真实长局反馈调整可用范围，不继续拆分更多算法参数。
+当前跑团的“记忆设置”弹窗已经提供输入预算、玩家/GM 历史预算以及低频记忆更新阈值的持久化入口；GM 输出上限在 GM 模型设置中独立配置，普通聊天记忆仍与该入口隔离。后续只根据真实长局反馈调整可用范围，不继续拆分更多算法参数。
 
 ### 5.3 Planner 体积偏大
 
@@ -204,7 +203,7 @@ InputBudget = EffectiveLimit - MaxOutputTokens
 - 分区是否纳入；
 - 分区是否被裁剪；
 - mandatory 超限的具体分区；
-- 输入、输出预留、有效总容量和最终状态；
+- 输入使用量/输入预算、输出上限和最终状态；
 - GM 与各 AI 席位分别查看。
 
 约束：

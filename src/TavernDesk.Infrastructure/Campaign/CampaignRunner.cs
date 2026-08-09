@@ -4,6 +4,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using TavernDesk.Core.Abstractions;
+using TavernDesk.Core.Narrative;
+using TavernDesk.Core.Flow;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure.Providers;
 
@@ -51,6 +53,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
     private readonly ICampaignMemoryUpdateService? _campaignMemory;
     private readonly ICampaignMemoryRepository? _campaignMemories;
     private readonly ICampaignOperationGate _operationGate;
+    private readonly ICampaignFlowEngine _flowEngine;
+    private readonly ICampaignNarrativeAuthorityCompiler _authorityCompiler;
+    private readonly ICampaignGmOutputValidator _gmOutputValidator;
 
     public event EventHandler<CampaignGenerationProgress>? ProgressChanged;
 
@@ -63,7 +68,10 @@ public sealed partial class CampaignRunner : ICampaignRunner
         ICampaignMemoryUpdateService? campaignMemory = null,
         ICampaignMemoryRepository? campaignMemories = null,
         ICampaignContextPlanner? campaignContextPlanner = null,
-        ICampaignOperationGate? operationGate = null)
+        ICampaignOperationGate? operationGate = null,
+        ICampaignFlowEngine? flowEngine = null,
+        ICampaignNarrativeAuthorityCompiler? authorityCompiler = null,
+        ICampaignGmOutputValidator? gmOutputValidator = null)
     {
         _campaigns = campaigns;
         _scenarios = scenarios;
@@ -74,6 +82,11 @@ public sealed partial class CampaignRunner : ICampaignRunner
         _campaignMemory = campaignMemory;
         _campaignMemories = campaignMemories;
         _operationGate = operationGate ?? new CampaignOperationGate();
+        _flowEngine = flowEngine ?? CampaignFlowEngineFactory.CreateDefault();
+        _authorityCompiler = authorityCompiler
+                             ?? new CampaignNarrativeAuthorityCompiler();
+        _gmOutputValidator = gmOutputValidator
+                             ?? new CampaignGmOutputValidator();
     }
 
     public async Task<CampaignAggregate> StartAsync(
@@ -113,7 +126,14 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 CurrentRound: 1,
                 CurrentTurnIndex: 0,
                 FrozenSequenceNo: opening.SequenceNo,
-                WorldSummary: TruncateWorldSummary(opening.Content)),
+                WorldSummary: TruncateWorldSummary(opening.Content),
+                NarrativeStateJson: JsonSerializer.Serialize(
+                    new CampaignNarrativeState
+                    {
+                        RoundNo = 1,
+                        TurnIndex = 0,
+                        LastCommittedResolutionSequence = opening.SequenceNo
+                    })),
             cancellationToken);
         return await RequireCampaignAsync(campaignId, cancellationToken);
     }
@@ -131,8 +151,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                               && item.Kind == CampaignParticipantKind.User)
                           ?? throw new InvalidOperationException(
                               "当前跑团没有 USER 玩家席位。");
-        EnsureStrictTurn(aggregate, participant);
-        EnsureNoCompletedAction(aggregate, participant.Id);
+        var actionPlan = _flowEngine.PlanAction(aggregate, participant.Id);
+        EnsureActionAllowed(actionPlan, participant.Id);
         var action = AttachAutomaticActionRoll(content.Trim());
         var campaignEvent = await _campaigns.AppendEventAsync(
             new CampaignEvent
@@ -141,14 +161,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 RoundNo = aggregate.Campaign.CurrentRound,
                 Kind = CampaignEventKind.PlayerIntent,
                 ActorId = participant.Id,
-                RecipientId = aggregate.Campaign.FlowPreset
-                              == CampaignFlowPreset.BlindSubmission
+                RecipientId = actionPlan.PendingVisibility == CampaignVisibility.GmOnly
                     ? participant.Id
                     : null,
-                Visibility = aggregate.Campaign.FlowPreset
-                             == CampaignFlowPreset.BlindSubmission
+                Visibility = actionPlan.PendingVisibility == CampaignVisibility.GmOnly
                     ? CampaignVisibility.Private
-                    : CampaignVisibility.Public,
+                    : actionPlan.PendingVisibility,
                 Content = action.Content,
                 StructuredDataJson = action.StructuredDataJson,
                 SnapshotSequenceNo = aggregate.Campaign.FrozenSequenceNo,
@@ -168,30 +186,17 @@ public sealed partial class CampaignRunner : ICampaignRunner
     {
         var aggregate = await RequireActiveCampaignAsync(campaignId, cancellationToken);
         EnsureActionPhase(aggregate.Campaign);
-        var enabled = aggregate.Participants
-            .Where(item => item.IsEnabled)
+        var actionPlan = _flowEngine.Inspect(aggregate).ActionPlan;
+        var allowed = actionPlan.AllowedParticipantIds.ToHashSet(StringComparer.Ordinal);
+        var targets = aggregate.Participants
+            .Where(item => item.IsEnabled
+                           && item.Kind == CampaignParticipantKind.Ai
+                           && allowed.Contains(item.Id))
             .OrderBy(item => item.SortIndex)
             .ToArray();
-        CampaignParticipant[] targets;
-        if (aggregate.Campaign.FlowPreset == CampaignFlowPreset.StrictInitiative)
-        {
-            var current = enabled[aggregate.Campaign.CurrentTurnIndex % enabled.Length];
-            targets = current.Kind == CampaignParticipantKind.Ai
-                && !HasAnyActionAttempt(aggregate, current.Id)
-                    ? [current]
-                    : [];
-        }
-        else
-        {
-            targets = enabled
-                .Where(item =>
-                    item.Kind == CampaignParticipantKind.Ai
-                    && !HasAnyActionAttempt(aggregate, item.Id))
-                .ToArray();
-        }
 
         IReadOnlyList<CampaignEvent> results;
-        if (aggregate.Campaign.FlowPreset == CampaignFlowPreset.BlindSubmission)
+        if (actionPlan.ExecutionMode == CampaignActionExecutionMode.Parallel)
         {
             results = await Task.WhenAll(targets.Select(item =>
                 GenerateAiActionCoreAsync(
@@ -234,8 +239,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
             campaignId,
             cancellationToken);
         EnsureActionPhase(aggregate.Campaign);
-        if (aggregate.Campaign.FlowPreset
-            == CampaignFlowPreset.BlindSubmission)
+        var actionPlan = _flowEngine.PlanAction(aggregate, participantId);
+        if (actionPlan.ExecutionMode == CampaignActionExecutionMode.Parallel)
         {
             throw new InvalidOperationException(
                 "秘密同投必须一次并发生成全部 AI 行动，不能逐席生成。");
@@ -247,8 +252,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                               && item.Kind == CampaignParticipantKind.Ai)
                           ?? throw new InvalidOperationException(
                               "要行动的 AI 玩家席位不存在或未启用。");
-        EnsureStrictTurn(aggregate, participant);
-        EnsureNoActionAttempt(aggregate, participant.Id);
+        EnsureActionAllowed(actionPlan, participant.Id);
         var result = await GenerateAiActionCoreAsync(
             aggregate,
             participant,
@@ -281,6 +285,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
                               && item.Kind == CampaignParticipantKind.Ai)
                           ?? throw new InvalidOperationException(
                               "失败缓存没有对应的 AI 玩家。");
+        var retryPlan = _flowEngine.PlanAction(aggregate, participant.Id);
+        if (!retryPlan.AllowedParticipantIds.Contains(participant.Id, StringComparer.Ordinal)
+            || retryPlan.BlockReason != CampaignFlowBlockReason.FailedAttemptRequiresRetry)
+        {
+            throw new InvalidOperationException("当前流程不允许重试该席位的行动。");
+        }
         var latestAttempt = aggregate.Events
             .Where(item =>
                 item.RoundNo == aggregate.Campaign.CurrentRound
@@ -318,10 +328,14 @@ public sealed partial class CampaignRunner : ICampaignRunner
         }
 
         EnsureResolutionPhase(aggregate.Campaign);
+        var resolutionPlan = _flowEngine.PlanResolution(aggregate);
+        if (!resolutionPlan.CanGenerate || resolutionPlan.AnchorSequenceNo is null)
+        {
+            throw new InvalidOperationException("当前流程尚不能提交 GM 裁定。");
+        }
         var resolutionContent = EnsureGmEvaluationTail(
             content.Trim(),
             OpeningEvaluationReference);
-        var resolutionAnchor = CampaignResolutionScope.FindCurrentAction(aggregate);
         var resolution = await _campaigns.AppendEventAsync(
             new CampaignEvent
             {
@@ -331,8 +345,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 ActorId = "gm:user",
                 Visibility = CampaignVisibility.Public,
                 Content = resolutionContent,
-                SnapshotSequenceNo = resolutionAnchor?.SequenceNo
-                                     ?? aggregate.Campaign.FrozenSequenceNo,
+                SnapshotSequenceNo = resolutionPlan.AnchorSequenceNo.Value,
                 GenerationStatus = CampaignGenerationStatus.Completed,
                 EndReason = CampaignEndReason.Normal,
                 OperationId =
@@ -359,9 +372,22 @@ public sealed partial class CampaignRunner : ICampaignRunner
         }
 
         EnsureResolutionPhase(aggregate.Campaign);
+        var resolutionPlan = _flowEngine.PlanResolution(aggregate);
+        if (!resolutionPlan.CanGenerate || resolutionPlan.AnchorSequenceNo is null)
+        {
+            throw new InvalidOperationException("当前流程尚不能生成 GM 裁定。");
+        }
         var scenario = await _scenarios.GetAsync(
             aggregate.Campaign.StoryId,
             cancellationToken);
+        var directorInstructions = string.IsNullOrWhiteSpace(
+            aggregate.Campaign.GmInstructions)
+            ? scenario?.GmInstructions ?? string.Empty
+            : aggregate.Campaign.GmInstructions;
+        var authority = _authorityCompiler.Compile(
+            aggregate,
+            resolutionPlan,
+            directorInstructions);
         var gmMemory = aggregate.Campaign.MemoryEnabled
             ? await LoadCampaignMemoryAsync(
                 campaignId,
@@ -372,16 +398,41 @@ public sealed partial class CampaignRunner : ICampaignRunner
             ? null
             : await _campaignContextPlanner.BuildGmPlanAsync(
                 aggregate,
+                resolutionPlan,
                 scenario,
                 gmMemory,
                 cancellationToken,
                 includeLongTermMemory: aggregate.Campaign.MemoryEnabled);
         var messages = contextPlan?.Messages
-                       ?? BuildGmMessages(aggregate, scenario, gmMemory);
-        var resolutionAnchor = CampaignResolutionScope.FindCurrentAction(aggregate);
-        var latestAttempt = CampaignResolutionScope
-            .GetCurrentGmResolutions(aggregate)
+                       ?? BuildGmMessages(
+                           aggregate,
+                           resolutionPlan,
+                           authority,
+                           gmMemory);
+        var latestAttempt = aggregate.Events
+            .Where(item => resolutionPlan.CandidateResolutionIds.Contains(item.Id, StringComparer.Ordinal))
+            .OrderBy(item => item.SequenceNo)
             .LastOrDefault();
+        var outputTokenBudget = CampaignTokenLimits.ClampGmOutputTokens(
+            aggregate.Campaign.GmMaxOutputTokens);
+        var isOutputLimitRetry = latestAttempt?.GenerationStatus
+                                 == CampaignGenerationStatus.Failed
+                                 && latestAttempt.EndReason
+                                 == CampaignEndReason.OutputLimit;
+        if (isOutputLimitRetry)
+        {
+            var targetTokens = Math.Max(
+                128,
+                outputTokenBudget
+                - CampaignTokenLimits.GmRetrySafetyMarginTokens);
+            messages =
+            [
+                .. messages,
+                new ProviderChatMessage(
+                    "user",
+                    $"【本次重试长度约束｜仅本次请求】\n重试：前次因为长度超标。本次输出 Token 预算为 {outputTokenBudget}，请尽量把完整回复控制在（{outputTokenBudget} - {CampaignTokenLimits.GmRetrySafetyMarginTokens}）= {targetTokens} tokens 以内，并完整保留叙事权限声明与“【下一轮评定参考】”收尾。")
+            ];
+        }
         var attemptNo = latestAttempt?.GenerationStatus is (
                 CampaignGenerationStatus.Failed
                 or CampaignGenerationStatus.Interrupted)
@@ -391,7 +442,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
             aggregate.Campaign.GmProviderId,
             aggregate.Campaign.GmModelId,
             messages,
-            aggregate.Campaign.GmMaxOutputTokens,
+            outputTokenBudget,
             aggregate.Campaign.GmTemperature,
             aggregate.Campaign.GmTopP,
             SessionId: $"campaign:{campaignId}:gm");
@@ -404,8 +455,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 Kind = CampaignEventKind.GmResolution,
                 ActorId = "gm:ai",
                 Visibility = CampaignVisibility.Public,
-                SnapshotSequenceNo = resolutionAnchor?.SequenceNo
-                                     ?? aggregate.Campaign.FrozenSequenceNo,
+                SnapshotSequenceNo = resolutionPlan.AnchorSequenceNo.Value,
                 AttemptNo = attemptNo,
                 OperationId =
                     $"ai-gm-resolution:{campaignId}:{aggregate.Campaign.CurrentRound}:{aggregate.Campaign.CurrentTurnIndex}:{Guid.NewGuid():N}",
@@ -413,9 +463,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
             },
             request,
             $"campaign:{campaignId}:gm",
-            aggregate.Campaign.GmContextLimit,
+            EffectiveInputBudget(
+                aggregate.Campaign.ContextTokenBudget,
+                aggregate.Campaign.GmContextLimit),
             cancellationToken,
-            contextPlan);
+            isOutputLimitRetry ? null : contextPlan,
+            authority);
         if (resolution.GenerationStatus == CampaignGenerationStatus.Completed)
         {
             // A protocol retry stays in the current GM step so the user can
@@ -448,11 +501,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
         }
 
         EnsureResolutionPhase(aggregate.Campaign);
+        var resolutionPlan = _flowEngine.PlanResolution(aggregate);
         var candidate = aggregate.Events.SingleOrDefault(item =>
                            item.Id == eventId
-                           && CampaignResolutionScope.IsCurrentGmResolution(
-                               aggregate,
-                               item))
+                           && resolutionPlan.CandidateResolutionIds.Contains(
+                               item.Id,
+                               StringComparer.Ordinal))
                        ?? throw new InvalidOperationException(
                            "所选 GM 候选不存在或已经离开当前回合。");
         if (candidate.GenerationStatus != CampaignGenerationStatus.Completed
@@ -541,6 +595,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
         int attemptNo,
         CancellationToken cancellationToken)
     {
+        var actionPlan = _flowEngine.PlanAction(aggregate, participant.Id);
         var publicMemory = aggregate.Campaign.MemoryEnabled
             ? await LoadCampaignMemoryAsync(
                 aggregate.Campaign.Id,
@@ -574,10 +629,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 RoundNo = aggregate.Campaign.CurrentRound,
                 Kind = CampaignEventKind.PlayerIntent,
                 ActorId = participant.Id,
-                Visibility = aggregate.Campaign.FlowPreset
-                             == CampaignFlowPreset.BlindSubmission
-                    ? CampaignVisibility.GmOnly
-                    : CampaignVisibility.Public,
+                Visibility = actionPlan.PendingVisibility,
                 SnapshotSequenceNo = aggregate.Events.LastOrDefault()?.SequenceNo ?? 0,
                 AttemptNo = attemptNo,
                 OperationId =
@@ -586,7 +638,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
             },
             request,
             $"campaign:{aggregate.Campaign.Id}:participant:{participant.Id}",
-            participant.ContextLimit,
+            EffectiveInputBudget(
+                aggregate.Campaign.ContextTokenBudget,
+                participant.ContextLimit),
             cancellationToken,
             contextPlan);
     }
@@ -596,9 +650,10 @@ public sealed partial class CampaignRunner : ICampaignRunner
         CampaignEvent campaignEvent,
         ModelExecutionRequest request,
         string generationOperationId,
-        int contextLimit,
+        int inputTokenBudget,
         CancellationToken cancellationToken,
-        CampaignContextPlan? contextPlan = null)
+        CampaignContextPlan? contextPlan = null,
+        CampaignNarrativeAuthority? narrativeAuthority = null)
     {
         campaignEvent.GenerationStatus = CampaignGenerationStatus.Queued;
         campaignEvent.EndReason = CampaignEndReason.None;
@@ -614,10 +669,10 @@ public sealed partial class CampaignRunner : ICampaignRunner
             ApproximateTokens(message.Content));
         if ((contextPlan is not null && !contextPlan.CanGenerate)
             || (contextPlan is null
-                && estimatedInputTokens + request.MaxOutputTokens > contextLimit))
+                && estimatedInputTokens > inputTokenBudget))
         {
             campaignEvent.Content =
-                $"预计上下文 {estimatedInputTokens} tokens，加预留输出 {request.MaxOutputTokens} tokens，超过该席位上限 {contextLimit}。";
+                $"预计输入 {estimatedInputTokens} tokens，超过该请求的输入预算 {inputTokenBudget} tokens；输出上限 {request.MaxOutputTokens} tokens 单独计算。";
             campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
             campaignEvent.EndReason = CampaignEndReason.ContextLimit;
             await _campaigns.UpdateEventAsync(campaignEvent, CancellationToken.None);
@@ -680,6 +735,13 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 .GetState(generationOperationId)
                 .Status;
             campaignEvent.Content = buffer.ToString();
+            var authorityValidation = campaignEvent.Kind
+                                      == CampaignEventKind.GmResolution
+                                      && narrativeAuthority is not null
+                ? _gmOutputValidator.Validate(
+                    campaignEvent.Content,
+                    narrativeAuthority)
+                : null;
             if (coordinatorStatus == ConversationGenerationStatus.Interrupted)
             {
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Interrupted;
@@ -695,6 +757,18 @@ public sealed partial class CampaignRunner : ICampaignRunner
                          "length",
                          StringComparison.OrdinalIgnoreCase))
             {
+                if (buffer.Length == 0)
+                {
+                    campaignEvent.Content =
+                        "（供应商耗尽输出 Token 预算，但未返回可显示的正文。）";
+                }
+
+                campaignEvent.StructuredDataJson = JsonSerializer.Serialize(new
+                {
+                    provider_finish_reason = completion.FinishReason,
+                    output_token_budget = request.MaxOutputTokens,
+                    received_visible_tokens = ApproximateTokens(receivedUtf8Bytes)
+                });
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
                 campaignEvent.EndReason = CampaignEndReason.OutputLimit;
             }
@@ -709,8 +783,27 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
                 campaignEvent.EndReason = CampaignEndReason.ProtocolViolation;
             }
+            else if (authorityValidation is { IsValid: false })
+            {
+                campaignEvent.Content = authorityValidation.DisplayContent;
+                campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
+                campaignEvent.EndReason =
+                    CampaignEndReason.NarrativeAuthorityViolation;
+                campaignEvent.StructuredDataJson = JsonSerializer.Serialize(new
+                {
+                    narrative_validation_error =
+                        authorityValidation.FailureReason
+                });
+            }
             else
             {
+                if (authorityValidation is { IsValid: true })
+                {
+                    campaignEvent.Content = authorityValidation.DisplayContent;
+                    campaignEvent.StructuredDataJson =
+                        authorityValidation.StructuredDataJson;
+                }
+
                 if (campaignEvent.Kind == CampaignEventKind.PlayerIntent)
                 {
                     var action = AttachAutomaticActionRoll(campaignEvent.Content);
@@ -768,6 +861,20 @@ public sealed partial class CampaignRunner : ICampaignRunner
         return campaignEvent;
     }
 
+    private static int EffectiveInputBudget(
+        int configuredInputBudget,
+        int modelInputLimit)
+    {
+        var normalizedInput = Math.Max(0, configuredInputBudget);
+        return modelInputLimit > 0
+            ? Math.Max(
+                0,
+                Math.Min(
+                    normalizedInput,
+                    modelInputLimit))
+            : normalizedInput;
+    }
+
     private void PublishProgress(
         CampaignEvent campaignEvent,
         CampaignGenerationStatus status,
@@ -805,24 +912,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
             return;
         }
 
-        var completed = aggregate.Events
-            .Where(item =>
-                item.RoundNo == aggregate.Campaign.CurrentRound
-                && item.Kind == CampaignEventKind.PlayerIntent
-                && item.GenerationStatus == CampaignGenerationStatus.Completed
-                && item.IsLocked)
-            .Select(item => item.ActorId)
-            .ToHashSet(StringComparer.Ordinal);
-        var enabled = aggregate.Participants
-            .Where(item => item.IsEnabled)
-            .OrderBy(item => item.SortIndex)
-            .ToArray();
-        var ready = aggregate.Campaign.FlowPreset
-                    == CampaignFlowPreset.StrictInitiative
-            ? completed.Contains(
-                enabled[aggregate.Campaign.CurrentTurnIndex % enabled.Length].Id)
-            : enabled.All(item => completed.Contains(item.Id));
-        if (!ready)
+        if (_flowEngine.Inspect(aggregate).Stage
+            != CampaignFlowStage.ReadyForResolution)
         {
             return;
         }
@@ -847,36 +938,27 @@ public sealed partial class CampaignRunner : ICampaignRunner
         bool commitCandidate = false)
     {
         var aggregate = await RequireActiveCampaignAsync(campaignId, cancellationToken);
-        var nextRound = aggregate.Campaign.CurrentRound;
-        var nextTurn = aggregate.Campaign.CurrentTurnIndex;
-        if (aggregate.Campaign.FlowPreset == CampaignFlowPreset.StrictInitiative)
-        {
-            var participantCount = aggregate.Participants.Count(item => item.IsEnabled);
-            nextTurn++;
-            if (nextTurn >= participantCount)
-            {
-                nextTurn = 0;
-                nextRound++;
-            }
-        }
-        else
-        {
-            nextRound++;
-            nextTurn = 0;
-        }
+        var next = _flowEngine.PlanAdvance(
+            aggregate,
+            resolution,
+            commitCandidate);
 
         await _campaigns.UpdateRuntimeAsync(
             campaignId,
             aggregate.Campaign.StateVersion,
             new CampaignRuntimeUpdate(
-                CampaignPhase.AwaitingActions,
-                nextRound,
-                nextTurn,
+                next.NextPhase,
+                next.NextRound,
+                next.NextTurnIndex,
                 resolution.SequenceNo,
                 TruncateWorldSummary(resolution.Content),
-                ActivatePendingUser:
-                    nextRound > aggregate.Campaign.CurrentRound,
-                CommitEventId: commitCandidate ? resolution.Id : null),
+                NarrativeStateJson: BuildNextNarrativeState(
+                    aggregate,
+                    resolution,
+                    next.NextRound,
+                    next.NextTurnIndex),
+                ActivatePendingUser: next.ActivatePendingUser,
+                CommitEventId: next.CommitCandidate ? resolution.Id : null),
             cancellationToken);
     }
 
@@ -898,6 +980,86 @@ public sealed partial class CampaignRunner : ICampaignRunner
             throughResolutionSequence,
             force: false,
             CancellationToken.None);
+    }
+
+    private static string BuildNextNarrativeState(
+        CampaignAggregate aggregate,
+        CampaignEvent resolution,
+        int nextRound,
+        int nextTurnIndex)
+    {
+        CampaignNarrativeState state;
+        try
+        {
+            state = JsonSerializer.Deserialize<CampaignNarrativeState>(
+                        aggregate.Campaign.NarrativeStateJson,
+                        HistoryJsonOptions)
+                    ?? new CampaignNarrativeState();
+        }
+        catch (JsonException)
+        {
+            state = new CampaignNarrativeState();
+        }
+
+        CampaignGmNarrativeDelta? delta = null;
+        if (!string.IsNullOrWhiteSpace(resolution.StructuredDataJson)
+            && !string.Equals(
+                resolution.StructuredDataJson.Trim(),
+                "{}",
+                StringComparison.Ordinal))
+        {
+            try
+            {
+                delta = JsonSerializer.Deserialize<CampaignGmNarrativeDelta>(
+                    resolution.StructuredDataJson,
+                    HistoryJsonOptions);
+            }
+            catch (JsonException)
+            {
+                // User-authored GM resolutions and old data have no sidecar.
+            }
+        }
+
+        state.RoundNo = Math.Max(1, nextRound);
+        state.TurnIndex = Math.Max(0, nextTurnIndex);
+        state.LastCommittedResolutionSequence = resolution.SequenceNo;
+        state.ActiveParticipantIds = [];
+        if (delta is not null)
+        {
+            AppendDistinct(
+                state.KnownNpcNames,
+                delta.IntroducedNpcs.Select(item => item.Description));
+            AppendDistinct(
+                state.RelationshipNotes,
+                delta.RelationshipChanges.Select(item => item.Description));
+            AppendDistinct(
+                state.ActivePlotThreads,
+                delta.StartedPlotThreads.Select(item => item.Description));
+        }
+
+        return JsonSerializer.Serialize(state, HistoryJsonOptions);
+    }
+
+    private static void AppendDistinct(
+        List<string> target,
+        IEnumerable<string> values)
+    {
+        var known = target.ToHashSet(StringComparer.Ordinal);
+        foreach (var value in values
+                     .Select(item => item.Trim())
+                     .Where(item => item.Length > 0))
+        {
+            if (known.Add(value))
+            {
+                target.Add(value);
+            }
+        }
+
+        const int maximumEntries = 100;
+        if (target.Count > maximumEntries)
+        {
+            target.RemoveRange(0, target.Count - maximumEntries);
+        }
     }
 
     private IReadOnlyList<ProviderChatMessage> BuildPlayerMessages(
@@ -964,8 +1126,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 item.IsLocked
                 && (item.Kind is CampaignEventKind.GmOpening
                     or CampaignEventKind.GmResolution)
-                && IsVisibleToPlayer(
-                    aggregate.Campaign,
+                && _flowEngine.IsEventVisibleToParticipant(
+                    aggregate,
                     item,
                     participant))
             .OrderByDescending(item => item.SequenceNo)
@@ -1030,7 +1192,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
 
     private IReadOnlyList<ProviderChatMessage> BuildGmMessages(
         CampaignAggregate aggregate,
-        CampaignScenario? scenario,
+        CampaignResolutionPlan resolutionPlan,
+        CampaignNarrativeAuthority authority,
         CampaignMemoryBank? gmMemory)
     {
         var configuredHistoryBudget = Math.Max(
@@ -1051,18 +1214,20 @@ public sealed partial class CampaignRunner : ICampaignRunner
             .AppendLine("【公开规则】")
             .AppendLine(aggregate.Campaign.Rules)
             .AppendLine("【GM 专用说明】")
-            .AppendLine(scenario?.GmInstructions ?? string.Empty)
+            .AppendLine(authority.DirectorInstructions)
             .AppendLine("【开场设置】")
             .AppendLine(aggregate.Campaign.OpeningPrompt)
             .AppendLine("【玩家席位与所有权】")
-            .AppendLine(BuildGmRoster(aggregate));
+            .AppendLine(BuildGmRoster(aggregate))
+            .AppendLine()
+            .AppendLine(CampaignNarrativeAuthorityPromptFormatter.Format(authority));
+        var currentIds = resolutionPlan.PlayerIntentIds.ToHashSet(StringComparer.Ordinal);
         var currentActions = BuildHistory(
             aggregate,
             participant: null,
             gmView: true,
             int.MaxValue,
-            item => item.RoundNo == aggregate.Campaign.CurrentRound
-                    && item.Kind == CampaignEventKind.PlayerIntent);
+            item => currentIds.Contains(item.Id));
         var priorHistoryBudget = configuredHistoryBudget
                                  - memoryTokens
                                  - ApproximateTokens(currentActions);
@@ -1072,13 +1237,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 participant: null,
                 gmView: true,
                 priorHistoryBudget,
-                item => item.RoundNo != aggregate.Campaign.CurrentRound
-                        || item.Kind != CampaignEventKind.PlayerIntent)
+                item => !currentIds.Contains(item.Id))
             : string.Empty;
-        var unresolvedIntentCount = aggregate.Events.Count(item =>
-            item.IsLocked
-            && item.RoundNo == aggregate.Campaign.CurrentRound
-            && item.Kind == CampaignEventKind.PlayerIntent);
+        var unresolvedIntentCount = currentIds.Count;
+        var strictIdentityHint = StrictInitiativeIdentityHintFormatter.Format(
+            aggregate,
+            resolutionPlan);
         return
         [
             new ProviderChatMessage("system", system.ToString()),
@@ -1094,6 +1258,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 【本轮待裁定行动】
                 用途：本轮裁定输入｜玩家已提交。
                 以下 {unresolvedIntentCount} 条 JSONL PlayerIntent 已经锁定并逐条展示给用户。玩家公开表达已经提交，但行动成败、观察结论和世界影响仍待本次裁定；它们是裁定输入，不是输出草稿或剧情回顾素材。
+                {strictIdentityHint}
                 {currentActions}
 
                 【本轮 GM 输出任务】
@@ -1175,7 +1340,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                + content[^tailLength..].TrimStart();
     }
 
-    private static string BuildHistory(
+    private string BuildHistory(
         CampaignAggregate aggregate,
         CampaignParticipant? participant,
         bool gmView,
@@ -1196,8 +1361,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                      .Where(item => include?.Invoke(item) ?? true)
                      .OrderByDescending(item => item.SequenceNo))
         {
-            if (!gmView && !IsVisibleToPlayer(
-                    aggregate.Campaign,
+            if (!gmView && !_flowEngine.IsEventVisibleToParticipant(
+                    aggregate,
                     campaignEvent,
                     participant!))
             {
@@ -1223,6 +1388,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
             var line = JsonSerializer.Serialize(
                 new
                 {
+                    event_id = campaignEvent.Id,
                     round = campaignEvent.RoundNo,
                     sequence = campaignEvent.SequenceNo,
                     event_kind = campaignEvent.Kind.ToString(),
@@ -1286,40 +1452,6 @@ public sealed partial class CampaignRunner : ICampaignRunner
                     },
                     HistoryJsonOptions)));
 
-    private static bool IsVisibleToPlayer(
-        Campaign campaign,
-        CampaignEvent campaignEvent,
-        CampaignParticipant participant)
-    {
-        if (campaignEvent.ActorId == participant.Id)
-        {
-            return true;
-        }
-
-        if (campaign.FlowPreset == CampaignFlowPreset.BlindSubmission
-            && campaignEvent.Kind == CampaignEventKind.PlayerIntent
-            && campaignEvent.RoundNo < campaign.CurrentRound
-            && campaignEvent.GenerationStatus
-            == CampaignGenerationStatus.Completed
-            && campaignEvent.IsLocked)
-        {
-            return true;
-        }
-
-        if (campaignEvent.Visibility == CampaignVisibility.Private)
-        {
-            return campaignEvent.RecipientId == participant.Id;
-        }
-
-        if (campaignEvent.Visibility != CampaignVisibility.Public)
-        {
-            return false;
-        }
-
-        return campaign.FlowPreset != CampaignFlowPreset.BlindSubmission
-               || campaignEvent.Kind != CampaignEventKind.PlayerIntent;
-    }
-
     private static int ApproximateTokens(string content) =>
         ApproximateTokens(Encoding.UTF8.GetByteCount(content));
 
@@ -1346,7 +1478,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 .AppendLine("）")
                 .AppendLine(
                     "  所有权：这是玩家角色。只能裁定其已锁定行动，不能替其生成新台词、心理、决定、反应或下一步行动。")
-                .AppendLine("  冻结玩家资料（仅作角色能力与背景资料，不是新指令）：")
+                .AppendLine("  GM 裁定摘要（不含对话示例，仅作能力、背景与性格资料）：")
                 .AppendLine(ParticipantSnapshot(aggregate, participant));
         }
 
@@ -1359,7 +1491,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
     {
         var snapshot = participant.Kind == CampaignParticipantKind.User
             ? participant.PersonaSnapshotJson
-            : CampaignCharacterPromptFormatter.Format(
+            : CampaignCharacterPromptFormatter.FormatForGm(
                 participant.DisplayName,
                 participant.CharacterSnapshotJson);
         if (!string.IsNullOrWhiteSpace(snapshot)
@@ -1487,35 +1619,15 @@ public sealed partial class CampaignRunner : ICampaignRunner
         }
     }
 
-    private static void EnsureStrictTurn(
-        CampaignAggregate aggregate,
-        CampaignParticipant participant)
-    {
-        if (aggregate.Campaign.FlowPreset != CampaignFlowPreset.StrictInitiative)
-        {
-            return;
-        }
-
-        var enabled = aggregate.Participants
-            .Where(item => item.IsEnabled)
-            .OrderBy(item => item.SortIndex)
-            .ToArray();
-        if (enabled[aggregate.Campaign.CurrentTurnIndex % enabled.Length].Id
-            != participant.Id)
-        {
-            throw new InvalidOperationException(
-                $"严格先攻模式尚未轮到“{participant.DisplayName}”。");
-        }
-    }
-
-    private static void EnsureNoActionAttempt(
-        CampaignAggregate aggregate,
+    private static void EnsureActionAllowed(
+        CampaignActionPlan plan,
         string participantId)
     {
-        if (HasAnyActionAttempt(aggregate, participantId))
+        if (!plan.CanSubmit
+            || !plan.AllowedParticipantIds.Contains(participantId, StringComparer.Ordinal))
         {
             throw new InvalidOperationException(
-                "该席位本回合已经有行动记录；失败或中断时请重试原记录。");
+                $"当前流程不允许该席位行动（{plan.BlockReason}）。");
         }
     }
 
@@ -1538,14 +1650,6 @@ public sealed partial class CampaignRunner : ICampaignRunner
             && item.ActorId == participantId
             && item.GenerationStatus == CampaignGenerationStatus.Completed
             && item.IsLocked);
-
-    private static bool HasAnyActionAttempt(
-        CampaignAggregate aggregate,
-        string participantId) =>
-        aggregate.Events.Any(item =>
-            item.RoundNo == aggregate.Campaign.CurrentRound
-            && item.Kind == CampaignEventKind.PlayerIntent
-            && item.ActorId == participantId);
 
     private async Task<CampaignAggregate> RequireCampaignAsync(
         string campaignId,

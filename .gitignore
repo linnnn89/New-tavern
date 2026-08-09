@@ -7,6 +7,8 @@
 .tools/
 artifacts/
 TestResults/
+# Local regression sources are intentionally excluded from the public repo.
+/tests/
 **/bin/
 **/obj/
 *.user
@@ -14,4 +16,10 @@ TestResults/
 *.cache
 *.log
 user-data/
-work/verification/
+/work/
+
+# app/ is the tracked Windows x64 release snapshot. Ignore native assets for
+# other RIDs if a non-RID publish leaves them in the output directory.
+/app/runtimes/*
+!/app/runtimes/win-x64/
+!/app/runtimes/win-x64/**

@@ -179,6 +179,10 @@ schema v7 增加聊天 JSONL 原始头记录和逐消息原始负载。导入先
 
 schema v8 增加 `campaign_scenarios`、`campaigns`、`campaign_participants` 和 `campaign_events`。剧本模板与每一局跑团分离，同一剧本可创建多个独立局；开始游戏时冻结角色、可选普通记忆、世界规则和模型路由快照。事件流使用稳定序号、操作 ID、尝试号、生成终态和有限结束原因表达缓存、重试、私有投递与 GM-only 状态，不修改普通 `conversations`、`messages` 或 `memory_banks` 的语义。成功的 `PlayerIntent` 在同一插入或生成终态事务内，把系统生成的 `1d20` 同时写入可见正文与 `taverndesk.campaign-action-roll.v1` 结构化数据；骰点继承事件可见性，不另建可能与行动分离的骰子事件。
 
+跑团回合决策由一个 `CampaignFlowEngine` 路由到三种独立策略：`CollaborativeTableStrategy`、`BlindSubmissionStrategy` 和 `StrictInitiativeStrategy`。策略只产生 `CampaignActionPlan`、`CampaignResolutionPlan`、`CampaignAdvancePlan` 与统一的 `CampaignFlowSnapshot`，不执行数据库写入或 Provider 请求。`CampaignRunner`、`CampaignContextPlanner`、仓储候选提交校验和跑团 UI 读取同一份计划，因此当前可行动席位、GM 本次实际接收的 `PlayerIntent`、当前候选链及下一轮位置只有一个权威来源。协作圆桌保持公开逐席提交、全部收齐后统一裁定；秘密同投保持同快照并行及本轮互盲；严格先攻保持单席行动、立即裁定、再移动到下一席。共享部分仍只有事件持久化、流式生成、Token 预算、失败缓存与记忆更新。
+
+GM 生成链在统一流程计划之后增加叙事权限层。`CampaignNarrativeAuthorityCompiler` 按三种流程策略分别生成权限契约，把本轮可裁定的 `PlayerIntent`、冻结的 `CampaignNarrativeState`、剧本 GM 指令以及新增 NPC、关系变化、独立剧情线三类权限放在请求末端的高优先级系统区。严格先攻契约只授权当前席位；协作圆桌与秘密同投只授权本次 resolution plan 中的已提交席位。`CampaignGmOutputValidator` 在锁定候选前校验隐藏的结构化变化声明，失败候选不得推进回合或进入记忆更新；通过后才剥离声明、保存可见正文，并把批准的变化合并回场景状态。
+
 schema v9 为模型功能分配增加显式 reasoning 开关。当前只对 OpenRouter 且模型 ID 含完整 `deepseek` 词段的模型显示 OFF/ON 快捷设置，不建设通用推理参数框架。
 
 schema v10 取消消息回收箱：迁移会永久清理旧版本已软删除的消息；新删除路径在同一事务中按稳定 `sequence_no` 确定范围，先清理旧 FTS 记录，再物理删除消息，候选和聊天导入负载依靠外键级联删除，trigram 索引由删除触发器同步。该迁移不删除兼容列，避免为一次产品收敛重建整张消息表。
@@ -186,6 +190,12 @@ schema v10 取消消息回收箱：迁移会永久清理旧版本已软删除的
 schema v11 为 `provider_models` 增加 `model_kind` 目录来源元数据，以兼容普通目录、专用 Embedding 目录和手工录入记录；它不是模型能力判断，也不参与 API 路由。普通 OpenAI-compatible `/models` 与支持的专用 `/embeddings/models` 会合并到统一模型目录，功能分配可以从统一目录选择模型。
 
 schema v12 增加世界书语义索引及角色/全局/跑团剧本挂载关联；schema v13 重建 Embedding profile 与向量表，移除过窄的 Provider+模型唯一约束并保留旧索引数据；schema v14 为 `memory_workflow_settings` 增加 `maximum_source_user_turns` 和 `send_only_new_messages`。记忆工作流默认每 20 个用户轮次触发一次、每次最多发送 20 个用户轮次（含角色回复），并默认只发送检查点之后的新对话；仍先生成草稿，显式保存后才推进检查点。
+
+schema v15 增加按跑团和可见范围唯一的 `campaign_memory_banks`，以及记录已处理事件序号与轮次的 `campaign_memory_checkpoints`；两者都随所属跑团级联删除。schema v16 为每局跑团保存上下文 Token 预算、记忆更新轮次间隔和待处理 Token 阈值，默认分别为 15,000、3 轮和 4,000。schema v17 增加独立持久化的跑团记忆开关，旧跑团升级后默认开启。
+
+schema v18 为剧本增加三类叙事权限，并在每局跑团开始时冻结 GM 指令、权限和结构化场景状态。旧活动局升级时从所属剧本回填这些字段；之后编辑剧本只影响新局，不会悄悄改变进行中的裁定契约。场景状态与成功 GM 裁定在同一运行时更新路径中保存，权限失败的候选不会修改状态。
+
+schema v19 只修正仍保留旧默认值的 AI GM 输出上限：当 `gm_max_output_tokens` 恰为 4,096，且当前模型目录记录支持更高输出时，将其提升到模型上限与 6,000 的较小值；用户已经自定义的值、缺少匹配模型记录的跑团和模型上限不高于 4,096 的跑团均保持不变。
 
 跑团 AI 玩家请求按事件生命周期分为四块：“已裁定共同历史”保留最新 GM 事件之前的真实时间顺序；“最新 GM 场景与裁定”是当前行动的权威世界起点；“本轮其他席位已提交内容”只收录最新 GM 之后、当前回合可见的 `PlayerIntent`；“当前回合任务”只授权 `current_actor` 提交自己的行动。每行 JSONL 在不改写原始事件正文的前提下附加运行时 `resolution_status`：GM 事件为 `confirmed_by_gm`，过去玩家意图为 `resolved_round_record`，当前回合意图为 `pending_gm_resolution`。平级玩家公开表达的台词与行动意图可以被感知、回应或用于协作，但行动成败、观察结论以及 NPC、环境和世界影响必须等待 GM 裁定；`speaker` 与 `current_actor` 仍是身份事实。角色卡快照只定义性格、背景、知识、能力、社会位置和表达风格，不能通过卡内指令取得 GM、NPC、旁白、其他席位或故事作者权限。该结构仍由单次常规 API 请求完成，不引入摘要调用、数据库事件迁移或 Agent 流程。
 
@@ -294,7 +304,7 @@ Provider 页面预置五个已支持入口，也允许新增仅使用 `OpenAiCom
 - 剧本卡导入保留原始 PNG 与 JSON；`first_mes` 不再作为独立剧本字段保存或显示，`mes_example` 只进入历史档案，均不进入当前跑团事件流或玩家上下文。
 - 跑团仓储覆盖草稿保存、开局冻结、重启续玩、同剧本另开独立局、操作 ID 幂等、事件终态不可逆、乐观运行时版本和途中模型路由审计。
 - 跑团执行器覆盖协作串行、秘密同投冻结快照并发、严格先攻、USER/AI GM、掷骰、席位失败缓存、重试、全局停止和上下文超限门阀。
-- 真实 WPF 隔离数据根已验证 Naruto 剧本开局、结构化 GM 开场、关闭重启后续玩和游戏桌面；正式数据根已导入四张角色卡与一张剧本卡，并确认大厅列出四个独立模型席位。
+- 真实 WPF 隔离数据根已验证剧本开局、结构化 GM 开场、关闭重启后续玩和游戏桌面；正式数据根已导入角色卡与剧本卡，并确认大厅可列出多个独立模型席位。
 - M4.2 使用隔离数据根连接本机 LM Studio：目标模型发现、单流最终正文、单请求取消和两条并发流均通过；真实请求只含固定合成标签。
 - M4.3 集中自动化验证 40/40 通过；通用 thinking 与多窗口生命周期验证未连接真实 API。
 - 2026-08-03 当前 Release 集中自动化验证 `119/119` 通过；功能分配切换回归确认同一模型下各功能独立恢复上下文上限、最大输出、temperature 与 top_p；启动恢复回归确认遗留 `Queued/Streaming` 转为 `Interrupted(ProcessExited)`、已完成事件不变且重复初始化幂等；单实例回归确认第二实例被拒绝且首实例释放后可重新启动；世界书回归确认同一本世界书可同时绑定多个角色而不改变全局挂载；跑团回归确认剧本结构化字段编辑保存且原始来源保留、AI 玩家请求以权威 current_actor/席位映射/JSONL speaker 信封区分发言所有权、GM 将历史和本轮 PlayerIntent 分区且不复述玩家正文、已保存跑团可确认后物理删除并级联清理该局数据。标准 Release 构建 0 个警告、0 个错误。根目录启动器 `--probe` 退出码 0；隔离 WPF 视觉验证沿用同日上一基线，本轮未复跑；未读取 API Key、刷新模型目录或发送真实 Provider 请求。
