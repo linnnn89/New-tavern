@@ -9,7 +9,8 @@
         MinHeight="640"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
-    <Grid Background="{StaticResource WindowBackgroundBrush}">
+    <Grid Background="{StaticResource WindowBackgroundBrush}"
+          Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="92" />
             <ColumnDefinition Width="*" />

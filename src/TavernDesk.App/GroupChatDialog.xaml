@@ -9,7 +9,8 @@
         ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource WindowBackgroundBrush}">
-    <Grid Margin="24">
+    <Grid Margin="24"
+          Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

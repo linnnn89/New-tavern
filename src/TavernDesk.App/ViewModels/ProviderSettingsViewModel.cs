@@ -16,9 +16,19 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public const string ChatAutoScrollSettingKey = "ui.chat.autoScroll";
     public const string InterfaceFontFamilySettingKey = "ui.font.family";
     public const string InterfaceFontSizeSettingKey = "ui.font.size";
+    public const string InterfaceScalePercentSettingKey = "ui.scale.percent";
 
     private static readonly Lazy<IReadOnlyList<string>> SystemFontFamilies =
         new(LoadSystemFontFamilies);
+    private static readonly IReadOnlyList<InterfaceScaleOption> InterfaceScaleOptions =
+    [
+        new(80, "80%（紧凑）"),
+        new(90, "90%"),
+        new(100, "100%（默认）"),
+        new(110, "110%"),
+        new(125, "125%"),
+        new(150, "150%（放大）")
+    ];
 
     private readonly IProviderProfileRepository _repository;
     private readonly IModelCatalogRepository _models;
@@ -31,6 +41,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private readonly IAppSettingsRepository? _appSettings;
     private readonly AppDataLocationService? _dataLocation;
     private readonly PlayerPersonaManagerViewModel? _personas;
+    private readonly IInterfaceScaleRecommendationProvider?
+        _interfaceScaleRecommendationProvider;
     private readonly HashSet<string> _persistedProfileIds = new(StringComparer.Ordinal);
     private readonly List<ProviderModel> _allCatalogModels = [];
     private readonly List<ProviderModel> _allAssignmentModels = [];
@@ -58,8 +70,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         InterfaceSettingsRuntime.DefaultFontFamily;
     private double _interfaceFontSize =
         InterfaceSettingsRuntime.DefaultFontSize;
+    private InterfaceScaleOption _selectedInterfaceScaleOption =
+        InterfaceScaleOptions.Single(option =>
+            option.Percent == InterfaceSettingsRuntime.DefaultScalePercent);
+    private string _interfaceScaleRecommendationText =
+        "自动推荐尚未启用；后续可读取本机显示分辨率与 DPI 给出建议，不会自动更改。";
     private string _interfaceSettingsStatus =
-        "聊天自动滚动、字体和字号会保存到本地设置。";
+        "界面缩放、聊天自动滚动、字体和字号会保存到本地设置。";
     private string _dataRoot = string.Empty;
     private string _dataRootStatus = "个人资料目录由 Windows 用户级配置管理。";
     private int _selectedSettingsTabIndex;
@@ -78,7 +95,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         IFileDialogService fileDialog,
         IAppSettingsRepository? appSettings = null,
         AppDataLocationService? dataLocation = null,
-        PlayerPersonaManagerViewModel? personas = null)
+        PlayerPersonaManagerViewModel? personas = null,
+        IInterfaceScaleRecommendationProvider? interfaceScaleRecommendationProvider = null)
     {
         _repository = repository;
         _models = models;
@@ -94,6 +112,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                     ?? (appSettings is null
                         ? null
                         : new PlayerPersonaManagerViewModel(appSettings, interaction));
+        _interfaceScaleRecommendationProvider = interfaceScaleRecommendationProvider;
         Prompts = new PromptSettingsViewModel(globalPrompts, fileDialog);
         FunctionOptions =
         [
@@ -189,6 +208,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public AsyncRelayCommand ChangeDataRootCommand { get; }
     public IReadOnlyList<string> AvailableInterfaceFontFamilies =>
         SystemFontFamilies.Value;
+    public IReadOnlyList<InterfaceScaleOption> AvailableInterfaceScaleOptions =>
+        InterfaceScaleOptions;
 
     public ProviderProfile? SelectedProfile
     {
@@ -401,6 +422,37 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         set => SetProperty(ref _interfaceFontSize, value);
     }
 
+    public InterfaceScaleOption SelectedInterfaceScaleOption
+    {
+        get => _selectedInterfaceScaleOption;
+        set
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            var normalized = ResolveInterfaceScaleOption(value.Percent);
+            if (!SetProperty(ref _selectedInterfaceScaleOption, normalized))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(InterfaceScalePercent));
+            InterfaceSettingsRuntime.ApplyScale(normalized.Percent);
+            InterfaceSettingsStatus =
+                $"界面缩放已预览为 {normalized.Percent}%；点击“保存界面设置”后将在下次启动继续使用。";
+        }
+    }
+
+    public int InterfaceScalePercent => SelectedInterfaceScaleOption.Percent;
+
+    public string InterfaceScaleRecommendationText
+    {
+        get => _interfaceScaleRecommendationText;
+        private set => SetProperty(ref _interfaceScaleRecommendationText, value);
+    }
+
     public string InterfaceSettingsStatus
     {
         get => _interfaceSettingsStatus;
@@ -500,24 +552,34 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             InterfaceSettingsRuntime.Apply(
                 InterfaceFontFamily,
                 InterfaceFontSize,
-                ChatAutoScrollEnabled);
+                ChatAutoScrollEnabled,
+                InterfaceScalePercent);
+            LoadInterfaceScaleRecommendation();
             return;
         }
 
         var autoScrollTask = _appSettings.GetAsync(ChatAutoScrollSettingKey);
         var fontFamilyTask = _appSettings.GetAsync(InterfaceFontFamilySettingKey);
         var fontSizeTask = _appSettings.GetAsync(InterfaceFontSizeSettingKey);
-        await Task.WhenAll(autoScrollTask, fontFamilyTask, fontSizeTask);
+        var scaleTask = _appSettings.GetAsync(InterfaceScalePercentSettingKey);
+        await Task.WhenAll(
+            autoScrollTask,
+            fontFamilyTask,
+            fontSizeTask,
+            scaleTask);
 
         ChatAutoScrollEnabled =
             !bool.TryParse(autoScrollTask.Result, out var autoScroll)
             || autoScroll;
         InterfaceFontFamily = NormalizeFontFamily(fontFamilyTask.Result);
         InterfaceFontSize = NormalizeFontSize(fontSizeTask.Result);
+        SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(scaleTask.Result);
         InterfaceSettingsRuntime.Apply(
             InterfaceFontFamily,
             InterfaceFontSize,
-            ChatAutoScrollEnabled);
+            ChatAutoScrollEnabled,
+            InterfaceScalePercent);
+        LoadInterfaceScaleRecommendation();
         InterfaceSettingsStatus = "界面设置已载入；修改后点击“保存界面设置”。";
     }
 
@@ -623,13 +685,18 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 InterfaceFontFamily),
             _appSettings.SetAsync(
                 InterfaceFontSizeSettingKey,
-                InterfaceFontSize.ToString(CultureInfo.InvariantCulture)));
+                InterfaceFontSize.ToString(CultureInfo.InvariantCulture)),
+            _appSettings.SetAsync(
+                InterfaceScalePercentSettingKey,
+                InterfaceScalePercent.ToString(CultureInfo.InvariantCulture)));
         InterfaceSettingsRuntime.Apply(
             InterfaceFontFamily,
             InterfaceFontSize,
-            ChatAutoScrollEnabled);
+            ChatAutoScrollEnabled,
+            InterfaceScalePercent);
         InterfaceSettingsStatus =
-            $"界面设置已保存：{InterfaceFontFamily}，字号 {InterfaceFontSize:0}；"
+            $"界面设置已保存：缩放 {InterfaceScalePercent}%，"
+            + $"{InterfaceFontFamily}，字号 {InterfaceFontSize:0}；"
             + (ChatAutoScrollEnabled ? "聊天自动滚动已开启。" : "聊天自动滚动已关闭。");
     }
 
@@ -638,7 +705,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         ChatAutoScrollEnabled = InterfaceSettingsRuntime.DefaultChatAutoScroll;
         InterfaceFontFamily = InterfaceSettingsRuntime.DefaultFontFamily;
         InterfaceFontSize = InterfaceSettingsRuntime.DefaultFontSize;
-        InterfaceSettingsStatus = "已恢复默认值；点击“保存界面设置”后生效。";
+        SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(
+            InterfaceSettingsRuntime.DefaultScalePercent);
+        InterfaceSettingsStatus =
+            "已恢复默认值；缩放已预览，点击“保存界面设置”后将在下次启动继续使用。";
     }
 
     private string NormalizeFontFamily(string? value)
@@ -667,6 +737,56 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 InterfaceSettingsRuntime.MinimumFontSize,
                 InterfaceSettingsRuntime.MaximumFontSize)
             : InterfaceSettingsRuntime.DefaultFontSize;
+
+    private static InterfaceScaleOption ResolveInterfaceScaleOption(string? value) =>
+        int.TryParse(
+            value,
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var parsed)
+            ? ResolveInterfaceScaleOption(parsed)
+            : ResolveInterfaceScaleOption(
+                InterfaceSettingsRuntime.DefaultScalePercent);
+
+    private static InterfaceScaleOption ResolveInterfaceScaleOption(int value)
+    {
+        var normalized = InterfaceSettingsRuntime.NormalizeScalePercent(value);
+        return InterfaceScaleOptions
+            .OrderBy(option => Math.Abs(option.Percent - normalized))
+            .ThenBy(option => Math.Abs(
+                option.Percent - InterfaceSettingsRuntime.DefaultScalePercent))
+            .First();
+    }
+
+    private void LoadInterfaceScaleRecommendation()
+    {
+        if (_interfaceScaleRecommendationProvider is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var recommendation = _interfaceScaleRecommendationProvider
+                .GetRecommendation();
+            if (recommendation is null)
+            {
+                return;
+            }
+
+            var option = ResolveInterfaceScaleOption(recommendation.Percent);
+            var reason = string.IsNullOrWhiteSpace(recommendation.Reason)
+                ? "根据本机显示信息计算"
+                : recommendation.Reason.Trim();
+            InterfaceScaleRecommendationText =
+                $"推荐 {option.Percent}%：{reason}。仅供选择，不会自动更改。";
+        }
+        catch
+        {
+            InterfaceScaleRecommendationText =
+                "暂时无法读取缩放建议；当前手动设置不受影响。";
+        }
+    }
 
     private static IReadOnlyList<string> LoadSystemFontFamilies()
     {

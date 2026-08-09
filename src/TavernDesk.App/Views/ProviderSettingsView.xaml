@@ -53,7 +53,8 @@
                                      ToolTip="选择接入商；右键可删除接入商及其本地模型、功能分配和 Key。"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
+                                    <Style TargetType="ListBoxItem"
+                                           BasedOn="{StaticResource ModernListBoxItemStyle}">
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Margin" Value="0,2" />
                                         <Setter Property="Padding" Value="0" />
@@ -154,7 +155,7 @@
                                 <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,22,0,0">
                                     <Border Padding="12"
                                             Background="{StaticResource SurfaceAltBrush}"
-                                            CornerRadius="8">
+                                            CornerRadius="10">
                                         <StackPanel>
                                             <TextBlock Text="{Binding KeyStatus}" />
                                             <TextBlock Margin="0,6,0,0"
@@ -349,7 +350,7 @@
                                                     <Expander.Header>
                                                         <Border Padding="7,5"
                                                                 Background="{StaticResource SurfaceAltBrush}"
-                                                                CornerRadius="6">
+                                                                CornerRadius="8">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="126" />
@@ -488,7 +489,7 @@
                                         <Border Margin="0,12,0,0"
                                                 Padding="12"
                                                 Background="{StaticResource SurfaceAltBrush}"
-                                                CornerRadius="8">
+                                                CornerRadius="10">
                                             <TextBlock Text="Embedding 只保存供应商和模型，不使用上下文上限、最大输出、temperature、top_p 或推理参数。"
                                                        Foreground="{StaticResource MutedTextBrush}"
                                                        TextWrapping="Wrap" />
@@ -583,7 +584,8 @@
                                      Background="Transparent"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
+                                    <Style TargetType="ListBoxItem"
+                                           BasedOn="{StaticResource ModernListBoxItemStyle}">
                                         <Setter Property="Padding" Value="8,7" />
                                         <Setter Property="Margin" Value="0,1,8,1" />
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -698,7 +700,8 @@
                                     </GroupStyle>
                                 </ListBox.GroupStyle>
                                 <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
+                                    <Style TargetType="ListBoxItem"
+                                           BasedOn="{StaticResource ModernListBoxItemStyle}">
                                         <Setter Property="Padding" Value="8,6" />
                                         <Setter Property="Margin" Value="0,1,10,1" />
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -708,7 +711,7 @@
                                                 <ControlTemplate TargetType="ListBoxItem">
                                                     <Border x:Name="SelectionBorder"
                                                             Padding="{TemplateBinding Padding}"
-                                                            CornerRadius="7"
+                                                            CornerRadius="9"
                                                             Background="Transparent"
                                                             BorderBrush="Transparent"
                                                             BorderThickness="1">
@@ -716,6 +719,11 @@
                                                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                                                     </Border>
                                                     <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="SelectionBorder"
+                                                                    Property="Background"
+                                                                    Value="{StaticResource ControlHoverBrush}" />
+                                                        </Trigger>
                                                         <Trigger Property="IsSelected" Value="True">
                                                             <Setter TargetName="SelectionBorder"
                                                                     Property="Background"
@@ -761,7 +769,7 @@
                                     Margin="0,0,0,12"
                                     Padding="10,8"
                                     Background="{StaticResource AccentSoftBrush}"
-                                    CornerRadius="7">
+                                    CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="配置生效范围"
                                                FontWeight="SemiBold" />
@@ -816,10 +824,43 @@
                             <TextBlock Text="界面"
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"
-                                   Text="调整字体、字号和主题；设置仅保存在本机。"
+                                   Text="调整界面缩放、字体、字号和主题；设置仅保存在本机。"
                                    Foreground="{StaticResource MutedTextBrush}" />
 
                         <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,18,0">
+                                        <TextBlock Text="界面缩放"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Margin="0,5,0,0"
+                                                   Text="更改文字、按钮、导航和其他界面元素的大小。"
+                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                        <TextBlock Margin="0,3,0,0"
+                                                   Text="只影响 TavernDesk，并会与 Windows 显示缩放叠加。选择后立即预览。"
+                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              Width="190"
+                                              HorizontalAlignment="Right"
+                                              VerticalAlignment="Center"
+                                              ItemsSource="{Binding AvailableInterfaceScaleOptions}"
+                                              DisplayMemberPath="Label"
+                                              SelectedItem="{Binding SelectedInterfaceScaleOption, Mode=TwoWay}" />
+                                </Grid>
+                                <TextBlock Margin="0,12,0,0"
+                                           Text="{Binding InterfaceScaleRecommendationText}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,12,0,0"
+                                Style="{StaticResource CardStyle}">
                             <StackPanel>
                                 <TextBlock Text="全局字体"
                                            Style="{StaticResource SectionTitleStyle}" />
@@ -851,7 +892,7 @@
                                 <Border Margin="0,12,0,0"
                                         Padding="12"
                                         Background="{StaticResource SurfaceAltBrush}"
-                                        CornerRadius="8">
+                                        CornerRadius="10">
                                     <TextBlock Text="字体预览：TavernDesk 酒馆聊天 Aa 123"
                                                FontFamily="{Binding InterfaceFontFamily}"
                                                FontSize="{Binding InterfaceFontSize}" />

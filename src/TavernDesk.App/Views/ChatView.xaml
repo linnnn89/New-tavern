@@ -163,7 +163,8 @@
                                                             </ContextMenu>
                                                         </Button.ContextMenu>
                                                         <Button.Style>
-                                                            <Style TargetType="Button">
+                                                            <Style TargetType="Button"
+                                                                   BasedOn="{StaticResource ModernButtonBaseStyle}">
                                                                 <Setter Property="Background" Value="Transparent" />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
@@ -280,7 +281,7 @@
                                     Background="{StaticResource SurfaceBrush}"
                                     BorderBrush="{StaticResource BorderBrush}"
                                     BorderThickness="1"
-                                    CornerRadius="8">
+                                    CornerRadius="10">
                                 <StackPanel>
                                     <Button Content="导入聊天 JSONL"
                                             Command="{Binding ImportChatArchiveCommand}"
@@ -352,7 +353,7 @@
                                         Background="{StaticResource SurfaceBrush}"
                                         BorderBrush="{StaticResource BorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="6">
+                                        CornerRadius="8">
                                     <StackPanel Orientation="Horizontal">
                                         <Button Content="‹"
                                                 Command="{Binding PreviousCandidateCommand}"
@@ -394,7 +395,7 @@
                                             Background="{StaticResource SurfaceBrush}"
                                             BorderBrush="{StaticResource BorderBrush}"
                                             BorderThickness="1"
-                                            CornerRadius="10">
+                                            CornerRadius="12">
                                         <Border.Effect>
                                             <DropShadowEffect Color="#54000000"
                                                               BlurRadius="18"
@@ -697,7 +698,7 @@
                                             <DataTemplate>
                                                 <Border Margin="0,0,0,9"
                                                         Padding="11"
-                                                        CornerRadius="8"
+                                                        CornerRadius="10"
                                                         Background="{StaticResource SurfaceAltBrush}">
                                                     <StackPanel>
                                                         <DockPanel>
@@ -786,7 +787,7 @@
                                             <DataTemplate>
                                                 <Border Margin="0,0,0,8"
                                                         Padding="10"
-                                                        CornerRadius="8"
+                                                        CornerRadius="10"
                                                         Background="{StaticResource SurfaceAltBrush}">
                                                     <StackPanel>
                                                         <DockPanel>
@@ -899,7 +900,7 @@
                                     <DataTemplate>
                                         <Border Margin="0,0,0,8"
                                                 Padding="10"
-                                                CornerRadius="8"
+                                                CornerRadius="10"
                                                 Background="{StaticResource SurfaceAltBrush}">
                                             <StackPanel>
                                                 <DockPanel>
@@ -1187,7 +1188,8 @@
                                              IsReadOnly="True"
                                              AcceptsReturn="True"
                                              TextWrapping="Wrap"
-                                             HorizontalScrollBarVisibility="Auto"
+                                             VerticalContentAlignment="Top"
+                                             HorizontalScrollBarVisibility="Disabled"
                                              VerticalScrollBarVisibility="Auto"
                                              MaxHeight="220" />
 
@@ -1210,13 +1212,17 @@
                                                  AcceptsReturn="True"
                                                  AcceptsTab="True"
                                                  TextWrapping="Wrap"
+                                                 VerticalContentAlignment="Top"
+                                                 HorizontalScrollBarVisibility="Disabled"
                                                  VerticalScrollBarVisibility="Auto" />
                                     </TabItem>
                                     <TabItem Header="API 发送结构">
                                         <TextBox Text="{Binding Memory.RequestPreview, Mode=OneWay}"
                                                  IsReadOnly="True"
                                                  AcceptsReturn="True"
-                                                 HorizontalScrollBarVisibility="Auto"
+                                                 TextWrapping="Wrap"
+                                                 VerticalContentAlignment="Top"
+                                                 HorizontalScrollBarVisibility="Disabled"
                                                  VerticalScrollBarVisibility="Auto" />
                                     </TabItem>
                                 </TabControl>
@@ -1245,7 +1251,7 @@
                         <StackPanel>
                             <Border Padding="10"
                                     Background="{StaticResource SurfaceAltBrush}"
-                                    CornerRadius="8">
+                                    CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="当前会话" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,4,0,0"
@@ -1336,7 +1342,7 @@
                             <Border Margin="0,12,0,0"
                                     Padding="12"
                                     Background="{StaticResource AccentSoftBrush}"
-                                    CornerRadius="8">
+                                    CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="当前群聊的接力提示词（高级）"
                                                FontWeight="SemiBold" />
@@ -1356,7 +1362,7 @@
                             <Border Margin="0,14,0,0"
                                     Padding="10"
                                     Background="{StaticResource SurfaceAltBrush}"
-                                    CornerRadius="8">
+                                    CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="把群聊记忆合并到角色记忆"
                                                FontWeight="SemiBold" />
@@ -1409,7 +1415,7 @@
             <Grid Width="16" Height="16">
                 <Border Width="14"
                         Height="14"
-                        CornerRadius="3"
+                        CornerRadius="5"
                         BorderBrush="{StaticResource MutedTextBrush}"
                         BorderThickness="1" />
                 <Border Width="1"

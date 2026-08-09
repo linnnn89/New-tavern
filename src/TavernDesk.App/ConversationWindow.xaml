@@ -6,5 +6,7 @@
         MinWidth="960"
         MinHeight="620"
         ResizeMode="CanResize">
-    <views:ChatView />
+    <Grid Style="{StaticResource InterfaceScaleRootStyle}">
+        <views:ChatView />
+    </Grid>
 </Window>

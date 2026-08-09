@@ -25,7 +25,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private string _userIdentity = "用户";
     private string _body = string.Empty;
     private string _targetTokens = "5000";
-    private bool _autoGenerateEnabled;
+    private bool _autoGenerateEnabled = true;
     private string _updateIntervalTurns = "20";
     private string _maximumSourceUserTurns = "20";
     private bool _sendOnlyNewMessages = true;

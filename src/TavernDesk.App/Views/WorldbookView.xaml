@@ -34,7 +34,7 @@
         <Border Grid.Row="1"
                 Margin="0,12,0,12"
                 Padding="10,8"
-                CornerRadius="9"
+                CornerRadius="12"
                 Background="{StaticResource AccentSoftBrush}">
             <DockPanel>
                 <StackPanel>
@@ -43,7 +43,8 @@
                                Text="{Binding Mounts.Count, StringFormat=当前挂载：{0} 个角色或跑团剧本}"
                                Foreground="{StaticResource MutedTextBrush}" />
                 </StackPanel>
-                <Button DockPanel.Dock="Right"
+                <Button x:Name="MountManagementButton"
+                        DockPanel.Dock="Right"
                         Content="管理挂载…"
                         Click="MountManagementButton_OnClick"
                         Style="{StaticResource SecondaryButtonStyle}" />
@@ -63,7 +64,7 @@
                     Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="10">
+                    CornerRadius="12">
                 <Border.Effect>
                     <DropShadowEffect Color="#54000000"
                                       BlurRadius="18"
@@ -108,7 +109,8 @@
                                       DisplayMemberPath="Name"
                                       SelectedItem="{Binding SelectedCharacter}">
                                 <ComboBox.Style>
-                                    <Style TargetType="ComboBox">
+                                    <Style TargetType="ComboBox"
+                                           BasedOn="{StaticResource ModernComboBoxStyle}">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsCharacterScope}" Value="True">
@@ -138,7 +140,8 @@
                                       DisplayMemberPath="Title"
                                       SelectedItem="{Binding SelectedCampaignScenario}">
                                 <ComboBox.Style>
-                                    <Style TargetType="ComboBox">
+                                    <Style TargetType="ComboBox"
+                                           BasedOn="{StaticResource ModernComboBoxStyle}">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsCampaignScope}" Value="True">
@@ -159,134 +162,6 @@
                                 Style="{StaticResource PrimaryButtonStyle}" />
                     </StackPanel>
                 </ScrollViewer>
-            </Border>
-        </Popup>
-
-        <Popup x:Name="MountManagementPopup"
-               PlacementTarget="{Binding ElementName=MountManagementButton}"
-               Placement="Bottom"
-               StaysOpen="False"
-               AllowsTransparency="True"
-               PopupAnimation="Fade"
-               DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-            <Border Width="700"
-                    Height="520"
-                    Padding="14"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                <Border.Effect>
-                    <DropShadowEffect Color="#54000000"
-                                      BlurRadius="18"
-                                      ShadowDepth="5"
-                                      Opacity="0.42" />
-                </Border.Effect>
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <StackPanel>
-                        <TextBlock Text="管理世界书挂载" Style="{StaticResource SectionTitleStyle}" />
-                        <TextBlock Margin="0,3,0,10"
-                                   Text="选择角色或跑团剧本后保存；作用域语义保持不变。"
-                                   Foreground="{StaticResource MutedTextBrush}" />
-                    </StackPanel>
-                    <TabControl Grid.Row="1">
-                        <TabItem Header="角色">
-                            <Grid Margin="8,8,8,4">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="全选"
-                                            Height="28"
-                                            MinHeight="0"
-                                            Padding="6,0"
-                                            Command="{Binding SelectAllCharacterBindingsCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Content="清空"
-                                            Height="28"
-                                            MinHeight="0"
-                                            Margin="4,0,0,0"
-                                            Padding="6,0"
-                                            Command="{Binding ClearCharacterBindingsCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Content="保存角色挂载"
-                                            Height="28"
-                                            MinHeight="0"
-                                            Margin="4,0,0,0"
-                                            Padding="7,0"
-                                            Command="{Binding SaveCharacterBindingsCommand}"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                </StackPanel>
-                                <ScrollViewer Grid.Row="1"
-                                              Margin="0,8,0,0"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding CharacterBindings}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox Content="{Binding Name}"
-                                                          IsChecked="{Binding IsBound, Mode=TwoWay}"
-                                                          Margin="2,3,8,3" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Grid>
-                        </TabItem>
-                        <TabItem Header="跑团剧本">
-                            <Grid Margin="8,8,8,4">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="全选"
-                                            Height="28"
-                                            MinHeight="0"
-                                            Padding="6,0"
-                                            Command="{Binding SelectAllCampaignBindingsCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Content="清空"
-                                            Height="28"
-                                            MinHeight="0"
-                                            Margin="4,0,0,0"
-                                            Padding="6,0"
-                                            Command="{Binding ClearCampaignBindingsCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Content="保存跑团挂载"
-                                            Height="28"
-                                            MinHeight="0"
-                                            Margin="4,0,0,0"
-                                            Padding="7,0"
-                                            Command="{Binding SaveCampaignBindingsCommand}"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                </StackPanel>
-                                <ScrollViewer Grid.Row="1"
-                                              Margin="0,8,0,0"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding CampaignBindings}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Margin="2,2,8,5">
-                                                    <CheckBox Content="{Binding Title}"
-                                                              IsChecked="{Binding IsBound, Mode=TwoWay}" />
-                                                    <TextBlock Margin="20,2,0,0"
-                                                               Text="{Binding Summary}"
-                                                               TextWrapping="Wrap"
-                                                               Foreground="{StaticResource MutedTextBrush}" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Grid>
-                        </TabItem>
-                    </TabControl>
-                </Grid>
             </Border>
         </Popup>
 
@@ -315,7 +190,8 @@
                              SelectedItem="{Binding SelectedBook}"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
+                            <Style TargetType="ListBoxItem"
+                                   BasedOn="{StaticResource ModernListBoxItemStyle}">
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                 <Setter Property="Margin" Value="0,2" />
                                 <Setter Property="Padding" Value="0" />
@@ -323,7 +199,7 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="11,10" CornerRadius="7">
+                                <Border Padding="11,10" CornerRadius="10">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}"
                                                    FontWeight="SemiBold"
@@ -387,7 +263,7 @@
                         <Border Grid.Column="0"
                                 BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="0">
                             <ListBox ItemsSource="{Binding Entries}"
                                      SelectedItem="{Binding SelectedEntry}"
@@ -414,7 +290,7 @@
                         <Border Grid.Column="2"
                                 BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="12">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel>

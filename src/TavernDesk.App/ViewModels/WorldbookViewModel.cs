@@ -150,6 +150,11 @@ public sealed class WorldbookViewModel : ViewModelBase
     public RelayCommand ClearCampaignBindingsCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
 
+    public Task RefreshSelectedBookAsync() =>
+        SelectedBook is { } book
+            ? LoadSelectedBookAsync(book.Id)
+            : Task.CompletedTask;
+
     public Worldbook? SelectedBook
     {
         get => _selectedBook;

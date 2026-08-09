@@ -58,7 +58,7 @@
         <Border Grid.Row="1"
                 Margin="0,18,0,14"
                 Padding="14,9"
-                CornerRadius="9"
+                CornerRadius="12"
                 Background="{StaticResource AccentSoftBrush}">
             <Border.Style>
                 <Style TargetType="Border">
@@ -110,7 +110,8 @@
                              Background="Transparent"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
+                            <Style TargetType="ListBoxItem"
+                                   BasedOn="{StaticResource ModernListBoxItemStyle}">
                                 <Setter Property="MinHeight" Value="42" />
                                 <Setter Property="Padding" Value="10,7" />
                                 <Setter Property="Margin" Value="0,2" />
@@ -166,7 +167,7 @@
                 <Border Grid.Row="0"
                         Margin="0,0,0,10"
                         Padding="12,9"
-                        CornerRadius="9"
+                        CornerRadius="12"
                         Background="{StaticResource AccentSoftBrush}"
                         Visibility="{Binding IsShelfBatchMode, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid>
@@ -213,7 +214,8 @@
                     </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
+                    <Style TargetType="ListBoxItem"
+                           BasedOn="{StaticResource ModernListBoxItemStyle}">
                         <Setter Property="Padding" Value="0" />
                         <Setter Property="Margin" Value="0" />
                         <Setter Property="Background" Value="Transparent" />
@@ -239,7 +241,7 @@
                                 <Border Grid.Row="0"
                                         ClipToBounds="True"
                                         Background="{StaticResource AccentSoftBrush}"
-                                        CornerRadius="11,11,0,0">
+                                        CornerRadius="13,13,0,0">
                                     <Grid>
                                         <TextBlock Text="{Binding Name}"
                                                    Margin="14"
@@ -450,7 +452,7 @@
                                         Height="142"
                                         HorizontalAlignment="Left"
                                         ClipToBounds="True"
-                                        CornerRadius="10"
+                                        CornerRadius="12"
                                         Background="{StaticResource AccentSoftBrush}">
                                     <Image Source="{Binding ActiveCharacter.AvatarPath}"
                                            Stretch="UniformToFill" />
@@ -481,7 +483,7 @@
 
                             <Border Margin="0,0,0,18"
                                     Padding="14"
-                                    CornerRadius="9"
+                                    CornerRadius="12"
                                     BorderBrush="{StaticResource BorderBrush}"
                                     BorderThickness="1"
                                     Visibility="{Binding IsClassificationOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -544,7 +546,8 @@
                                      HorizontalContentAlignment="Stretch"
                                      ScrollViewer.VerticalScrollBarVisibility="Disabled">
                                 <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
+                                    <Style TargetType="ListBoxItem"
+                                           BasedOn="{StaticResource ModernListBoxItemStyle}">
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Padding" Value="0" />
                                         <Setter Property="Margin" Value="0,0,0,8" />
@@ -673,7 +676,7 @@
                                                                     Padding="10"
                                                                     BorderBrush="{StaticResource BorderBrush}"
                                                                     BorderThickness="1"
-                                                                    CornerRadius="8">
+                                                                    CornerRadius="10">
                                                                 <Grid>
                                                                     <Grid.RowDefinitions>
                                                                         <RowDefinition Height="Auto" />

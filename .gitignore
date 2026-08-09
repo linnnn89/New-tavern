@@ -17,6 +17,7 @@ TestResults/
 *.log
 user-data/
 /work/
+/design-qa.md
 
 # app/ is the tracked Windows x64 release snapshot. Ignore native assets for
 # other RIDs if a non-RID publish leaves them in the output directory.

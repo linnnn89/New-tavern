@@ -8,7 +8,8 @@
         MinHeight="540"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
-    <Grid Margin="22">
+    <Grid Margin="22"
+          Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -109,7 +110,7 @@
                         <Border Margin="0,14,0,0"
                                 Padding="12"
                                 Background="{StaticResource SurfaceAltBrush}"
-                                CornerRadius="8">
+                                CornerRadius="10">
                             <StackPanel>
                                 <TextBlock Text="当前状态" FontWeight="SemiBold" />
                                 <TextBlock Margin="0,4,0,0"

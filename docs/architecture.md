@@ -31,7 +31,8 @@ flowchart LR
 
 ### TavernDesk.App
 
-- 窗口、导航、主题、Skin 资源和交互状态；
+- 窗口、导航、主题、Skin 资源和交互状态；`Themes/Light.xaml` 是默认视觉系统的单一入口，集中维护圆角控件模板、卡片层级、焦点/悬停/按压反馈、弹层、滑块与滚动条，不在业务页面复制主题逻辑；
+- 应用级界面缩放通过动态 `LayoutTransform` 资源覆盖主窗口、独立聊天和应用内对话框，百分比写入既有 `app_settings`；默认 100%，当前只手动选择。`IInterfaceScaleRecommendationProvider` 是后续读取本机显示工作区、分辨率与 DPI 后给出建议的边界，建议不得自动覆盖用户设置；
 - 仪表盘、角色书架、聊天三栏、模型设置和独立跑团工作区；
 - 不直接拼 SQL、不保存 API Key、不执行工具命令。
 
