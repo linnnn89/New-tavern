@@ -38,7 +38,8 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
         Action<ChatMessageItemViewModel> openingTools,
         string? senderLabel = null,
         string? personaName = null,
-        string? characterName = null)
+        string? characterName = null,
+        string? avatarPath = null)
     {
         Message = message;
         _edit = edit;
@@ -56,6 +57,7 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
         _senderLabel = senderLabel;
         _personaMacroValue = NormalizeMacroValue(personaName, "USER");
         _characterMacroValue = NormalizeMacroValue(characterName, "角色");
+        AvatarPath = avatarPath ?? string.Empty;
         OpenToolsCommand = new RelayCommand(OpenTools);
         EditCommand = new AsyncRelayCommand(() => _edit(this));
         DeleteCommand = new AsyncRelayCommand(() => _delete(this));
@@ -89,6 +91,8 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
                 ? _personaMacroValue
                 : _characterMacroValue);
     public MessageSenderKind SenderKind => Message.SenderKind;
+    public string AvatarPath { get; }
+    public string TimestampText => Message.CreatedAt.ToLocalTime().ToString("HH:mm");
     public string SenderLabel => _senderLabel ?? SenderKind switch
     {
         MessageSenderKind.User => "USER",

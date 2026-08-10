@@ -371,9 +371,8 @@ public sealed class OpenAiCompatibleProviderGateway :
             throw new InvalidOperationException($"接入商“{profile.Name}”已停用。");
         }
 
-        if (profile.AdapterKind is ProviderAdapterKind.Anthropic
-            or ProviderAdapterKind.Google
-            or ProviderAdapterKind.GrokCli)
+        if (profile.AdapterKind != ProviderAdapterKind.OpenAiCompatible
+            || profile.Id == ProviderProfileIds.GrokCli)
         {
             throw new NotSupportedException(
                 $"接入商“{profile.Name}”不是 OpenAI Chat Completions 兼容适配器。");

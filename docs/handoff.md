@@ -1,6 +1,6 @@
 # TavernDesk 当前交接摘要
 
-状态日期：2026-08-09（北京时间）
+状态日期：2026-08-10（北京时间）
 
 用途：新对话接手时先读本文件，避免重新全库调查、重复已完成工作或恢复已经否决的设计。
 
@@ -18,8 +18,8 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 ## 2. 用户已经明确的方向
 
 - 不恢复 Ollama；本地模型只保留 LM Studio 的 OpenAI-compatible 接入，默认地址为 `http://127.0.0.1:6543`，具体模型由用户随时切换并主动刷新目录。
-- Provider 默认预置 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio 五项，并允许新增使用现有 OpenAI-compatible 适配器的自定义接入商。Grok CLI 走本机订阅登录和官方 ACP `agent stdio`；其余 API 类入口走统一 OpenAI-compatible 边界。
-- xAI API 及未实现的 Anthropic/Google/Ollama/Custom 适配器不作为界面选项；自定义 API 基地址必须填写到 `/api/v1` 或 `/v1` 结束，不加入 `/chat`。
+- Provider 默认预置 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio 五项，并允许新增 OpenAI Chat Completions 兼容的自定义接入商。Grok CLI 固定走本机订阅登录和官方 ACP `agent stdio`；其余内置及自定义入口固定走 OpenAI-compatible 边界。
+- 设置页不再暴露可变适配器下拉框；xAI API 及未实现的 Anthropic/Google/Ollama/Custom 适配器不作为界面选项。新增自定义接入商时会明确提示必须兼容 OpenAI Chat Completions，基地址填写到 `/api/v1` 或 `/v1` 结束，不加入 `/chat`。
 - 提示词要精炼、角色扮演职责清楚、固定内容靠前、动态内容靠后，优先利用 DeepSeek/OpenRouter 的相同前缀缓存。
 - 记忆更新、记忆压缩和群聊记忆合并各只有一份全局模板，不恢复 User 模板或角色/群聊局部覆盖。
 - 普通聊天和跑团记忆严格隔离；开跑团时只能显式选择是否一次性导入角色、Persona 或普通记忆快照。
@@ -57,23 +57,26 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 
 ### Provider 与密钥
 
-- Provider 页面默认显示 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio，并可从“添加”入口新建自定义 OpenAI-compatible Provider。
-- 旧数据根会补齐缺失的默认项；使用未实现适配器的历史记录会停用并保留在数据库中。自定义 Provider 的地址填写到 `/api/v1` 或 `/v1` 结束，不要加入 `/chat`。
+- Provider 页面默认显示 Grok CLI、OpenRouter、硅基流动、DeepSeek 官方 API 和 LM Studio，并可从“添加”入口新建自定义 OpenAI-compatible Provider；新增表单内容区可滚动，底部取消/添加按钮固定可见。
+- 旧数据根会补齐缺失的默认项，并在每次启动时幂等核对 Provider ID/适配器契约：Grok 内置项恢复为 Grok CLI，普通内置项恢复 OpenAI-compatible；无法恢复 HTTP 地址的旧自定义 Grok 错配和未实现的旧原生适配器会保留原记录并停用。自定义 Provider 的地址填写到 `/api/v1` 或 `/v1` 结束，不要加入 `/chat`。
 - API Provider 只暴露已实现的 OpenAI-compatible 适配器，另保留 Grok CLI 专用适配器；LM Studio 不固定模型，切换后主动刷新目录。
 - API Key 位于数据根 `secrets/`，使用 Windows DPAPI CurrentUser 保护；SQLite 仅保存随机引用。
 - 删除接入商先提交数据库级联删除，再清理 TavernDesk 保存的密钥文件；数据库失败时配置和 Key 均保留，密钥文件清理失败时保留不可用的加密孤儿并显示警告。默认接入商被用户删除后不会自动复活。
 - DPAPI 可降低数据库、备份或单独文件泄漏导致的明文暴露，但不能抵御同一 Windows 用户上下文中的恶意程序、管理员、调试器或正在运行进程被控制。
 - OpenRouter 的 DeepSeek 快捷设置当前只提供明确 OFF/ON；不提前增加 `low/high/max`。
 
-### 界面缩放与默认主题
+### 界面缩放与主题
 
 - 设置 → 界面提供 80%、90%、100%、110%、125% 和 150% 六档应用内缩放；100% 保持原界面大小。
 - 选择后立即预览，点击“保存界面设置”后写入 `ui.scale.percent`，下次启动恢复；该缩放只影响 TavernDesk，并与 Windows 显示缩放叠加。
 - 主窗口、独立聊天和应用内对话框共享动态缩放资源。当前不读取分辨率、不自动推荐，也不自动改变用户选择；后续入口为 `IInterfaceScaleRecommendationProvider`。
-- 默认浅色主题的按钮、输入框、密码框、下拉框、标签页、列表选择、复选框、折叠区、右键菜单、滑块和滚动条统一由 `Themes/Light.xaml` 提供圆角模板与状态反馈；页面内局部样式必须基于对应共享样式，避免退回系统方角控件。
+- 主窗口或独立聊天的可用宽度不足时，聊天只自动折叠右侧上下文栏；窗口重新足够宽时只恢复自动折叠的右栏，用户手动折叠状态不被覆盖。
+- 设置 → 界面提供“默认浅色 / 深炭黑”两种主题；选择后立即预览，显式保存到 `ui.theme` 后在下次启动恢复，缺失或无效值回退到浅色。
+- 两种主题共用 `Themes/Light.xaml`、`Themes/AppicaShell.xaml` 和 `Themes/AppicaPrimary.xaml` 中的现有控件结构；运行时只替换语义 Brush 与 Windows 主题模式。按钮、输入框、密码框、下拉框、标签页、列表选择、复选框、折叠区、右键菜单、滑块和滚动条的模板、尺寸、`PART_*` 与命中关系不变。
+- 主壳、仪表盘和聊天主工作区通过 `Themes/AppicaShell.xaml` 与 `Themes/AppicaPrimary.xaml` 的具名样式采用 Appica 风格；次级窗口与弹窗仍使用既有结构和共享控件模板，未改 `PART_*`、Popup、命中层或模态调用关系。
 - 下拉框和折叠栏的可见外壳直接承担点击命中，不再叠放透明按钮；标签页选中态使用对称安全槽内的独立 2-DIP 描边和布局取整，避免 Windows 高 DPI 下的边缘裁剪或半像素淡化。
 - 下拉框当前值控件、弹出菜单和选中胶囊使用同一可用宽度；展开时不显示额外空心焦点框。世界书挂载管理使用主进程内独立窗口，不再使用依附页面的固定尺寸弹层；关闭未保存修改会恢复持久化挂载状态。
-- 主题改造只改变视觉与控件状态呈现，不改变命令、绑定、持久化或 Provider 行为。
+- 主题改造只改变视觉与控件状态呈现；除新增本地 `ui.theme` 设置键外，不改变命令、业务绑定、数据库 schema 或 Provider 行为。
 
 ### 独立跑团 R1
 
@@ -105,9 +108,12 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 - 覆盖 Provider 删除失败保留 Key、跑团排队取消、聊天预处理取消、检索/Persona 竞态、消息候选原子写入、资料目录迁移重试、候选批量读取与协调器终态上限；
 - 隔离资料目录的 WPF 测试窗口能够启动并响应，但本轮 `computer-use` 运行时错误归属窗口，未取得可用截图；因此聊天虚拟化的肉眼界面复核仍待用户短验收；
 - `win-x64` 自包含发布快照已同步，仅含 `runtimes/win-x64/native/e_sqlite3.dll` 且无 PDB；根目录 `TavernDesk.exe --probe` 退出码 0；
+- Appica UI 工作分支已完成按选定效果图重构后的真实 WPF 验收：Release 构建 `0` 警告、`0` 错误，隔离 `--storage-smoke` 为 PASS、API 请求数为 0；Windows 150% DPI 下使用前台窗口像素捕获，确认四栏主工作区、消息区、Composer 和右侧卡片完整显示且无运行时弹窗。`design-qa.md` 结论为 `passed`。
+- Appica 实际数据复核已修正 Persona 空白点击插入点、用户右/角色左的消息对齐、搜索与 `depth` 文字裁切，以及发送模式宽度；工作树 `app/` 已同步。发送模式在 150% DPI 下实测为 264 物理像素，关闭态和两个展开选项均显示完整；未保存用户资料或发起 Provider 请求。
 - 隔离资料目录下使用真实鼠标验证顶部/右栏显示模式、高级召回折叠栏和右栏收起按钮；记忆初始开关为开启，草稿预览顶部换行；Windows 150% DPI 截图确认设置与聊天标签的选中描边四边完整；
 - Windows 150% DPI 下实际展开玩家人设下拉框，当前值控件、菜单和选中胶囊左右边界一致且无额外空心焦点框；世界书挂载独立窗口显示 32 个角色选项，关闭未保存勾选后重开正确回退；
 - 未连接 Provider、未读取 API Key；跟踪文件与当前新增源码未发现真实 Key、邮箱、手机号、旧机器用户路径或已知用户姓名。
+- 合并前审查发现的三项问题已逐项修复：聊天按窗口与应用缩放自动折叠右侧栏，旧 Provider 适配器契约在启动时幂等修复或安全停用，无头像联系人图标在 Windows 10 回退到 Segoe MDL2 Assets。Release 构建 `0` 警告、`0` 错误；隔离存储 smoke 为 `11` 项 PASS、API 请求数 `0`；`app/` 已同步且根启动器 `--probe` 退出码 `0`。本轮未替用户打开 GUI。
 
 以下功能级证据来自 2026-08-04，未在本次清理中逐项重跑：
 
@@ -164,6 +170,7 @@ TavernDesk 是 Windows 本地优先、非商用个人使用的角色聊天与独
 - Grok CLI 的真实安装发现、`grok login`、ACP 普通聊天、会话取消和订阅侧并发限制；模型枚举当前仍使用默认模型占位。
 - 真实多模型跑团短局及中等长度跑团：上下文预算、途中换模型、席位失败重试、秘密同投隔离和停止全部生成。
 - 大型真实数据库迁移、长列表性能、DPI/键盘无障碍和强制结束进程后的流式断点续传；当前只实现安全收尾为可重试终态。
+- 应用内 110%–150% 缩放下自动折叠、限宽恢复右侧上下文栏的最终视觉与点击体验；代码级布局矩阵已通过，仍留给用户从根 EXE 验收。
 - 非 Tiktoken 模型家族的本地 tokenizer、自动上下文压缩、世界书之外的通用 embedding 知识库、附件、TTS、MCP、Anthropic/Gemini 原生协议。
 
 ## 6. 下一对话推荐顺序

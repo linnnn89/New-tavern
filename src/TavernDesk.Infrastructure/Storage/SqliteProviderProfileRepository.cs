@@ -59,6 +59,20 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
 
     public async Task UpsertAsync(ProviderProfile profile, CancellationToken cancellationToken = default)
     {
+        var isDisabledLegacyAdapter =
+            !profile.IsEnabled
+            && !ProviderProfileIds.IsSupportedAdapter(profile.AdapterKind);
+        if (!ProviderProfileIds.IsAdapterAllowed(
+                profile.Id,
+                profile.AdapterKind)
+            && !isDisabledLegacyAdapter)
+        {
+            throw new InvalidOperationException(
+                profile.Id == ProviderProfileIds.GrokCli
+                    ? "内置 Grok 接入商只能保存为 Grok CLI 连接。"
+                    : "普通和自定义接入商只能保存为 OpenAI Chat Completions 兼容连接。");
+        }
+
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -105,6 +119,7 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
 
     public async Task EnsureDefaultsAsync(CancellationToken cancellationToken = default)
     {
+        await NormalizeAdapterContractsAsync(cancellationToken);
         if (await DefaultsWereInitializedAsync(cancellationToken))
         {
             return;
@@ -170,6 +185,93 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
 
         await MarkDefaultsInitializedAsync(cancellationToken);
     }
+
+    private async Task NormalizeAdapterContractsAsync(
+        CancellationToken cancellationToken)
+    {
+        foreach (var profile in await ListAsync(cancellationToken))
+        {
+            if (ProviderProfileIds.IsSupported(profile.Id))
+            {
+                var requiredAdapter = ProviderProfileIds.RequiredAdapterFor(profile.Id);
+                var changed = profile.AdapterKind != requiredAdapter;
+                profile.AdapterKind = requiredAdapter;
+                if (requiredAdapter == ProviderAdapterKind.GrokCli)
+                {
+                    if (!string.Equals(
+                            profile.BaseUrl,
+                            "grok://local",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        profile.BaseUrl = "grok://local";
+                        changed = true;
+                    }
+                }
+                else if (!IsHttpBaseUrl(profile.BaseUrl))
+                {
+                    profile.BaseUrl = DefaultOpenAiBaseUrlFor(profile.Id)
+                                      ?? throw new InvalidOperationException(
+                                          "内置 OpenAI 兼容接入商缺少恢复地址。");
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    profile.UpdatedAt = DateTimeOffset.Now;
+                    await UpsertAsync(profile, cancellationToken);
+                }
+
+                continue;
+            }
+
+            if (!ProviderProfileIds.IsSupportedAdapter(profile.AdapterKind))
+            {
+                if (!profile.IsEnabled)
+                {
+                    continue;
+                }
+
+                profile.IsEnabled = false;
+                profile.UpdatedAt = DateTimeOffset.Now;
+                await UpsertAsync(profile, cancellationToken);
+                continue;
+            }
+
+            if (ProviderProfileIds.IsAdapterAllowed(
+                    profile.Id,
+                    profile.AdapterKind))
+            {
+                continue;
+            }
+
+            profile.AdapterKind = ProviderAdapterKind.OpenAiCompatible;
+            if (!IsHttpBaseUrl(profile.BaseUrl))
+            {
+                // A legacy custom Grok mapping has no recoverable HTTP URL.
+                // Keep the row and its original value, but do not let it run.
+                profile.IsEnabled = false;
+            }
+
+            profile.UpdatedAt = DateTimeOffset.Now;
+            await UpsertAsync(profile, cancellationToken);
+        }
+    }
+
+    private static bool IsHttpBaseUrl(string value) =>
+        Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
+        && uri.Scheme is "http" or "https";
+
+    // These are recovery values for rows whose old Grok mapping erased the
+    // HTTP URL, and must stay aligned with the built-in profiles above.
+    private static string? DefaultOpenAiBaseUrlFor(string id) =>
+        id switch
+        {
+            ProviderProfileIds.OpenRouter => "https://openrouter.ai/api/v1",
+            ProviderProfileIds.SiliconFlow => "https://api.siliconflow.cn/v1",
+            ProviderProfileIds.DeepSeek => "https://api.deepseek.com",
+            ProviderProfileIds.LmStudio => "http://127.0.0.1:6543",
+            _ => null
+        };
 
     public async Task<int> CountEnabledAsync(CancellationToken cancellationToken = default)
     {

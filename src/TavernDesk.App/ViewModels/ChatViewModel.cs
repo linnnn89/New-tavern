@@ -236,6 +236,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 OnPropertyChanged(nameof(IsModelThinking));
                 OnPropertyChanged(nameof(LastGenerationUsageText));
                 OnPropertyChanged(nameof(IsSingleCharacterConversation));
+                OnPropertyChanged(nameof(SelectedConversationAvatarPath));
                 StopGenerationCommand.RaiseCanExecuteChanged();
                 ExportChatArchiveCommand.RaiseCanExecuteChanged();
                 EditCharacterSystemPromptCommand.RaiseCanExecuteChanged();
@@ -246,6 +247,22 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     public bool IsSingleCharacterConversation =>
         SelectedConversation?.Mode == ConversationMode.SingleCharacter;
+
+    public string SelectedConversationAvatarPath
+    {
+        get
+        {
+            var conversationId = SelectedConversation?.Id;
+            if (conversationId is null)
+            {
+                return string.Empty;
+            }
+
+            return _allGroups.FirstOrDefault(group =>
+                       group.FindConversation(conversationId) is not null)?.AvatarPath
+                   ?? string.Empty;
+        }
+    }
 
     public string CharacterPromptCharacterName
     {
@@ -299,6 +316,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     }
 
     public int EstimatedInputTokens => _tokenEstimate.InputTokens;
+    public string EstimatedTokenHeadline =>
+        $"{_tokenEstimate.InputTokens + _tokenEstimate.ReservedOutputTokens:N0} / {_tokenEstimate.ContextLimit:N0}";
+    public double EstimatedTokenUsagePercent => _tokenEstimate.ContextLimit <= 0
+        ? 0
+        : Math.Clamp(
+            100d * (_tokenEstimate.InputTokens + _tokenEstimate.ReservedOutputTokens)
+            / _tokenEstimate.ContextLimit,
+            0,
+            100);
     public bool IsEstimatedOverLimit => _tokenEstimate.ExceedsLimit;
 
     public bool IsModelThinking =>
@@ -1442,7 +1468,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     _ => null
                 },
             personaName: EffectivePersonaLabel(),
-            characterName: EffectiveCharacterMacroName(message));
+            characterName: EffectiveCharacterMacroName(message),
+            avatarPath: message.SenderKind == MessageSenderKind.Character
+                ? _characterLookup.GetValueOrDefault(message.SenderId)?.AvatarPath
+                : null);
 
     private async Task ActivateCandidateAsync(
         ChatMessageItemViewModel item,
@@ -2447,6 +2476,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _tokenEstimate = estimate;
         OnPropertyChanged(nameof(EstimatedInputTokens));
         OnPropertyChanged(nameof(EstimatedTokenText));
+        OnPropertyChanged(nameof(EstimatedTokenHeadline));
+        OnPropertyChanged(nameof(EstimatedTokenUsagePercent));
         OnPropertyChanged(nameof(IsEstimatedOverLimit));
         SendLocalCommand.RaiseCanExecuteChanged();
     }

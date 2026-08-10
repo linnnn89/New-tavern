@@ -20,7 +20,7 @@
                        FontSize="16"
                        FontWeight="SemiBold" />
             <TextBlock Margin="0,5,0,12"
-                       Foreground="{StaticResource MutedTextBrush}"
+                       Foreground="{DynamicResource MutedTextBrush}"
                        Text="可留空。填写后会以“附加要求：……”放在本次请求末尾，不写入聊天记录。"
                        TextWrapping="Wrap" />
         </StackPanel>

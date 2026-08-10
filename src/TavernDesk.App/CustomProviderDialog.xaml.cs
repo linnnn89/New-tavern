@@ -35,7 +35,7 @@ public partial class CustomProviderDialog : Window
         {
             MessageBox.Show(
                 this,
-                "API 地址必须是完整的 http 或 https 地址。",
+                "OpenAI 兼容 API 地址必须是完整的 http 或 https 地址。",
                 "无法添加",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);

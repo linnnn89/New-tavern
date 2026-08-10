@@ -14,13 +14,17 @@ namespace TavernDesk.App.Views;
 
 public partial class ChatView : UserControl
 {
+    private const double RightPanelMinimumWidth = 260;
+    private const double WindowChromeAllowance = 16;
     private readonly TimedPressFeedback _pressFeedback = new();
     private readonly HashSet<ChatMessageItemViewModel> _observedMessages = [];
     private ChatViewModel? _observedViewModel;
     private bool _isOpeningMessageTools;
     private bool _scrollScheduled;
     private bool _isRightPanelCollapsed;
-    private double _rightPanelWidth = 300;
+    private bool _isRightPanelAutoCollapsed;
+    private double _rightPanelWidth = 406;
+    private Window? _layoutHostWindow;
 
     public ChatView()
     {
@@ -36,20 +40,44 @@ public partial class ChatView : UserControl
         e.Handled = true;
     }
 
+    private void PersonaEditorTextBox_OnPreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (sender is not TextBox textBox
+            || !textBox.IsEnabled
+            || textBox.IsReadOnly
+            || textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), snapToText: false) >= 0)
+        {
+            return;
+        }
+
+        textBox.Focus();
+        textBox.Select(textBox.Text?.Length ?? 0, 0);
+        e.Handled = true;
+    }
+
     private void RightPanelToggleButton_OnClick(object sender, RoutedEventArgs e)
     {
         if (_isRightPanelCollapsed)
         {
-            RightPanelColumn.MinWidth = 240;
-            RightPanelColumn.Width = new GridLength(Math.Max(_rightPanelWidth, 240));
-            RightPanel.Visibility = Visibility.Visible;
-            RightPanelSplitter.IsEnabled = true;
-            RightPanelSplitter.Background = Brushes.Transparent;
-            RightPanelCollapseArrow.Visibility = Visibility.Visible;
-            RightPanelExpandArrow.Visibility = Visibility.Collapsed;
-            RightPanelToggleButton.ToolTip = "折叠右侧栏";
-            AutomationProperties.SetName(RightPanelToggleButton, "折叠右侧栏");
-            _isRightPanelCollapsed = false;
+            if (RequiresResponsiveCollapse())
+            {
+                UpdateCollapsedToggleMetadata(isWidthConstrained: true);
+                return;
+            }
+
+            ExpandRightPanel();
+            return;
+        }
+
+        CollapseRightPanel(automatic: false);
+    }
+
+    private void CollapseRightPanel(bool automatic)
+    {
+        if (_isRightPanelCollapsed)
+        {
             return;
         }
 
@@ -62,24 +90,158 @@ public partial class ChatView : UserControl
         RightPanelColumn.Width = new GridLength(0);
         RightPanel.Visibility = Visibility.Collapsed;
         RightPanelSplitter.IsEnabled = false;
-        RightPanelSplitter.Background = (Brush)FindResource("BorderBrush");
+        RightPanelSplitter.SetResourceReference(
+            Control.BackgroundProperty,
+            "BorderBrush");
         RightPanelCollapseArrow.Visibility = Visibility.Collapsed;
         RightPanelExpandArrow.Visibility = Visibility.Visible;
-        RightPanelToggleButton.ToolTip = "展开右侧栏";
-        AutomationProperties.SetName(RightPanelToggleButton, "展开右侧栏");
         _isRightPanelCollapsed = true;
+        _isRightPanelAutoCollapsed = automatic;
+        UpdateCollapsedToggleMetadata(isWidthConstrained: automatic);
     }
+
+    private void ExpandRightPanel()
+    {
+        if (!_isRightPanelCollapsed)
+        {
+            return;
+        }
+
+        var fixedMinimumWidth = ExpandedLayoutMinimumWidth() - RightPanelMinimumWidth;
+        var maximumSafeRightPanelWidth = Math.Max(
+            RightPanelMinimumWidth,
+            AvailableUnscaledChatWidth() - fixedMinimumWidth);
+        var restoredRightPanelWidth = Math.Min(
+            Math.Max(_rightPanelWidth, RightPanelMinimumWidth),
+            maximumSafeRightPanelWidth);
+        RightPanelColumn.MinWidth = RightPanelMinimumWidth;
+        RightPanelColumn.Width = new GridLength(restoredRightPanelWidth);
+        RightPanel.Visibility = Visibility.Visible;
+        RightPanelSplitter.IsEnabled = true;
+        RightPanelSplitter.Background = Brushes.Transparent;
+        RightPanelCollapseArrow.Visibility = Visibility.Visible;
+        RightPanelExpandArrow.Visibility = Visibility.Collapsed;
+        RightPanelToggleButton.ToolTip = "折叠右侧栏";
+        AutomationProperties.SetName(RightPanelToggleButton, "折叠右侧栏");
+        _isRightPanelCollapsed = false;
+        _isRightPanelAutoCollapsed = false;
+    }
+
+    private void UpdateCollapsedToggleMetadata(bool isWidthConstrained)
+    {
+        var label = isWidthConstrained
+            ? "窗口空间不足；放大窗口后可展开右侧栏"
+            : "展开右侧栏";
+        RightPanelToggleButton.ToolTip = label;
+        AutomationProperties.SetName(RightPanelToggleButton, label);
+    }
+
+    private void AttachLayoutHostWindow()
+    {
+        var hostWindow = Window.GetWindow(this);
+        if (ReferenceEquals(_layoutHostWindow, hostWindow))
+        {
+            return;
+        }
+
+        DetachLayoutHostWindow();
+        _layoutHostWindow = hostWindow;
+        if (_layoutHostWindow is not null)
+        {
+            _layoutHostWindow.SizeChanged += LayoutHostWindow_OnSizeChanged;
+        }
+    }
+
+    private void DetachLayoutHostWindow()
+    {
+        if (_layoutHostWindow is not null)
+        {
+            _layoutHostWindow.SizeChanged -= LayoutHostWindow_OnSizeChanged;
+            _layoutHostWindow = null;
+        }
+    }
+
+    private void LayoutHostWindow_OnSizeChanged(
+        object sender,
+        SizeChangedEventArgs e) =>
+        UpdateResponsiveLayout();
+
+    private void UpdateResponsiveLayout()
+    {
+        var isWidthConstrained = RequiresResponsiveCollapse();
+        if (isWidthConstrained)
+        {
+            if (!_isRightPanelCollapsed)
+            {
+                CollapseRightPanel(automatic: true);
+            }
+            else
+            {
+                UpdateCollapsedToggleMetadata(isWidthConstrained: true);
+            }
+
+            return;
+        }
+
+        if (_isRightPanelCollapsed && _isRightPanelAutoCollapsed)
+        {
+            ExpandRightPanel();
+        }
+        else if (_isRightPanelCollapsed)
+        {
+            UpdateCollapsedToggleMetadata(isWidthConstrained: false);
+        }
+    }
+
+    private bool RequiresResponsiveCollapse()
+    {
+        if (_layoutHostWindow is null
+            || _layoutHostWindow.ActualWidth <= 0)
+        {
+            return false;
+        }
+
+        return AvailableUnscaledChatWidth() < ExpandedLayoutMinimumWidth();
+    }
+
+    private double AvailableUnscaledChatWidth()
+    {
+        if (_layoutHostWindow is null)
+        {
+            return 0;
+        }
+
+        var scaleFactor = Math.Max(InterfaceSettingsRuntime.ScaleFactor, 0.01);
+        var availableWidth = Math.Max(
+            0,
+            (_layoutHostWindow.ActualWidth - WindowChromeAllowance) / scaleFactor);
+        return _layoutHostWindow is MainWindow mainWindow
+            ? availableWidth - mainWindow.NavigationLayoutWidth
+            : availableWidth;
+    }
+
+    private double ExpandedLayoutMinimumWidth() =>
+        ChatLayoutRoot.Margin.Left
+        + ChatLayoutRoot.Margin.Right
+        + ConversationListColumn.MinWidth
+        + ChatLayoutRoot.ColumnDefinitions[1].Width.Value
+        + ConversationBodyColumn.MinWidth
+        + ChatLayoutRoot.ColumnDefinitions[3].Width.Value
+        + RightPanelMinimumWidth;
 
     private void ChatView_OnLoaded(object sender, RoutedEventArgs e)
     {
+        AttachLayoutHostWindow();
         InterfaceSettingsRuntime.Changed += InterfaceSettingsRuntime_OnChanged;
         ObserveViewModel(DataContext as ChatViewModel);
+        UpdateResponsiveLayout();
         RequestAutoScroll();
     }
 
     private void ChatView_OnUnloaded(object sender, RoutedEventArgs e)
     {
         InterfaceSettingsRuntime.Changed -= InterfaceSettingsRuntime_OnChanged;
+        DetachLayoutHostWindow();
         ObserveViewModel(null);
     }
 
@@ -197,8 +359,11 @@ public partial class ChatView : UserControl
         }
     }
 
-    private void InterfaceSettingsRuntime_OnChanged(object? sender, EventArgs e) =>
+    private void InterfaceSettingsRuntime_OnChanged(object? sender, EventArgs e)
+    {
+        UpdateResponsiveLayout();
         RequestAutoScroll();
+    }
 
     private void RequestAutoScroll()
     {

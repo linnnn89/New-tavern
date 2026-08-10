@@ -1068,6 +1068,77 @@ static async Task RunStorageSmokeAsync(string dataRoot)
         5000);
     await services.Settings.SetAsync("smoke.marker", "persisted");
 
+    const string legacyCustomProviderId = "custom-legacy-adapter-smoke";
+    const string legacyUnsupportedProviderId = "custom-legacy-native-smoke";
+    await using (var providerConnection = services.Database.CreateConnection())
+    {
+        await providerConnection.OpenAsync();
+        await using var providerCommand = providerConnection.CreateCommand();
+        providerCommand.CommandText = """
+            UPDATE provider_profiles
+            SET adapter_kind = $openAiAdapter,
+                base_url = 'https://api.x.ai/v1',
+                updated_at = $updatedAt
+            WHERE id = $grokId;
+
+            UPDATE provider_profiles
+            SET adapter_kind = $grokAdapter,
+                base_url = 'grok://local',
+                updated_at = $updatedAt
+            WHERE id = $deepSeekId;
+
+            UPDATE provider_profiles
+            SET adapter_kind = $unsupportedAdapter,
+                base_url = 'grok://local',
+                updated_at = $updatedAt
+            WHERE id = $siliconFlowId;
+
+            INSERT INTO provider_profiles(
+                id, name, adapter_kind, base_url, secret_reference,
+                request_timeout_seconds, is_enabled, created_at, updated_at)
+            VALUES(
+                $customId, '旧版错配自检', $grokAdapter, 'grok://local', '',
+                300, 1, $updatedAt, $updatedAt)
+            ON CONFLICT(id) DO UPDATE SET
+                adapter_kind = excluded.adapter_kind,
+                base_url = excluded.base_url,
+                is_enabled = excluded.is_enabled,
+                updated_at = excluded.updated_at;
+
+            INSERT INTO provider_profiles(
+                id, name, adapter_kind, base_url, secret_reference,
+                request_timeout_seconds, is_enabled, created_at, updated_at)
+            VALUES(
+                $unsupportedId, '旧版原生协议自检', $unsupportedAdapter,
+                'https://example.invalid/v1', '', 300, 1, $updatedAt, $updatedAt)
+            ON CONFLICT(id) DO UPDATE SET
+                adapter_kind = excluded.adapter_kind,
+                base_url = excluded.base_url,
+                is_enabled = excluded.is_enabled,
+                updated_at = excluded.updated_at;
+            """;
+        providerCommand.Parameters.AddWithValue(
+            "$openAiAdapter",
+            (int)ProviderAdapterKind.OpenAiCompatible);
+        providerCommand.Parameters.AddWithValue(
+            "$grokAdapter",
+            (int)ProviderAdapterKind.GrokCli);
+        providerCommand.Parameters.AddWithValue(
+            "$unsupportedAdapter",
+            (int)ProviderAdapterKind.Anthropic);
+        providerCommand.Parameters.AddWithValue("$grokId", ProviderProfileIds.GrokCli);
+        providerCommand.Parameters.AddWithValue("$deepSeekId", ProviderProfileIds.DeepSeek);
+        providerCommand.Parameters.AddWithValue(
+            "$siliconFlowId",
+            ProviderProfileIds.SiliconFlow);
+        providerCommand.Parameters.AddWithValue("$customId", legacyCustomProviderId);
+        providerCommand.Parameters.AddWithValue(
+            "$unsupportedId",
+            legacyUnsupportedProviderId);
+        providerCommand.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        await providerCommand.ExecuteNonQueryAsync();
+    }
+
     var reopened = new InfrastructureServices(dataRoot);
     await reopened.InitializeAsync();
     var reopenedCharacter = await reopened.Characters.GetAsync(character.Id);
@@ -1078,6 +1149,13 @@ static async Task RunStorageSmokeAsync(string dataRoot)
     var reopenedGroupMemory = await reopened.MemoryBanks.GetAsync(
         MemoryOwnerIds.ForGroup(group.Id));
     var reopenedMarker = await reopened.Settings.GetAsync("smoke.marker");
+    var migratedGrok = await reopened.Providers.GetAsync(ProviderProfileIds.GrokCli);
+    var migratedDeepSeek = await reopened.Providers.GetAsync(ProviderProfileIds.DeepSeek);
+    var migratedSiliconFlow = await reopened.Providers.GetAsync(
+        ProviderProfileIds.SiliconFlow);
+    var migratedCustom = await reopened.Providers.GetAsync(legacyCustomProviderId);
+    var migratedUnsupported = await reopened.Providers.GetAsync(
+        legacyUnsupportedProviderId);
 
     Assert(reopenedCharacter?.Name == character.Name, "角色重启重读失败。");
     Assert(reopenedMessages.Count == 1, "会话消息重启重读失败。");
@@ -1092,6 +1170,44 @@ static async Task RunStorageSmokeAsync(string dataRoot)
         "群聊独立记忆重启重读失败。");
     Assert(reopenedMarker == "persisted", "应用设置重启重读失败。");
     Assert(await reopened.Providers.CountEnabledAsync() >= 3, "默认接入商未初始化。");
+    Assert(
+        migratedGrok is
+        {
+            AdapterKind: ProviderAdapterKind.GrokCli,
+            BaseUrl: "grok://local"
+        },
+        "内置 Grok 的旧适配器错配未恢复为 Grok CLI。");
+    Assert(
+        migratedDeepSeek is
+        {
+            AdapterKind: ProviderAdapterKind.OpenAiCompatible,
+            BaseUrl: "https://api.deepseek.com",
+            IsEnabled: true
+        },
+        "普通内置接入商的旧 Grok 错配未恢复为 OpenAI 兼容配置。");
+    Assert(
+        migratedSiliconFlow is
+        {
+            AdapterKind: ProviderAdapterKind.OpenAiCompatible,
+            BaseUrl: "https://api.siliconflow.cn/v1",
+            IsEnabled: true
+        },
+        "普通内置接入商的未实现适配器错配未恢复为 OpenAI 兼容配置。");
+    Assert(
+        migratedCustom is
+        {
+            AdapterKind: ProviderAdapterKind.OpenAiCompatible,
+            BaseUrl: "grok://local",
+            IsEnabled: false
+        },
+        "无法恢复地址的旧自定义 Grok 错配必须保留并停用。");
+    Assert(
+        migratedUnsupported is
+        {
+            AdapterKind: ProviderAdapterKind.Anthropic,
+            IsEnabled: false
+        },
+        "未实现的旧原生适配器必须保留并停用。");
 
     var deleteConversation = new Conversation
     {
@@ -1161,6 +1277,7 @@ static async Task RunStorageSmokeAsync(string dataRoot)
             "group-settings-members-memory-reopen",
             "app-setting-reopen",
             "default-providers",
+            "provider-adapter-contract-migration",
             "conversation-hard-delete-preserves-character-memory"
         },
         apiRequests = 0

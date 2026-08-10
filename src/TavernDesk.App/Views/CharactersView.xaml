@@ -15,7 +15,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Text="角色书架" Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedTextBrush}" />
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <StackPanel.Style>
@@ -59,7 +59,7 @@
                 Margin="0,18,0,14"
                 Padding="14,9"
                 CornerRadius="12"
-                Background="{StaticResource AccentSoftBrush}">
+                Background="{DynamicResource AccentSoftBrush}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Visible" />
@@ -168,7 +168,7 @@
                         Margin="0,0,0,10"
                         Padding="12,9"
                         CornerRadius="12"
-                        Background="{StaticResource AccentSoftBrush}"
+                        Background="{DynamicResource AccentSoftBrush}"
                         Visibility="{Binding IsShelfBatchMode, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -180,7 +180,7 @@
                                        FontWeight="SemiBold" />
                             <TextBlock Text="勾选多个角色后可一次移出当前书架；角色卡和聊天记录不会删除。"
                                        Margin="0,3,12,0"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1"
                                     Orientation="Horizontal"
@@ -240,7 +240,7 @@
 
                                 <Border Grid.Row="0"
                                         ClipToBounds="True"
-                                        Background="{StaticResource AccentSoftBrush}"
+                                        Background="{DynamicResource AccentSoftBrush}"
                                         CornerRadius="13,13,0,0">
                                     <Grid>
                                         <TextBlock Text="{Binding Name}"
@@ -250,7 +250,7 @@
                                                    TextAlignment="Center"
                                                    FontSize="22"
                                                    FontWeight="SemiBold"
-                                                   Foreground="{StaticResource AccentBrush}" />
+                                                   Foreground="{DynamicResource AccentBrush}" />
                                         <Image Source="{Binding AvatarPath}"
                                                Stretch="UniformToFill"
                                                RenderTransformOrigin="0.5,0.5"
@@ -402,12 +402,12 @@
                                 <TextBlock Text="{Binding ActiveCharacter.Name, StringFormat=角色主页 · {0}}"
                                            Style="{StaticResource SectionTitleStyle}" />
                                 <TextBlock Text="角色卡资料、归类和该角色的全部聊天都集中在这里。"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Margin="12,3,0,0"
                                        Text="● 未保存"
-                                       Foreground="{StaticResource DangerBrush}"
+                                       Foreground="{DynamicResource DangerBrush}"
                                        Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </Grid>
                         <WrapPanel Grid.Row="1" Margin="0,12,0,0">
@@ -424,7 +424,7 @@
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
                                     Content="删除"
-                                    Foreground="{StaticResource DangerBrush}"
+                                    Foreground="{DynamicResource DangerBrush}"
                                     Command="{Binding DeleteCharacterCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </WrapPanel>
@@ -453,7 +453,7 @@
                                         HorizontalAlignment="Left"
                                         ClipToBounds="True"
                                         CornerRadius="12"
-                                        Background="{StaticResource AccentSoftBrush}">
+                                        Background="{DynamicResource AccentSoftBrush}">
                                     <Image Source="{Binding ActiveCharacter.AvatarPath}"
                                            Stretch="UniformToFill" />
                                 </Border>
@@ -466,7 +466,7 @@
                                                Text="{Binding ActiveCharacter.Description}"
                                                TextWrapping="Wrap"
                                                TextTrimming="CharacterEllipsis"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                     <WrapPanel>
                                                 <Button Content="继续最后聊天"
                                                         Command="{Binding StartChatCommand}"
@@ -484,14 +484,14 @@
                             <Border Margin="0,0,0,18"
                                     Padding="14"
                                     CornerRadius="12"
-                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1"
                                     Visibility="{Binding IsClassificationOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <StackPanel>
                                     <TextBlock Text="书架归类" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,3,0,9"
                                                Text="选择一个书架后加入或移除；删除书架不会删除角色。"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                     <ComboBox Margin="0,0,0,8"
                                               ItemsSource="{Binding CustomShelfItems}"
                                               SelectedItem="{Binding MembershipShelf}"
@@ -523,12 +523,12 @@
                                 <TextBlock Grid.Column="1"
                                            VerticalAlignment="Center"
                                            Text="{Binding CharacterConversationCount, StringFormat={}{0} 条}"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </Grid>
                             <TextBlock Margin="2,14"
                                        HorizontalAlignment="Center"
                                        Text="这个角色还没有聊天记录。"
-                                       Foreground="{StaticResource MutedTextBrush}">
+                                       Foreground="{DynamicResource MutedTextBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -582,14 +582,14 @@
                                                 <TextBlock Grid.Column="1"
                                                            Margin="12,0,0,0"
                                                            Text="{Binding UpdatedText}"
-                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
                                                 <TextBlock Grid.Row="1"
                                                            Grid.ColumnSpan="2"
                                                            Margin="0,5,0,0"
                                                            Text="{Binding PreviewText}"
                                                            TextWrapping="NoWrap"
                                                            TextTrimming="CharacterEllipsis"
-                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
                                             </Grid>
                                         </Button>
                                     </DataTemplate>
@@ -674,7 +674,7 @@
                                                         <DataTemplate>
                                                             <Border Margin="0,0,0,9"
                                                                     Padding="10"
-                                                                    BorderBrush="{StaticResource BorderBrush}"
+                                                                    BorderBrush="{DynamicResource BorderBrush}"
                                                                     BorderThickness="1"
                                                                     CornerRadius="10">
                                                                 <Grid>
@@ -736,14 +736,17 @@
                                                 <Grid Margin="0,0,0,12">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="72" />
+                                                        <ColumnDefinition Width="82" />
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock VerticalAlignment="Center" Text="depth" />
-                                                    <TextBox Grid.Column="1"
-                                                             Margin="7,0,14,0"
-                                                             Text="{Binding DepthPromptDepth, UpdateSourceTrigger=PropertyChanged}" />
+                                                     <TextBox Grid.Column="1"
+                                                              Margin="7,0,14,0"
+                                                              Padding="5,0"
+                                                              TextAlignment="Center"
+                                                              VerticalContentAlignment="Center"
+                                                              Text="{Binding DepthPromptDepth, UpdateSourceTrigger=PropertyChanged}" />
                                                     <TextBlock Grid.Column="2"
                                                                VerticalAlignment="Center"
                                                                Text="role" />

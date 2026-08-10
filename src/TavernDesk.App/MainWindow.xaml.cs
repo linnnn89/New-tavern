@@ -11,6 +11,11 @@ public partial class MainWindow : Window
     private bool _closeConfirmed;
     private bool _closeConfirmationInProgress;
 
+    internal double NavigationLayoutWidth =>
+        MainNavigationColumn.ActualWidth > 0
+            ? MainNavigationColumn.ActualWidth
+            : MainNavigationColumn.Width.Value;
+
     public MainWindow(
         MainWindowViewModel viewModel,
         WindowPlacementService windowPlacement)

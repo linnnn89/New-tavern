@@ -2,13 +2,13 @@ namespace TavernDesk.Core.Models;
 
 public enum ProviderAdapterKind
 {
-    OpenAiCompatible,
-    OpenAi,
-    Anthropic,
-    Google,
-    Ollama,
-    Custom,
-    GrokCli
+    OpenAiCompatible = 0,
+    OpenAi = 1,
+    Anthropic = 2,
+    Google = 3,
+    Ollama = 4,
+    Custom = 5,
+    GrokCli = 6
 }
 
 public static class ProviderProfileIds
@@ -25,6 +25,16 @@ public static class ProviderProfileIds
     public static bool IsSupportedAdapter(ProviderAdapterKind adapterKind) =>
         adapterKind is ProviderAdapterKind.OpenAiCompatible
             or ProviderAdapterKind.GrokCli;
+
+    public static ProviderAdapterKind RequiredAdapterFor(string id) =>
+        string.Equals(id, GrokCli, StringComparison.Ordinal)
+            ? ProviderAdapterKind.GrokCli
+            : ProviderAdapterKind.OpenAiCompatible;
+
+    public static bool IsAdapterAllowed(
+        string id,
+        ProviderAdapterKind adapterKind) =>
+        adapterKind == RequiredAdapterFor(id);
 }
 
 public sealed class ProviderProfile

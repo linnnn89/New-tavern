@@ -106,10 +106,11 @@ public sealed class GrokCliProviderGateway : IProviderGateway
             throw new InvalidOperationException($"接入商“{profile.Name}”已停用。");
         }
 
-        if (profile.AdapterKind != ProviderAdapterKind.GrokCli)
+        if (profile.AdapterKind != ProviderAdapterKind.GrokCli
+            || profile.Id != ProviderProfileIds.GrokCli)
         {
             throw new NotSupportedException(
-                $"接入商“{profile.Name}”不是 Grok CLI 适配器。");
+                "Grok CLI 仅供内置 Grok 接入商使用。");
         }
 
         if (!string.Equals(

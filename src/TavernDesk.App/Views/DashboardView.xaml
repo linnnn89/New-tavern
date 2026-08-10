@@ -1,102 +1,347 @@
 <UserControl x:Class="TavernDesk.App.Views.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+    <ScrollViewer HorizontalContentAlignment="Stretch"
+                  HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-        <Grid Margin="34,28,34,34"
+        <Grid Margin="28,26,28,32"
               HorizontalAlignment="Stretch">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0">
-                <TextBlock Text="{Binding Title}" Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource MutedTextBrush}" />
-            </StackPanel>
+            <Border Grid.Row="0"
+                    Style="{StaticResource AppicaDashboardHeroStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <UniformGrid Grid.Row="1" Columns="3" Margin="0,26,0,28">
-                <Border Style="{StaticResource CardStyle}" Margin="0,0,12,0">
-                    <StackPanel>
-                        <TextBlock Text="角色" Foreground="{StaticResource MutedTextBrush}" />
-                        <TextBlock Text="{Binding CharacterCount}" FontSize="30" FontWeight="SemiBold" />
-                        <TextBlock Text="本地角色书架" Foreground="{StaticResource MutedTextBrush}" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="TAVERNDESK · 本地工作区"
+                                   Style="{StaticResource AppicaDashboardHeroEyebrowStyle}" />
+                        <TextBlock Text="{Binding Title}"
+                                   Style="{StaticResource AppicaDashboardHeroTitleStyle}" />
+                        <TextBlock Text="{Binding Subtitle}"
+                                   Style="{StaticResource AppicaDashboardHeroSubtitleStyle}" />
+                        <StackPanel Margin="0,17,0,0"
+                                    Orientation="Horizontal">
+                            <Border Padding="10,5"
+                                    Background="{DynamicResource AppicaShellSurfaceBrush}"
+                                    BorderBrush="{DynamicResource AppicaDashboardHeroBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7"
+                                             Height="7"
+                                             Margin="0,0,7,0"
+                                             VerticalAlignment="Center"
+                                             Fill="{DynamicResource AppicaShellSuccessBrush}" />
+                                    <TextBlock Text="本地数据已就绪"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AppicaShellMutedBrush}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
+
+                    <Border Grid.Column="1"
+                            Style="{StaticResource AppicaDashboardHeroFeatureStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Border Width="42"
+                                    Height="42"
+                                    HorizontalAlignment="Left"
+                                    Background="#2A7BF0"
+                                    CornerRadius="12">
+                                <TextBlock Text="&#xE8B7;"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{StaticResource AppicaShellIconFont}"
+                                           FontSize="21"
+                                           Foreground="White" />
+                            </Border>
+                            <StackPanel Grid.Row="1"
+                                        Margin="0,16,0,0"
+                                        VerticalAlignment="Bottom">
+                                <TextBlock Text="本地优先"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"
+                                           Foreground="White" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Text="角色、会话与模型配置都保留在当前设备。"
+                                           FontSize="12"
+                                           LineHeight="18"
+                                           TextWrapping="Wrap"
+                                           Foreground="#DCEAFF" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <UniformGrid Grid.Row="1"
+                         Margin="0,20,0,24"
+                         Columns="3">
+                <Border Margin="0,0,8,0"
+                        Style="{StaticResource AppicaDashboardStatCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34"
+                                    Height="34"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource AppicaShellAccentSoftBrush}"
+                                    CornerRadius="10">
+                                <TextBlock Text="&#xE77B;"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{StaticResource AppicaShellIconFont}"
+                                           FontSize="17"
+                                           Foreground="{DynamicResource AppicaShellAccentBrush}" />
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="角色"
+                                       Style="{StaticResource AppicaDashboardStatLabelStyle}" />
+                        </Grid>
+                        <Grid Grid.Row="1"
+                              Margin="0,13,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding CharacterCount}"
+                                       Style="{StaticResource AppicaDashboardStatMetricStyle}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="12,0,0,3"
+                                       VerticalAlignment="Bottom"
+                                       Text="本地角色书架"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                        </Grid>
+                    </Grid>
                 </Border>
-                <Border Style="{StaticResource CardStyle}" Margin="6,0">
-                    <StackPanel>
-                        <TextBlock Text="会话" Foreground="{StaticResource MutedTextBrush}" />
-                        <TextBlock Text="{Binding ConversationCount}" FontSize="30" FontWeight="SemiBold" />
-                        <TextBlock Text="全部保存在本地" Foreground="{StaticResource MutedTextBrush}" />
-                    </StackPanel>
+
+                <Border Margin="4,0"
+                        Style="{StaticResource AppicaDashboardStatCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34"
+                                    Height="34"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource AppicaDashboardPurpleSoftBrush}"
+                                    CornerRadius="10">
+                                <TextBlock Text="&#xE8BD;"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{StaticResource AppicaShellIconFont}"
+                                           FontSize="17"
+                                           Foreground="{DynamicResource AppicaDashboardPurpleBrush}" />
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="会话"
+                                       Style="{StaticResource AppicaDashboardStatLabelStyle}" />
+                        </Grid>
+                        <Grid Grid.Row="1"
+                              Margin="0,13,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding ConversationCount}"
+                                       Style="{StaticResource AppicaDashboardStatMetricStyle}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="12,0,0,3"
+                                       VerticalAlignment="Bottom"
+                                       Text="全部保存在本地"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                        </Grid>
+                    </Grid>
                 </Border>
-                <Border Style="{StaticResource CardStyle}" Margin="12,0,0,0">
-                    <StackPanel>
-                        <TextBlock Text="接入商" Foreground="{StaticResource MutedTextBrush}" />
-                        <TextBlock Text="{Binding ProviderCount}" FontSize="30" FontWeight="SemiBold" />
-                        <TextBlock Text="保存配置不会联网" Foreground="{StaticResource MutedTextBrush}" />
-                    </StackPanel>
+
+                <Border Margin="8,0,0,0"
+                        Style="{StaticResource AppicaDashboardStatCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34"
+                                    Height="34"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource AppicaDashboardGreenSoftBrush}"
+                                    CornerRadius="10">
+                                <TextBlock Text="&#xE713;"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{StaticResource AppicaShellIconFont}"
+                                           FontSize="17"
+                                           Foreground="{DynamicResource AppicaDashboardGreenBrush}" />
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="接入商"
+                                       Style="{StaticResource AppicaDashboardStatLabelStyle}" />
+                        </Grid>
+                        <Grid Grid.Row="1"
+                              Margin="0,13,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding ProviderCount}"
+                                       Style="{StaticResource AppicaDashboardStatMetricStyle}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="12,0,0,3"
+                                       VerticalAlignment="Bottom"
+                                       Text="保存配置不会联网"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                        </Grid>
+                    </Grid>
                 </Border>
             </UniformGrid>
 
-            <Grid Grid.Row="2" Margin="0,0,0,12">
-                <TextBlock Text="最近会话" Style="{StaticResource SectionTitleStyle}" />
-                <TextBlock HorizontalAlignment="Right"
-                           Text="仪表盘仅展示本地状态"
-                           Foreground="{StaticResource MutedTextBrush}" />
-            </Grid>
+            <Border Grid.Row="2"
+                    Style="{StaticResource AppicaDashboardRecentPanelStyle}">
+                <StackPanel>
+                    <Grid Height="62"
+                          Margin="20,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="最近会话"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppicaShellTextBrush}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Text="从上次停下的位置继续"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal">
+                            <Ellipse Width="6"
+                                     Height="6"
+                                     Margin="0,0,7,0"
+                                     Fill="{DynamicResource AppicaShellSuccessBrush}" />
+                            <TextBlock Text="仅展示本地记录"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AppicaShellMutedBrush}" />
+                        </StackPanel>
+                    </Grid>
 
-            <ItemsControl Grid.Row="3"
-                          ItemsSource="{Binding RecentConversations}"
-                          HorizontalAlignment="Stretch"
-                          HorizontalContentAlignment="Stretch">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel HorizontalAlignment="Stretch" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemContainerStyle>
-                    <Style TargetType="ContentPresenter">
-                        <Setter Property="HorizontalAlignment" Value="Stretch" />
-                    </Style>
-                </ItemsControl.ItemContainerStyle>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Button Margin="0,0,0,10"
-                                Padding="0"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Cursor="Hand"
-                                PreviewMouseLeftButtonDown="RecentConversation_OnPreviewMouseLeftButtonDown"
-                                Click="RecentConversation_OnClick"
-                                MouseLeave="RecentConversation_OnMouseLeave">
-                            <Border Style="{StaticResource CardStyle}" Padding="16,13">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding LastMessagePreview}"
-                                                   MaxHeight="42"
-                                                   Foreground="{StaticResource MutedTextBrush}" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="1"
-                                               Margin="20,0,0,0"
-                                               VerticalAlignment="Center"
-                                               Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
-                                               Foreground="{StaticResource MutedTextBrush}" />
-                                </Grid>
-                            </Border>
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                    <Border Height="1"
+                            Background="{DynamicResource AppicaShellDividerBrush}" />
+
+                    <ItemsControl ItemsSource="{Binding RecentConversations}"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel HorizontalAlignment="Stretch" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource AppicaDashboardRecentRowButtonStyle}"
+                                        PreviewMouseLeftButtonDown="RecentConversation_OnPreviewMouseLeftButtonDown"
+                                        Click="RecentConversation_OnClick"
+                                        MouseLeave="RecentConversation_OnMouseLeave">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="46" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="28" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Width="36"
+                                                Height="36"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Background="{DynamicResource AppicaShellAccentSoftBrush}"
+                                                CornerRadius="10">
+                                            <TextBlock Text="&#xE8BD;"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontFamily="{StaticResource AppicaShellIconFont}"
+                                                       FontSize="16"
+                                                       Foreground="{DynamicResource AppicaShellAccentBrush}" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AppicaShellTextBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Margin="0,4,18,0"
+                                                       Text="{Binding LastMessagePreview}"
+                                                       MaxHeight="20"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AppicaShellMutedBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Column="2"
+                                                   Margin="16,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                                        <TextBlock Grid.Column="3"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Text="&#xE72A;"
+                                                   FontFamily="{StaticResource AppicaShellIconFont}"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
         </Grid>
     </ScrollViewer>
 </UserControl>

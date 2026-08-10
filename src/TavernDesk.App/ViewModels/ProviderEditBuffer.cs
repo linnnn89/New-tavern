@@ -24,7 +24,7 @@ public sealed class ProviderEditBuffer : ViewModelBase
     public ProviderAdapterKind AdapterKind
     {
         get => _adapterKind;
-        set => SetEditable(ref _adapterKind, value);
+        private set => SetEditable(ref _adapterKind, value);
     }
 
     public string BaseUrl
@@ -58,8 +58,10 @@ public sealed class ProviderEditBuffer : ViewModelBase
         {
             ProviderId = profile.Id;
             Name = profile.Name;
-            AdapterKind = profile.AdapterKind;
-            BaseUrl = profile.BaseUrl;
+            AdapterKind = ProviderProfileIds.RequiredAdapterFor(profile.Id);
+            BaseUrl = AdapterKind == ProviderAdapterKind.GrokCli
+                ? "grok://local"
+                : profile.BaseUrl;
             RequestTimeoutSeconds = profile.RequestTimeoutSeconds.ToString("0.###");
             IsEnabled = profile.IsEnabled;
             IsDirty = false;
@@ -83,6 +85,15 @@ public sealed class ProviderEditBuffer : ViewModelBase
         if (string.IsNullOrWhiteSpace(Name))
         {
             error = "接入商名称不能为空。";
+            return false;
+        }
+
+        var requiredAdapter = ProviderProfileIds.RequiredAdapterFor(profile.Id);
+        if (AdapterKind != requiredAdapter)
+        {
+            error = profile.Id == ProviderProfileIds.GrokCli
+                ? "内置 Grok 接入商只能使用 Grok CLI（本机订阅登录）。"
+                : "普通和自定义接入商只能使用 OpenAI Chat Completions 兼容协议。";
             return false;
         }
 
@@ -134,7 +145,7 @@ public sealed class ProviderEditBuffer : ViewModelBase
         }
 
         profile.Name = Name.Trim();
-        profile.AdapterKind = AdapterKind;
+        profile.AdapterKind = requiredAdapter;
         profile.BaseUrl = normalizedBaseUrl;
         profile.RequestTimeoutSeconds = timeout;
         profile.IsEnabled = IsEnabled;

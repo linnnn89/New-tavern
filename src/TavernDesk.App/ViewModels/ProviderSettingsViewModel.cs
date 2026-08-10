@@ -17,6 +17,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public const string InterfaceFontFamilySettingKey = "ui.font.family";
     public const string InterfaceFontSizeSettingKey = "ui.font.size";
     public const string InterfaceScalePercentSettingKey = "ui.scale.percent";
+    public const string InterfaceThemeSettingKey = "ui.theme";
 
     private static readonly Lazy<IReadOnlyList<string>> SystemFontFamilies =
         new(LoadSystemFontFamilies);
@@ -28,6 +29,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         new(110, "110%"),
         new(125, "125%"),
         new(150, "150%（放大）")
+    ];
+    private static readonly IReadOnlyList<InterfaceThemeOption> InterfaceThemeOptions =
+    [
+        new(InterfaceSettingsRuntime.LightThemeName, "默认浅色"),
+        new(InterfaceSettingsRuntime.DarkThemeName, "深炭黑")
     ];
 
     private readonly IProviderProfileRepository _repository;
@@ -73,6 +79,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private InterfaceScaleOption _selectedInterfaceScaleOption =
         InterfaceScaleOptions.Single(option =>
             option.Percent == InterfaceSettingsRuntime.DefaultScalePercent);
+    private InterfaceThemeOption _selectedInterfaceThemeOption =
+        InterfaceThemeOptions.Single(option =>
+            option.Value == InterfaceSettingsRuntime.DefaultThemeName);
     private string _interfaceScaleRecommendationText =
         "自动推荐尚未启用；后续可读取本机显示分辨率与 DPI 给出建议，不会自动更改。";
     private string _interfaceSettingsStatus =
@@ -191,8 +200,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             }
         }
     }
-    public IReadOnlyList<ProviderAdapterKind> AdapterKinds { get; } =
-        [ProviderAdapterKind.OpenAiCompatible, ProviderAdapterKind.GrokCli];
     public IReadOnlyList<ModelFunctionOption> FunctionOptions { get; }
     public AsyncRelayCommand DeleteProviderCommand { get; }
     public AsyncRelayCommand SaveCommand { get; }
@@ -210,6 +217,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SystemFontFamilies.Value;
     public IReadOnlyList<InterfaceScaleOption> AvailableInterfaceScaleOptions =>
         InterfaceScaleOptions;
+    public IReadOnlyList<InterfaceThemeOption> AvailableInterfaceThemeOptions =>
+        InterfaceThemeOptions;
 
     public ProviderProfile? SelectedProfile
     {
@@ -221,10 +230,28 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 return;
             }
 
+            OnPropertyChanged(nameof(IsGrokCliSelected));
+            OnPropertyChanged(nameof(IsHttpApiSelected));
+            OnPropertyChanged(nameof(ConnectionKindLabel));
+            OnPropertyChanged(nameof(CredentialHelpText));
             SaveCommand.RaiseCanExecuteChanged();
             ClearKeyCommand.RaiseCanExecuteChanged();
         }
     }
+
+    public bool IsGrokCliSelected =>
+        SelectedProfile?.Id == ProviderProfileIds.GrokCli;
+
+    public bool IsHttpApiSelected =>
+        SelectedProfile is not null && !IsGrokCliSelected;
+
+    public string ConnectionKindLabel => IsGrokCliSelected
+        ? "Grok CLI（本机订阅登录）"
+        : "OpenAI Chat Completions 兼容";
+
+    public string CredentialHelpText => IsGrokCliSelected
+        ? "使用本机 grok login 的订阅登录；TavernDesk 不要求或保存 Grok API Key。"
+        : "Key 文件独立保存在数据目录的 secrets 文件夹；受 Windows DPAPI 当前用户保护，数据库只保存随机引用。这不是应用进程隔离：同一 Windows 用户下的恶意程序或管理员仍可能取得访问能力。";
 
     public ProviderProfile? CatalogProvider
     {
@@ -447,6 +474,28 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public int InterfaceScalePercent => SelectedInterfaceScaleOption.Percent;
 
+    public InterfaceThemeOption SelectedInterfaceThemeOption
+    {
+        get => _selectedInterfaceThemeOption;
+        set
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            var normalized = ResolveInterfaceThemeOption(value.Value);
+            if (!SetProperty(ref _selectedInterfaceThemeOption, normalized))
+            {
+                return;
+            }
+
+            InterfaceSettingsRuntime.ApplyTheme(normalized.Value);
+            InterfaceSettingsStatus =
+                $"主题已预览为“{normalized.Label}”；点击“保存界面设置”后将在下次启动继续使用。";
+        }
+    }
+
     public string InterfaceScaleRecommendationText
     {
         get => _interfaceScaleRecommendationText;
@@ -553,7 +602,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 InterfaceFontFamily,
                 InterfaceFontSize,
                 ChatAutoScrollEnabled,
-                InterfaceScalePercent);
+                InterfaceScalePercent,
+                SelectedInterfaceThemeOption.Value);
             LoadInterfaceScaleRecommendation();
             return;
         }
@@ -562,11 +612,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         var fontFamilyTask = _appSettings.GetAsync(InterfaceFontFamilySettingKey);
         var fontSizeTask = _appSettings.GetAsync(InterfaceFontSizeSettingKey);
         var scaleTask = _appSettings.GetAsync(InterfaceScalePercentSettingKey);
+        var themeTask = _appSettings.GetAsync(InterfaceThemeSettingKey);
         await Task.WhenAll(
             autoScrollTask,
             fontFamilyTask,
             fontSizeTask,
-            scaleTask);
+            scaleTask,
+            themeTask);
 
         ChatAutoScrollEnabled =
             !bool.TryParse(autoScrollTask.Result, out var autoScroll)
@@ -574,11 +626,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         InterfaceFontFamily = NormalizeFontFamily(fontFamilyTask.Result);
         InterfaceFontSize = NormalizeFontSize(fontSizeTask.Result);
         SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(scaleTask.Result);
+        SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(themeTask.Result);
         InterfaceSettingsRuntime.Apply(
             InterfaceFontFamily,
             InterfaceFontSize,
             ChatAutoScrollEnabled,
-            InterfaceScalePercent);
+            InterfaceScalePercent,
+            SelectedInterfaceThemeOption.Value);
         LoadInterfaceScaleRecommendation();
         InterfaceSettingsStatus = "界面设置已载入；修改后点击“保存界面设置”。";
     }
@@ -688,14 +742,19 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 InterfaceFontSize.ToString(CultureInfo.InvariantCulture)),
             _appSettings.SetAsync(
                 InterfaceScalePercentSettingKey,
-                InterfaceScalePercent.ToString(CultureInfo.InvariantCulture)));
+                InterfaceScalePercent.ToString(CultureInfo.InvariantCulture)),
+            _appSettings.SetAsync(
+                InterfaceThemeSettingKey,
+                SelectedInterfaceThemeOption.Value));
         InterfaceSettingsRuntime.Apply(
             InterfaceFontFamily,
             InterfaceFontSize,
             ChatAutoScrollEnabled,
-            InterfaceScalePercent);
+            InterfaceScalePercent,
+            SelectedInterfaceThemeOption.Value);
         InterfaceSettingsStatus =
             $"界面设置已保存：缩放 {InterfaceScalePercent}%，"
+            + $"主题 {SelectedInterfaceThemeOption.Label}，"
             + $"{InterfaceFontFamily}，字号 {InterfaceFontSize:0}；"
             + (ChatAutoScrollEnabled ? "聊天自动滚动已开启。" : "聊天自动滚动已关闭。");
     }
@@ -707,8 +766,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         InterfaceFontSize = InterfaceSettingsRuntime.DefaultFontSize;
         SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(
             InterfaceSettingsRuntime.DefaultScalePercent);
+        SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(
+            InterfaceSettingsRuntime.DefaultThemeName);
         InterfaceSettingsStatus =
-            "已恢复默认值；缩放已预览，点击“保存界面设置”后将在下次启动继续使用。";
+            "已恢复默认值；缩放和主题已预览，点击“保存界面设置”后将在下次启动继续使用。";
     }
 
     private string NormalizeFontFamily(string? value)
@@ -756,6 +817,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             .ThenBy(option => Math.Abs(
                 option.Percent - InterfaceSettingsRuntime.DefaultScalePercent))
             .First();
+    }
+
+    private static InterfaceThemeOption ResolveInterfaceThemeOption(string? value)
+    {
+        var normalized = InterfaceSettingsRuntime.NormalizeThemeName(value);
+        return InterfaceThemeOptions.Single(option => option.Value == normalized);
     }
 
     private void LoadInterfaceScaleRecommendation()
@@ -876,7 +943,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             return null;
         }
 
-        Status = $"已添加“{profile.Name}”；默认使用 OpenAI Compatible，请填写 API Key 后保存。";
+        Status = $"已添加“{profile.Name}”；固定使用 OpenAI Chat Completions 兼容协议，请填写 API Key 后保存。";
         return Profiles.FirstOrDefault(item => item.Id == profile.Id) ?? profile;
     }
 
@@ -1636,9 +1703,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private static string KeyStatusFor(ProviderProfile? profile) =>
         profile switch
         {
-            { AdapterKind: ProviderAdapterKind.GrokCli, SecretReference.Length: > 0 } =>
+            { Id: ProviderProfileIds.GrokCli, SecretReference.Length: > 0 } =>
                 "Grok CLI 不使用此 API Key；建议清除旧 Key，并在终端执行 grok login。",
-            { AdapterKind: ProviderAdapterKind.GrokCli } =>
+            { Id: ProviderProfileIds.GrokCli } =>
                 "Grok CLI 使用 grok login 的订阅登录；这里不需要 API Key。",
             { SecretReference.Length: > 0 } =>
                 "API Key：已受 Windows DPAPI（当前用户）保护保存。",

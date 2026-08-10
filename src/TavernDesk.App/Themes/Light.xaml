@@ -6,25 +6,28 @@
     <system:Double x:Key="ChatFontSize">15</system:Double>
     <ScaleTransform x:Key="InterfaceScaleTransform" ScaleX="1" ScaleY="1" />
 
-    <!-- Acrylic-inspired palette: translucent surfaces over a stable fallback background. -->
-    <Color x:Key="WindowBackgroundColor">#F3F6FA</Color>
-    <Color x:Key="SurfaceColor">#EAFBFDFF</Color>
+    <!-- Appica-inspired semantic palette.  Keep the existing global control
+         templates intact; these tokens change presentation without changing
+         hit targets, layout measurements, or popup/window behavior. -->
+    <Color x:Key="WindowBackgroundColor">#F6F8FC</Color>
+    <Color x:Key="SurfaceColor">#FFFFFFFF</Color>
     <Color x:Key="SurfaceSolidColor">#FFFFFFFF</Color>
-    <Color x:Key="SurfaceAltColor">#E8EEF5</Color>
-    <Color x:Key="BorderColor">#CCD6E2</Color>
-    <Color x:Key="TextColor">#1F2937</Color>
-    <Color x:Key="MutedTextColor">#66758A</Color>
-    <Color x:Key="AccentColor">#0A84FF</Color>
-    <Color x:Key="AccentSoftColor">#DDEEFF</Color>
-    <Color x:Key="ControlHoverColor">#EAF2FB</Color>
-    <Color x:Key="ControlPressedColor">#DCE8F5</Color>
-    <Color x:Key="ControlDisabledColor">#EFF3F7</Color>
-    <Color x:Key="FocusRingColor">#7AB8F5</Color>
-    <Color x:Key="ScrollThumbColor">#9AAABD</Color>
-    <Color x:Key="ScrollThumbHoverColor">#708297</Color>
-    <Color x:Key="SuccessColor">#268A63</Color>
-    <Color x:Key="DangerColor">#C04452</Color>
-    <Color x:Key="MessagePlusColor">#7A8088</Color>
+    <Color x:Key="SurfaceAltColor">#F1F4F8</Color>
+    <Color x:Key="BorderColor">#D9E1EC</Color>
+    <Color x:Key="TextColor">#182230</Color>
+    <Color x:Key="MutedTextColor">#667085</Color>
+    <Color x:Key="AccentColor">#2563EB</Color>
+    <Color x:Key="AccentSoftColor">#EAF2FF</Color>
+    <Color x:Key="ControlHoverColor">#F2F6FC</Color>
+    <Color x:Key="ControlPressedColor">#E5ECF6</Color>
+    <Color x:Key="ControlDisabledColor">#F2F4F7</Color>
+    <Color x:Key="FocusRingColor">#84ADFF</Color>
+    <Color x:Key="ScrollThumbColor">#B7C2D1</Color>
+    <Color x:Key="ScrollThumbHoverColor">#7D8DA2</Color>
+    <Color x:Key="SuccessColor">#178A60</Color>
+    <Color x:Key="DangerColor">#D92D20</Color>
+    <Color x:Key="MessagePlusColor">#748096</Color>
+    <Color x:Key="InteractionOverlayColor">#1F2937</Color>
 
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{StaticResource WindowBackgroundColor}" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
@@ -44,19 +47,20 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="MessagePlusBrush" Color="{StaticResource MessagePlusColor}" />
+    <SolidColorBrush x:Key="InteractionOverlayBrush" Color="{StaticResource InteractionOverlayColor}" />
 
     <DropShadowEffect x:Key="CardShadowEffect"
-                      BlurRadius="20"
+                      BlurRadius="18"
                       Direction="270"
                       Opacity="0.1"
-                      ShadowDepth="3"
-                      Color="#334155" />
+                      ShadowDepth="2"
+                      Color="#30445C" />
 
     <Style TargetType="Window">
         <Setter Property="FontFamily" Value="{DynamicResource InterfaceFontFamily}" />
         <Setter Property="FontSize" Value="{DynamicResource InterfaceFontSize}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}" />
     </Style>
 
     <Style x:Key="InterfaceScaleRootStyle"
@@ -69,7 +73,7 @@
         <Setter Property="FontFamily" Value="{DynamicResource InterfaceFontFamily}" />
         <Setter Property="FontSize" Value="{DynamicResource InterfaceFontSize}" />
         <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
 
     <!-- Shared modern control chrome. Local variants inherit these templates so
@@ -79,9 +83,9 @@
         <Setter Property="Padding" Value="13,7" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -110,7 +114,7 @@
                                                   RecognizesAccessKey="True"
                                                   SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
                                 <Border x:Name="InteractionOverlay"
-                                        Background="#1F2937"
+                                        Background="{DynamicResource InteractionOverlayBrush}"
                                         CornerRadius="9"
                                         IsHitTestVisible="False"
                                         Opacity="0" />
@@ -118,7 +122,7 @@
                         </Border>
                         <Border x:Name="FocusRing"
                                 Margin="-2"
-                                BorderBrush="{StaticResource FocusRingBrush}"
+                                BorderBrush="{DynamicResource FocusRingBrush}"
                                 BorderThickness="2"
                                 CornerRadius="12"
                                 IsHitTestVisible="False"
@@ -127,7 +131,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="InteractionOverlay" Property="Opacity" Value="0.07" />
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="InteractionOverlay" Property="Opacity" Value="0.14" />
@@ -136,7 +140,7 @@
                             <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsDefault" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Root" Property="Opacity" Value="0.45" />
@@ -155,12 +159,12 @@
         <Setter Property="MinHeight" Value="38" />
         <Setter Property="Padding" Value="11,7" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource AccentSoftBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentSoftBrush}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -178,7 +182,7 @@
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
                         <Border x:Name="FocusRing"
-                                BorderBrush="{StaticResource AccentBrush}"
+                                BorderBrush="{DynamicResource AccentBrush}"
                                 BorderThickness="2"
                                 CornerRadius="10"
                                 IsHitTestVisible="False"
@@ -186,16 +190,16 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsReadOnly" Value="True">
-                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlDisabledBrush}" />
                             <Setter Property="Opacity" Value="0.62" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -216,11 +220,11 @@
         <Setter Property="MinHeight" Value="38" />
         <Setter Property="Padding" Value="11,7" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -238,7 +242,7 @@
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
                         <Border x:Name="FocusRing"
-                                BorderBrush="{StaticResource AccentBrush}"
+                                BorderBrush="{DynamicResource AccentBrush}"
                                 BorderThickness="2"
                                 CornerRadius="10"
                                 IsHitTestVisible="False"
@@ -246,13 +250,13 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlDisabledBrush}" />
                             <Setter Property="Opacity" Value="0.62" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -266,9 +270,9 @@
         <Setter Property="Padding" Value="11,7" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MaxDropDownHeight" Value="360" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
@@ -318,7 +322,7 @@
                                                     Height="18"
                                                     HorizontalAlignment="Left"
                                                     VerticalAlignment="Center"
-                                                    Background="{StaticResource BorderBrush}" />
+                                                    Background="{DynamicResource BorderBrush}" />
                                             <Path x:Name="Chevron"
                                                   Grid.Column="1"
                                                   Width="10"
@@ -327,22 +331,22 @@
                                                   VerticalAlignment="Center"
                                                   Data="M 0,0 L 5,5 L 10,0"
                                                   IsHitTestVisible="False"
-                                                  Stroke="{StaticResource MutedTextBrush}"
+                                                  Stroke="{DynamicResource MutedTextBrush}"
                                                   StrokeLineJoin="Round"
                                                   StrokeThickness="1.6" />
                                         </Grid>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBrush}" />
-                                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                                         </Trigger>
                                         <Trigger Property="IsChecked" Value="True">
-                                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                                             <Setter TargetName="Chevron" Property="Data" Value="M 0,5 L 5,0 L 10,5" />
                                         </Trigger>
                                         <Trigger Property="IsEnabled" Value="False">
-                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
+                                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlDisabledBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -350,7 +354,7 @@
                         </ToggleButton>
                         <Border x:Name="FocusRing"
                                 Margin="2"
-                                BorderBrush="{StaticResource AccentBrush}"
+                                BorderBrush="{DynamicResource AccentBrush}"
                                 BorderThickness="2"
                                 CornerRadius="8"
                                 IsHitTestVisible="False"
@@ -366,8 +370,8 @@
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                     Margin="0,5,0,10"
                                     Padding="0"
-                                    Background="{StaticResource SurfaceSolidBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}"
+                                    Background="{DynamicResource SurfaceSolidBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="11"
                                     Effect="{StaticResource CardShadowEffect}">
@@ -408,7 +412,7 @@
         <Setter Property="Padding" Value="10,7" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -423,10 +427,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="ItemChrome" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                            <Setter TargetName="ItemChrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="ItemChrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                            <Setter TargetName="ItemChrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -464,14 +468,14 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ItemChrome" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                            <Setter TargetName="ItemChrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="ItemChrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
-                            <Setter TargetName="ItemChrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="ItemChrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                            <Setter TargetName="ItemChrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                            <Setter TargetName="ItemChrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="ItemChrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45" />
@@ -486,8 +490,8 @@
            BasedOn="{StaticResource ModernListBoxItemStyle}" />
 
     <Style TargetType="{x:Type ListBox}">
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="4" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
@@ -511,7 +515,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.58" />
@@ -523,7 +527,7 @@
     </Style>
 
     <Style TargetType="{x:Type CheckBox}">
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -538,12 +542,12 @@
                         <Grid Width="20" Height="20" VerticalAlignment="Center">
                             <Border x:Name="Box"
                                     Margin="1"
-                                    Background="{StaticResource SurfaceSolidBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}"
+                                    Background="{DynamicResource SurfaceSolidBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="6" />
                             <Border x:Name="FocusRing"
-                                    BorderBrush="{StaticResource FocusRingBrush}"
+                                    BorderBrush="{DynamicResource FocusRingBrush}"
                                     BorderThickness="2"
                                     CornerRadius="7"
                                     IsHitTestVisible="False"
@@ -578,17 +582,17 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="Box" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Box" Property="Background" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="{x:Null}">
-                            <Setter TargetName="Box" Property="Background" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="IndeterminateMark" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
@@ -676,7 +680,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
@@ -717,7 +721,7 @@
                                 Grid.Row="1"
                                 Grid.Column="1"
                                 Margin="1"
-                                BorderBrush="{StaticResource FocusRingBrush}"
+                                BorderBrush="{DynamicResource FocusRingBrush}"
                                 BorderThickness="2"
                                 CornerRadius="8"
                                 IsHitTestVisible="False"
@@ -726,17 +730,17 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="TabChrome" Property="Background" Value="{StaticResource ControlHoverBrush}" />
-                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            <Setter TargetName="TabChrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="TabChrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                            <Setter TargetName="TabChrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                             <Setter TargetName="SelectionRing" Property="Opacity" Value="1" />
                             <Setter Property="Panel.ZIndex" Value="1" />
-                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                            <Setter TargetName="SelectionRing" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="SelectionRing" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="SelectionRing" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -774,7 +778,7 @@
     </Style>
 
     <Style x:Key="ModernScrollThumbStyle" TargetType="{x:Type Thumb}">
-        <Setter Property="Background" Value="{StaticResource ScrollThumbBrush}" />
+        <Setter Property="Background" Value="{DynamicResource ScrollThumbBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
@@ -785,10 +789,10 @@
                             SnapsToDevicePixels="True" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource ScrollThumbHoverBrush}" />
+                            <Setter TargetName="ThumbChrome" Property="Background" Value="{DynamicResource ScrollThumbHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="ThumbChrome" Property="Background" Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.35" />
@@ -803,7 +807,7 @@
         <Setter Property="Width" Value="12" />
         <Setter Property="MinWidth" Value="12" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource ScrollThumbBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ScrollThumbBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ScrollBar}">
@@ -863,7 +867,7 @@
                 <ControlTemplate TargetType="{x:Type RepeatButton}">
                     <Border Height="5"
                             VerticalAlignment="Center"
-                            Background="{StaticResource AccentBrush}"
+                            Background="{DynamicResource AccentBrush}"
                             CornerRadius="3,0,0,3" />
                 </ControlTemplate>
             </Setter.Value>
@@ -877,7 +881,7 @@
                 <ControlTemplate TargetType="{x:Type RepeatButton}">
                     <Border Height="5"
                             VerticalAlignment="Center"
-                            Background="{StaticResource BorderBrush}"
+                            Background="{DynamicResource BorderBrush}"
                             CornerRadius="0,3,3,0" />
                 </ControlTemplate>
             </Setter.Value>
@@ -893,8 +897,8 @@
                     <Grid>
                         <Border x:Name="ThumbChrome"
                                 Margin="2"
-                                Background="{StaticResource SurfaceSolidBrush}"
-                                BorderBrush="{StaticResource AccentBrush}"
+                                Background="{DynamicResource SurfaceSolidBrush}"
+                                BorderBrush="{DynamicResource AccentBrush}"
                                 BorderThickness="2"
                                 CornerRadius="9">
                             <Border.Effect>
@@ -908,10 +912,10 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                            <Setter TargetName="ThumbChrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="ThumbChrome" Property="Background" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="White" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -934,7 +938,7 @@
                         <Border x:Name="FocusTrack"
                                 Height="9"
                                 VerticalAlignment="Center"
-                                BorderBrush="{StaticResource FocusRingBrush}"
+                                BorderBrush="{DynamicResource FocusRingBrush}"
                                 BorderThickness="2"
                                 CornerRadius="5"
                                 IsHitTestVisible="False"
@@ -972,10 +976,10 @@
     </Style>
 
     <Style TargetType="{x:Type Expander}">
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -996,7 +1000,7 @@
                                           Grid.Row="0"
                                           MinHeight="38"
                                           Padding="12,8"
-                                          Background="{StaticResource SurfaceAltBrush}"
+                                          Background="{DynamicResource SurfaceAltBrush}"
                                           BorderThickness="0"
                                           Cursor="Hand"
                                           Focusable="False"
@@ -1028,14 +1032,14 @@
                                                       VerticalAlignment="Center"
                                                       Data="M 0,0 L 5,5 L 10,0"
                                                       IsHitTestVisible="False"
-                                                      Stroke="{StaticResource MutedTextBrush}"
+                                                      Stroke="{DynamicResource MutedTextBrush}"
                                                       StrokeLineJoin="Round"
                                                       StrokeThickness="1.6" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="HeaderBackground" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                                                <Setter TargetName="HeaderBackground" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                                             </Trigger>
                                             <Trigger Property="IsChecked" Value="True">
                                                 <Setter TargetName="HeaderBackground" Property="CornerRadius" Value="10,10,0,0" />
@@ -1057,7 +1061,7 @@
                             <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                            <Setter TargetName="OuterChrome" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="OuterChrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45" />
@@ -1069,8 +1073,8 @@
     </Style>
 
     <Style TargetType="{x:Type ContextMenu}">
-        <Setter Property="Background" Value="{StaticResource SurfaceSolidBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="5" />
         <Setter Property="HasDropShadow" Value="True" />
@@ -1100,7 +1104,7 @@
         <Setter Property="MinWidth" Value="150" />
         <Setter Property="MinHeight" Value="34" />
         <Setter Property="Padding" Value="10,7" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -1133,7 +1137,7 @@
                                       HorizontalAlignment="Left"
                                       VerticalAlignment="Center"
                                       Data="M 0,3 L 3,6 L 9,0"
-                                      Stroke="{StaticResource AccentBrush}"
+                                      Stroke="{DynamicResource AccentBrush}"
                                       StrokeLineJoin="Round"
                                       StrokeThickness="1.8"
                                       Visibility="Collapsed" />
@@ -1144,7 +1148,7 @@
                                 <TextBlock Grid.Column="2"
                                            Margin="18,0,0,0"
                                            VerticalAlignment="Center"
-                                           Foreground="{StaticResource MutedTextBrush}"
+                                           Foreground="{DynamicResource MutedTextBrush}"
                                            Text="{TemplateBinding InputGestureText}" />
                                 <Path x:Name="SubmenuChevron"
                                       Grid.Column="3"
@@ -1153,7 +1157,7 @@
                                       HorizontalAlignment="Right"
                                       VerticalAlignment="Center"
                                       Data="M 0,0 L 5,5 L 0,10"
-                                      Stroke="{StaticResource MutedTextBrush}"
+                                      Stroke="{DynamicResource MutedTextBrush}"
                                       StrokeLineJoin="Round"
                                       StrokeThickness="1.4"
                                       Visibility="Collapsed" />
@@ -1168,8 +1172,8 @@
                                PopupAnimation="Fade">
                             <Border Margin="0,0,10,10"
                                     Padding="5"
-                                    Background="{StaticResource SurfaceSolidBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}"
+                                    Background="{DynamicResource SurfaceSolidBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="11"
                                     Effect="{StaticResource CardShadowEffect}">
@@ -1180,7 +1184,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="ItemChrome" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                            <Setter TargetName="ItemChrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="MenuCheckMark" Property="Visibility" Value="Visible" />
@@ -1201,7 +1205,7 @@
     <Style TargetType="{x:Type Separator}">
         <Setter Property="Height" Value="1" />
         <Setter Property="Margin" Value="8,4" />
-        <Setter Property="Background" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Separator}">
@@ -1234,8 +1238,8 @@
     </Style>
 
     <Style x:Key="CardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="14" />
         <Setter Property="Padding" Value="16" />
@@ -1247,9 +1251,9 @@
            BasedOn="{StaticResource ModernButtonBaseStyle}">
         <Setter Property="MinHeight" Value="38" />
         <Setter Property="Padding" Value="16,8" />
-        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
         <Setter Property="Foreground" Value="White" />
-        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
@@ -1264,9 +1268,9 @@
            BasedOn="{StaticResource ModernButtonBaseStyle}">
         <Setter Property="MinHeight" Value="36" />
         <Setter Property="Padding" Value="13,7" />
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="ToolTipService.InitialShowDelay" Value="2000" />
@@ -1277,9 +1281,9 @@
 
     <Style x:Key="SidebarToggleButtonStyle" TargetType="Button">
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="True" />
@@ -1299,13 +1303,13 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Chrome"
                                     Property="Background"
-                                    Value="{StaticResource AccentSoftBrush}" />
+                                    Value="{DynamicResource AccentSoftBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Chrome" Property="Opacity" Value="0.72" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -1328,8 +1332,8 @@
                 <ControlTemplate TargetType="ToggleButton">
                     <Grid Width="52" Height="28" Background="Transparent">
                         <Border x:Name="Track"
-                                Background="#C9CDD2"
-                                BorderBrush="{StaticResource BorderBrush}"
+                                Background="{DynamicResource ScrollThumbBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="14" />
                         <Ellipse x:Name="Knob"
@@ -1341,14 +1345,14 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Track" Property="Background" Value="#0A84FF" />
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Track" Property="Opacity" Value="0.9" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="Track" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -1369,7 +1373,7 @@
         <Setter Property="Padding" Value="6,4" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="13" />
@@ -1384,7 +1388,7 @@
         <Setter Property="Height" Value="28" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource MessagePlusBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MessagePlusBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="True" />
@@ -1410,7 +1414,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PlusGlyph" Property="Foreground" Value="{StaticResource TextBrush}" />
+                            <Setter TargetName="PlusGlyph" Property="Foreground" Value="{DynamicResource TextBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="PlusGlyph" Property="Opacity" Value="0.72" />
@@ -1429,7 +1433,7 @@
         <Setter Property="Height" Value="20" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="13" />
@@ -1447,7 +1451,7 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="CandidateButton"
                                     Property="Background"
-                                    Value="{StaticResource AccentSoftBrush}" />
+                                    Value="{DynamicResource AccentSoftBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="CandidateButton"
@@ -1457,7 +1461,7 @@
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="CandidateButton"
                                     Property="BorderBrush"
-                                    Value="{StaticResource AccentBrush}" />
+                                    Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="CandidateButton"
                                     Property="BorderThickness"
                                     Value="1" />
@@ -1477,7 +1481,7 @@
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
@@ -1492,13 +1496,13 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ToolRow" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                            <Setter TargetName="ToolRow" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="ToolRow" Property="Opacity" Value="0.72" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="ToolRow" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                            <Setter TargetName="ToolRow" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.42" />

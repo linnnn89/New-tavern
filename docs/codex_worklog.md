@@ -1403,3 +1403,104 @@
 - 标准 Release 构建 `0` 警告、`0` 错误；完整本地 Release 测试 `179/179` 通过。
 - 使用隔离数据根真实启动 WPF，复核设置接入商、默认行为、数据、界面页签，以及聊天“上下文/分段”和“记忆/正文/高级工作流/草稿”两级页签；在 100% 和 150% 预览下确认正文顶部对齐，100% 下顶部四个聊天页签保持单行且所有选中框四边完整。
 - 用户问题截图与修正后截图已合并对照；`design-qa.md`、截图和隔离数据库均被 Git 忽略。未读取用户资料、API Key 或调用真实 Provider。
+
+## 2026-08-09 — Appica 主工作区视觉升级
+
+### 实现
+
+- 在独立工作树 `I:\New-tarven-appica-ui` 和分支 `codex/appica-ui-upgrade` 实施；原工作树未改动。
+- `Light.xaml` 仅调整浅色语义色板和低风险卡片阴影，保留现有 Button、TextBox、ComboBox、TabControl、Expander、ContextMenu 等隐式模板及命中逻辑。
+- 新增具名 Appica 资源，仅由主壳、仪表盘和聊天主工作区显式引用；导航增加当前页选中态，聊天页保留所有具名元素、事件、命令、Popup 定位、虚拟化、右栏折叠和 `Ctrl+Enter` 绑定。
+- 未修改 `ConversationWindow`、任何 `*Dialog.xaml`、业务 ViewModel、Provider、数据库 schema 或持久化格式。
+
+### 验证与边界
+
+- 最终 Release 解决方案构建成功，`0` 警告、`0` 错误；修改的 XAML 均通过 XML 解析，`git diff --check` 通过。
+- 隔离目录执行 AgentHost `--storage-smoke` 为 PASS，覆盖角色、会话、消息编辑、独立分支、删除、记忆、群聊、设置和默认 Provider，API 请求数为 0；根目录启动器 `--probe` 退出码为 0。
+- 用户在本机实际窗口确认界面显示正常。离屏 `PrintWindow` 截图曾错误裁切横向内容，已停止用其判断布局；由该误判产生的仪表盘结构改动已撤回。
+- 未更新 `app/` 自包含发布快照，未读取 API Key、刷新模型目录或调用真实 Provider；当前公开仓库不含测试项目，因此本轮没有可运行的完整单元测试集。
+
+## 2026-08-09 — Appica 效果图对齐重构与真实界面验收
+
+### 实现
+
+- 本条记录取代上一条 Appica 记录中的浅层视觉交付描述；工作仍位于独立工作树 `I:\New-tarven-appica-ui` 和分支 `codex/appica-ui-upgrade`，原工作树未编辑。
+- 主窗口导航改为 196 DIP 的横向 Fluent 图标与文字布局；聊天页隐藏旧全局顶栏，形成全高的主导航、会话列表、对话正文、上下文检查器四栏结构。仪表盘同步使用相同卡片、色板和信息层级。
+- 聊天区采用 `312 : 630 : 406` 的参考比例和 6 DIP 栏间距；会话行、聊天头部、42 DIP 消息头像、外置姓名/时间、单体 Composer、右侧 Token/请求/召回卡片均按选定效果图重组。
+- 仅新增显示所需的会话头像、消息头像、时间与 Token 摘要属性；真实头像路径、命令、事件、Popup、虚拟化、右栏折叠和 `Ctrl+Enter` 行为继续使用现有数据与逻辑。无头像的隔离测试数据使用系统 Fluent 联系人图标兜底。
+- `Light.xaml` 仍只调整颜色令牌和阴影，所有应用级隐式控件模板保持原样；未修改 `ConversationWindow`、任何 `*Dialog.xaml`、数据库 schema、Provider 或持久化格式。
+
+### 验证与边界
+
+- Release 解决方案构建成功，`0` 警告、`0` 错误；`dotnet test --no-build` 退出码为 0，但当前公开解决方案没有可发现的测试项目。
+- 新隔离目录 `work/verification/appica-ui-final-20260809-01` 的 AgentHost `--storage-smoke` 为 PASS，覆盖角色、会话、消息、分支、删除、记忆、群聊、设置和默认 Provider，API 请求数为 0。
+- 使用隔离 Appica QA 数据根真实启动 WPF，通过 UI Automation 切换聊天页并选择会话；首轮发现 Token 进度条对只读属性的默认双向绑定错误，改为 `Mode=OneWay` 后重新构建并复测，无运行时错误弹窗。
+- 最终前台窗口截图为 Windows 150% DPI 下的 `2160 x 1350` 物理像素，对应 `1440 x 900` 逻辑窗口；与 `1586 x 992` 参考图归一化合图检查后，完整视图和聊天聚焦视图均无面板缺失、裁切或溢出，项目根 `design-qa.md` 结论为 `passed`。
+- 只读契约审计确认原有 13 个 `x:Name`、6 个事件处理器、37 个唯一命令绑定、两个 Popup 定位契约和消息 Recycling 虚拟化均保留；未发现阻断回归。
+- QA 只使用 Git 忽略的 `work/` 隔离数据与截图；未读取用户日常数据、API Key，未调用真实 Provider，未更新 `app/` 自包含发布快照。
+
+## 2026-08-10 — Appica 实际数据界面可用性修正
+
+### 实现
+
+- Persona 名称和用户设定输入框在空白区域点击时聚焦并把插入点放到文本末尾；点击现有文字仍保留 WPF 原生的精确插入位置。
+- 普通聊天与群聊共用的消息模板按发送者类型排布：用户消息在右侧，角色消息在左侧；未改消息命令、候选、编辑或虚拟化逻辑。
+- 会话搜索框改为垂直居中承载文字；角色提示词页的 `depth` 输入框扩大安全宽度并收敛内边距，避免高 DPI 下文字被边界裁切。
+- Composer 的发送模式下拉框由 150 DIP 扩到 176 DIP，并使用 13 DIP 字号；“发送并生成回复”和“只保存用户消息”在关闭与展开状态均完整显示。
+- `app/` 自包含发布快照已同步，因此工作树根目录 `I:\New-tarven-appica-ui\TavernDesk.exe` 可直接打开本轮界面；原工作树 `I:\New-tarven` 未编辑。
+
+### 验证与边界
+
+- Release 解决方案构建 `0` 警告、`0` 错误，随后发布到工作树 `app/`；实际运行进程来自 `I:\New-tarven-appica-ui\app\TavernDesk.App.exe`。
+- 使用默认本机数据真实启动并只读检查界面；未编辑或保存角色、Persona、聊天、Provider，也未发送模型请求。
+- 真实鼠标/UI Automation 验证 Persona 空白点击落在末尾、文字点击保持精确位置；真实消息列表验证角色在左、用户在右。
+- 搜索文字与 `depth` 文本均完整落在输入边界内；发送模式控件在 Windows 150% DPI 下为 264 物理像素（176 DIP），两个完整选项均为 260 物理像素可见宽度。聚焦对照图记录在 Git 忽略的 `work/`，`design-qa.md` 保持 `passed`。
+
+## 2026-08-10 — 可选深炭黑主题
+
+### 实现
+
+- 设置 → 界面新增“默认浅色 / 深炭黑”主题选项；切换后立即预览，点击“保存界面设置”后写入既有 `app_settings` 的 `ui.theme`，缺失或非法值回退到浅色。
+- 深色方案从用户提供的参考图提取深炭黑画布、稍亮卡片、冷灰描边、蓝色主操作、暖白正文和冷灰辅助文字；没有复制网页内容、广告或图片资产。
+- 现有共享语义 Brush 改为动态引用，运行时统一切换 Core、Appica 主壳和仪表盘色板；同时同步 WPF `ThemeMode`，使原生窗口主题与应用内容一致。
+- 未重写 Button、TextBox、ComboBox、TabControl、ScrollBar、Expander、ContextMenu 等模板，也未改变任何 `PART_*`、Popup、命中层、窗口层级、命令或聊天/Provider 逻辑。
+
+### 验证与边界
+
+- Release 解决方案构建成功，`0` 警告、`0` 错误；`win-x64` 自包含发布已同步到工作树 `app/`，根目录 `TavernDesk.exe --probe` 退出码为 `0`。
+- 使用隔离数据根实际启动工作树发布程序，检查深色画布、卡片、文字、描边、按钮和滚动区域；用户在本机实际窗口完成视觉验收并确认可用。
+- 参考图与深色实现的聚焦合图保存在 Git 忽略的 `work/dark-theme-comparison-20260810.png`；`design-qa.md` 记录色彩、排版、间距、内容与交互边界，结论为 `passed`。
+- 未保存角色、聊天或 Provider，未读取 API Key，也未发送模型请求；原工作树 `I:\New-tarven` 未编辑。
+
+## 2026-08-10 — Provider 连接方式收口与自定义兼容提示
+
+### 实现
+
+- 设置页移除可编辑的适配器下拉框：内置 Grok 固定使用 Grok CLI 本机订阅登录，其余内置及自定义接入商固定使用 OpenAI Chat Completions 兼容协议；Grok 状态下不再显示 API 地址和新 API Key 输入框。
+- 新增自定义接入商窗口明确提示 API 必须兼容 `/v1/chat/completions`，不支持 Anthropic Messages、Gemini 原生及其他专用格式。
+- 自定义窗口表单区改为可滚动，底部“取消 / 添加”按钮独立固定；较大字体、DPI 或应用缩放不会再把底部操作挤出窗口。
+- Provider Profile 保存与 Gateway 路由共享同一组合约束，普通接入商不能保存或路由到 Grok CLI；未知和未实现的适配器不再默认回落到 OpenAI 兼容网关。持久化枚举补充显式数值，保留原 SQLite 数字映射。
+
+### 验证与边界
+
+- Release 解决方案构建通过，`0` 警告、`0` 错误；Adapter 组合真值表 `7/7` 通过。
+- AgentHost 使用新隔离目录执行 `--storage-smoke` 为 PASS，覆盖默认 Provider 等十项存储检查，API 请求数为 `0`。
+- `win-x64` 自包含发布已同步到工作树 `app/`；根目录 `TavernDesk.exe --probe` 退出码为 `0`，发布 DLL 与 RID 构建 DLL 的 SHA-256 一致。
+- 按用户要求未再次打开 GUI；当前没有 TavernDesk 进程，等待用户从 `I:\New-tarven-appica-ui\TavernDesk.exe` 完成人工界面验收。未读取 API Key、未刷新模型目录、未调用真实 Provider，原工作树 `I:\New-tarven` 未编辑。
+
+## 2026-08-10 — 合并前审查问题逐项修复
+
+### 实现
+
+- 聊天视图根据宿主窗口宽度、当前应用内缩放、主导航实际宽度和三栏最小宽度决定是否自动收起右侧上下文栏；主窗口与独立聊天共用同一逻辑。窗口恢复足够宽度时只展开由布局自动收起的右栏，用户手动折叠状态保持不变。
+- 自动或手动重新展开右栏时会按当前安全剩余宽度限宽；即使用户此前把右栏拖得很宽，也不会因恢复旧宽度重新造成横向溢出。折叠分隔线继续使用动态主题资源。
+- Provider 默认初始化前增加幂等契约修复：Grok 内置项恢复 `GrokCli + grok://local`；普通内置错配恢复 OpenAI-compatible 及对应默认地址；无法恢复 HTTP 地址的旧自定义 Grok 错配保留原记录并停用；未实现的旧原生适配器同样保留并停用。
+- AgentHost 存储 smoke 会先用原始 SQL 注入上述旧错配，再通过完整 `InfrastructureServices.InitializeAsync` 重启路径验证迁移，避免只测试新建数据库。
+- 聊天会话、标题和逐消息的无头像联系人图标统一引用现有 `AppicaShellIconFont`，在没有 Segoe Fluent Icons 的 Windows 10 上回退到 Segoe MDL2 Assets；未改变头像路径绑定或消息布局。
+
+### 验证与边界
+
+- Release 解决方案构建成功，`0` 警告、`0` 错误；布局计算矩阵确认默认主窗口 150%、最小主窗口 110% 和独立聊天 150% 均触发自动折叠，折叠后剩余列满足最小宽度。
+- 新隔离目录 `work/verification/premerge-fixes-final-20260810-02` 的 `--storage-smoke` 为 `11` 项 PASS，覆盖五种旧 Provider 记录的修复或停用，API 请求数为 `0`。
+- `win-x64` 自包含发布已同步到工作树 `app/`；App EXE 及三个业务 DLL 与当前 Release/RID 输出 SHA-256 一致，无 PDB；根目录 `TavernDesk.exe --probe` 退出码为 `0`。
+- 本轮没有启动 GUI，没有读取用户数据或 API Key，没有刷新模型目录或调用真实 Provider；最终 110%–150% 应用缩放视觉与点击体验留给用户从根 EXE 验收。原工作树 `I:\New-tarven` 未编辑，未提交、未合并。

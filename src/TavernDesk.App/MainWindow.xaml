@@ -5,186 +5,319 @@
         Icon="/TavernDesk.App;component/Assets/Icons/TavernDesk.ico"
         Width="1440"
         Height="900"
-        MinWidth="960"
+        MinWidth="1080"
         MinHeight="640"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
-    <Grid Background="{StaticResource WindowBackgroundBrush}"
+    <Grid Background="{DynamicResource AppicaShellCanvasBrush}"
           Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="92" />
+            <ColumnDefinition x:Name="MainNavigationColumn" Width="196" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="0,0,1,0"
-                Effect="{StaticResource CardShadowEffect}">
+                Style="{StaticResource AppicaShellSidebarStyle}">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="82" />
+                    <RowDefinition Height="88" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Width="54" Height="54" CornerRadius="16"
-                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                        Background="Transparent">
-                    <Image Source="/TavernDesk.App;component/Assets/Icons/brand-mark.png"
-                           Width="54"
-                           Height="54"
-                           Stretch="Uniform"
-                           SnapsToDevicePixels="True" />
-                </Border>
+                <TextBlock Text="TavernDesk"
+                           Style="{StaticResource AppicaShellBrandTextStyle}" />
 
-                <StackPanel Grid.Row="1">
+                <ScrollViewer Grid.Row="1"
+                              HorizontalContentAlignment="Stretch"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,8,0,0">
                     <Button Command="{Binding ShowDashboardCommand}"
-                        ToolTip="打开本地数据与应用状态概览。"
-                        Style="{StaticResource NavButtonStyle}">
-                        <StackPanel>
-                            <Image Source="/TavernDesk.App;component/Assets/Icons/dashboard.png"
-                                   Width="28" Height="28" Stretch="Uniform" />
-                            <TextBlock Text="仪表盘" HorizontalAlignment="Center" />
-                        </StackPanel>
+                            ToolTip="打开本地数据与应用状态概览。"
+                            Style="{StaticResource AppicaShellNavButtonStyle}">
+                        <Button.Tag>
+                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="Dashboard" />
+                            </MultiBinding>
+                        </Button.Tag>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE80F;"
+                                       Style="{StaticResource AppicaShellNavIconStyle}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="仪表盘"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                        </Grid>
                     </Button>
-                    <Button Command="{Binding ShowChatCommand}"
-                        ToolTip="打开一对一角色聊天。"
-                        Style="{StaticResource NavButtonStyle}">
-                        <StackPanel>
-                            <Image Source="/TavernDesk.App;component/Assets/Icons/chat.png"
-                                   Width="28" Height="28" Stretch="Uniform" />
-                            <TextBlock Text="聊天" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding ShowCampaignsCommand}"
-                        ToolTip="打开剧本库、起始大厅和多人跑团。"
-                        Style="{StaticResource NavButtonStyle}">
-                        <StackPanel>
-                            <Image Source="/TavernDesk.App;component/Assets/Icons/campaign.png"
-                                   Width="28" Height="28" Stretch="Uniform" />
-                            <TextBlock Text="跑团" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding ShowCharactersCommand}"
-                        ToolTip="管理本地角色卡与角色资料。"
-                        Style="{StaticResource NavButtonStyle}">
-                        <StackPanel>
-                            <Image Source="/TavernDesk.App;component/Assets/Icons/characters.png"
-                                   Width="28" Height="28" Stretch="Uniform" />
-                            <TextBlock Text="角色" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding ShowWorldbooksCommand}"
-                        ToolTip="导入、管理并测试酒馆世界书；关键词和语义召回分开运行。"
-                            Style="{StaticResource NavButtonStyle}">
-                        <StackPanel>
-                            <Image Source="/TavernDesk.App;component/Assets/Icons/worldbook.png"
-                                   Width="28" Height="28" Stretch="Uniform" />
-                            <TextBlock Text="世界书" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button IsEnabled="False"
-                            ToolTip="工具页功能尚未开放。"
-                            Style="{StaticResource NavButtonStyle}">
-                        <StackPanel>
-                            <Image Source="/TavernDesk.App;component/Assets/Icons/tools.png"
-                                   Width="28" Height="28" Stretch="Uniform" />
-                            <TextBlock Text="工具" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
 
-                <Button Grid.Row="2"
-                        Margin="10,4,10,14"
-                        Command="{Binding ShowSettingsCommand}"
-                        ToolTip="配置模型供应商、API Key、默认模型与全局提示词。"
-                        Style="{StaticResource NavButtonStyle}">
-                    <StackPanel>
-                        <Image Source="/TavernDesk.App;component/Assets/Icons/settings.png"
-                               Width="28" Height="28" Stretch="Uniform" />
-                        <TextBlock Text="设置" HorizontalAlignment="Center" />
+                    <Button Command="{Binding ShowChatCommand}"
+                            ToolTip="打开一对一角色聊天。"
+                            Style="{StaticResource AppicaShellNavButtonStyle}">
+                        <Button.Tag>
+                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="Chat" />
+                            </MultiBinding>
+                        </Button.Tag>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE8BD;"
+                                       Style="{StaticResource AppicaShellNavIconStyle}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="聊天"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                        </Grid>
+                    </Button>
+
+                    <Button Command="{Binding ShowCampaignsCommand}"
+                            ToolTip="打开剧本库、起始大厅和多人跑团。"
+                            Style="{StaticResource AppicaShellNavButtonStyle}">
+                        <Button.Tag>
+                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="Campaigns" />
+                            </MultiBinding>
+                        </Button.Tag>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE716;"
+                                       Style="{StaticResource AppicaShellNavIconStyle}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="跑团"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                        </Grid>
+                    </Button>
+
+                    <Button Command="{Binding ShowCharactersCommand}"
+                            ToolTip="管理本地角色卡与角色资料。"
+                            Style="{StaticResource AppicaShellNavButtonStyle}">
+                        <Button.Tag>
+                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="Characters" />
+                            </MultiBinding>
+                        </Button.Tag>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE77B;"
+                                       Style="{StaticResource AppicaShellNavIconStyle}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="角色"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                        </Grid>
+                    </Button>
+
+                    <Button Command="{Binding ShowWorldbooksCommand}"
+                            ToolTip="导入、管理并测试酒馆世界书；关键词和语义召回分开运行。"
+                            Style="{StaticResource AppicaShellNavButtonStyle}">
+                        <Button.Tag>
+                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="Worldbooks" />
+                            </MultiBinding>
+                        </Button.Tag>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE82D;"
+                                       Style="{StaticResource AppicaShellNavIconStyle}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="世界书"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                        </Grid>
+                    </Button>
+
+                    <Button Command="{Binding ShowSettingsCommand}"
+                            ToolTip="配置模型供应商、API Key、默认模型与全局提示词。"
+                            Style="{StaticResource AppicaShellNavButtonStyle}">
+                        <Button.Tag>
+                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                <Binding Path="CurrentPage" />
+                                <Binding Path="Settings" />
+                            </MultiBinding>
+                        </Button.Tag>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE713;"
+                                       Style="{StaticResource AppicaShellNavIconStyle}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="设置"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                        </Grid>
+                    </Button>
                     </StackPanel>
-                </Button>
+                </ScrollViewer>
+
+                <Border Grid.Row="2"
+                        Style="{StaticResource AppicaShellWorkspaceCardStyle}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE8B7;"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource AppicaShellIconFont}"
+                                       FontSize="16"
+                                       Foreground="{DynamicResource AppicaShellAccentBrush}" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="本地工作区"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppicaShellTextBrush}" />
+                        </Grid>
+
+                        <TextBlock Text="运行状态"
+                                   Style="{StaticResource AppicaShellRuntimeLabelStyle}" />
+                        <Grid Margin="0,5,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Ellipse Width="7"
+                                     Height="7"
+                                     Margin="0,4,0,0"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Top"
+                                     Fill="{DynamicResource AppicaShellSuccessBrush}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding RuntimeStatusText}"
+                                       Style="{StaticResource AppicaShellRuntimeTextStyle}" />
+                        </Grid>
+
+                        <StackPanel Margin="14,8,0,2"
+                                    Visibility="{Binding IsRuntimeReceiving, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Width="116"
+                                    Height="5"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource AppicaShellDividerBrush}"
+                                    CornerRadius="3"
+                                    ClipToBounds="True">
+                                <Canvas Width="116" Height="5">
+                                    <Ellipse Width="8"
+                                             Height="5"
+                                             Canvas.Left="0"
+                                             Fill="{DynamicResource AppicaShellAccentBrush}">
+                                        <Ellipse.RenderTransform>
+                                            <TranslateTransform />
+                                        </Ellipse.RenderTransform>
+                                        <Ellipse.Triggers>
+                                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                <BeginStoryboard>
+                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                         From="0"
+                                                                         To="108"
+                                                                         Duration="0:0:0.8" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </EventTrigger>
+                                        </Ellipse.Triggers>
+                                    </Ellipse>
+                                </Canvas>
+                            </Border>
+                            <TextBlock Margin="0,5,0,0"
+                                       Text="{Binding RuntimeReceiveText}"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource AppicaShellSubtleBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Button Margin="0,12,0,0"
+                                Command="{Binding StopAllGenerationCommand}"
+                                ToolTip="立即取消当前应用内所有正在进行的模型请求；不会删除已保存记录。"
+                                Style="{StaticResource AppicaShellStopButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,7,0"
+                                           VerticalAlignment="Center"
+                                           Text="&#xE71A;"
+                                           FontFamily="{StaticResource AppicaShellIconFont}"
+                                           FontSize="13" />
+                                <TextBlock VerticalAlignment="Center"
+                                           Text="停止全部" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="54" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0"
-                    Padding="26,0"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="0,0,0,1">
+            <Border Grid.Row="0">
+                <Border.Style>
+                    <Style TargetType="Border"
+                           BasedOn="{StaticResource AppicaShellTopBarStyle}">
+                        <Style.Triggers>
+                            <DataTrigger Value="{StaticResource AppicaBooleanTrue}">
+                                <DataTrigger.Binding>
+                                    <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                        <Binding Path="CurrentPage" />
+                                        <Binding Path="Chat" />
+                                    </MultiBinding>
+                                </DataTrigger.Binding>
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <TextBlock Text="{Binding CurrentSection}"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold" />
+                               Style="{StaticResource AppicaShellSectionTitleStyle}" />
                     <StackPanel HorizontalAlignment="Right"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center">
-                        <Button Content="停止全部 API"
-                                Margin="0,0,14,0"
-                                Padding="12,5"
-                                Command="{Binding StopAllGenerationCommand}"
-                                Foreground="{StaticResource DangerBrush}"
-                                ToolTip="立即取消当前应用内所有正在进行的模型请求；不会删除已保存记录。"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="7" Height="7" Fill="{StaticResource SuccessBrush}" />
-                                <TextBlock Margin="6,0,0,0"
-                                           FontSize="11"
-                                           Text="{Binding RuntimeStatusText}"
-                                           Foreground="{StaticResource MutedTextBrush}" />
-                            </StackPanel>
-                            <StackPanel Margin="13,2,0,0"
-                                        Orientation="Horizontal"
-                                        Visibility="{Binding IsRuntimeReceiving, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <Border Width="64"
-                                        Height="12"
-                                        Background="{StaticResource SurfaceAltBrush}"
-                                        CornerRadius="6"
-                                        ClipToBounds="True">
-                                    <Canvas Width="64" Height="12">
-                                        <Ellipse Width="7"
-                                                 Height="7"
-                                                 Canvas.Left="2"
-                                                 Canvas.Top="2.5"
-                                                 Fill="{StaticResource AccentBrush}">
-                                            <Ellipse.RenderTransform>
-                                                <TranslateTransform />
-                                            </Ellipse.RenderTransform>
-                                            <Ellipse.Triggers>
-                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                                    <BeginStoryboard>
-                                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                                                                             From="0"
-                                                                             To="53"
-                                                                             Duration="0:0:0.8" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
-                                                </EventTrigger>
-                                            </Ellipse.Triggers>
-                                        </Ellipse>
-                                    </Canvas>
-                                </Border>
-                                <TextBlock Margin="7,0,0,0"
-                                           FontSize="10"
-                                           Text="{Binding RuntimeReceiveText}"
-                                           Foreground="{StaticResource MutedTextBrush}" />
-                            </StackPanel>
-                        </StackPanel>
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal">
+                        <TextBlock Text="&#xE8B7;"
+                                   FontFamily="{StaticResource AppicaShellIconFont}"
+                                   FontSize="14"
+                                   Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                        <TextBlock Margin="7,0,0,0"
+                                   Text="本地工作区"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppicaShellMutedBrush}" />
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+            <ContentControl Grid.Row="1"
+                            Content="{Binding CurrentPage}" />
         </Grid>
     </Grid>
 </Window>

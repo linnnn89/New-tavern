@@ -21,7 +21,7 @@
                        Style="{StaticResource PageTitleStyle}" />
             <TextBlock Margin="0,4,0,0"
                        Text="这些设置只作用于当前跑团，不影响普通聊天的记忆。"
-                       Foreground="{StaticResource MutedTextBrush}" />
+                       Foreground="{DynamicResource MutedTextBrush}" />
         </StackPanel>
 
         <ScrollViewer Grid.Row="1"
@@ -35,7 +35,7 @@
                                    Style="{StaticResource SectionTitleStyle}" />
                         <TextBlock Margin="0,5,0,14"
                                    Text="控制 GM 和 AI 玩家每次请求可使用的输入范围；输出上限单独设置。模型自身上下文不足时，输入预算会相应收紧。"
-                                   Foreground="{StaticResource MutedTextBrush}"
+                                   Foreground="{DynamicResource MutedTextBrush}"
                                    TextWrapping="Wrap" />
 
                         <Grid>
@@ -51,7 +51,7 @@
                                 <TextBlock Margin="0,4,0,0"
                                            Text="8,000–200,000 tokens；只限制输入，输出上限在 GM 或席位模型设置中单独配置。"
                                            FontSize="12"
-                                           Foreground="{StaticResource MutedTextBrush}"
+                                           Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
@@ -61,7 +61,7 @@
                                 <TextBlock Margin="0,4,0,0"
                                            Text="512–200,000 tokens；仅限制可回看的原始事件历史。"
                                            FontSize="12"
-                                           Foreground="{StaticResource MutedTextBrush}"
+                                           Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
@@ -73,7 +73,7 @@
                             <TextBlock Margin="0,4,0,0"
                                        Text="512–200,000 tokens；本轮玩家行动仍按高优先级进入 GM 上下文。"
                                        FontSize="12"
-                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
@@ -96,7 +96,7 @@
                                            FontWeight="SemiBold" />
                                 <TextBlock Margin="0,4,18,0"
                                            Text="关闭后不调用跑团记忆总结，也不向 GM 或 AI 玩家请求注入升级版长期记忆；已有记忆和 checkpoint 会保留。"
-                                           Foreground="{StaticResource MutedTextBrush}"
+                                           Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                             <ToggleButton Grid.Column="1"
@@ -109,13 +109,13 @@
 
                         <Border Margin="0,14,0,0"
                                 Padding="12"
-                                Background="{StaticResource SurfaceAltBrush}"
+                                Background="{DynamicResource SurfaceAltBrush}"
                                 CornerRadius="10">
                             <StackPanel>
                                 <TextBlock Text="当前状态" FontWeight="SemiBold" />
                                 <TextBlock Margin="0,4,0,0"
                                            Text="{Binding CampaignMemoryStatusText}"
-                                           Foreground="{StaticResource AccentBrush}"
+                                           Foreground="{DynamicResource AccentBrush}"
                                            TextWrapping="Wrap" />
                                 <Button Margin="0,10,0,0"
                                         HorizontalAlignment="Left"
@@ -141,7 +141,7 @@
                                 <TextBlock Margin="0,4,0,0"
                                            Text="1–50 个完整裁定轮次。"
                                            FontSize="12"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="待处理事件阈值" />
@@ -150,14 +150,14 @@
                                 <TextBlock Margin="0,4,0,0"
                                            Text="1,000–50,000 tokens；与轮次条件满足任一项即更新。"
                                            FontSize="12"
-                                           Foreground="{StaticResource MutedTextBrush}"
+                                           Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
 
                         <TextBlock Margin="0,14,0,0"
                                    Text="长期记忆按 GM 全量与公共记忆分开维护；单次上下文最多纳入约 3,000 tokens 的长期记忆。只有已完成并锁定的 GM 裁定事实会进入自动更新边界。"
-                                   Foreground="{StaticResource MutedTextBrush}"
+                                   Foreground="{DynamicResource MutedTextBrush}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -168,7 +168,7 @@
             <TextBlock MaxWidth="410"
                        VerticalAlignment="Center"
                        Text="{Binding CampaignMemorySettingsStatusText}"
-                       Foreground="{StaticResource AccentBrush}"
+                       Foreground="{DynamicResource AccentBrush}"
                        TextWrapping="Wrap" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button Width="92"

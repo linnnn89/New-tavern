@@ -85,8 +85,22 @@ public sealed class ProviderGatewayRouter :
         var profile = await _profiles.GetAsync(providerId, cancellationToken)
                       ?? throw new InvalidOperationException(
                           "模型分配引用的接入商不存在。");
-        return profile.AdapterKind == ProviderAdapterKind.GrokCli
-            ? _grokCli
-            : _openAiCompatible;
+        if (!ProviderProfileIds.IsAdapterAllowed(
+                profile.Id,
+                profile.AdapterKind))
+        {
+            throw new NotSupportedException(
+                profile.Id == ProviderProfileIds.GrokCli
+                    ? "内置 Grok 接入商只能使用 Grok CLI（本机订阅登录）。"
+                    : $"接入商“{profile.Name}”只能使用 OpenAI Chat Completions 兼容协议。");
+        }
+
+        return profile.AdapterKind switch
+        {
+            ProviderAdapterKind.OpenAiCompatible => _openAiCompatible,
+            ProviderAdapterKind.GrokCli => _grokCli,
+            _ => throw new NotSupportedException(
+                $"接入商“{profile.Name}”使用了尚未实现的接口协议。")
+        };
     }
 }

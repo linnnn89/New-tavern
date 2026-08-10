@@ -2,34 +2,36 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:TavernDesk.Core.Models;assembly=TavernDesk.Core">
-    <Grid Background="{StaticResource WindowBackgroundBrush}">
+    <Grid x:Name="ChatLayoutRoot"
+          Margin="6"
+          Background="{DynamicResource WindowBackgroundBrush}"
+          UseLayoutRounding="True">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="270" MinWidth="210" />
-            <ColumnDefinition Width="5" />
-            <ColumnDefinition Width="*" MinWidth="360" />
-            <ColumnDefinition Width="5" />
-            <ColumnDefinition x:Name="RightPanelColumn" Width="300" MinWidth="240" />
+            <ColumnDefinition x:Name="ConversationListColumn" Width="312*" MinWidth="220" />
+            <ColumnDefinition Width="6" />
+            <ColumnDefinition x:Name="ConversationBodyColumn" Width="630*" MinWidth="360" />
+            <ColumnDefinition Width="6" />
+            <ColumnDefinition x:Name="RightPanelColumn" Width="406*" MinWidth="260" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="0,0,1,0">
-            <Grid Margin="14">
+                Style="{StaticResource AppicaChatSidebarStyle}">
+            <Grid Margin="16,16,16,12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <StackPanel Margin="0,2,0,12">
-                    <Grid Margin="0,0,0,11">
-                        <TextBlock Text="聊天" FontSize="18" FontWeight="SemiBold" />
+                <StackPanel Margin="0,0,0,12">
+                    <Grid Margin="2,0,0,14">
+                        <TextBlock Text="聊天" Style="{StaticResource AppicaPaneTitleStyle}" />
                         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                             <Button Content="+ 群聊"
                                     Command="{Binding Group.CreateGroupCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                    Style="{StaticResource AppicaHeaderActionButtonStyle}" />
                         </StackPanel>
                     </Grid>
                     <TextBox Text="{Binding ConversationSearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource AppicaConversationSearchStyle}"
                              ToolTip="按角色、会话标题或最近消息过滤" />
                 </StackPanel>
 
@@ -41,58 +43,58 @@
                             <DataTemplate>
                                 <StackPanel>
                                     <Button Command="{Binding ToggleCommand}"
-                                            Padding="7,9"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            HorizontalContentAlignment="Stretch"
-                                            Cursor="Hand">
+                                            Style="{StaticResource AppicaConversationGroupButtonStyle}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="66" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <Border Width="36"
-                                                    Height="36"
-                                                    CornerRadius="18"
-                                                    Background="{StaticResource AccentSoftBrush}">
-                                                <Grid>
-                                                    <TextBlock Text="人"
-                                                               HorizontalAlignment="Center"
+                                            <Border Width="58"
+                                                    Height="58"
+                                                    CornerRadius="29"
+                                                    Background="{DynamicResource AccentSoftBrush}"
+                                                    ClipToBounds="True">
+                                                 <Grid>
+                                                    <TextBlock HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
-                                                               Foreground="{StaticResource AccentBrush}" />
-                                                    <Image Source="{Binding AvatarPath}"
-                                                           Stretch="UniformToFill">
+                                                               FontFamily="{StaticResource AppicaShellIconFont}"
+                                                               FontSize="23"
+                                                               Foreground="{DynamicResource AccentBrush}"
+                                                               Text="&#xE77B;" />
+                                                     <Image Source="{Binding AvatarPath}"
+                                                            Stretch="UniformToFill">
                                                         <Image.Clip>
-                                                            <EllipseGeometry Center="18,18"
-                                                                             RadiusX="18"
-                                                                             RadiusY="18" />
+                                                            <EllipseGeometry Center="29,29"
+                                                                             RadiusX="29"
+                                                                             RadiusY="29" />
                                                         </Image.Clip>
                                                     </Image>
                                                 </Grid>
                                             </Border>
-                                            <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="1" Margin="6,0,8,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Name}"
+                                                           FontSize="15"
                                                            FontWeight="SemiBold"
                                                            TextWrapping="NoWrap"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding LatestPreview}"
                                                            Margin="0,2,0,0"
-                                                           FontSize="12"
-                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           FontSize="13"
+                                                           Foreground="{DynamicResource MutedTextBrush}"
                                                            TextWrapping="NoWrap"
                                                            TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding UpdatedText}"
                                                            HorizontalAlignment="Right"
-                                                           FontSize="11"
-                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
                                                 <TextBlock x:Name="ExpandGlyph"
                                                            Margin="0,3,0,0"
                                                            Text="⌄"
                                                            HorizontalAlignment="Right"
-                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
                                             </StackPanel>
                                         </Grid>
                                     </Button>
@@ -100,7 +102,7 @@
                                     <Border ClipToBounds="True"
                                             MaxHeight="0"
                                             Opacity="0"
-                                            Margin="38,0,0,4">
+                                            Margin="10,0,0,5">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="MaxHeight" Value="0" />
@@ -148,11 +150,7 @@
                                                 <DataTemplate>
                                                     <Button Command="{Binding DataContext.SelectConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Margin="0,1"
-                                                            Padding="10,8"
-                                                            BorderThickness="0"
-                                                            HorizontalContentAlignment="Stretch"
-                                                            Cursor="Hand">
+                                                            Style="{StaticResource AppicaConversationItemStyle}">
                                                         <Button.ContextMenu>
                                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                                                 <MenuItem Header="在新窗口聊天"
@@ -162,20 +160,6 @@
                                                                           Command="{Binding DeleteConversationCommand}" />
                                                             </ContextMenu>
                                                         </Button.ContextMenu>
-                                                        <Button.Style>
-                                                            <Style TargetType="Button"
-                                                                   BasedOn="{StaticResource ModernButtonBaseStyle}">
-                                                                <Setter Property="Background" Value="Transparent" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                        <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
-                                                                    </DataTrigger>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}" />
-                                                                    </Trigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Button.Style>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" />
@@ -190,21 +174,21 @@
                                                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                                                     <TextBlock Text="{Binding PreviewText}"
                                                                                FontSize="12"
-                                                                               Foreground="{StaticResource MutedTextBrush}"
+                                                                               Foreground="{DynamicResource MutedTextBrush}"
                                                                                TextWrapping="NoWrap"
                                                                                TextTrimming="CharacterEllipsis" />
                                                                     <TextBlock Text="{Binding GenerationStatusText}"
                                                                                Margin="7,0,0,0"
                                                                                FontSize="11"
                                                                                FontWeight="SemiBold"
-                                                                               Foreground="{StaticResource AccentBrush}" />
+                                                                               Foreground="{DynamicResource AccentBrush}" />
                                                                 </StackPanel>
                                                             </StackPanel>
                                                             <TextBlock Grid.Column="1"
                                                                        Margin="8,0,0,0"
                                                                        Text="{Binding UpdatedText}"
                                                                        FontSize="11"
-                                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                                                       Foreground="{DynamicResource MutedTextBrush}" />
                                                         </Grid>
                                                     </Button>
                                                 </DataTemplate>
@@ -225,84 +209,116 @@
         </Border>
 
         <GridSplitter Grid.Column="1"
-                      Width="5"
+                      Width="6"
                       HorizontalAlignment="Stretch"
                       Background="Transparent" />
 
-        <Grid Grid.Column="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <Border Grid.Column="2"
+                Style="{StaticResource AppicaChatWorkspaceStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <Border Grid.Row="0"
-                    Padding="22,17"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="0,0,0,1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Margin="0,0,12,0">
-                        <TextBlock Text="{Binding SelectedConversation.Title, TargetNullValue=请从左侧展开角色并选择一次对话}"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   TextWrapping="NoWrap"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Status}"
-                                   Foreground="{StaticResource MutedTextBrush}"
-                                   TextWrapping="NoWrap"
-                                   TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1"
-                                HorizontalAlignment="Right"
+                <Border Grid.Row="0"
+                        Style="{StaticResource AppicaChatHeaderStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="54"
+                                Height="54"
                                 VerticalAlignment="Center"
-                                Orientation="Horizontal">
-                        <Button x:Name="ChatArchiveMenuButton"
-                                Margin="0,0,7,0"
-                                Content="⋯"
-                                Width="34"
-                                Padding="0"
-                                Click="ChatArchiveMenuButton_OnClick"
-                                ToolTip="导入或导出聊天记录"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <Popup x:Name="ChatArchiveMenuPopup"
-                               PlacementTarget="{Binding ElementName=ChatArchiveMenuButton}"
-                               Placement="Bottom"
-                               StaysOpen="False"
-                               AllowsTransparency="True"
-                               PopupAnimation="Fade"
-                               DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                            <Border Width="180"
-                                    Padding="7"
-                                    Background="{StaticResource SurfaceBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="10">
-                                <StackPanel>
-                                    <Button Content="导入聊天 JSONL"
-                                            Command="{Binding ImportChatArchiveCommand}"
-                                            ToolTip="导入 SillyTavern 聊天记录并创建独立会话"
-                                            Style="{StaticResource MessageToolButtonStyle}" />
-                                    <Button Content="导出当前聊天"
-                                            Command="{Binding ExportChatArchiveCommand}"
-                                            ToolTip="导出当前会话及全部候选回复"
-                                            Style="{StaticResource MessageToolButtonStyle}" />
-                                </StackPanel>
-                            </Border>
-                        </Popup>
-                        <ComboBox Width="116"
-                                  ItemsSource="{Binding DisplayModes}"
-                                  DisplayMemberPath="Label"
-                                  SelectedValuePath="Value"
-                                  SelectedValue="{Binding DisplayMode}"
-                                  ToolTip="切换气泡或连续小说式阅读布局" />
-                    </StackPanel>
-                </Grid>
-            </Border>
+                                Background="{DynamicResource SurfaceAltBrush}"
+                                 CornerRadius="27"
+                                 ClipToBounds="True">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{StaticResource AppicaShellIconFont}"
+                                           FontSize="22"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           Text="&#xE77B;" />
+                                <Image Source="{Binding SelectedConversationAvatarPath}"
+                                       Stretch="UniformToFill">
+                                    <Image.Clip>
+                                        <EllipseGeometry Center="27,27"
+                                                         RadiusX="27"
+                                                         RadiusY="27" />
+                                    </Image.Clip>
+                                </Image>
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Column="1"
+                                    Margin="14,0,16,0"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedConversation.Title, TargetNullValue=请从左侧展开角色并选择一次对话}"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis" />
+                            <StackPanel Margin="0,5,0,0" Orientation="Horizontal">
+                                <Ellipse Width="8"
+                                         Height="8"
+                                         Margin="0,0,7,0"
+                                         VerticalAlignment="Center"
+                                         Fill="{DynamicResource SuccessBrush}" />
+                                <TextBlock Text="{Binding Status}"
+                                           Foreground="{DynamicResource MutedTextBrush}"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal">
+                            <Button x:Name="ChatArchiveMenuButton"
+                                    Margin="0,0,8,0"
+                                    Content="⋯"
+                                    Click="ChatArchiveMenuButton_OnClick"
+                                    ToolTip="导入或导出聊天记录"
+                                    Style="{StaticResource AppicaHeaderIconButtonStyle}" />
+                            <Popup x:Name="ChatArchiveMenuPopup"
+                                   PlacementTarget="{Binding ElementName=ChatArchiveMenuButton}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Fade"
+                                   DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <Border Width="180"
+                                        Style="{StaticResource AppicaPopupSurfaceStyle}">
+                                    <StackPanel>
+                                        <Button Content="导入聊天 JSONL"
+                                                Command="{Binding ImportChatArchiveCommand}"
+                                                ToolTip="导入 SillyTavern 聊天记录并创建独立会话"
+                                                Style="{StaticResource MessageToolButtonStyle}" />
+                                        <Button Content="导出当前聊天"
+                                                Command="{Binding ExportChatArchiveCommand}"
+                                                ToolTip="导出当前会话及全部候选回复"
+                                                Style="{StaticResource MessageToolButtonStyle}" />
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+                            <ComboBox Width="126"
+                                      Height="44"
+                                      Margin="0,0,8,0"
+                                      ItemsSource="{Binding DisplayModes}"
+                                      DisplayMemberPath="Label"
+                                      SelectedValuePath="Value"
+                                      SelectedValue="{Binding DisplayMode}"
+                                      ToolTip="切换气泡或连续小说式阅读布局" />
+                            <Button Content="停止"
+                                    Command="{Binding StopGenerationCommand}"
+                                    ToolTip="停止当前会话生成"
+                                    Style="{StaticResource AppicaHeaderActionButtonStyle}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
             <ListBox x:Name="ConversationMessageList"
                      Grid.Row="1"
@@ -340,75 +356,121 @@
                 <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid x:Name="MessageContainer"
-                                  Margin="0,0,24,18"
-                                  MaxWidth="780"
-                                  HorizontalAlignment="Left">
+                                  Margin="0,0,20,20"
+                                  MaxWidth="760"
+                                 HorizontalAlignment="Left">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <Border Grid.Row="0"
+                                <Border x:Name="LeftMessageSpacer"
+                                        Grid.Row="0"
+                                        Grid.RowSpan="2"
+                                        Grid.Column="1"
+                                        Width="12" />
+
+                                 <Border x:Name="MessageAvatar"
+                                         Grid.Row="0"
+                                         Grid.RowSpan="2"
+                                         Grid.Column="0"
+                                         Style="{StaticResource AppicaMessageAvatarStyle}">
+                                    <Grid>
+                                        <TextBlock HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource AppicaShellIconFont}"
+                                                   FontSize="18"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   Text="&#xE77B;" />
+                                        <Image Source="{Binding AvatarPath}"
+                                               Stretch="UniformToFill">
+                                            <Image.Clip>
+                                                <EllipseGeometry Center="21,21"
+                                                                 RadiusX="21"
+                                                                 RadiusY="21" />
+                                            </Image.Clip>
+                                        </Image>
+                                    </Grid>
+                                 </Border>
+
+                                <Border x:Name="RightMessageSpacer"
+                                        Grid.Row="0"
+                                        Grid.RowSpan="2"
+                                        Grid.Column="3"
+                                        Width="12"
+                                        Visibility="Collapsed" />
+
+                                <StackPanel x:Name="MessageMetadata"
+                                            Grid.Row="0"
+                                            Grid.Column="2"
+                                            Margin="3,0,0,7"
+                                            Orientation="Horizontal">
+                                    <TextBlock Text="{Binding SenderLabel}"
+                                               Style="{StaticResource AppicaMessageNameStyle}" />
+                                    <TextBlock Text="{Binding TimestampText}"
+                                               Style="{StaticResource AppicaMessageTimeStyle}" />
+                                </StackPanel>
+
+                                <Border Grid.Row="1"
+                                        Grid.Column="2"
                                         x:Name="MessageBubble"
-                                        Padding="16,13"
-                                        Background="{StaticResource SurfaceBrush}"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="12"
+                                        HorizontalAlignment="Left"
+                                        Style="{StaticResource AppicaMessageBubbleStyle}"
                                         PreviewMouseRightButtonUp="MessageBubble_OnPreviewMouseRightButtonUp">
-                                    <StackPanel>
-                                        <DockPanel>
-                                            <TextBlock Text="{Binding SenderLabel}"
-                                                       FontSize="12"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
-                                        </DockPanel>
-                                        <TextBlock Text="{Binding DisplayContent}"
-                                                   Margin="0,7,0,0"
-                                                   FontSize="{DynamicResource ChatFontSize}" />
-                                    </StackPanel>
+                                    <TextBlock Text="{Binding DisplayContent}"
+                                               FontSize="{DynamicResource ChatFontSize}"
+                                               TextWrapping="Wrap" />
                                 </Border>
 
-                                <StackPanel Grid.Row="1"
-                                            Margin="0,3,0,0"
-                                            HorizontalAlignment="Right"
+                                <StackPanel x:Name="MessageActions"
+                                            Grid.Row="2"
+                                            Grid.Column="2"
+                                            Margin="0,4,0,0"
+                                            HorizontalAlignment="Left"
                                             Orientation="Horizontal">
                                     <Border x:Name="CandidateNavigator"
-                                        VerticalAlignment="Center"
-                                        Margin="0,0,8,0"
-                                        Padding="1,1"
-                                        Panel.ZIndex="2"
-                                        Visibility="Collapsed"
-                                        Background="{StaticResource SurfaceBrush}"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Content="‹"
-                                                Command="{Binding PreviousCandidateCommand}"
-                                                Style="{StaticResource CandidateNavigationButtonStyle}"
-                                                ToolTip="查看上一个候选版本" />
-                                        <TextBlock MinWidth="28"
-                                                   Margin="1,0"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   TextAlignment="Center"
-                                                   Text="{Binding CandidateNavigationLabel}"
-                                                   FontSize="10"
-                                                   Foreground="{StaticResource MutedTextBrush}" />
-                                        <Button Content="›"
-                                                Command="{Binding NextCandidateCommand}"
-                                                Style="{StaticResource CandidateNavigationButtonStyle}"
-                                                ToolTip="查看下一个候选版本" />
-                                    </StackPanel>
-                                </Border>
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,8,0"
+                                            Padding="1"
+                                            Panel.ZIndex="2"
+                                            Visibility="Collapsed"
+                                            Background="{DynamicResource SurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="‹"
+                                                    Command="{Binding PreviousCandidateCommand}"
+                                                    Style="{StaticResource CandidateNavigationButtonStyle}"
+                                                    ToolTip="查看上一个候选版本" />
+                                            <TextBlock MinWidth="28"
+                                                       Margin="1,0"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       Text="{Binding CandidateNavigationLabel}"
+                                                       FontSize="10"
+                                                       Foreground="{DynamicResource MutedTextBrush}" />
+                                            <Button Content="›"
+                                                    Command="{Binding NextCandidateCommand}"
+                                                    Style="{StaticResource CandidateNavigationButtonStyle}"
+                                                    ToolTip="查看下一个候选版本" />
+                                        </StackPanel>
+                                    </Border>
 
-                                <Button
-                                        Style="{StaticResource MessagePlusButtonStyle}"
-                                        ToolTip="展开消息工具"
-                                        PreviewMouseLeftButtonDown="MessagePlus_OnPreviewMouseLeftButtonDown"
-                                        Click="MessagePlus_OnClick"
-                                        MouseLeave="MessagePlus_OnMouseLeave" />
-
+                                    <Button Style="{StaticResource MessagePlusButtonStyle}"
+                                            ToolTip="展开消息工具"
+                                            PreviewMouseLeftButtonDown="MessagePlus_OnPreviewMouseLeftButtonDown"
+                                            Click="MessagePlus_OnClick"
+                                            MouseLeave="MessagePlus_OnMouseLeave" />
                                 </StackPanel>
 
                                 <Popup IsOpen="{Binding IsToolbarOpen, Mode=TwoWay}"
@@ -419,17 +481,7 @@
                                        AllowsTransparency="True"
                                        PopupAnimation="Fade">
                                     <Border Width="178"
-                                            Padding="7"
-                                            Background="{StaticResource SurfaceBrush}"
-                                            BorderBrush="{StaticResource BorderBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="12">
-                                        <Border.Effect>
-                                            <DropShadowEffect Color="#54000000"
-                                                              BlurRadius="18"
-                                                              ShadowDepth="5"
-                                                              Opacity="0.42" />
-                                        </Border.Effect>
+                                            Style="{StaticResource AppicaPopupSurfaceStyle}">
                                         <StackPanel>
                                             <Button Command="{Binding EditCommand}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
@@ -470,16 +522,16 @@
                                             </Button>
                                             <Border Height="1"
                                                     Margin="8,5"
-                                                    Background="{StaticResource BorderBrush}" />
+                                                    Background="{DynamicResource BorderBrush}" />
                                             <Button Command="{Binding DeleteCommand}"
-                                                    Foreground="{StaticResource DangerBrush}"
+                                                    Foreground="{DynamicResource DangerBrush}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Width="28" Text="⌫" FontSize="17"
-                                                               Foreground="{StaticResource DangerBrush}" />
+                                                               Foreground="{DynamicResource DangerBrush}" />
                                                     <TextBlock Text="删除"
                                                                VerticalAlignment="Center"
-                                                               Foreground="{StaticResource DangerBrush}" />
+                                                               Foreground="{DynamicResource DangerBrush}" />
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
@@ -488,16 +540,16 @@
                             </Grid>
                             <DataTemplate.Triggers>
                                 <DataTrigger Binding="{Binding SenderKind}" Value="{x:Static models:MessageSenderKind.User}">
-                                    <Setter TargetName="MessageContainer" Property="HorizontalAlignment" Value="Right" />
-                                    <Setter TargetName="MessageBubble" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                                    <Setter TargetName="MessageBubble" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                    <Setter TargetName="MessageBubble" Property="BorderBrush" Value="{DynamicResource AppicaSelectedBorderBrush}" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding HasMultipleCandidates}" Value="True">
                                     <Setter TargetName="CandidateNavigator"
                                             Property="Visibility"
                                             Value="Visible" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding DataContext.IsNovelMode, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                             Value="True">
+                                 <DataTrigger Binding="{Binding DataContext.IsNovelMode, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              Value="True">
                                     <Setter TargetName="MessageContainer"
                                             Property="HorizontalAlignment"
                                             Value="Stretch" />
@@ -510,11 +562,21 @@
                                     <Setter TargetName="MessageBubble"
                                             Property="BorderThickness"
                                             Value="0" />
-                                    <Setter TargetName="MessageBubble"
-                                            Property="Padding"
-                                            Value="4,8,20,8" />
+                                     <Setter TargetName="MessageBubble"
+                                             Property="Padding"
+                                             Value="4,8,20,8" />
+                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding SenderKind}" Value="{x:Static models:MessageSenderKind.User}">
+                                    <Setter TargetName="MessageContainer" Property="HorizontalAlignment" Value="Right" />
+                                    <Setter TargetName="MessageAvatar" Property="Grid.Column" Value="4" />
+                                    <Setter TargetName="LeftMessageSpacer" Property="Visibility" Value="Collapsed" />
+                                    <Setter TargetName="RightMessageSpacer" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="MessageMetadata" Property="HorizontalAlignment" Value="Right" />
+                                    <Setter TargetName="MessageMetadata" Property="Margin" Value="0,0,3,7" />
+                                    <Setter TargetName="MessageBubble" Property="HorizontalAlignment" Value="Right" />
+                                    <Setter TargetName="MessageActions" Property="HorizontalAlignment" Value="Right" />
                                 </DataTrigger>
-                            </DataTemplate.Triggers>
+                             </DataTemplate.Triggers>
                         </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
@@ -529,7 +591,7 @@
                         IsHitTestVisible="False"
                         Opacity="0.7"
                         Visibility="{Binding IsModelThinking, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TextBlock Text="正" FontSize="12" Foreground="{StaticResource MutedTextBrush}">
+                <TextBlock Text="正" FontSize="12" Foreground="{DynamicResource MutedTextBrush}">
                     <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
@@ -543,7 +605,7 @@
                         </EventTrigger>
                     </TextBlock.Triggers>
                 </TextBlock>
-                <TextBlock Text="在" FontSize="12" Foreground="{StaticResource MutedTextBrush}">
+                <TextBlock Text="在" FontSize="12" Foreground="{DynamicResource MutedTextBrush}">
                     <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
@@ -557,7 +619,7 @@
                         </EventTrigger>
                     </TextBlock.Triggers>
                 </TextBlock>
-                <TextBlock Text="思" FontSize="12" Foreground="{StaticResource MutedTextBrush}">
+                <TextBlock Text="思" FontSize="12" Foreground="{DynamicResource MutedTextBrush}">
                     <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
@@ -571,7 +633,7 @@
                         </EventTrigger>
                     </TextBlock.Triggers>
                 </TextBlock>
-                <TextBlock Text="考" FontSize="12" Foreground="{StaticResource MutedTextBrush}">
+                <TextBlock Text="考" FontSize="12" Foreground="{DynamicResource MutedTextBrush}">
                     <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
@@ -585,7 +647,7 @@
                         </EventTrigger>
                     </TextBlock.Triggers>
                 </TextBlock>
-                <TextBlock Text="中" FontSize="12" Foreground="{StaticResource MutedTextBrush}">
+                <TextBlock Text="中" FontSize="12" Foreground="{DynamicResource MutedTextBrush}">
                     <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
@@ -602,390 +664,297 @@
             </StackPanel>
 
             <Border Grid.Row="2"
-                    Padding="20,14,20,18"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="0,1,0,0">
+                    Style="{StaticResource AppicaChatComposerStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Margin="2,0,0,8">
+                    <TextBox Grid.Row="0"
+                             Text="{Binding ComposerText, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Style="{StaticResource AppicaComposerTextBoxStyle}"
+                             ToolTip="Ctrl+Enter 发送；Enter 换行">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter"
+                                        Modifiers="Control"
+                                        Command="{Binding SendLocalCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Grid Grid.Row="1" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center"
-                                   Text="{Binding ActiveModelText}"
-                                   Foreground="{StaticResource MutedTextBrush}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <ComboBox Grid.Column="1"
-                                  Width="156"
-                                  Margin="10,0,0,0"
-                                  ItemsSource="{Binding SendModes}"
-                                  DisplayMemberPath="Label"
-                                  SelectedValuePath="Value"
-                                  SelectedValue="{Binding SendMode}" />
-                    </Grid>
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox Text="{Binding ComposerText, UpdateSourceTrigger=PropertyChanged}"
-                                 MinHeight="74"
-                                 MaxHeight="190"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalContentAlignment="Top"
-                                 ToolTip="Ctrl+Enter 发送；Enter 换行">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Enter"
-                                            Modifiers="Control"
-                                            Command="{Binding SendLocalCommand}" />
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                        <StackPanel Width="176">
+                            <TextBlock Text="{Binding ActiveModelText}"
+                                       Style="{StaticResource AppicaComposerMetaTextStyle}" />
+                             <ComboBox Height="34"
+                                       Margin="0,3,0,0"
+                                       FontSize="13"
+                                       ItemsSource="{Binding SendModes}"
+                                      DisplayMemberPath="Label"
+                                      SelectedValuePath="Value"
+                                      SelectedValue="{Binding SendMode}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Margin="14,0"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{Binding EstimatedTokenText}"
+                                       Style="{StaticResource AppicaTokenStatusTextStyle}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Text="{Binding LastGenerationUsageText}"
+                                       Style="{StaticResource AppicaComposerMetaTextStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Bottom"
+                                    Orientation="Horizontal">
+                            <Button Width="72"
+                                    Margin="0,0,8,0"
+                                    Content="停止"
+                                    Command="{Binding StopGenerationCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Width="88"
                                     Content="发送"
                                     Command="{Binding SendLocalCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
-                            <Button Width="88"
-                                    Margin="0,7,0,0"
-                                    Content="停止生成"
-                                    Command="{Binding StopGenerationCommand}"
-                                    Visibility="Collapsed"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
                     </Grid>
-                    <StackPanel Grid.Row="2" Margin="2,7,0,0">
-                        <TextBlock Text="{Binding EstimatedTokenText}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsEstimatedOverLimit}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                            <Setter Property="FontWeight" Value="SemiBold" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock Margin="0,3,0,0"
-                                   FontSize="11"
-                                   Foreground="{StaticResource MutedTextBrush}"
-                                   Text="{Binding LastGenerationUsageText}"
-                                   TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
                 </Grid>
             </Border>
-        </Grid>
+            </Grid>
+        </Border>
 
         <GridSplitter x:Name="RightPanelSplitter"
                       Grid.Column="3"
-                      Width="5"
+                      Width="6"
                       HorizontalAlignment="Stretch"
                       Background="Transparent" />
 
         <Border x:Name="RightPanel"
                 Grid.Column="4"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1,0,0,0">
-            <TabControl Margin="12">
+                Style="{StaticResource AppicaChatInspectorStyle}">
+            <TabControl Style="{StaticResource AppicaInspectorTabControlStyle}"
+                        ItemContainerStyle="{StaticResource AppicaInspectorTabItemStyle}">
                 <TabItem Header="上下文">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
                         <StackPanel>
-                            <TextBlock Text="本次发送结构" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="已知 Tiktoken 模型使用随软件发布的本地词表；其他模型回退为启发式估算。"
-                                       Foreground="{StaticResource MutedTextBrush}" />
-                            <DockPanel Margin="0,8,0,0">
-                                <CheckBox Content="召回"
-                                          IsChecked="{Binding Retrieval.IsEnabled}"
-                                          VerticalAlignment="Center" />
-                                <TextBlock Margin="8,0,0,0"
-                                           Text="当前会话开关；详细参数收在下方高级区域。"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
-                            </DockPanel>
-                        </StackPanel>
-                        <TabControl Grid.Row="1" Margin="0,12,0,0">
-                            <TabItem Header="分段">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding ContextSegments}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Margin="0,0,0,9"
-                                                        Padding="11"
-                                                        CornerRadius="10"
-                                                        Background="{StaticResource SurfaceAltBrush}">
-                                                    <StackPanel>
-                                                        <DockPanel>
-                                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                                            <TextBlock DockPanel.Dock="Right"
-                                                                       Margin="8,0,0,0"
-                                                                       Text="{Binding ProviderRole}"
-                                                                       FontSize="11"
-                                                                       Foreground="{StaticResource AccentBrush}" />
-                                                        </DockPanel>
-                                                        <TextBlock Margin="0,3,0,0"
-                                                                   Text="{Binding Content}"
-                                                                   MaxHeight="96"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   Foreground="{StaticResource MutedTextBrush}" />
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </TabItem>
-                            <TabItem Header="API 结构">
-                                <TextBox Text="{Binding ApiRequestPreview, Mode=OneWay}"
-                                         IsReadOnly="True"
-                                         AcceptsReturn="True"
-                                         TextWrapping="NoWrap"
-                                         VerticalContentAlignment="Top"
-                                         VerticalScrollBarVisibility="Auto"
-                                         HorizontalScrollBarVisibility="Auto" />
-                            </TabItem>
-                        </TabControl>
-                        <Expander Grid.Row="2"
-                                  Margin="0,10,0,0"
-                                  Header="高级召回设置与本轮结果">
-                            <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
-                                <StackPanel Margin="0,8,0,0">
-                                    <TextBlock Text="{Binding Retrieval.Status}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedTextBrush}" />
-                                    <TextBlock Margin="0,8,0,0" Text="召回范围" />
-                                    <ComboBox Margin="0,5,0,0"
-                                              ItemsSource="{Binding Retrieval.ScopeOptions}"
-                                              DisplayMemberPath="Label"
-                                              SelectedValuePath="Value"
-                                              SelectedValue="{Binding Retrieval.Scope}" />
-                                    <Grid Margin="0,10,0,0">
+                            <Border Style="{StaticResource AppicaInspectorCardStyle}">
+                                <StackPanel>
+                                    <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="10" />
-                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="近期原文消息数" />
-                                            <TextBox Margin="0,5,0,0"
-                                                     Text="{Binding Retrieval.RecentMessageCount, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="最大召回条数" />
-                                            <TextBox Margin="0,5,0,0"
-                                                     Text="{Binding Retrieval.MaximumResults, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
+                                        <TextBlock Text="Token 使用"
+                                                   Style="{StaticResource AppicaInspectorCardTitleStyle}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="12,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding EstimatedTokenHeadline}"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold" />
                                     </Grid>
-                                    <TextBlock Margin="0,10,0,0" Text="召回 Token 预算" />
-                                    <TextBox Margin="0,5,0,0"
-                                             Text="{Binding Retrieval.TokenBudget, UpdateSourceTrigger=PropertyChanged}" />
-                                    <WrapPanel Margin="0,10,0,0">
-                                        <Button Margin="0,0,8,0"
-                                                Content="保存召回设置"
-                                                Command="{Binding Retrieval.SaveSettingsCommand}"
-                                                Style="{StaticResource PrimaryButtonStyle}" />
-                                        <Button Content="清除本轮排除"
-                                                Command="{Binding Retrieval.ClearExclusionsCommand}"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                    </WrapPanel>
-                                    <Separator Margin="0,14,0,10" />
-                                    <DockPanel>
-                                        <TextBlock Text="本轮实际召回" FontWeight="SemiBold" />
-                                        <TextBlock DockPanel.Dock="Right"
-                                                   Text="{Binding Retrieval.ExcludedCount, StringFormat=已排除 {0} 条}"
-                                                   Foreground="{StaticResource MutedTextBrush}" />
-                                    </DockPanel>
-                                    <ItemsControl Margin="0,8,0,0"
-                                                  ItemsSource="{Binding Retrieval.Matches}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Margin="0,0,0,8"
-                                                        Padding="10"
-                                                        CornerRadius="10"
-                                                        Background="{StaticResource SurfaceAltBrush}">
-                                                    <StackPanel>
-                                                        <DockPanel>
-                                                            <TextBlock Text="{Binding Title}"
-                                                                       FontWeight="SemiBold"
-                                                                       TextTrimming="CharacterEllipsis" />
-                                                            <Button DockPanel.Dock="Right"
-                                                                    Margin="8,0,0,0"
-                                                                    Content="排除"
-                                                                    Command="{Binding DataContext.Retrieval.ExcludeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Style="{StaticResource SecondaryButtonStyle}" />
-                                                        </DockPanel>
-                                                        <TextBlock Margin="0,5,0,0"
-                                                                   MaxHeight="84"
-                                                                   Text="{Binding Content}"
-                                                                   TextWrapping="Wrap"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   Foreground="{StaticResource MutedTextBrush}" />
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Expander Margin="0,8,0,0" Header="组装诊断">
-                                        <ItemsControl Margin="0,7,0,0"
-                                                      ItemsSource="{Binding Retrieval.Diagnostics}">
+                                    <ProgressBar Margin="0,14,0,0"
+                                                 Value="{Binding EstimatedTokenUsagePercent, Mode=OneWay}"
+                                                 Style="{StaticResource AppicaTokenProgressStyle}" />
+                                    <TextBlock Margin="0,12,0,0"
+                                               Text="{Binding EstimatedTokenText}"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource AppicaTokenStatusTextStyle}" />
+                                    <TextBlock Margin="0,5,0,0"
+                                               Text="{Binding LastGenerationUsageText}"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource AppicaComposerMetaTextStyle}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource AppicaInspectorCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="请求结构"
+                                               Style="{StaticResource AppicaInspectorCardTitleStyle}" />
+                                    <TextBlock Margin="0,6,0,12"
+                                               Text="本轮上下文按实际发送顺序展示；可展开核对分段正文与 API 请求。"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <Expander Header="发送分段" IsExpanded="False">
+                                        <ItemsControl Margin="0,9,0,0"
+                                                      ItemsSource="{Binding ContextSegments}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Margin="0,0,0,5"
-                                                               Text="{Binding}"
-                                                               TextWrapping="Wrap"
-                                                               Foreground="{StaticResource MutedTextBrush}" />
+                                                    <Border Margin="0,0,0,8"
+                                                            Style="{StaticResource AppicaInspectorInsetStyle}">
+                                                        <StackPanel>
+                                                            <DockPanel>
+                                                                <TextBlock Text="{Binding Title}"
+                                                                           FontWeight="SemiBold" />
+                                                                <TextBlock DockPanel.Dock="Right"
+                                                                           Margin="8,0,0,0"
+                                                                           Text="{Binding ProviderRole}"
+                                                                           FontSize="11"
+                                                                           Foreground="{DynamicResource AccentBrush}" />
+                                                            </DockPanel>
+                                                            <TextBlock Margin="0,4,0,0"
+                                                                       MaxHeight="68"
+                                                                       Text="{Binding Content}"
+                                                                       TextWrapping="Wrap"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource MutedTextBrush}" />
+                                                        </StackPanel>
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                     </Expander>
+                                    <Expander Margin="0,8,0,0" Header="API 请求结构">
+                                        <TextBox MinHeight="150"
+                                                 MaxHeight="240"
+                                                 Margin="0,9,0,0"
+                                                 Text="{Binding ApiRequestPreview, Mode=OneWay}"
+                                                 IsReadOnly="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="NoWrap"
+                                                 VerticalContentAlignment="Top"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Auto" />
+                                    </Expander>
                                 </StackPanel>
-                            </ScrollViewer>
-                        </Expander>
-                    </Grid>
-                </TabItem>
-                <TabItem Header="召回" Visibility="Collapsed">
-                    <ScrollViewer Margin="12" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <TextBlock Text="长期上下文召回"
-                                       Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Margin="0,2,0,8"
-                                       Text="召回会从较早的聊天历史中按当前输入找回相关消息，并作为本轮上下文补入；它不是重新生成，也不等同于世界书向量召回。"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
-                            <TextBlock Margin="0,2,0,10"
-                                       Text="{Binding Retrieval.Status}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
-                            <CheckBox Content="启用自动召回"
-                                      IsChecked="{Binding Retrieval.IsEnabled}" />
-                            <TextBlock Margin="0,10,0,0" Text="召回范围" />
-                            <ComboBox Margin="0,5,0,0"
-                                      ItemsSource="{Binding Retrieval.ScopeOptions}"
-                                      DisplayMemberPath="Label"
-                                      SelectedValuePath="Value"
-                                      SelectedValue="{Binding Retrieval.Scope}" />
-                            <Grid Margin="0,10,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="近期原文消息数" />
-                                    <TextBox Margin="0,5,0,0"
-                                             Text="{Binding Retrieval.RecentMessageCount, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="最大召回条数" />
-                                    <TextBox Margin="0,5,0,0"
-                                             Text="{Binding Retrieval.MaximumResults, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                            </Grid>
-                            <TextBlock Margin="0,10,0,0" Text="召回 Token 预算" />
-                            <TextBox Margin="0,5,0,0"
-                                     Text="{Binding Retrieval.TokenBudget, UpdateSourceTrigger=PropertyChanged}" />
-                            <Grid Margin="0,10,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Button Content="保存召回设置"
-                                        Command="{Binding Retrieval.SaveSettingsCommand}"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
-                                <Button Grid.Column="1"
-                                        Margin="8,0,0,0"
-                                        Content="清除本轮排除"
-                                        Command="{Binding Retrieval.ClearExclusionsCommand}"
-                                        Style="{StaticResource SecondaryButtonStyle}" />
-                            </Grid>
+                            </Border>
 
-                            <Separator Margin="0,15,0,12" />
-                            <DockPanel>
-                                <TextBlock Text="本轮实际召回"
-                                           FontWeight="SemiBold" />
-                                <TextBlock DockPanel.Dock="Right"
-                                           Text="{Binding Retrieval.ExcludedCount, StringFormat=已排除 {0} 条}"
-                                           Foreground="{StaticResource MutedTextBrush}" />
-                            </DockPanel>
-                            <ItemsControl Margin="0,8,0,0"
-                                          ItemsSource="{Binding Retrieval.Matches}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,0,0,8"
-                                                Padding="10"
-                                                CornerRadius="10"
-                                                Background="{StaticResource SurfaceAltBrush}">
-                                            <StackPanel>
-                                                <DockPanel>
-                                                    <TextBlock Text="{Binding Title}"
-                                                               FontWeight="SemiBold"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                    <Button DockPanel.Dock="Right"
-                                                            Margin="8,0,0,0"
-                                                            Content="排除"
-                                                            Command="{Binding DataContext.Retrieval.ExcludeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding}"
-                                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                                </DockPanel>
-                                                <TextBlock Margin="0,5,0,0"
-                                                           MaxHeight="84"
-                                                           Text="{Binding Content}"
-                                                           TextWrapping="Wrap"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Foreground="{StaticResource MutedTextBrush}" />
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Expander Margin="0,8,0,0" Header="组装诊断">
-                                <ItemsControl Margin="0,7,0,0"
-                                              ItemsSource="{Binding Retrieval.Diagnostics}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Margin="0,0,0,5"
-                                                       Text="{Binding}"
-                                                       TextWrapping="Wrap"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Expander>
+                            <Border Style="{StaticResource AppicaInspectorCardStyle}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="本轮召回"
+                                                   Style="{StaticResource AppicaInspectorCardTitleStyle}" />
+                                        <CheckBox Grid.Column="1"
+                                                  Margin="12,0,0,0"
+                                                  Content="启用"
+                                                  IsChecked="{Binding Retrieval.IsEnabled}"
+                                                  VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Margin="0,8,0,0"
+                                               Text="{Binding Retrieval.Status}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <DockPanel Margin="0,9,0,0">
+                                        <TextBlock Text="实际匹配"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding Retrieval.ExcludedCount, StringFormat=已排除 {0} 条}"
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
+                                    </DockPanel>
+                                    <Expander Margin="0,10,0,0"
+                                              Header="召回设置与本轮结果">
+                                        <StackPanel Margin="0,9,0,0">
+                                            <TextBlock Text="召回范围" />
+                                            <ComboBox Margin="0,5,0,0"
+                                                      ItemsSource="{Binding Retrieval.ScopeOptions}"
+                                                      DisplayMemberPath="Label"
+                                                      SelectedValuePath="Value"
+                                                      SelectedValue="{Binding Retrieval.Scope}" />
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="10" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="近期原文消息数" />
+                                                    <TextBox Margin="0,5,0,0"
+                                                             Text="{Binding Retrieval.RecentMessageCount, UpdateSourceTrigger=PropertyChanged}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="最大召回条数" />
+                                                    <TextBox Margin="0,5,0,0"
+                                                             Text="{Binding Retrieval.MaximumResults, UpdateSourceTrigger=PropertyChanged}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Margin="0,10,0,0" Text="召回 Token 预算" />
+                                            <TextBox Margin="0,5,0,0"
+                                                     Text="{Binding Retrieval.TokenBudget, UpdateSourceTrigger=PropertyChanged}" />
+                                            <WrapPanel Margin="0,10,0,0">
+                                                <Button Margin="0,0,8,8"
+                                                        Content="保存召回设置"
+                                                        Command="{Binding Retrieval.SaveSettingsCommand}"
+                                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                                <Button Margin="0,0,0,8"
+                                                        Content="清除本轮排除"
+                                                        Command="{Binding Retrieval.ClearExclusionsCommand}"
+                                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                            </WrapPanel>
+                                            <ItemsControl Margin="0,5,0,0"
+                                                          ItemsSource="{Binding Retrieval.Matches}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,0,0,8"
+                                                                Style="{StaticResource AppicaInspectorInsetStyle}">
+                                                            <StackPanel>
+                                                                <DockPanel>
+                                                                    <TextBlock Text="{Binding Title}"
+                                                                               FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <Button DockPanel.Dock="Right"
+                                                                            Margin="8,0,0,0"
+                                                                            Content="排除"
+                                                                            Command="{Binding DataContext.Retrieval.ExcludeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                                                </DockPanel>
+                                                                <TextBlock Margin="0,5,0,0"
+                                                                           MaxHeight="84"
+                                                                           Text="{Binding Content}"
+                                                                           TextWrapping="Wrap"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Expander Margin="0,7,0,0" Header="组装诊断">
+                                                <ItemsControl Margin="0,7,0,0"
+                                                              ItemsSource="{Binding Retrieval.Diagnostics}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Margin="0,0,0,5"
+                                                                       Text="{Binding}"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource MutedTextBrush}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
                 <TabItem Header="角色"
                          Visibility="{Binding IsSingleCharacterConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="12">
+                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
+                        <StackPanel>
                             <TextBlock Text="{Binding CharacterPromptCharacterName, StringFormat=当前角色：{0}}"
                                        Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Margin="0,6,0,12"
                                        Padding="10"
                                        Text="全局提示词负责所有角色共有的扮演职责；这里直接编辑当前角色卡的标准字段，不会另存第二份局部配置。"
                                        TextWrapping="Wrap"
-                                       Background="{StaticResource AccentSoftBrush}" />
+                                       Background="{DynamicResource AccentSoftBrush}" />
 
                             <TextBlock Text="角色 System Prompt"
                                        FontWeight="SemiBold" />
                             <TextBlock Margin="0,4,0,7"
                                        Text="补充这个角色独有的身份、边界或表演要求；为空时仍会使用全局聊天提示词和角色卡正文。"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                              <TextBox MaxHeight="105"
                                      IsReadOnly="True"
                                      AcceptsReturn="True"
@@ -1005,7 +974,7 @@
                             <TextBlock Margin="0,4,0,7"
                                        Text="在聊天历史之后追加，适合放置每次生成前都需要再次强调的角色要求；为空表示不追加。"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                              <TextBox MaxHeight="95"
                                      IsReadOnly="True"
                                      AcceptsReturn="True"
@@ -1028,41 +997,43 @@
                             <TextBlock Margin="0,10,0,0"
                                        Text="{Binding CharacterPromptStatus}"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
                 <TabItem Header="玩家人设">
-                    <ScrollViewer Margin="12" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
                         <StackPanel>
                             <TextBlock Text="玩家人设"
                                        Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Margin="0,2,0,12"
                                        Text="选择当前聊天使用的玩家人设；可在设置 → 玩家人设中新增和归档多个档案。"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                             <TextBlock Text="当前玩家人设" />
                             <ComboBox Margin="0,5,0,0"
                                       ItemsSource="{Binding Personas.Profiles}"
                                       DisplayMemberPath="Name"
                                       SelectedItem="{Binding Personas.SelectedProfile, Mode=TwoWay}" />
-                            <TextBlock Margin="0,12,0,0" Text="Persona 名称" />
-                            <TextBox Margin="0,5,0,0"
-                                     Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
+                             <TextBlock Margin="0,12,0,0" Text="Persona 名称" />
+                             <TextBox Margin="0,5,0,0"
+                                      PreviewMouseLeftButtonDown="PersonaEditorTextBox_OnPreviewMouseLeftButtonDown"
+                                      Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Margin="0,12,0,0" Text="用户设定" />
                             <TextBox Margin="0,5,0,0"
                                      MinHeight="110"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalContentAlignment="Top"
-                                     Text="{Binding Personas.EditorDescription, UpdateSourceTrigger=PropertyChanged}" />
+                                      AcceptsReturn="True"
+                                      TextWrapping="Wrap"
+                                      VerticalContentAlignment="Top"
+                                      PreviewMouseLeftButtonDown="PersonaEditorTextBox_OnPreviewMouseLeftButtonDown"
+                                      Text="{Binding Personas.EditorDescription, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Margin="0,8,0,0"
                                        Text="只有点击保存才会更新当前人设；取消会恢复上次已保存的文本。"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                             <TextBlock Margin="0,8,0,0"
                                        Text="{Binding Personas.Status}"
-                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        TextWrapping="Wrap" />
                             <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
                                 <Button Content="保存玩家人设"
@@ -1079,7 +1050,7 @@
                             <TextBlock Margin="0,5,0,8"
                                        Text="统一在“设置 → 提示词管理”维护；这里不保存第二份副本。"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                             <Button HorizontalAlignment="Left"
                                     Content="编辑全局聊天提示词"
                                     Command="{Binding OpenGlobalPromptCommand}"
@@ -1089,7 +1060,7 @@
                     </ScrollViewer>
                 </TabItem>
                 <TabItem Header="记忆">
-                    <TabControl Margin="10,10,0,10">
+                    <TabControl Margin="18">
                         <TabItem Header="正文">
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
@@ -1102,11 +1073,11 @@
                                            Style="{StaticResource SectionTitleStyle}" />
                                 <StackPanel Grid.Row="1" Margin="0,0,0,10">
                                     <TextBlock Text="{Binding Memory.Status}"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextWrapping="Wrap" />
                                     <TextBlock Margin="0,5,0,0"
                                                Text="{Binding Memory.CheckpointText}"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
                                 <TextBox Grid.Row="2"
@@ -1142,7 +1113,7 @@
                                     <TextBlock Margin="0,2,0,8"
                                                Text="默认每新增 20 个用户轮次触发一次；单次最多发送 20 个用户轮次（含对应角色回复）。达到阈值后自动保存更新后的记忆正文，并推进本会话检查点。"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                     <CheckBox Margin="0,4,0,0"
                                               Content="达到阈值后自动生成并保存记忆正文（默认开启）"
                                               IsChecked="{Binding Memory.AutoGenerateEnabled}" />
@@ -1184,7 +1155,7 @@
                                     <TextBlock Margin="0,8,0,0"
                                                Text="记忆更新与压缩统一使用全局模板；自动更新会直接保存正文，手动生成的更新和压缩仍先进入草稿页确认。"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                     <WrapPanel Margin="0,12,0,0">
                                         <Button Margin="0,0,7,7"
                                                 Content="仅预览更新结构"
@@ -1206,7 +1177,7 @@
                                     </WrapPanel>
                                     <TextBlock Margin="0,2,0,0"
                                                Text="{Binding Memory.Status}"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextWrapping="Wrap" />
                                     <TextBlock Margin="0,10,0,4"
                                                Text="本次更新结构预览"
@@ -1232,7 +1203,7 @@
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="{Binding Memory.PendingTargetText}"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                                 <TabControl Grid.Row="1" Margin="0,10,0,0">
                                     <TabItem Header="可编辑正文">
                                         <TextBox Text="{Binding Memory.PendingBody, UpdateSourceTrigger=PropertyChanged}"
@@ -1274,10 +1245,10 @@
                     </TabControl>
                 </TabItem>
                 <TabItem Header="会话">
-                    <ScrollViewer Margin="12" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
                         <StackPanel>
                             <Border Padding="10"
-                                    Background="{StaticResource SurfaceAltBrush}"
+                                    Background="{DynamicResource SurfaceAltBrush}"
                                     CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="当前会话" FontWeight="SemiBold" />
@@ -1287,7 +1258,7 @@
                                     <TextBlock Margin="0,4,0,0"
                                                Text="{Binding Status}"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                     <DockPanel Margin="0,8,0,0">
                                         <TextBlock VerticalAlignment="Center" Text="显示模式" />
                                         <ComboBox Width="116"
@@ -1305,11 +1276,11 @@
                             <TextBlock Text="群聊接力与记忆合并"
                                        Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="{Binding Group.Status}"
-                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,5,0,0"
                                        Text="{Binding Group.RelayStateText}"
-                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        TextWrapping="Wrap" />
 
                             <TextBlock Margin="0,14,0,0" Text="接力模式" />
@@ -1368,7 +1339,7 @@
 
                             <Border Margin="0,12,0,0"
                                     Padding="12"
-                                    Background="{StaticResource AccentSoftBrush}"
+                                    Background="{DynamicResource AccentSoftBrush}"
                                     CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="当前群聊的接力提示词（高级）"
@@ -1376,7 +1347,7 @@
                                     <TextBlock Margin="0,4,0,6"
                                                Text="只补充当前群聊的角色接力规则；群聊记忆合并仍统一使用全局模板。"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                     <Expander Header="群聊接力 · 额外 System Prompt">
                                         <TextBox MinHeight="170"
                                                  AcceptsReturn="True"
@@ -1388,14 +1359,14 @@
 
                             <Border Margin="0,14,0,0"
                                     Padding="10"
-                                    Background="{StaticResource SurfaceAltBrush}"
+                                    Background="{DynamicResource SurfaceAltBrush}"
                                     CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="把群聊记忆合并到角色记忆"
                                                FontWeight="SemiBold" />
                                     <TextBlock Margin="0,4,0,8"
                                                Text="角色本体记忆为主，群聊记忆为辅；先生成可编辑草稿，再到“记忆 → 草稿”保存。"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextWrapping="Wrap" />
                                     <ComboBox ItemsSource="{Binding Group.Members}"
                                               DisplayMemberPath="Character.Name"
@@ -1414,13 +1385,6 @@
                         </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
-                </TabItem>
-                <TabItem Header="世界书" Visibility="Collapsed">
-                    <TextBlock Margin="12"
-                               Text="当前会从角色卡 character_book 中注入 constant 条目和命中关键词的条目；实际发送内容可在“上下文 → API 结构”核对。" />
-                </TabItem>
-                <TabItem Header="工具" Visibility="Collapsed">
-                    <TextBlock Margin="12" Text="聊天辅助工具与 MCP 将在后续里程碑接入。" />
                 </TabItem>
             </TabControl>
         </Border>
@@ -1443,16 +1407,16 @@
                 <Border Width="14"
                         Height="14"
                         CornerRadius="5"
-                        BorderBrush="{StaticResource MutedTextBrush}"
+                        BorderBrush="{DynamicResource MutedTextBrush}"
                         BorderThickness="1" />
                 <Border Width="1"
                         Height="8"
                         HorizontalAlignment="Right"
                         Margin="0,0,3,0"
-                        Background="{StaticResource MutedTextBrush}" />
+                        Background="{DynamicResource MutedTextBrush}" />
                 <Path x:Name="RightPanelCollapseArrow"
                       Data="M 10,4 L 6,8 L 10,12"
-                      Stroke="{StaticResource MutedTextBrush}"
+                      Stroke="{DynamicResource MutedTextBrush}"
                       StrokeThickness="1.4"
                       StrokeStartLineCap="Round"
                       StrokeEndLineCap="Round"
@@ -1460,7 +1424,7 @@
                 <Path x:Name="RightPanelExpandArrow"
                       Data="M 6,4 L 10,8 L 6,12"
                       Visibility="Collapsed"
-                      Stroke="{StaticResource MutedTextBrush}"
+                      Stroke="{DynamicResource MutedTextBrush}"
                       StrokeThickness="1.4"
                       StrokeStartLineCap="Round"
                       StrokeEndLineCap="Round"

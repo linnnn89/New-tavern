@@ -9,7 +9,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <TextBlock Text="设置" Style="{StaticResource PageTitleStyle}" />
-            <TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedTextBrush}" />
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
         </StackPanel>
 
         <TabControl Grid.Row="1"
@@ -78,7 +78,7 @@
                                                 <TextBlock Margin="0,2,0,0"
                                                            Text="{Binding BaseUrl}"
                                                            FontSize="11"
-                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           Foreground="{DynamicResource MutedTextBrush}"
                                                            TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </Border>
@@ -107,7 +107,7 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.ColumnSpan="2"
-                                           Text="API 提供商"
+                                           Text="接入商配置"
                                            FontSize="24"
                                            FontWeight="SemiBold" />
 
@@ -115,24 +115,63 @@
                                 <TextBox Grid.Row="1" Grid.Column="1" Margin="0,18,0,0"
                                          Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <TextBlock Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center" Text="适配器" />
-                                <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,14,0,0"
-                                          ItemsSource="{Binding AdapterKinds}"
-                                          SelectedItem="{Binding Editor.AdapterKind}" />
+                                <TextBlock Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center" Text="连接方式" />
+                                <Border Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,14,0,0"
+                                        MinHeight="36"
+                                        Padding="10,6"
+                                        VerticalAlignment="Center"
+                                        Background="{DynamicResource SurfaceAltBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10">
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{Binding ConnectionKindLabel}"
+                                               FontWeight="SemiBold" />
+                                </Border>
 
-                                <TextBlock Grid.Row="3" Margin="0,14,0,0" VerticalAlignment="Center" Text="API / 本机地址" />
+                                <TextBlock Grid.Row="3"
+                                           Margin="0,14,0,0"
+                                           VerticalAlignment="Center"
+                                           Text="API / 本机地址"
+                                           Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <StackPanel Grid.Row="3"
                                             Grid.Column="1"
-                                            Margin="0,14,0,0">
+                                            Margin="0,14,0,0"
+                                            Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <TextBox Text="{Binding Editor.BaseUrl, UpdateSourceTrigger=PropertyChanged}"
                                              ToolTip="填写到 /api/v1 或 /v1 结束，不要加入 /chat。" />
                                     <TextBlock Margin="0,4,0,0"
                                                Text="填写到 api/v1 结束，不要加入 /chat。"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
 
-                                <TextBlock Grid.Row="4" Margin="0,14,0,0" VerticalAlignment="Center" Text="新 API Key" />
+                                <Border Grid.Row="3"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,14,0,0"
+                                        Padding="12"
+                                        Background="{DynamicResource AccentSoftBrush}"
+                                        BorderBrush="{DynamicResource AccentBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Visibility="{Binding IsGrokCliSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="Grok CLI 地址固定为 grok://local"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Text="认证由本机 grok login 管理，不使用 API Key，也不会执行用户填写的程序路径。"
+                                                   Foreground="{DynamicResource MutedTextBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Grid.Row="4"
+                                           Margin="0,14,0,0"
+                                           VerticalAlignment="Center"
+                                           Text="新 API Key"
+                                           Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <PasswordBox x:Name="ApiKeyBox"
                                              Grid.Row="4"
                                              Grid.Column="1"
@@ -140,7 +179,8 @@
                                              MinHeight="36"
                                              Padding="10,6"
                                              PasswordChanged="ApiKeyBox_OnPasswordChanged"
-                                             ToolTip="API 提供商可在此输入；Grok CLI 使用 grok login，不要输入。明文不会写入数据库或日志。" />
+                                             ToolTip="明文不会写入数据库或日志。"
+                                             Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                                 <TextBlock Grid.Row="5" Margin="0,14,0,0" VerticalAlignment="Center" Text="等待上限（秒）" />
                                 <TextBox Grid.Row="5" Grid.Column="1" Margin="0,14,0,0"
@@ -154,14 +194,14 @@
 
                                 <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,22,0,0">
                                     <Border Padding="12"
-                                            Background="{StaticResource SurfaceAltBrush}"
+                                            Background="{DynamicResource SurfaceAltBrush}"
                                             CornerRadius="10">
                                         <StackPanel>
                                             <TextBlock Text="{Binding KeyStatus}" />
-                                            <TextBlock Margin="0,6,0,0"
-                                                       Text="Key 文件独立保存在数据目录的 secrets 文件夹；受 Windows DPAPI 当前用户保护，数据库只保存随机引用。这不是应用进程隔离：同一 Windows 用户下的恶意程序或管理员仍可能取得访问能力。"
+                                             <TextBlock Margin="0,6,0,0"
+                                                       Text="{Binding CredentialHelpText}"
                                                        TextWrapping="Wrap"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                                       Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </Border>
                                     <Grid Margin="0,12,0,0">
@@ -170,14 +210,14 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Button Content="清除 Key"
+                                        <Button Content="清除已存 Key"
                                                 Command="{Binding ClearKeyCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                         <TextBlock Grid.Column="1"
                                                    Margin="12,0"
                                                    VerticalAlignment="Center"
                                                    Text="保存设置不会自动联网。"
-                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
                                         <Button Grid.Column="2"
                                                 Content="保存当前设置"
                                                 Command="{Binding SaveCommand}"
@@ -241,7 +281,7 @@
                                             <TextBlock Margin="0,2,0,0"
                                                        Text="{Binding ModelId}"
                                                        FontSize="11"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                                       Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -260,7 +300,7 @@
                                          Text="{Binding ModelMaxOutputTokens, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Margin="0,12,0,0"
                                            Text="目录刷新会保留同一模型已经手动设置的上下文和输出上限。"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                                 <Button Margin="0,18,0,0"
                                         Content="保存模型上限"
                                         Command="{Binding SaveModelLimitsCommand}"
@@ -317,7 +357,7 @@
                                             <TextBlock Margin="0,2,0,0"
                                                        Text="{Binding ModelId}"
                                                        FontSize="11"
-                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                                       Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -335,7 +375,7 @@
                                     <TextBlock Margin="0,2,0,6"
                                                Text="已保存分配"
                                                FontSize="11"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                                 <ScrollViewer Grid.Row="1"
                                               Margin="0,0,0,10"
@@ -349,7 +389,7 @@
                                                           ToolTip="仅 OpenRouter 且模型 ID 含完整 deepseek 词段时可展开">
                                                     <Expander.Header>
                                                         <Border Padding="7,5"
-                                                                Background="{StaticResource SurfaceAltBrush}"
+                                                                Background="{DynamicResource SurfaceAltBrush}"
                                                                 CornerRadius="8">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
@@ -363,7 +403,7 @@
                                                                            Text="{Binding TargetText}"
                                                                            FontSize="11"
                                                                            VerticalAlignment="Center"
-                                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                                           Foreground="{DynamicResource MutedTextBrush}"
                                                                            TextWrapping="NoWrap"
                                                                            TextTrimming="CharacterEllipsis"
                                                                            ToolTip="{Binding TargetText}" />
@@ -381,7 +421,7 @@
                                                                        FontWeight="SemiBold" />
                                                             <TextBlock Text="使用 OpenRouter reasoning 参数"
                                                                        FontSize="11"
-                                                                       Foreground="{StaticResource MutedTextBrush}" />
+                                                                       Foreground="{DynamicResource MutedTextBrush}" />
                                                         </StackPanel>
                                                         <ToggleButton Grid.Column="1"
                                                                       IsChecked="{Binding IsReasoningEnabled, Mode=OneWay}"
@@ -488,10 +528,10 @@
                                                    TextWrapping="Wrap" />
                                         <Border Margin="0,12,0,0"
                                                 Padding="12"
-                                                Background="{StaticResource SurfaceAltBrush}"
+                                                Background="{DynamicResource SurfaceAltBrush}"
                                                 CornerRadius="10">
                                             <TextBlock Text="Embedding 只保存供应商和模型，不使用上下文上限、最大输出、temperature、top_p 或推理参数。"
-                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       Foreground="{DynamicResource MutedTextBrush}"
                                                        TextWrapping="Wrap" />
                                         </Border>
                                     </StackPanel>
@@ -518,7 +558,7 @@
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"
                                    Text="控制应用在常用交互中的默认表现；设置仅保存在本机。"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
 
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
@@ -529,7 +569,7 @@
                                           IsChecked="{Binding ChatAutoScrollEnabled}" />
                                 <TextBlock Margin="24,5,0,0"
                                            Text="关闭后，聊天窗口会保持当前阅读位置。"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                         </Border>
 
@@ -546,7 +586,7 @@
                         </StackPanel>
                         <TextBlock Margin="0,10,0,0"
                                    Text="{Binding InterfaceSettingsStatus}"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -599,7 +639,7 @@
                                                        TextTrimming="CharacterEllipsis" />
                                             <TextBlock Margin="0,2,0,0"
                                                        Text="{Binding Description}"
-                                                       Foreground="{StaticResource MutedTextBrush}"
+                                                       Foreground="{DynamicResource MutedTextBrush}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                     </DataTemplate>
@@ -622,7 +662,7 @@
                                 <TextBlock Margin="0,2,0,14"
                                            Text="人设归档在玩家个人数据中；聊天页可以直接选择当前档案并编辑。只有保存后才会更新已保存内容。"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBlock Text="人设名称" />
                                 <TextBox Margin="0,5,0,0"
                                          Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
@@ -647,7 +687,7 @@
                                 <TextBlock Margin="0,10,0,0"
                                            Text="{Binding Personas.Status}"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -722,15 +762,15 @@
                                                         <Trigger Property="IsMouseOver" Value="True">
                                                             <Setter TargetName="SelectionBorder"
                                                                     Property="Background"
-                                                                    Value="{StaticResource ControlHoverBrush}" />
+                                                                    Value="{DynamicResource ControlHoverBrush}" />
                                                         </Trigger>
                                                         <Trigger Property="IsSelected" Value="True">
                                                             <Setter TargetName="SelectionBorder"
                                                                     Property="Background"
-                                                                    Value="{StaticResource AccentSoftBrush}" />
+                                                                    Value="{DynamicResource AccentSoftBrush}" />
                                                             <Setter TargetName="SelectionBorder"
                                                                     Property="BorderBrush"
-                                                                    Value="{StaticResource AccentBrush}" />
+                                                                    Value="{DynamicResource AccentBrush}" />
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
@@ -764,11 +804,11 @@
                                        Margin="0,6,0,12"
                                        Text="{Binding Prompts.SelectedPrompt.Description}"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                             <Border Grid.Row="2"
                                     Margin="0,0,0,12"
                                     Padding="10,8"
-                                    Background="{StaticResource AccentSoftBrush}"
+                                    Background="{DynamicResource AccentSoftBrush}"
                                     CornerRadius="10">
                                 <StackPanel>
                                     <TextBlock Text="配置生效范围"
@@ -776,7 +816,7 @@
                                     <TextBlock Margin="0,3,0,0"
                                                Text="{Binding Prompts.SelectedPrompt.LocalOverrideHint}"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedTextBrush}" />
+                                               Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                             </Border>
                             <TextBox Grid.Row="3"
@@ -811,7 +851,7 @@
                                        Margin="0,12,0,0"
                                        Text="{Binding Prompts.Status}"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource MutedTextBrush}" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                         </Grid>
                     </Border>
                 </Grid>
@@ -825,7 +865,7 @@
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"
                                    Text="调整界面缩放、字体、字号和主题；设置仅保存在本机。"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
 
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
@@ -839,10 +879,10 @@
                                                    Style="{StaticResource SectionTitleStyle}" />
                                         <TextBlock Margin="0,5,0,0"
                                                    Text="更改文字、按钮、导航和其他界面元素的大小。"
-                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
                                         <TextBlock Margin="0,3,0,0"
                                                    Text="只影响 TavernDesk，并会与 Windows 显示缩放叠加。选择后立即预览。"
-                                                   Foreground="{StaticResource MutedTextBrush}" />
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
                                     <ComboBox Grid.Column="1"
                                               Width="190"
@@ -855,7 +895,7 @@
                                 <TextBlock Margin="0,12,0,0"
                                            Text="{Binding InterfaceScaleRecommendationText}"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                         </Border>
 
@@ -887,11 +927,11 @@
                                 </Grid>
                                 <TextBlock Margin="0,3,0,0"
                                            Text="字号范围 10–32；聊天正文会在此基础上增加一级。"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
 
                                 <Border Margin="0,12,0,0"
                                         Padding="12"
-                                        Background="{StaticResource SurfaceAltBrush}"
+                                        Background="{DynamicResource SurfaceAltBrush}"
                                         CornerRadius="10">
                                     <TextBlock Text="字体预览：TavernDesk 酒馆聊天 Aa 123"
                                                FontFamily="{Binding InterfaceFontFamily}"
@@ -901,13 +941,31 @@
                         </Border>
 
                         <Border Margin="0,12,0,0"
-                                Style="{StaticResource CardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="主题"
-                                           Style="{StaticResource SectionTitleStyle}" />
-                                <TextBlock Margin="0,7,0,0"
-                                           Text="当前主题：默认浅色。主题资源继续保持独立，后续可在这里扩展其他皮肤。" />
-                            </StackPanel>
+                                 Style="{StaticResource CardStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,18,0">
+                                    <TextBlock Text="主题"
+                                               Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Margin="0,5,0,0"
+                                               Text="可选默认浅色或深炭黑；仅改变颜色与材质，不改变窗口结构和操作逻辑。"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Text="选择后立即预览，保存后下次启动继续使用。"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                </StackPanel>
+                                <ComboBox Grid.Column="1"
+                                          Width="190"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Center"
+                                          ItemsSource="{Binding AvailableInterfaceThemeOptions}"
+                                          DisplayMemberPath="Label"
+                                          SelectedItem="{Binding SelectedInterfaceThemeOption, Mode=TwoWay}" />
+                            </Grid>
                         </Border>
 
                         <StackPanel Margin="0,12,0,0"
@@ -923,7 +981,7 @@
                         </StackPanel>
                         <TextBlock Margin="0,10,0,0"
                                    Text="{Binding InterfaceSettingsStatus}"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -937,7 +995,7 @@
                         <TextBlock Margin="0,2,0,14"
                                    Text="数据库、聊天记录、角色卡、跑团剧本、附件、导出文件和其他个人资料都保存在这里；软件目录本身不保存个人资料。"
                                    TextWrapping="Wrap"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
 
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
@@ -946,7 +1004,7 @@
                                 <TextBlock Margin="0,7,0,0"
                                            Text="所有模块都会从这个根目录派生绝对路径；数据库中的受管文件路径使用相对路径保存，因此可以跨盘符和电脑复制。"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
 
                                 <Grid Margin="0,12,0,0">
                                     <Grid.ColumnDefinitions>
@@ -964,14 +1022,14 @@
 
                                 <TextBlock Margin="0,9,0,0"
                                            Text="配置文件："
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBlock Text="{Binding DataRootConfigurationPath}"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBlock Margin="0,9,0,0"
                                            Text="{Binding DataRootStatus}"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource MutedTextBrush}" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                         </Border>
 

@@ -8,7 +8,7 @@
         MinHeight="480"
         ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource WindowBackgroundBrush}">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Grid Margin="24"
           Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.RowDefinitions>
@@ -22,7 +22,7 @@
             <TextBlock Text="新建群聊" Style="{StaticResource PageTitleStyle}" />
             <TextBlock Margin="0,5,0,0"
                        Text="选择至少两个角色。群聊会拥有独立聊天记录、独立记忆和接力设置。"
-                       Foreground="{StaticResource MutedTextBrush}"
+                       Foreground="{DynamicResource MutedTextBrush}"
                        TextWrapping="Wrap" />
         </StackPanel>
 
@@ -48,7 +48,7 @@
                                 <Border Width="40"
                                         Height="40"
                                         CornerRadius="20"
-                                        Background="{StaticResource AccentSoftBrush}">
+                                        Background="{DynamicResource AccentSoftBrush}">
                                     <Image Source="{Binding Character.AvatarPath}"
                                            Stretch="UniformToFill">
                                         <Image.Clip>
@@ -63,7 +63,7 @@
                                                FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding Character.Description}"
                                                MaxWidth="420"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </StackPanel>
@@ -81,7 +81,7 @@
             </Grid.ColumnDefinitions>
             <TextBlock x:Name="ValidationText"
                        VerticalAlignment="Center"
-                       Foreground="{StaticResource DangerBrush}" />
+                       Foreground="{DynamicResource DangerBrush}" />
             <Button Grid.Column="1"
                     Width="92"
                     Margin="0,0,10,0"

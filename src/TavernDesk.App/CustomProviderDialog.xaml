@@ -1,55 +1,65 @@
 <Window x:Class="TavernDesk.App.CustomProviderDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="添加自定义 API 提供商"
+        Title="添加自定义接入商"
         Width="560"
-        Height="390"
+        Height="500"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
     <Grid Margin="24"
           Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="添加自定义 API 提供商"
-                   Style="{StaticResource SectionTitleStyle}" />
-        <TextBlock Grid.Row="1"
-                   Margin="0,5,0,0"
-                   Text="默认使用 OpenAI Compatible 协议；添加后可在右侧继续保存 API Key。"
-                   Foreground="{StaticResource MutedTextBrush}"
-                   TextWrapping="Wrap" />
+        <ScrollViewer Grid.Row="0"
+                      Margin="0,0,0,16"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,6,0">
+                <TextBlock Text="添加自定义接入商"
+                           Style="{StaticResource SectionTitleStyle}" />
+                <Border Margin="0,8,0,0"
+                        Padding="12"
+                        Background="{DynamicResource AccentSoftBrush}"
+                        BorderBrush="{DynamicResource AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="接口要求：必须使用 OpenAI 兼容协议"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Text="该服务必须提供与 OpenAI Chat Completions 兼容的 /v1/chat/completions 接口；Anthropic Messages、Gemini 原生及其他专用格式目前无法使用。"
+                                   Foreground="{DynamicResource MutedTextBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
 
-        <TextBlock Grid.Row="2"
-                   Margin="0,18,0,4"
-                   Text="名称" />
-        <TextBox x:Name="NameEditor"
-                 Grid.Row="3"
-                 MinHeight="36"
-                 Padding="10,6"
-                 Text="自定义 API 提供商" />
+                <TextBlock Margin="0,18,0,4"
+                           Text="名称" />
+                <TextBox x:Name="NameEditor"
+                         MinHeight="36"
+                         Padding="10,6"
+                         Text="自定义 API 提供商" />
 
-        <StackPanel Grid.Row="4" Margin="0,14,0,0">
-            <TextBlock Text="API / 本机地址" />
-            <TextBox x:Name="BaseUrlEditor"
-                     Margin="0,4,0,0"
-                     MinHeight="36"
-                     Padding="10,6"
-                     ToolTip="填写到 /api/v1 或 /v1 结束，不要加入 /chat；例如 https://example.com/api/v1。" />
-            <TextBlock Margin="0,5,0,0"
-                       Text="填写到 api/v1 结束，不要加入 /chat。示例：https://example.com/api/v1"
-                       Foreground="{StaticResource MutedTextBrush}"
-                       TextWrapping="Wrap" />
-        </StackPanel>
+                <StackPanel Margin="0,14,0,0">
+                    <TextBlock Text="OpenAI 兼容 API 地址" />
+                    <TextBox x:Name="BaseUrlEditor"
+                             Margin="0,4,0,0"
+                             MinHeight="36"
+                             Padding="10,6"
+                             ToolTip="填写到 /api/v1 或 /v1 结束，不要加入 /chat；例如 https://example.com/api/v1。" />
+                    <TextBlock Margin="0,5,0,0"
+                               Text="填写到 api/v1 结束，不要加入 /chat。示例：https://example.com/api/v1"
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
 
-        <StackPanel Grid.Row="6"
+        <StackPanel Grid.Row="1"
                     HorizontalAlignment="Right"
                     Orientation="Horizontal">
             <Button Width="100"

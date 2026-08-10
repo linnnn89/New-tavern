@@ -9,7 +9,7 @@
         ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
         Loaded="Dialog_OnLoaded"
-        Background="{StaticResource WindowBackgroundBrush}">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Grid Margin="24"
           Style="{StaticResource InterfaceScaleRootStyle}">
         <Grid.RowDefinitions>
@@ -27,7 +27,7 @@
             <TextBlock Margin="0,4,0,0"
                        Text="选择角色或跑团剧本并分别保存。关闭窗口时，未保存的勾选会被丢弃；全局及其他作用域挂载保持不变。"
                        TextWrapping="Wrap"
-                       Foreground="{StaticResource MutedTextBrush}" />
+                       Foreground="{DynamicResource MutedTextBrush}" />
         </StackPanel>
 
         <TabControl Grid.Row="1" Margin="0,18,0,0">
@@ -51,7 +51,7 @@
                         </StackPanel>
                         <TextBlock VerticalAlignment="Center"
                                    Text="选择要使用这本世界书的角色。"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
 
                     <Border Grid.Row="1"
@@ -74,7 +74,7 @@
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        Text="当前没有可挂载的角色。"
-                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        IsHitTestVisible="False">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -119,7 +119,7 @@
                         </StackPanel>
                         <TextBlock VerticalAlignment="Center"
                                    Text="选择要使用这本世界书的跑团剧本。"
-                                   Foreground="{StaticResource MutedTextBrush}" />
+                                   Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
 
                     <Border Grid.Row="1"
@@ -138,7 +138,7 @@
                                                 <TextBlock Margin="30,3,0,0"
                                                            Text="{Binding Summary}"
                                                            TextWrapping="Wrap"
-                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -147,7 +147,7 @@
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        Text="当前没有可挂载的跑团剧本。"
-                                       Foreground="{StaticResource MutedTextBrush}"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        IsHitTestVisible="False">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -182,7 +182,7 @@
                        VerticalAlignment="Center"
                        Text="{Binding Status}"
                        TextWrapping="Wrap"
-                       Foreground="{StaticResource MutedTextBrush}" />
+                       Foreground="{DynamicResource MutedTextBrush}" />
             <Button Grid.Column="1"
                     Width="96"
                     Content="关闭"
