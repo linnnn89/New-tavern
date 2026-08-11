@@ -20,6 +20,38 @@ TavernDesk keeps role-play data understandable and under your control. Character
 
 It is built for long-running character interactions rather than one-off prompts: ordinary chat and tabletop campaigns have separate state, memory has visible drafts and checkpoints, and campaign turns are coordinated by explicit player and GM rules.
 
+## Screenshots
+
+<p align="center">
+  <img src="./docs/screenshots/dashboard.png" alt="TavernDesk local-first dashboard">
+</p>
+<p align="center"><sub>A clean local workspace with characters, conversations, and provider status at a glance.</sub></p>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/screenshots/character-home.png" alt="TavernDesk character home">
+      <p align="center"><sub>Character cards, profile tools, shelves, and conversation history in one place.</sub></p>
+    </td>
+    <td width="50%">
+      <img src="./docs/screenshots/chat-workspace.png" alt="TavernDesk four-column chat workspace">
+      <p align="center"><sub>A four-column chat workspace with message history and an inspectable context panel.</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/screenshots/campaigns.png" alt="TavernDesk tabletop campaign workspace">
+      <p align="center"><sub>Separate scenario and campaign libraries for structured tabletop sessions.</sub></p>
+    </td>
+    <td width="50%">
+      <img src="./docs/screenshots/language-selection.png" alt="TavernDesk first-run language selection">
+      <p align="center"><sub>First-run interface selection for Simplified Chinese, Traditional Chinese, English, and Japanese.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p align="center"><sub>The character card and conversation shown here are user-imported examples and are not bundled with TavernDesk.</sub></p>
+
 ## Why TavernDesk
 
 - **Memory you can inspect.** Long-term memory is stored per character, group, or campaign. Updates can be previewed, edited, checkpointed, and saved instead of disappearing into an opaque global memory layer.
