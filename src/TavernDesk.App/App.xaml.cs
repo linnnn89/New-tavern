@@ -39,7 +39,7 @@ public partial class App : Application
             {
                 _singleInstanceGate.Dispose();
                 _singleInstanceGate = null;
-                MessageBox.Show(
+                LocalizedMessageBox.Show(
                     LanguageRuntime.GetString("Startup.AlreadyRunning"),
                     "TavernDesk",
                     MessageBoxButton.OK,
@@ -92,7 +92,7 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 LanguageRuntime.Format("Startup.Failed.Message", LanguageRuntime.ErrorMessage(exception)),
                 LanguageRuntime.GetString("Startup.Failed.Title"),
                 MessageBoxButton.OK,
@@ -133,7 +133,7 @@ public partial class App : Application
         _isShowingUnhandledException = true;
         try
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 Application.Current.MainWindow,
                 LanguageRuntime.Format(
                     "Startup.Unhandled.Message",

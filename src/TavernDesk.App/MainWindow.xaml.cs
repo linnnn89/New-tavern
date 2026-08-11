@@ -59,7 +59,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.ErrorMessage(exception),
                 LanguageRuntime.GetString("Shell.SaveLobbyDraftFailed"),
