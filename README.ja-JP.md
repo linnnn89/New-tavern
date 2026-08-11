@@ -1,0 +1,129 @@
+<div align="center">
+  <img src="./src/TavernDesk.App/Assets/Icons/app-icon.png" width="112" alt="TavernDesk アイコン">
+  <h1>TavernDesk</h1>
+  <p>キャラクター中心の AI 会話、長期記憶、ワールドブック、構造化された TRPG キャンペーンを扱う、Windows 向けローカルファーストクライアント。</p>
+  <p>
+    <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white" alt="Windows 10 と 11">
+    <img src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white" alt=".NET 10">
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-F4C430" alt="MIT License"></a>
+  </p>
+</div>
+
+<p align="center">
+  <a href="./README.md">English</a> ·
+  <a href="./README.zh-CN.md">简体中文</a> ·
+  <a href="./README.zh-TW.md">繁體中文</a> ·
+  <strong>日本語</strong>
+</p>
+
+TavernDesk は、ロールプレイに必要なデータを手元に置き、その内容と変化を自分で把握できるようにするアプリです。キャラクターカード、会話、記憶、ワールドブック、キャンペーンはローカルの SQLite ワークスペースに保存されます。利用するモデルを選び、送信前にコンテキストを確認し、長期状態を更新するタイミングも自分で決められます。
+
+一度きりのプロンプトではなく、長く続くキャラクターとの関係を想定しています。通常チャットと TRPG は別々の状態を持ち、記憶には編集可能な下書きとチェックポイントがあります。キャンペーンの進行は、プレイヤー、GM、ターンルールによって明示的に管理されます。
+
+## TavernDesk の特徴
+
+- **確認できる記憶。** 長期記憶はキャラクター、グループ、キャンペーンごとに保存されます。プレビュー、編集、圧縮、チェックポイント設定を行ってから保存できます。
+- **チャットとキャンペーンを分離。** キャンペーンはシナリオ、参加者のスナップショット、イベント履歴、GM 状態、記憶を独立して保持し、通常チャットの履歴を書き換えません。
+- **ルールのある複数キャラクター進行。** AI/人間 GM、AI/人間プレイヤー、3 種類のターン進行、席ごとのモデル割り当て、ダイス記録、結果検証、キャンセル、失敗時の再試行に対応します。
+- **送信内容を確認可能。** コンテキストインスペクターで Token 推定、リクエストの各区間、ワールドブックの一致結果、検索診断、除外項目、API リクエスト構造を確認できます。
+- **モデルとデータを自分で選択。** クラウドサービス、ローカルの LM Studio、Grok CLI のサブスクリプションログインを利用でき、キャラクターライブラリは Windows 上の自分のデータフォルダーに残ります。
+- **既存のキャラクター資産を活用。** SillyTavern 形式の PNG、JSON、CHARX キャラクターカードを読み書きし、対応する埋め込みデータや付属リソースを保持します。
+
+## 主な機能
+
+### キャラクター管理と会話
+
+- キャラクター棚、検索、並べ替え、カバーサイズ、独自分類、一括整理、プロフィール編集。
+- 1 対 1 チャット、グループチャット、複数会話、独立チャットウィンドウ、ストリーミング、キャンセル、続きを生成。
+- メッセージの直接編集、複数候補、再生成、指定メッセージからの分岐、JSONL チャットのインポート/エクスポート。
+- バブル表示と小説表示。バブル表示では、グループチャットを含めてユーザーメッセージを右、キャラクターメッセージを左に配置します。
+- ペルソナ、別の開始メッセージ、システムプロンプト、post-history instructions、キャラクターごとのモデル割り当て。
+
+### 記憶、コンテキスト、ワールドブック
+
+- キャラクター、グループ、キャンペーン別の長期記憶。編集可能な下書き、チェックポイント、圧縮、更新間隔に対応。
+- ペルソナ、キャラクターカード、ワールドブック、記憶、履歴、検索結果、post-history instructions、現在の入力を決まった順序で構成し、区間ごとに確認可能。
+- 既知の OpenAI Tokenizer はローカルで Token 数を推定し、未知のモデルには明示された代替推定を使用。
+- ワールドブックは全体、キャラクター、会話、シナリオ、キャンペーン単位でマウント可能。
+- 選択一致、再帰、確率、排他グループ、正規表現、単語単位、depth 挿入を含む SillyTavern 形式の決定的キーワードルール。
+- SQLite FTS5 と、任意の Embedding ハイブリッド順位付け。ローカルプレビューでは Embedding サービスを呼び出しません。
+
+### 独立した TRPG キャンペーン
+
+キャンペーンモードは、グループチャットに GM 用プロンプトを追加しただけの仕組みではなく、独立した実行領域です。
+
+- `GM 1 名 + USER + AI プレイヤー 0～4 名`。
+- AI GM、人間 GM、USER がプレイヤーと GM を兼任する構成、観戦のみの構成。
+- 協調ラウンドテーブル、秘密同時提出、厳格イニシアチブの 3 種類の進行。
+- 開始時にキャラクター、ペルソナ、世界設定、GM 指示、物語権限、モデルルーティングをスナップショット化。
+- AI プレイヤーと GM の各席に異なる Provider/モデルを割り当て可能。
+- 行動ごとの `1d20` 記録と、任意の公開ダイス式。
+- GM 結果が決定的検証を通過してから、ラウンド進行や永続キャンペーン状態を更新。
+- キャンペーン専用の公開/GM 記憶、コンテキスト予算、キャンセル、明示的な再試行。
+
+### Windows デスクトップ体験
+
+- Windows 10/11 x64 向けのネイティブ WPF UI。
+- 折りたためるコンテキストインスペクターを備えた 4 カラムのチャット画面。
+- ライト/チャコールダークテーマ、表示倍率、共通フォント設定。
+- 表示言語：简体中文、繁體中文、English、日本語。
+- 新しいワークスペースの初回起動時に言語を選択し、後から設定画面で変更可能。
+
+## クイックスタート
+
+リポジトリには自己完結型の `win-x64` ビルドが含まれています。このビルドを使う場合、.NET を別途インストールする必要はありません。
+
+1. [リポジトリの ZIP](https://github.com/linnnn89/New-tavern/archive/refs/heads/%E8%B7%91%E5%9B%A2%E8%AE%B0%E5%BF%86%E5%8D%87%E7%BA%A7%E7%89%88.zip)をダウンロードしてすべて展開するか、Git でクローンします。
+2. `TavernDesk.exe` と完全な `app/` フォルダーを同じ階層に置きます。
+3. `TavernDesk.exe` を実行し、表示言語を選びます。
+4. **設定 → AI とモデル** を開き、Provider とモデル割り当てを設定します。
+
+```powershell
+git clone --branch "跑团记忆升级版" --single-branch https://github.com/linnnn89/New-tavern.git
+cd New-tavern
+.\TavernDesk.exe
+```
+
+`TavernDesk.exe` は小さなランチャーで、実行環境本体は `app/` にあります。ランチャーだけをコピーしても起動できません。
+
+## モデル接続
+
+| 接続先 | 認証 | 備考 |
+| --- | --- | --- |
+| OpenRouter | API Key | OpenAI 互換チャットとモデルカタログ |
+| SiliconFlow | API Key | OpenAI 互換 |
+| DeepSeek 公式 API | API Key | OpenAI 互換、キャッシュ使用量フィールドに対応 |
+| LM Studio | ローカルサーバー | 既定のアドレス：`http://127.0.0.1:6543` |
+| Grok CLI | ローカルのサブスクリプションログイン | ローカルの `grok login` を使用。Grok API Key は要求しません |
+| カスタム Provider | API Key は任意 | OpenAI Chat Completions 互換 API が必要 |
+
+カスタムアドレスはサービスルート、`/v1`、または `/api/v1` までを入力し、`/chat` や `/chat/completions` は追加しないでください。Anthropic Messages と Gemini のネイティブ API には現在対応していません。TavernDesk はクライアントであり、モデル実行環境やモデルダウンローダーは内蔵していません。
+
+## ローカルデータとネットワーク境界
+
+既定のワークスペースは `%USERPROFILE%\Documents\TavernDesk` です。SQLite データベース、キャラクター/シナリオカード、エクスポート、添付ファイル、保護された Provider シークレットを保存します。選択中の場所は `%LOCALAPPDATA%\TavernDesk\config.json` に記録され、設定画面から移動できます。
+
+API Key は Windows DPAPI `CurrentUser` で保護されたファイルとして保存され、SQLite にはランダムな参照だけが入ります。クラウド同期機能はありません。「ローカルファースト」は、すべての生成がオフラインという意味ではありません。生成または Embedding を実行すると、プロンプトと必要な会話コンテキストが選択したサービスへ送信されます。
+
+## ソースからビルド
+
+Windows 10/11 x64 と、[`global.json`](./global.json) で指定された .NET SDK が必要です。
+
+```powershell
+dotnet restore TavernDesk.sln
+& .\scripts\Test-Localization.ps1
+dotnet build TavernDesk.sln -c Release --no-restore
+dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj -c Release --no-build
+```
+
+ソースの基準は `src/` です。リポジトリ内の `app/` は実行可能な発行スナップショットで、通常の `dotnet build` では自動更新されません。
+
+## ドキュメント
+
+- [アーキテクチャ基準](./docs/architecture.md)
+- [キャンペーンモード設計](./docs/campaign_mode_design.md)
+- [キャンペーンのコンテキスト予算](./docs/TavernDesk-R2-B-Campaign-Context-Budget.md)
+
+## ライセンス
+
+TavernDesk は [MIT License](./LICENSE) で提供されます。ライセンス条項に従う限り、商用利用、変更、再配布が可能です。
