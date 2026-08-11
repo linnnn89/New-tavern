@@ -22,7 +22,7 @@ public partial class CustomProviderDialog : Window
     {
         if (ProviderName.Length == 0)
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.GetString("CustomProvider.NameRequired"),
                 LanguageRuntime.GetString("CustomProvider.CannotAdd"),
@@ -34,7 +34,7 @@ public partial class CustomProviderDialog : Window
         if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUri)
             || baseUri.Scheme is not ("http" or "https"))
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.GetString("CustomProvider.BaseUrlAbsoluteRequired"),
                 LanguageRuntime.GetString("CustomProvider.CannotAdd"),
@@ -46,7 +46,7 @@ public partial class CustomProviderDialog : Window
         if (!string.IsNullOrEmpty(baseUri.Query)
             || !string.IsNullOrEmpty(baseUri.Fragment))
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.GetString("CustomProvider.BaseUrlNoQuery"),
                 LanguageRuntime.GetString("CustomProvider.CannotAdd"),
@@ -62,7 +62,7 @@ public partial class CustomProviderDialog : Window
                 "/chat/completions",
                 StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.GetString("CustomProvider.BaseUrlVersionRootRequired"),
                 LanguageRuntime.GetString("CustomProvider.CannotAdd"),

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using TavernDesk.App;
 using TavernDesk.App.Localization;
 using TavernDesk.App.ViewModels;
 
@@ -23,7 +24,7 @@ public partial class WorldbookView : UserControl
         if (DataContext is not WorldbookViewModel viewModel
             || viewModel.SelectedBook is null)
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 Window.GetWindow(this),
                 LanguageRuntime.GetString("Worldbook.Mount.SelectFirst"),
                 LanguageRuntime.GetString("Worldbook.Mount.Title"),

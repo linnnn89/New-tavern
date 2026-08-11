@@ -11,6 +11,9 @@
 
     <!-- Common -->
     <sys:String x:Key="Common.Add">添加</sys:String>
+    <sys:String x:Key="Common.OK">确定</sys:String>
+    <sys:String x:Key="Common.Yes">是</sys:String>
+    <sys:String x:Key="Common.No">否</sys:String>
     <sys:String x:Key="Common.Cancel">取消</sys:String>
     <sys:String x:Key="Common.SaveChanges">保存修改</sys:String>
     <sys:String x:Key="Common.CannotSave">无法保存</sys:String>

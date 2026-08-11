@@ -24,7 +24,7 @@ public partial class CustomModelDialog : Window
     {
         if (string.IsNullOrWhiteSpace(ModelNameEditor.Text))
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.GetString("CustomModel.Required"),
                 LanguageRuntime.GetString("Common.CannotSave"),

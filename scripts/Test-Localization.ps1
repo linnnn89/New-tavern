@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -12,7 +12,7 @@ $catalogs = @{}
 
 foreach ($culture in $cultures) {
     $path = Join-Path $localizationRoot "Strings.$culture.xaml"
-    [xml]$document = Get-Content -LiteralPath $path -Raw
+    [xml]$document = Get-Content -LiteralPath $path -Raw -Encoding UTF8
     $entries = @{}
     foreach ($node in $document.ResourceDictionary.String) {
         $key = $node.GetAttribute('Key', $xamlNamespace)
@@ -135,7 +135,7 @@ if ($unexpectedTaiwanTerms.Count -gt 0) {
 
 $hardcodedXaml = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
     Where-Object { $_.FullName -notlike "$localizationRoot*" } |
-    Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]'
+    Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]' -Encoding UTF8
 if ($hardcodedXaml) {
     throw "Display CJK remains outside language dictionaries:`n$($hardcodedXaml -join "`n")"
 }
@@ -146,7 +146,7 @@ $allowedCSharp = @(
 )
 $hardcodedCSharp = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
     Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
-    Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]' |
+    Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]' -Encoding UTF8 |
     Where-Object {
         $name = $_.Path | Split-Path -Leaf
         if ($allowedCSharp -contains $name) { return $false }
@@ -162,13 +162,57 @@ if ($hardcodedCSharp) {
     throw "Unclassified display CJK remains in App C#:`n$($hardcodedCSharp -join "`n")"
 }
 
+$nativeMessageBoxCalls = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
+    Where-Object {
+        $_.Name -ne 'LocalizedMessageBox.cs' -and
+        $_.FullName -notmatch '\\(bin|obj)\\'
+    } |
+    Select-String -Pattern '\bMessageBox\.Show\s*\(' -Encoding UTF8
+if ($nativeMessageBoxCalls) {
+    throw "Native MessageBox calls bypass application-language buttons:`n$($nativeMessageBoxCalls -join "`n")"
+}
+
+$unlocalizedButtonText = [System.Collections.Generic.List[string]]::new()
+$buttonXamlFiles = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
+    Where-Object {
+        $_.FullName -notlike "$localizationRoot*" -and
+        $_.FullName -notmatch '\\(bin|obj)\\'
+    }
+foreach ($file in $buttonXamlFiles) {
+    [xml]$xaml = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+    foreach ($button in @($xaml.SelectNodes('//*[local-name()="Button"]'))) {
+        $values = [System.Collections.Generic.List[string]]::new()
+        $content = $button.GetAttribute('Content')
+        if (-not [string]::IsNullOrWhiteSpace($content)) {
+            $values.Add($content)
+        }
+        foreach ($descendant in @($button.SelectNodes('.//*[@Text]'))) {
+            $text = $descendant.GetAttribute('Text')
+            if (-not [string]::IsNullOrWhiteSpace($text)) {
+                $values.Add($text)
+            }
+        }
+        foreach ($value in $values) {
+            $isMarkup = $value.StartsWith('{')
+            $isGlyphOnly = $value -match '^[\p{P}\p{S}\p{Co}\s]+$'
+            if (-not $isMarkup -and -not $isGlyphOnly) {
+                $relativePath = $file.FullName.Substring($appRoot.Length + 1)
+                $unlocalizedButtonText.Add("${relativePath}: $value")
+            }
+        }
+    }
+}
+if ($unlocalizedButtonText.Count -gt 0) {
+    throw "Button text bypasses localization resources or bindings:`n$($unlocalizedButtonText -join "`n")"
+}
+
 $referencedKeys = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::Ordinal)
 $codeReferencePattern = 'LanguageRuntime\.(?:GetString|Format)\(\s*"([^"]+)"'
 Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
     Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
     ForEach-Object {
-        $source = Get-Content -LiteralPath $_.FullName -Raw
+        $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
         foreach ($match in [regex]::Matches($source, $codeReferencePattern)) {
             [void]$referencedKeys.Add($match.Groups[1].Value)
         }
@@ -185,7 +229,7 @@ $resourceLikeLiteralPattern =
 Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
     Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
     ForEach-Object {
-        $source = Get-Content -LiteralPath $_.FullName -Raw
+        $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
         foreach ($match in [regex]::Matches($source, $resourceLikeLiteralPattern)) {
             $key = $match.Groups[1].Value
             $prefix = ($key -split '\.', 2)[0]
@@ -202,7 +246,7 @@ Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
         $_.FullName -notmatch '\\(bin|obj)\\'
     } |
     ForEach-Object {
-        $source = Get-Content -LiteralPath $_.FullName -Raw
+        $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
         foreach ($match in [regex]::Matches($source, $xamlReferencePattern)) {
             $key = $match.Groups[1].Value
             $prefix = ($key -split '\.', 2)[0]
@@ -228,7 +272,7 @@ $allAppXaml = @(
         Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
 )
 foreach ($file in $allAppXaml) {
-    $source = Get-Content -LiteralPath $file.FullName -Raw
+    $source = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
     foreach ($match in [regex]::Matches($source, 'x:Key\s*=\s*"([^"]+)"')) {
         [void]$declaredXamlResources.Add($match.Groups[1].Value)
     }
@@ -237,7 +281,7 @@ foreach ($file in $allAppXaml) {
 $missingXamlResources = [System.Collections.Generic.List[string]]::new()
 foreach ($file in $allAppXaml) {
     $lineNumber = 0
-    foreach ($line in Get-Content -LiteralPath $file.FullName) {
+    foreach ($line in Get-Content -LiteralPath $file.FullName -Encoding UTF8) {
         $lineNumber++
         foreach ($match in [regex]::Matches($line, $xamlReferencePattern)) {
             $key = $match.Groups[1].Value

@@ -1,4 +1,5 @@
 using System.Windows;
+using TavernDesk.App;
 using TavernDesk.App.Localization;
 using TavernDesk.Core.Models;
 
@@ -33,7 +34,7 @@ public interface IUserInteractionService
 {
     void ShowWarning(string title, string message)
     {
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current?.MainWindow,
             message,
             title,
@@ -79,7 +80,7 @@ public sealed class UserInteractionService : IUserInteractionService
     }
 
     public void ShowWarning(string title, string message) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current?.MainWindow,
             message,
             title,
@@ -124,7 +125,7 @@ public sealed class UserInteractionService : IUserInteractionService
 
     public DeleteMessageDecision ConfirmMessageDeletion()
     {
-        var range = MessageBox.Show(
+        var range = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.GetString("Interaction.DeleteMessageRange.Message"),
             LanguageRuntime.GetString("Interaction.DeleteMessageRange.Title"),
@@ -139,7 +140,7 @@ public sealed class UserInteractionService : IUserInteractionService
             ? DeleteMessageDecision.SelectedAndFollowing
             : DeleteMessageDecision.SelectedOnly;
 
-        var final = MessageBox.Show(
+        var final = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             decision == DeleteMessageDecision.SelectedAndFollowing
                 ? LanguageRuntime.GetString("Interaction.DeleteMessage.ConfirmTail")
@@ -154,7 +155,7 @@ public sealed class UserInteractionService : IUserInteractionService
 
     public UnsavedChangesDecision ConfirmUnsavedCharacterChanges(string characterName)
     {
-        var result = MessageBox.Show(
+        var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.UnsavedCharacter.MessageFormat", characterName),
             LanguageRuntime.GetString("Interaction.UnsavedCharacter.Title"),
@@ -170,7 +171,7 @@ public sealed class UserInteractionService : IUserInteractionService
 
     public UnsavedChangesDecision ConfirmUnsavedProviderChanges(string providerName)
     {
-        var result = MessageBox.Show(
+        var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.UnsavedProvider.MessageFormat", providerName),
             LanguageRuntime.GetString("Interaction.UnsavedProvider.Title"),
@@ -187,7 +188,7 @@ public sealed class UserInteractionService : IUserInteractionService
     public UnsavedChangesDecision ConfirmUnsavedCampaignLobby(
         string campaignTitle)
     {
-        var result = MessageBox.Show(
+        var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.UnstartedCampaign.MessageFormat", campaignTitle),
             LanguageRuntime.GetString("Interaction.UnstartedCampaign.Title"),
@@ -203,7 +204,7 @@ public sealed class UserInteractionService : IUserInteractionService
     }
 
     public bool ConfirmCharacterDeletion(string characterName, int conversationCount) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format(
                 "Interaction.DeleteCharacter.MessageFormat",
@@ -216,7 +217,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmConversationDeletion(string conversationTitle) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.DeleteConversation.MessageFormat", conversationTitle),
             LanguageRuntime.GetString("Interaction.DeleteConversation.Title"),
@@ -224,7 +225,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmShelfDeletion(string shelfName) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.DeleteShelf.MessageFormat", shelfName),
             LanguageRuntime.GetString("Interaction.DeleteShelf.Title"),
@@ -232,7 +233,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmPresetDeletion(string presetName) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.DeletePreset.MessageFormat", presetName),
             LanguageRuntime.GetString("Interaction.DeletePreset.Title"),
@@ -240,7 +241,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmProviderDeletion(string providerName) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.DeleteProvider.MessageFormat", providerName),
             LanguageRuntime.GetString("Interaction.DeleteProvider.Title"),
@@ -248,7 +249,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmWorldbookDeletion(string worldbookName) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.DeleteWorldbook.MessageFormat", worldbookName),
             LanguageRuntime.GetString("Interaction.DeleteWorldbook.Title"),
@@ -256,7 +257,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmCampaignDeletion(string campaignTitle, int eventCount) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.DeleteCampaign.MessageFormat", campaignTitle, eventCount),
             LanguageRuntime.GetString("Interaction.DeleteCampaign.Title"),
@@ -264,7 +265,7 @@ public sealed class UserInteractionService : IUserInteractionService
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     public bool ConfirmSecretClear(string providerName) =>
-        MessageBox.Show(
+        LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.ClearKey.MessageFormat", providerName),
             LanguageRuntime.GetString("Interaction.ClearKey.Title"),
@@ -275,7 +276,7 @@ public sealed class UserInteractionService : IUserInteractionService
         string currentRoot,
         string newRoot)
     {
-        var result = MessageBox.Show(
+        var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.ChangeDataRoot.MessageFormat", currentRoot, newRoot),
             LanguageRuntime.GetString("Interaction.ChangeDataRoot.Title"),
