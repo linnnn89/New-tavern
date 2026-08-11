@@ -21,7 +21,7 @@ public partial class TextEditorDialog : Window
     {
         if (string.IsNullOrWhiteSpace(Editor.Text))
         {
-            MessageBox.Show(
+            LocalizedMessageBox.Show(
                 this,
                 LanguageRuntime.GetString("TextEditor.BodyRequired"),
                 LanguageRuntime.GetString("Common.CannotSave"),

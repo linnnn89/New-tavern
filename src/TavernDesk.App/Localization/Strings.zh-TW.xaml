@@ -18,6 +18,9 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Startup.DataRootArgumentMissing">--data-root 後必須提供資料目錄路徑。</sys:String>
     <!-- Common -->
     <sys:String x:Key="Common.Add">新增</sys:String>
+    <sys:String x:Key="Common.OK">確定</sys:String>
+    <sys:String x:Key="Common.Yes">是</sys:String>
+    <sys:String x:Key="Common.No">否</sys:String>
     <sys:String x:Key="Common.Cancel">取消</sys:String>
     <sys:String x:Key="Common.SaveChanges">儲存修改</sys:String>
     <sys:String x:Key="Common.CannotSave">無法儲存</sys:String>

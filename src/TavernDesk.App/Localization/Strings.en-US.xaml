@@ -18,6 +18,9 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Startup.DataRootArgumentMissing">--data-root must be followed by a data directory path.</sys:String>
     <!-- Common -->
     <sys:String x:Key="Common.Add">Add</sys:String>
+    <sys:String x:Key="Common.OK">OK</sys:String>
+    <sys:String x:Key="Common.Yes">Yes</sys:String>
+    <sys:String x:Key="Common.No">No</sys:String>
     <sys:String x:Key="Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="Common.SaveChanges">Save changes</sys:String>
     <sys:String x:Key="Common.CannotSave">Cannot save</sys:String>

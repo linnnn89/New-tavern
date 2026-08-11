@@ -18,6 +18,9 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Startup.DataRootArgumentMissing">--data-root の後にはデータディレクトリのパスが必要です。</sys:String>
     <!-- Common -->
     <sys:String x:Key="Common.Add">追加</sys:String>
+    <sys:String x:Key="Common.OK">OK</sys:String>
+    <sys:String x:Key="Common.Yes">はい</sys:String>
+    <sys:String x:Key="Common.No">いいえ</sys:String>
     <sys:String x:Key="Common.Cancel">キャンセル</sys:String>
     <sys:String x:Key="Common.SaveChanges">変更を保存</sys:String>
     <sys:String x:Key="Common.CannotSave">保存できません</sys:String>
