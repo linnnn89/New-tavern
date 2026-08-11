@@ -1,5 +1,14 @@
 # Codex 工作记录
 
+## 2026-08-11 — `docs` 新读者导向整合
+
+- 授权范围限定为 `I:\New-tarven\docs`；未修改根目录 README、源码、配置或其他目录。
+- 将 `handoff.md` 中仍有效的项目边界、当前证据和未验证事项并入 `architecture.md`，随后删除重复交接文件；新增短版 `docs/README.md` 作为稳定阅读入口。
+- 将 `campaign_mode_design.md` 从阶段性方案重写为当前跑团规则、数据边界、流程策略、叙事权限、失败重试和验收不变量的单一说明。
+- 将 `TavernDesk-R2-B-Campaign-Context-Budget.md` 收敛为当前预算、GM/Public 记忆、ON/OFF、诊断和真实长局验收指南；移除旧分支、提交号、会话 ID、施工工作包和已失效阶段顺序。
+- 保留 `codex_worklog.md` 的既有历史，不把流水记录重新塞回入口文档。
+- 文档内本地链接检查通过；三份主文档的代码围栏数量均为偶数。此次仅修改 Markdown，未运行源码构建、自动化测试、GUI 或 Provider 请求。
+
 ## 2026-08-09 — PR 前高风险路径修正
 
 - Provider 删除顺序改为先提交数据库级联删除，再清理 DPAPI Key；数据库删除失败时配置与 Key 都保留，数据库成功但文件清理失败时只留下不可用的加密孤儿文件并给出警告；
