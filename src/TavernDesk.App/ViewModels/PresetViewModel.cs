@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -26,8 +27,8 @@ public sealed class PresetViewModel : ViewModelBase
     private int _conversationSortIndex;
     private string _effectiveOverlayJson = "{}";
     private string _effectiveSystemPrompt = string.Empty;
-    private string _diagnosticsText = "尚无预设挂载。";
-    private string _status = "选择会话后可管理预设作用域。";
+    private string _diagnosticsText = LanguageRuntime.GetString("Preset.NoneMounted");
+    private string _status = LanguageRuntime.GetString("Preset.SelectConversation");
     private long _selectionVersion;
 
     public PresetViewModel(
@@ -150,10 +151,16 @@ public sealed class PresetViewModel : ViewModelBase
         set => SetProperty(ref _conversationSortIndex, value);
     }
 
-    public string GlobalMountLabel => GlobalMounted ? "卸载全局" : "挂载全局";
-    public string CharacterMountLabel => CharacterMounted ? "卸载角色" : "挂载角色";
+    public string GlobalMountLabel => GlobalMounted
+        ? LanguageRuntime.GetString("Preset.Unmount.Global")
+        : LanguageRuntime.GetString("Preset.Mount.Global");
+    public string CharacterMountLabel => CharacterMounted
+        ? LanguageRuntime.GetString("Preset.Unmount.Character")
+        : LanguageRuntime.GetString("Preset.Mount.Character");
     public string ConversationMountLabel =>
-        ConversationMounted ? "卸载会话" : "挂载会话";
+        ConversationMounted
+            ? LanguageRuntime.GetString("Preset.Unmount.Conversation")
+            : LanguageRuntime.GetString("Preset.Mount.Conversation");
 
     public string EffectiveOverlayJson
     {
@@ -194,8 +201,8 @@ public sealed class PresetViewModel : ViewModelBase
         SelectedPreset = null;
         EffectiveOverlayJson = "{}";
         _effectiveSystemPrompt = string.Empty;
-        DiagnosticsText = "尚无预设挂载。";
-        Status = "选择会话后可管理预设作用域。";
+        DiagnosticsText = LanguageRuntime.GetString("Preset.NoneMounted");
+        Status = LanguageRuntime.GetString("Preset.SelectConversation");
         OnPropertyChanged(nameof(IsConversationAvailable));
         OnPropertyChanged(nameof(IsCharacterScopeAvailable));
         RaiseCommandStates();
@@ -209,9 +216,11 @@ public sealed class PresetViewModel : ViewModelBase
     private async Task NewPresetAsync()
     {
         var name = await _interaction.EditTextAsync(
-            "新建预设",
-            "输入本地预设名称。创建后再编辑 JSON overlay 并选择挂载范围。",
-            $"新预设 {DateTimeOffset.Now:yyyyMMdd-HHmmss}");
+            LanguageRuntime.GetString("Preset.Create.Title"),
+            LanguageRuntime.GetString("Preset.Create.Prompt"),
+            LanguageRuntime.Format(
+                "Preset.Create.DefaultNameFormat",
+                DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss")));
         if (string.IsNullOrWhiteSpace(name))
         {
             return;
@@ -225,11 +234,11 @@ public sealed class PresetViewModel : ViewModelBase
         {
             await _repository.UpsertAsync(preset);
             await ReloadPresetsAsync(preset.Id);
-            Status = $"已创建预设：{preset.Name}";
+            Status = LanguageRuntime.Format("Preset.CreatedFormat", preset.Name);
         }
         catch (Exception exception)
         {
-            Status = $"预设未创建：{exception.Message}";
+            Status = LanguageRuntime.Format("Preset.CreateFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -241,8 +250,8 @@ public sealed class PresetViewModel : ViewModelBase
         }
 
         var edited = await _interaction.EditTextAsync(
-            $"编辑预设 JSON · {SelectedPreset.Name}",
-            "根节点必须是对象。支持普通 JSON，或 {\"on\":true,\"value\":...} 键级开关结构。",
+            LanguageRuntime.Format("Preset.EditJson.TitleFormat", SelectedPreset.Name),
+            LanguageRuntime.GetString("Preset.EditJson.Prompt"),
             FormatJson(SelectedPreset.OverlayJson));
         if (edited is null)
         {
@@ -255,11 +264,11 @@ public sealed class PresetViewModel : ViewModelBase
             SelectedPreset.OverlayJson = FormatJson(edited);
             await _repository.UpsertAsync(SelectedPreset);
             await RefreshResolutionAsync();
-            Status = $"已保存预设内容：{SelectedPreset.Name}";
+            Status = LanguageRuntime.Format("Preset.ContentSavedFormat", SelectedPreset.Name);
         }
         catch (Exception exception)
         {
-            Status = $"预设 JSON 未保存：{exception.Message}";
+            Status = LanguageRuntime.Format("Preset.JsonSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -271,8 +280,8 @@ public sealed class PresetViewModel : ViewModelBase
         }
 
         var name = await _interaction.EditTextAsync(
-            "重命名预设",
-            "输入新的预设名称。",
+            LanguageRuntime.GetString("Preset.Rename.Title"),
+            LanguageRuntime.GetString("Preset.Rename.Prompt"),
             SelectedPreset.Name);
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -284,11 +293,11 @@ public sealed class PresetViewModel : ViewModelBase
             SelectedPreset.Name = name.Trim();
             await _repository.UpsertAsync(SelectedPreset);
             await ReloadPresetsAsync(SelectedPreset.Id);
-            Status = "预设名称已保存。";
+            Status = LanguageRuntime.GetString("Preset.Renamed");
         }
         catch (Exception exception)
         {
-            Status = $"预设未重命名：{exception.Message}";
+            Status = LanguageRuntime.Format("Preset.RenameFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -300,10 +309,10 @@ public sealed class PresetViewModel : ViewModelBase
         }
 
         var description = await _interaction.EditTextAsync(
-            "编辑预设说明",
-            "说明只供本地管理，不会发送给模型。",
+            LanguageRuntime.GetString("Preset.Description.Title"),
+            LanguageRuntime.GetString("Preset.Description.Prompt"),
             string.IsNullOrWhiteSpace(SelectedPreset.Description)
-                ? "本地预设说明"
+                ? LanguageRuntime.GetString("Preset.Description.Default")
                 : SelectedPreset.Description);
         if (description is null)
         {
@@ -312,7 +321,7 @@ public sealed class PresetViewModel : ViewModelBase
 
         SelectedPreset.Description = description;
         await _repository.UpsertAsync(SelectedPreset);
-        Status = "预设说明已保存。";
+        Status = LanguageRuntime.GetString("Preset.DescriptionSaved");
     }
 
     private async Task DeleteAsync()
@@ -327,7 +336,7 @@ public sealed class PresetViewModel : ViewModelBase
         await _repository.DeleteAsync(SelectedPreset.Id);
         await ReloadPresetsAsync(null);
         await RefreshResolutionAsync();
-        Status = $"已删除预设：{name}";
+        Status = LanguageRuntime.Format("Preset.DeletedFormat", name);
     }
 
     private async Task ToggleMountAsync(PresetScopeKind scopeKind)
@@ -340,7 +349,7 @@ public sealed class PresetViewModel : ViewModelBase
         var scopeId = ScopeId(scopeKind);
         if (scopeId is null)
         {
-            Status = "当前会话不支持该预设作用域。";
+            Status = LanguageRuntime.GetString("Preset.ScopeUnavailable");
             return;
         }
 
@@ -391,11 +400,11 @@ public sealed class PresetViewModel : ViewModelBase
                 PresetScopeKind.Conversation,
                 ConversationMounted);
             await RefreshResolutionAsync();
-            Status = "已保存当前预设在各作用域中的叠加顺序。";
+            Status = LanguageRuntime.GetString("Preset.OrderSaved");
         }
         catch (Exception exception)
         {
-            Status = $"预设顺序未保存：{exception.Message}";
+            Status = LanguageRuntime.Format("Preset.OrderSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -474,7 +483,7 @@ public sealed class PresetViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            Status = $"预设挂载状态读取失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Preset.MountReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -521,8 +530,12 @@ public sealed class PresetViewModel : ViewModelBase
         EffectiveOverlayJson = resolved.OverlayJson;
         _effectiveSystemPrompt = resolved.SystemPrompt ?? string.Empty;
         DiagnosticsText = resolved.Diagnostics.Count == 0
-            ? "当前作用域没有启用的预设。"
-            : string.Join(Environment.NewLine, resolved.Diagnostics);
+            ? LanguageRuntime.GetString("Preset.NoEnabledInScope")
+            : string.Join(
+                Environment.NewLine,
+                LanguageRuntime.LocalizeDiagnostics(
+                    resolved.Diagnostics,
+                    "Preset.DiagnosticsSummaryFormat"));
         _contextChanged();
     }
 
@@ -565,7 +578,8 @@ public sealed class PresetViewModel : ViewModelBase
                 CommentHandling = JsonCommentHandling.Skip,
                 MaxDepth = 128
             }) as JsonObject
-        ?? throw new InvalidDataException("预设 JSON 根节点必须是对象。");
+        ?? throw new InvalidDataException(
+            LanguageRuntime.GetString("Preset.JsonRootObject"));
 
     private static string FormatJson(string json) =>
         ParseOverlay(json).ToJsonString(new JsonSerializerOptions

@@ -1,3 +1,4 @@
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Models;
 
@@ -78,13 +79,13 @@ public sealed class ProviderEditBuffer : ViewModelBase
         error = string.Empty;
         if (!string.Equals(profile.Id, ProviderId, StringComparison.Ordinal))
         {
-            error = "编辑缓冲区与接入商不匹配。";
+            error = LanguageRuntime.GetString("Validation.Provider.Mismatch");
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(Name))
         {
-            error = "接入商名称不能为空。";
+            error = LanguageRuntime.GetString("Validation.Provider.NameRequired");
             return false;
         }
 
@@ -92,8 +93,8 @@ public sealed class ProviderEditBuffer : ViewModelBase
         if (AdapterKind != requiredAdapter)
         {
             error = profile.Id == ProviderProfileIds.GrokCli
-                ? "内置 Grok 接入商只能使用 Grok CLI（本机订阅登录）。"
-                : "普通和自定义接入商只能使用 OpenAI Chat Completions 兼容协议。";
+                ? LanguageRuntime.GetString("Validation.Provider.GrokAdapterOnly")
+                : LanguageRuntime.GetString("Validation.Provider.OpenAiCompatibleOnly");
             return false;
         }
 
@@ -105,7 +106,7 @@ public sealed class ProviderEditBuffer : ViewModelBase
                     "grok://local",
                     StringComparison.OrdinalIgnoreCase))
             {
-                error = "Grok CLI 本机后端地址固定为 grok://local，不执行任意程序路径。";
+                error = LanguageRuntime.GetString("Validation.Provider.GrokEndpointFixed");
                 return false;
             }
         }
@@ -114,14 +115,14 @@ public sealed class ProviderEditBuffer : ViewModelBase
             if (!Uri.TryCreate(normalizedBaseUrl, UriKind.Absolute, out var baseUri)
                 || baseUri.Scheme is not ("http" or "https"))
             {
-                error = "API 地址必须是完整的 http 或 https 地址。";
+                error = LanguageRuntime.GetString("Validation.Provider.InvalidUrl");
                 return false;
             }
 
             if (!string.IsNullOrEmpty(baseUri.Query)
                 || !string.IsNullOrEmpty(baseUri.Fragment))
             {
-                error = "API 地址不能包含查询参数或片段。";
+                error = LanguageRuntime.GetString("Validation.Provider.UrlQueryNotAllowed");
                 return false;
             }
 
@@ -132,7 +133,7 @@ public sealed class ProviderEditBuffer : ViewModelBase
                     "/chat/completions",
                     StringComparison.OrdinalIgnoreCase))
             {
-                error = "API 地址请填写到 /api/v1 或 /v1 结束，不要加入 /chat。";
+                error = LanguageRuntime.GetString("Validation.Provider.UrlPathHint");
                 return false;
             }
         }
@@ -140,7 +141,7 @@ public sealed class ProviderEditBuffer : ViewModelBase
         if (!double.TryParse(RequestTimeoutSeconds, out var timeout)
             || timeout is < 1 or > 3600)
         {
-            error = "等待上限必须在 1–3600 秒之间。";
+            error = LanguageRuntime.GetString("Validation.Provider.TimeoutRange");
             return false;
         }
 

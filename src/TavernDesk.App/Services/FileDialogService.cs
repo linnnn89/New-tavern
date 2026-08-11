@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using Microsoft.Win32;
+using TavernDesk.App.Localization;
 using TavernDesk.Core.Models;
 
 namespace TavernDesk.App.Services;
@@ -24,8 +25,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new OpenFileDialog
         {
-            Title = "导入角色卡",
-            Filter = "角色卡 (*.png;*.json;*.charx)|*.png;*.json;*.charx|PNG 角色卡 (*.png)|*.png|JSON 角色卡 (*.json)|*.json|CHARX 角色卡 (*.charx)|*.charx|全部文件 (*.*)|*.*",
+            Title = LanguageRuntime.GetString("FileDialog.ImportCharacter.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.ImportCharacter.Filter"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -37,8 +38,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new OpenFileDialog
         {
-            Title = "替换角色图片",
-            Filter = "图片 (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|全部文件 (*.*)|*.*",
+            Title = LanguageRuntime.GetString("FileDialog.ReplaceCharacterImage.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.Image.Filter"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -50,8 +51,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new OpenFileDialog
         {
-            Title = "导入跑团剧本卡",
-            Filter = "PNG 剧本卡 (*.png)|*.png|全部文件 (*.*)|*.*",
+            Title = LanguageRuntime.GetString("FileDialog.ImportScenario.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.ImportScenario.Filter"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -76,8 +77,8 @@ public sealed class FileDialogService : IFileDialogService
         };
         var dialog = new SaveFileDialog
         {
-            Title = "导出角色卡",
-            Filter = "PNG 角色卡 (*.png)|*.png|JSON 角色卡 (*.json)|*.json|CHARX 角色卡 (*.charx)|*.charx",
+            Title = LanguageRuntime.GetString("FileDialog.ExportCharacter.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.ExportCharacter.Filter"),
             FilterIndex = filterIndex,
             DefaultExt = extension,
             AddExtension = true,
@@ -92,8 +93,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new OpenFileDialog
         {
-            Title = "导入聊天记录",
-            Filter = "SillyTavern 聊天记录 (*.jsonl)|*.jsonl|全部文件 (*.*)|*.*",
+            Title = LanguageRuntime.GetString("FileDialog.ImportChat.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.ChatImport.Filter"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -105,8 +106,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new SaveFileDialog
         {
-            Title = "导出当前聊天记录",
-            Filter = "SillyTavern 聊天记录 (*.jsonl)|*.jsonl",
+            Title = LanguageRuntime.GetString("FileDialog.ExportChat.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.ChatExport.Filter"),
             DefaultExt = "jsonl",
             AddExtension = true,
             OverwritePrompt = true,
@@ -120,8 +121,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new SaveFileDialog
         {
-            Title = "另存当前全局提示词配置",
-            Filter = "TavernDesk 提示词配置 (*.json)|*.json",
+            Title = LanguageRuntime.GetString("FileDialog.SavePrompts.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.Prompts.Filter"),
             DefaultExt = "json",
             AddExtension = true,
             OverwritePrompt = true,
@@ -135,8 +136,8 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new OpenFileDialog
         {
-            Title = "导入世界书或包含内置世界书的角色卡",
-            Filter = "世界书/角色卡 (*.json;*.png;*.charx)|*.json;*.png;*.charx|世界书 JSON (*.json)|*.json|PNG 角色卡 (*.png)|*.png|CHARX 角色卡 (*.charx)|*.charx|全部文件 (*.*)|*.*",
+            Title = LanguageRuntime.GetString("FileDialog.ImportWorldbook.Title"),
+            Filter = LanguageRuntime.GetString("FileDialog.ImportWorldbook.Filter"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -148,7 +149,7 @@ public sealed class FileDialogService : IFileDialogService
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "选择 TavernDesk 个人资料目录",
+            Title = LanguageRuntime.GetString("FileDialog.SelectDataRoot.Title"),
             Multiselect = false,
             ValidateNames = true
         };

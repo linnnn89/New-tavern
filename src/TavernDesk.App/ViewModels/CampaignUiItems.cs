@@ -1,3 +1,4 @@
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Flow;
 using TavernDesk.Core.Models;
@@ -56,10 +57,10 @@ public sealed record CampaignSummaryItemViewModel(CampaignSummary Summary)
     public DateTimeOffset UpdatedAt => Summary.UpdatedAt;
     public string StatusLabel => Summary.Status switch
     {
-        CampaignStatus.Draft => "大厅草稿",
-        CampaignStatus.Active => "进行中",
-        CampaignStatus.Completed => "已完成",
-        CampaignStatus.Archived => "已归档",
+        CampaignStatus.Draft => LanguageRuntime.GetString("Campaign.Status.Draft"),
+        CampaignStatus.Active => LanguageRuntime.GetString("Campaign.Status.Active"),
+        CampaignStatus.Completed => LanguageRuntime.GetString("Campaign.Status.Completed"),
+        CampaignStatus.Archived => LanguageRuntime.GetString("Campaign.Status.Archived"),
         _ => Summary.Status.ToString()
     };
 }
@@ -109,7 +110,7 @@ public sealed class CampaignCharacterChoiceViewModel : ViewModelBase
 public sealed class CampaignSeatViewModel : ViewModelBase
 {
     private CampaignModelOption? _selectedRoute;
-    private string _roundStatus = "等待行动";
+    private string _roundStatus = LanguageRuntime.GetString("Campaign.Round.Waiting");
     private bool _showActionButton;
     private bool _canGenerateAction;
     private bool _isRetryAction;
@@ -128,8 +129,8 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     public string KindLabel =>
         Participant.Kind == CampaignParticipantKind.User ? "USER" : "AI";
     public string ActionButtonText => IsRetryAction
-        ? $"重试 {Name}"
-        : $"让 {Name} 行动";
+        ? LanguageRuntime.Format("Campaign.Action.RetryFormat", Name)
+        : LanguageRuntime.Format("Campaign.Action.ActFormat", Name);
 
     public CampaignModelOption? SelectedRoute
     {
@@ -201,9 +202,11 @@ public sealed record CampaignEventItemViewModel(
     IReadOnlyList<CampaignEvent>? Candidates = null,
     int ActiveCandidateIndex = 0)
 {
-    public string RetryButtonText => $"重试 {ActorName} 的本回合行动";
+    public string RetryButtonText => LanguageRuntime.Format(
+        "Campaign.Action.RetryTurnFormat",
+        ActorName);
     public string RetryHelpText =>
-        $"重新调用 {ActorName} 当前使用的模型；失败记录会保留，新结果另存为一次重试。";
+        LanguageRuntime.Format("Campaign.Action.RetryHelpFormat", ActorName);
     public bool HasCandidates => Candidates is { Count: > 1 };
     public string CandidateNavigationLabel => HasCandidates
         ? $"{ActiveCandidateIndex + 1}/{Candidates!.Count}"
@@ -211,8 +214,8 @@ public sealed record CampaignEventItemViewModel(
     public string CandidateHelpText => Event.GenerationStatus
         == CampaignGenerationStatus.Completed
         && Event.EndReason == CampaignEndReason.Normal
-        ? "当前候选已通过协议校验；确认后才会进入下一回合。"
-        : "该候选未通过协议校验，不会被发送到下一次 API。";
+        ? LanguageRuntime.GetString("Campaign.Candidate.Valid")
+        : LanguageRuntime.GetString("Campaign.Candidate.Invalid");
 }
 
 public sealed record CampaignSeatActionState(
@@ -242,7 +245,7 @@ public sealed record CampaignSeatActionState(
             return new CampaignSeatActionState(
                 ShowButton: false,
                 CanAct: false,
-                "USER 席位不调用角色模型。");
+                LanguageRuntime.GetString("Campaign.Action.UserNoModel"));
         }
 
         if (snapshot.ActionPlan.ExecutionMode
@@ -251,7 +254,7 @@ public sealed record CampaignSeatActionState(
             return new CampaignSeatActionState(
                 ShowButton: false,
                 CanAct: false,
-                "秘密同投会从“当前步骤”一次并发生成全部 AI 行动，确保彼此不可见。");
+                LanguageRuntime.GetString("Campaign.Action.BlindBatchOnly"));
         }
 
         var latest = LatestAction(aggregate, participant.Id);
@@ -262,11 +265,11 @@ public sealed record CampaignSeatActionState(
             var help = latest.GenerationStatus switch
             {
                 CampaignGenerationStatus.Completed =>
-                    $"{participant.DisplayName} 本回合已经完成行动。",
+                    LanguageRuntime.Format("Campaign.Action.CompletedFormat", participant.DisplayName),
                 CampaignGenerationStatus.Failed
                     or CampaignGenerationStatus.Interrupted =>
-                    $"{participant.DisplayName} 的生成未完成；请在跑团记录中重试原行动。",
-                _ => $"{participant.DisplayName} 的行动正在生成或等待处理。"
+                    LanguageRuntime.Format("Campaign.Action.IncompleteFormat", participant.DisplayName),
+                _ => LanguageRuntime.Format("Campaign.Action.BusyFormat", participant.DisplayName)
             };
             var canRetry = latest.GenerationStatus is
                                CampaignGenerationStatus.Failed
@@ -299,14 +302,19 @@ public sealed record CampaignSeatActionState(
                 ShowButton: true,
                 CanAct: false,
                 snapshot.CurrentParticipantId is not null
-                    ? $"当前轮到 {currentName ?? snapshot.CurrentParticipantId}，尚未轮到 {participant.DisplayName}。"
-                    : $"当前流程不允许该席位行动（{snapshot.ActionPlan.BlockReason}）。");
+                    ? LanguageRuntime.Format(
+                        "Campaign.Action.NotTurnFormat",
+                        currentName ?? snapshot.CurrentParticipantId,
+                        participant.DisplayName)
+                    : LanguageRuntime.Format(
+                        "Campaign.Action.BlockedFormat",
+                        snapshot.ActionPlan.BlockReason));
         }
 
         return new CampaignSeatActionState(
             ShowButton: true,
             CanAct: true,
-            $"调用该席位的模型，让 {participant.DisplayName} 根据当前可见记录提交本回合行动。");
+            LanguageRuntime.Format("Campaign.Action.ModelHelpFormat", participant.DisplayName));
     }
 
     private static CampaignEvent? LatestAction(
@@ -455,34 +463,36 @@ public sealed record CampaignGameUiState(
             gmCandidatePending,
             userSeat is not null);
         var progress = gmCandidatePending
-            ? $"GM 已生成 {gmCandidates.Length} 个候选；请选择当前版本后确认进入下一回合。"
+            ? LanguageRuntime.Format("Campaign.Progress.GmCandidatesFormat", gmCandidates.Length)
             : gmResolutionFailed
-            ? "上一次 AI GM 请求未完成；原失败记录已保留。"
+            ? LanguageRuntime.GetString("Campaign.Progress.GmFailed")
             : campaign.Phase == CampaignPhase.ReadyForResolution
-            ? $"已收齐 {enabled.Length} 个玩家席位的行动，可以交给 GM。"
-            : $"{completed}/{enabled.Length} 个玩家席位已完成"
-              + (failures > 0 ? $" · {failures} 个需要重试" : string.Empty);
+            ? LanguageRuntime.Format("Campaign.Progress.ReadyForGmFormat", enabled.Length)
+            : LanguageRuntime.Format("Campaign.Progress.CompletedFormat", completed, enabled.Length)
+              + (failures > 0
+                  ? LanguageRuntime.Format("Campaign.Progress.RetryCountFormat", failures)
+                  : string.Empty);
         var userHelp = userSeatCanAct
-            ? "提交你的本回合行动；系统会自动附加一枚 1d20，并按行动本身的可见性一起保存。"
+            ? LanguageRuntime.GetString("Campaign.UserAction.Help")
             : UserActionUnavailableReason(
                 campaign,
                 current,
                 userSeat,
                 userHasAction);
         var blindHelp = canGenerateBlindAiActions
-            ? $"并发调用 {unattemptedAiCount} 个 AI 席位；它们基于同一冻结记录且彼此看不到本轮行动。"
+            ? LanguageRuntime.Format("Campaign.Blind.GenerateHelpFormat", unattemptedAiCount)
             : failures > 0
-                ? "至少一个 AI 行动失败；必须先重试失败记录。"
-                : "当前没有需要生成的秘密 AI 行动。";
+                ? LanguageRuntime.GetString("Campaign.Blind.RetryFirst")
+                : LanguageRuntime.GetString("Campaign.Blind.None");
         var resolveHelp = showResolveSection
             ? gmCandidatePending
-                ? "先在跑团记录中切换 GM 候选；只有当前选中的已通过校验候选可以进入下一回合。"
+                ? LanguageRuntime.GetString("Campaign.Resolve.SelectCandidate")
                 : gmResolutionFailed
-                ? "重新调用当前 GM 模型；也可先在下方切换模型。失败记录不会被删除。"
+                ? LanguageRuntime.GetString("Campaign.Resolve.RetryHelp")
                 : campaign.GmKind == CampaignGmKind.Ai
-                ? "调用已选择的 GM 模型，结合每条行动末尾的自动 1d20 统一裁定；GM 不会替玩家决定下一步。"
-                : "把你输入的内容作为本回合 GM 裁定；若未填写“下一轮评定参考”，系统会附加一段灵活的通用说明。"
-            : "尚未收齐本阶段要求的全部玩家行动。";
+                ? LanguageRuntime.GetString("Campaign.Resolve.AiHelp")
+                : LanguageRuntime.GetString("Campaign.Resolve.HumanHelp")
+            : LanguageRuntime.GetString("Campaign.Resolve.Waiting");
         return new CampaignGameUiState(
             userSeat is not null,
             pendingUser is not null,
@@ -498,13 +508,13 @@ public sealed record CampaignGameUiState(
             stepDescription,
             progress,
             campaign.GmKind == CampaignGmKind.Ai
-                ? "AI GM 主持 · 裁定前由你确认"
-                : "你担任 GM · 裁定由你填写",
+                ? LanguageRuntime.GetString("Campaign.Gm.Ai")
+                : LanguageRuntime.GetString("Campaign.Gm.Human"),
             userSeat is not null
-                ? "你正在作为 USER 玩家参与"
+                ? LanguageRuntime.GetString("Campaign.User.Participating")
                 : pendingUser is not null
-                    ? "你将在下一回合加入"
-                    : "你正在观看 AI 演出",
+                    ? LanguageRuntime.GetString("Campaign.User.JoinNext")
+                    : LanguageRuntime.GetString("Campaign.User.Watching"),
             userHelp,
             blindHelp,
             resolveHelp);
@@ -520,35 +530,35 @@ public sealed record CampaignGameUiState(
     {
         if (gmCandidatePending)
         {
-            return "选择 GM 候选并确认";
+            return LanguageRuntime.GetString("Campaign.Step.SelectGmCandidate");
         }
 
         if (gmResolutionFailed)
         {
-            return "重试 AI GM 裁定";
+            return LanguageRuntime.GetString("Campaign.Step.RetryGm");
         }
 
         if (failures > 0)
         {
-            return "先处理生成失败";
+            return LanguageRuntime.GetString("Campaign.Step.HandleFailure");
         }
 
         return campaign.Phase switch
         {
             CampaignPhase.AwaitingActions
                 when executionMode == CampaignActionExecutionMode.Parallel =>
-                "收集秘密行动",
+                LanguageRuntime.GetString("Campaign.Step.CollectBlind"),
             CampaignPhase.AwaitingActions
                 when current is not null =>
-                $"轮到 {current.DisplayName} 行动",
-            CampaignPhase.AwaitingActions => "收集本回合行动",
+                LanguageRuntime.Format("Campaign.Step.TurnFormat", current.DisplayName),
+            CampaignPhase.AwaitingActions => LanguageRuntime.GetString("Campaign.Step.CollectActions"),
             CampaignPhase.ReadyForResolution
                 when campaign.GmKind == CampaignGmKind.Ai =>
-                "确认并生成 AI GM 裁定",
-            CampaignPhase.ReadyForResolution => "填写本回合 GM 裁定",
-            CampaignPhase.Paused => "跑团已暂停",
-            CampaignPhase.Completed => "跑团已完成",
-            _ => "正在更新跑团状态"
+                LanguageRuntime.GetString("Campaign.Step.GenerateGm"),
+            CampaignPhase.ReadyForResolution => LanguageRuntime.GetString("Campaign.Step.FillGm"),
+            CampaignPhase.Paused => LanguageRuntime.GetString("Campaign.Step.Paused"),
+            CampaignPhase.Completed => LanguageRuntime.GetString("Campaign.Step.Completed"),
+            _ => LanguageRuntime.GetString("Campaign.Step.Updating")
         };
     }
 
@@ -563,17 +573,17 @@ public sealed record CampaignGameUiState(
     {
         if (gmCandidatePending)
         {
-            return "GM 重试已成功但尚未提交选择。切换同一回合内的候选版本；确认后才会推进下一回合。";
+            return LanguageRuntime.GetString("Campaign.Step.GmRetryPending");
         }
 
         if (gmResolutionFailed)
         {
-            return "上一次 AI GM 裁定未完成。可以直接重试，或先在下方切换 GM 模型；本回合不能跳过。";
+            return LanguageRuntime.GetString("Campaign.Step.GmFailedHelp");
         }
 
         if (failures > 0)
         {
-            return "失败席位不会被自动跳过。必须先在跑团记录中重试，或先为该席位切换模型。";
+            return LanguageRuntime.GetString("Campaign.Step.PlayerFailedHelp");
         }
 
         return campaign.Phase switch
@@ -581,21 +591,21 @@ public sealed record CampaignGameUiState(
             CampaignPhase.AwaitingActions
                 when executionMode == CampaignActionExecutionMode.Parallel =>
                 hasUserSeat
-                    ? "你单独提交自己的行动；AI 玩家由下方按钮一次并发生成，彼此看不到本轮选择。"
-                    : "使用下方按钮一次并发生成全部 AI 行动；它们基于同一冻结记录，彼此看不到本轮选择。",
+                    ? LanguageRuntime.GetString("Campaign.Step.BlindWithUser")
+                    : LanguageRuntime.GetString("Campaign.Step.BlindAiOnly"),
             CampaignPhase.AwaitingActions
                 when current is not null =>
-                $"严格先攻只开放 {current.DisplayName} 的行动；该行动完成并经 GM 裁定后才轮到下一席。",
+                LanguageRuntime.Format("Campaign.Step.StrictFormat", current.DisplayName),
             CampaignPhase.AwaitingActions =>
                 hasUserSeat
-                    ? "提交你的行动，或在左侧选择任一尚未行动的 AI。后行动者能看到先前公开提议。"
-                    : "在左侧选择任一尚未行动的 AI。后行动者能看到先前公开提议。",
+                    ? LanguageRuntime.GetString("Campaign.Step.FlexibleWithUser")
+                    : LanguageRuntime.GetString("Campaign.Step.FlexibleAiOnly"),
             CampaignPhase.ReadyForResolution
                 when campaign.GmKind == CampaignGmKind.Ai =>
-                "所有玩家行动已经锁定。确认后才会调用 AI GM，不会自动产生请求。",
+                LanguageRuntime.GetString("Campaign.Step.AiGmConfirm"),
             CampaignPhase.ReadyForResolution =>
-                "所有玩家行动已经锁定。填写裁定后进入下一行动阶段。",
-            _ => "请等待当前状态完成，或重新载入本局查看最新进度。"
+                LanguageRuntime.GetString("Campaign.Step.HumanGmFill"),
+            _ => LanguageRuntime.GetString("Campaign.Step.WaitOrReload")
         };
     }
 
@@ -607,24 +617,24 @@ public sealed record CampaignGameUiState(
     {
         if (userSeat is null)
         {
-            return "当前跑团没有启用 USER 玩家席位。";
+            return LanguageRuntime.GetString("Campaign.User.NoSeat");
         }
 
         if (userHasAction)
         {
-            return "你本回合已经提交行动。";
+            return LanguageRuntime.GetString("Campaign.User.AlreadyActed");
         }
 
         if (campaign.Phase != CampaignPhase.AwaitingActions)
         {
-            return "当前不是玩家行动阶段。";
+            return LanguageRuntime.GetString("Campaign.User.NotActionPhase");
         }
 
         if (current is not null && current.Id != userSeat.Id)
         {
-            return $"严格先攻当前轮到 {current.DisplayName}。";
+            return LanguageRuntime.Format("Campaign.User.StrictTurnFormat", current.DisplayName);
         }
 
-        return "当前状态暂时不能提交 USER 行动。";
+        return LanguageRuntime.GetString("Campaign.User.CannotAct");
     }
 }

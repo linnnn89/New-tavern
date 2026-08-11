@@ -1,0 +1,69 @@
+<Window x:Class="TavernDesk.App.FirstRunLanguageDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:localization="clr-namespace:TavernDesk.App.Localization"
+        Title="{DynamicResource FirstRun.Language.Title}"
+        Width="620"
+        Height="520"
+        MinWidth="620"
+        MinHeight="520"
+        MaxWidth="620"
+        MaxHeight="520"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="True"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        AllowsTransparency="False">
+    <Border Margin="24"
+            Padding="32"
+            Background="{DynamicResource SurfaceSolidBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="20">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28"
+                              ShadowDepth="8"
+                              Opacity="0.22"
+                              Color="#172033" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="TavernDesk"
+                           FontSize="30"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextBrush}" />
+                <TextBlock Margin="0,14,0,0"
+                           Text="{DynamicResource FirstRun.Language.Description}"
+                           TextWrapping="Wrap"
+                           LineHeight="25"
+                           FontSize="15"
+                           Foreground="{DynamicResource MutedTextBrush}" />
+            </StackPanel>
+
+            <ItemsControl Grid.Row="2"
+                          ItemsSource="{x:Static localization:LanguageRuntime.SupportedLanguages}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="2" Rows="2" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Margin="8"
+                                Tag="{Binding CultureName}"
+                                Content="{Binding NativeName}"
+                                FontSize="19"
+                                Click="LanguageButton_OnClick" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </Border>
+</Window>

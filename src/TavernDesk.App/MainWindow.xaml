@@ -34,7 +34,7 @@
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,8,0,0">
                     <Button Command="{Binding ShowDashboardCommand}"
-                            ToolTip="打开本地数据与应用状态概览。"
+                            ToolTip="{StaticResource Shell.Dashboard.ToolTip}"
                             Style="{StaticResource AppicaShellNavButtonStyle}">
                         <Button.Tag>
                             <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
@@ -52,13 +52,13 @@
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="仪表盘"
+                                       Text="{StaticResource Shell.Dashboard.Label}"
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                         </Grid>
                     </Button>
 
                     <Button Command="{Binding ShowChatCommand}"
-                            ToolTip="打开一对一角色聊天。"
+                            ToolTip="{StaticResource Shell.Chat.ToolTip}"
                             Style="{StaticResource AppicaShellNavButtonStyle}">
                         <Button.Tag>
                             <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
@@ -76,13 +76,13 @@
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="聊天"
+                                       Text="{StaticResource Shell.Chat.Label}"
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                         </Grid>
                     </Button>
 
                     <Button Command="{Binding ShowCampaignsCommand}"
-                            ToolTip="打开剧本库、起始大厅和多人跑团。"
+                            ToolTip="{StaticResource Shell.Campaign.ToolTip}"
                             Style="{StaticResource AppicaShellNavButtonStyle}">
                         <Button.Tag>
                             <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
@@ -100,13 +100,13 @@
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="跑团"
+                                       Text="{StaticResource Shell.Campaign.Label}"
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                         </Grid>
                     </Button>
 
                     <Button Command="{Binding ShowCharactersCommand}"
-                            ToolTip="管理本地角色卡与角色资料。"
+                            ToolTip="{StaticResource Shell.Characters.ToolTip}"
                             Style="{StaticResource AppicaShellNavButtonStyle}">
                         <Button.Tag>
                             <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
@@ -124,13 +124,13 @@
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="角色"
+                                       Text="{StaticResource Shell.Characters.Label}"
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                         </Grid>
                     </Button>
 
                     <Button Command="{Binding ShowWorldbooksCommand}"
-                            ToolTip="导入、管理并测试酒馆世界书；关键词和语义召回分开运行。"
+                            ToolTip="{StaticResource Shell.Worldbook.ToolTip}"
                             Style="{StaticResource AppicaShellNavButtonStyle}">
                         <Button.Tag>
                             <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
@@ -148,13 +148,13 @@
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="世界书"
+                                       Text="{StaticResource Shell.Worldbook.Label}"
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                         </Grid>
                     </Button>
 
                     <Button Command="{Binding ShowSettingsCommand}"
-                            ToolTip="配置模型供应商、API Key、默认模型与全局提示词。"
+                            ToolTip="{StaticResource Shell.Settings.ToolTip}"
                             Style="{StaticResource AppicaShellNavButtonStyle}">
                         <Button.Tag>
                             <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
@@ -172,7 +172,7 @@
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="设置"
+                                       Text="{StaticResource Shell.Settings.Label}"
                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                         </Grid>
                     </Button>
@@ -194,13 +194,13 @@
                                        Foreground="{DynamicResource AppicaShellAccentBrush}" />
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="本地工作区"
+                                       Text="{StaticResource Shell.LocalWorkspace}"
                                        FontSize="13"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AppicaShellTextBrush}" />
                         </Grid>
 
-                        <TextBlock Text="运行状态"
+                        <TextBlock Text="{StaticResource Shell.RuntimeStatus}"
                                    Style="{StaticResource AppicaShellRuntimeLabelStyle}" />
                         <Grid Margin="0,5,0,0">
                             <Grid.ColumnDefinitions>
@@ -258,7 +258,7 @@
 
                         <Button Margin="0,12,0,0"
                                 Command="{Binding StopAllGenerationCommand}"
-                                ToolTip="立即取消当前应用内所有正在进行的模型请求；不会删除已保存记录。"
+                                ToolTip="{StaticResource Shell.StopAll.ToolTip}"
                                 Style="{StaticResource AppicaShellStopButtonStyle}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Margin="0,0,7,0"
@@ -267,7 +267,7 @@
                                            FontFamily="{StaticResource AppicaShellIconFont}"
                                            FontSize="13" />
                                 <TextBlock VerticalAlignment="Center"
-                                           Text="停止全部" />
+                                           Text="{StaticResource Shell.StopAll.Label}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -309,7 +309,7 @@
                                    FontSize="14"
                                    Foreground="{DynamicResource AppicaShellSubtleBrush}" />
                         <TextBlock Margin="7,0,0,0"
-                                   Text="本地工作区"
+                                   Text="{StaticResource Shell.LocalWorkspace}"
                                    FontSize="12"
                                    Foreground="{DynamicResource AppicaShellMutedBrush}" />
                     </StackPanel>

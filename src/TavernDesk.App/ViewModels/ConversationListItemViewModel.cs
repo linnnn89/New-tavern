@@ -1,3 +1,4 @@
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
@@ -44,11 +45,11 @@ public sealed class ConversationListItemViewModel : ViewModelBase
 
     public string GenerationStatusText => _generationState.Status switch
     {
-        ConversationGenerationStatus.Queued => "排队中",
-        ConversationGenerationStatus.Streaming => "生成中",
-        ConversationGenerationStatus.Stopping => "正在停止",
-        ConversationGenerationStatus.Interrupted => "已中断",
-        ConversationGenerationStatus.Failed => "生成失败",
+        ConversationGenerationStatus.Queued => LanguageRuntime.GetString("Conversation.Status.Queued"),
+        ConversationGenerationStatus.Streaming => LanguageRuntime.GetString("Conversation.Status.Streaming"),
+        ConversationGenerationStatus.Stopping => LanguageRuntime.GetString("Conversation.Status.Stopping"),
+        ConversationGenerationStatus.Interrupted => LanguageRuntime.GetString("Conversation.Status.Interrupted"),
+        ConversationGenerationStatus.Failed => LanguageRuntime.GetString("Conversation.Status.Failed"),
         _ => string.Empty
     };
 

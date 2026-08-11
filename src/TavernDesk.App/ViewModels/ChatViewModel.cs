@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Windows;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -49,19 +50,19 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private long _contextVersion;
     private string _conversationSearchText = string.Empty;
     private string _composerText = string.Empty;
-    private string _status = "尚未连接模型。当前消息仅保存到本地。";
+    private string _status = LanguageRuntime.GetString("Chat.Status.Offline");
     private string _personaName = "USER";
     private string _personaDescription = string.Empty;
     private string _globalPreset = string.Empty;
-    private string _personaStatus = "Persona 会注入当前聊天上下文；保存后对全部新请求生效。";
+    private string _personaStatus = LanguageRuntime.GetString("Chat.Persona.Status");
     private string _characterPromptCharacterId = string.Empty;
-    private string _characterPromptCharacterName = "未选择角色";
+    private string _characterPromptCharacterName = LanguageRuntime.GetString("Chat.Character.None");
     private string _characterSystemPrompt = string.Empty;
     private string _characterPostHistoryInstructions = string.Empty;
     private string _characterPromptStatus =
-        "选择个人聊天后可直接查看和修改该角色卡的提示词。";
-    private string _activeModelText = "聊天功能尚未分配模型";
-    private string _apiRequestPreview = "选择会话后显示本次请求的角色与内容结构；不会显示 API Key。";
+        LanguageRuntime.GetString("Chat.CharacterPrompt.Select");
+    private string _activeModelText = LanguageRuntime.GetString("Chat.Model.Unassigned");
+    private string _apiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.Select");
     private ChatSendMode _sendMode = ChatSendMode.SendAndGenerate;
     private ChatDisplayMode _displayMode = ChatDisplayMode.Bubble;
     private ModelFunctionAssignment? _chatAssignment;
@@ -196,13 +197,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public Func<GlobalPromptKey, Task>? OpenPromptSettings { get; set; }
     public IReadOnlyList<ChatSendModeOption> SendModes { get; } =
     [
-        new(ChatSendMode.SendAndGenerate, "发送并生成回复"),
-        new(ChatSendMode.SaveOnly, "只保存用户消息")
+        new(ChatSendMode.SendAndGenerate, LanguageRuntime.GetString("Chat.SendMode.SendAndGenerate")),
+        new(ChatSendMode.SaveOnly, LanguageRuntime.GetString("Chat.SendMode.SaveOnly"))
     ];
     public IReadOnlyList<ChatDisplayModeOption> DisplayModes { get; } =
     [
-        new(ChatDisplayMode.Bubble, "气泡模式"),
-        new(ChatDisplayMode.Novel, "小说模式")
+        new(ChatDisplayMode.Bubble, LanguageRuntime.GetString("Chat.Display.Bubble")),
+        new(ChatDisplayMode.Novel, LanguageRuntime.GetString("Chat.Display.Novel"))
     ];
 
     public string ConversationSearchText
@@ -229,8 +230,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                          && _conversationStatuses.TryGetValue(value.Id, out var status)
                     ? status
                     : value is null
-                        ? "请选择一次对话。"
-                        : "会话已加载；本地数据就绪。";
+                        ? LanguageRuntime.GetString("Chat.SelectConversation")
+                        : LanguageRuntime.GetString("Chat.ConversationLoaded");
                 OnPropertyChanged(nameof(IsCurrentConversationGenerating));
                 OnPropertyChanged(nameof(IsCurrentConversationBusy));
                 OnPropertyChanged(nameof(IsModelThinking));
@@ -308,10 +309,26 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         get
         {
             var budget = _contextBudget.GetCurrentBudget();
-            var accuracy = _tokenEstimate.IsExact ? "精确" : "估算";
+            var sourceLabel = LanguageRuntime.BackendMessage(
+                budget.SourceLabel,
+                "Chat.Model.DefaultBudgetSource");
+            var accuracy = _tokenEstimate.IsExact
+                ? LanguageRuntime.GetString("Chat.Token.Exact")
+                : LanguageRuntime.GetString("Chat.Token.Estimated");
             return _tokenEstimate.ExceedsLimit
-                ? $"{accuracy}输入 {_tokenEstimate.InputTokens} + 预留输出 {_tokenEstimate.ReservedOutputTokens} tokens，超过上下文 {_tokenEstimate.ContextLimit}（{budget.SourceLabel}）"
-                : $"{accuracy}输入 {_tokenEstimate.InputTokens} + 预留输出 {_tokenEstimate.ReservedOutputTokens} tokens（{budget.SourceLabel}）";
+                ? LanguageRuntime.Format(
+                    "Chat.Token.OverLimitFormat",
+                    accuracy,
+                    _tokenEstimate.InputTokens,
+                    _tokenEstimate.ReservedOutputTokens,
+                    _tokenEstimate.ContextLimit,
+                    sourceLabel)
+                : LanguageRuntime.Format(
+                    "Chat.Token.EstimateFormat",
+                    accuracy,
+                    _tokenEstimate.InputTokens,
+                    _tokenEstimate.ReservedOutputTokens,
+                    sourceLabel);
         }
     }
 
@@ -337,36 +354,40 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             if (SelectedConversation is null)
             {
-                return "选择会话后显示模型返回的实际 Token 用量。";
+                return LanguageRuntime.GetString("Chat.Token.ActualSelect");
             }
 
             var telemetry = _generationSessions.Get(SelectedConversation.Id);
             if (telemetry.OperationId is null)
             {
-                return "本会话尚无模型实际 Token 记录。";
+                return LanguageRuntime.GetString("Chat.Token.NoActual");
             }
 
             if (telemetry.Usage is null)
             {
                 return telemetry.IsBusy
-                    ? "本次生成进行中；服务返回用量后显示实际 Token。"
-                    : "服务未返回本次生成的实际 Token 用量。";
+                    ? LanguageRuntime.GetString("Chat.Token.GenerationBusy")
+                    : LanguageRuntime.GetString("Chat.Token.NotReturned");
             }
 
             var usage = telemetry.Usage;
             var reasoning = usage.ReasoningTokens is > 0
-                ? $"，其中思考 {usage.ReasoningTokens}"
+                ? LanguageRuntime.Format("Chat.Token.ReasoningFormat", usage.ReasoningTokens)
                 : string.Empty;
             var cache = usage.CachedPromptTokens is { } cached
-                ? $"，输入缓存命中 {cached}"
+                ? LanguageRuntime.Format("Chat.Token.CacheHitFormat", cached)
                   + (usage.UncachedPromptTokens is { } uncached
-                      ? $" / 未命中 {uncached}"
+                      ? LanguageRuntime.Format("Chat.Token.CacheMissFormat", uncached)
                       : string.Empty)
                 : string.Empty;
-            return $"最近实际：输入 {usage.PromptTokens} + 输出 "
-                   + $"{usage.CompletionTokens} = {usage.TotalTokens} tokens"
-                   + $"{reasoning}{cache}；"
-                   + FinishReasonLabel(telemetry.FinishReason);
+            return LanguageRuntime.Format(
+                "Chat.Token.ActualFormat",
+                usage.PromptTokens,
+                usage.CompletionTokens,
+                usage.TotalTokens,
+                reasoning,
+                cache,
+                FinishReasonLabel(telemetry.FinishReason));
         }
     }
 
@@ -547,19 +568,22 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
         try
         {
-            Status = "正在导入聊天 JSONL…";
+            Status = LanguageRuntime.GetString("Chat.Import.Starting");
             var result = await _chatArchives.ImportAsync(path);
             await ReloadGroupsAsync(result.Conversation.Id);
             var warningText = result.Warnings.Count == 0
                 ? string.Empty
-                : $"；{result.Warnings.Count} 条兼容提示可在后续导出前检查";
-            Status =
-                $"已导入 {result.MessageCount} 条消息、{result.CandidateCount} 个候选回复，"
-                + $"关联角色“{result.CharacterName}”{warningText}。";
+                : LanguageRuntime.Format("Chat.Import.WarningFormat", result.Warnings.Count);
+            Status = LanguageRuntime.Format(
+                "Chat.Import.DoneFormat",
+                result.MessageCount,
+                result.CandidateCount,
+                result.CharacterName,
+                warningText);
         }
         catch (Exception exception)
         {
-            Status = $"聊天 JSONL 导入失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Chat.Import.FailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -579,17 +603,19 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
         try
         {
-            Status = "正在导出当前聊天 JSONL…";
+            Status = LanguageRuntime.GetString("Chat.Export.Starting");
             var result = await _chatArchives.ExportAsync(selected.Id, path);
-            Status =
-                $"已导出 {result.MessageCount} 条消息、{result.CandidateCount} 个候选回复"
-                + (result.Warnings.Count == 0
-                    ? "。"
-                    : $"；有 {result.Warnings.Count} 条兼容提示。");
+            Status = LanguageRuntime.Format(
+                "Chat.Export.DoneFormat",
+                result.MessageCount,
+                result.CandidateCount,
+                result.Warnings.Count == 0
+                    ? LanguageRuntime.GetString("Chat.Export.Period")
+                    : LanguageRuntime.Format("Chat.Export.WarningFormat", result.Warnings.Count));
         }
         catch (Exception exception)
         {
-            Status = $"聊天 JSONL 导出失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Chat.Export.FailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -612,7 +638,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             SetStatusForConversation(
                 conversationId,
-                "本会话正在生成或更新记忆，完成后才能删除聊天记录。");
+                LanguageRuntime.GetString("Chat.Delete.Busy"));
             return;
         }
 
@@ -638,14 +664,14 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             await ReloadGroupsAsync(isSelected
                 ? null
                 : selectedConversationId);
-            Status = $"已删除聊天记录“{conversationTitle}”；角色整体记忆未受影响。";
+            Status = LanguageRuntime.Format("Chat.Delete.DoneFormat", conversationTitle);
         }
         catch (Exception exception)
         {
             // If a delete fails after the selected view was cleared, reload the
             // row so the user does not lose the current chat presentation.
             await ReloadGroupsAsync(selectedConversationId);
-            Status = $"删除聊天记录失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Chat.Delete.FailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -727,7 +753,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 group = new CharacterConversationGroupViewModel(
                     "__group__",
-                    "群聊",
+                    LanguageRuntime.GetString("Chat.Group.Label"),
                     string.Empty,
                     isGroup: true,
                     items);
@@ -736,7 +762,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 group = new CharacterConversationGroupViewModel(
                     "__deleted__",
-                    "已删除角色",
+                    LanguageRuntime.GetString("Chat.DeletedCharacter.Label"),
                     string.Empty,
                     isGroup: false,
                     items);
@@ -754,7 +780,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 group = new CharacterConversationGroupViewModel(
                     grouping.Key,
-                    "已删除角色",
+                    LanguageRuntime.GetString("Chat.DeletedCharacter.Label"),
                     string.Empty,
                     isGroup: false,
                     items);
@@ -842,7 +868,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         SelectedConversation = null;
         Messages.Clear();
         ContextSegments.Clear();
-        ApiRequestPreview = "选择会话后显示本次请求结构；API Key 永远不进入此预览。";
+        ApiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.SafeSelect");
         Memory.Clear();
         Group.Clear();
         Retrieval.Clear();
@@ -879,7 +905,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             var conversationTask = _repository.GetAsync(conversation.Id, cancellationToken);
             await Task.WhenAll(messagesTask, conversationTask);
             var loadedConversation = conversationTask.Result
-                ?? throw new InvalidOperationException("所选会话已经不存在。");
+                ?? throw new InvalidOperationException(
+                    LanguageRuntime.GetString("Chat.ConversationMissing"));
 
             if (cancellationToken.IsCancellationRequested
                 || version != _selectionVersion
@@ -914,17 +941,22 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             var ownerId = loadedConversation.Mode == ConversationMode.Group
                 ? MemoryOwnerIds.ForGroup(loadedConversation.Id)
                 : loadedConversation.CharacterId
-                  ?? throw new InvalidOperationException("单角色会话缺少角色引用。");
+                  ?? throw new InvalidOperationException(
+                      LanguageRuntime.GetString("Chat.CharacterReferenceMissing"));
             var ownerLabel = loadedConversation.Mode == ConversationMode.Group
-                ? $"群聊独立记忆 · {loadedConversation.Title}"
-                : $"角色共享记忆 · {_characterLookup.GetValueOrDefault(ownerId)?.Name ?? loadedConversation.Title}";
+                ? LanguageRuntime.Format("Chat.Memory.GroupFormat", loadedConversation.Title)
+                : LanguageRuntime.Format(
+                    "Chat.Memory.CharacterFormat",
+                    _characterLookup.GetValueOrDefault(ownerId)?.Name
+                    ?? loadedConversation.Title);
             Character? promptCharacter = null;
             if (loadedConversation.Mode == ConversationMode.SingleCharacter)
             {
                 promptCharacter = await _characters.GetAsync(
                     ownerId,
                     cancellationToken)
-                    ?? throw new InvalidOperationException("所选角色已经不存在。");
+                    ?? throw new InvalidOperationException(
+                        LanguageRuntime.GetString("Chat.CharacterMissing"));
                 if (cancellationToken.IsCancellationRequested
                     || version != _selectionVersion
                     || SelectedConversation?.Id != conversation.Id)
@@ -955,7 +987,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             if (version == _selectionVersion)
             {
-                Status = $"读取会话失败：{exception.Message}";
+                Status = LanguageRuntime.Format("Chat.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -999,7 +1031,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var selected = SelectedConversation;
         if (selected?.Mode != ConversationMode.Group)
         {
-            Status = "当前不是群聊。";
+            Status = LanguageRuntime.GetString("Chat.Group.NotCurrent");
             return;
         }
 
@@ -1007,7 +1039,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 selected.Id,
                 out var operationId))
         {
-            Status = "当前群聊已有生成任务。";
+            Status = LanguageRuntime.GetString("Chat.Group.AlreadyGenerating");
             return;
         }
 
@@ -1020,7 +1052,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             var assignment = _groupChatAssignment;
             if (assignment is null)
             {
-                Status = "“群聊接力”尚未分配模型。";
+                Status = LanguageRuntime.GetString("Chat.Group.ModelUnassigned");
                 return;
             }
 
@@ -1051,7 +1083,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     isPaused: true,
                     decision.Reason,
                     operationCancellation);
-                SetStatusForConversation(selected.Id, decision.Reason);
+                SetStatusForConversation(
+                    selected.Id,
+                    LanguageRuntime.GroupRelayReason(decision.Reason));
                 return;
             }
 
@@ -1068,7 +1102,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 SetStatusForConversation(
                     selected.Id,
-                    "群聊继续所需上下文超过当前模型上限。");
+                    LanguageRuntime.GetString("Chat.Group.ContextOverLimit"));
                 return;
             }
 
@@ -1093,13 +1127,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         catch (OperationCanceledException)
             when (operationCancellation.IsCancellationRequested)
         {
-            SetStatusForConversation(selected.Id, "群聊接力已停止。");
+            SetStatusForConversation(
+                selected.Id,
+                LanguageRuntime.GetString("Chat.Group.Stopped"));
         }
         catch (Exception exception)
         {
             SetStatusForConversation(
                 selected.Id,
-                $"群聊接力失败：{exception.Message}");
+                LanguageRuntime.Format("Chat.Group.FailedFormat", LanguageRuntime.ErrorMessage(exception)));
         }
         finally
         {
@@ -1143,7 +1179,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 var decision = DecideGroupNext(snapshot.Context, messages);
                 if (decision.NextSpeakerId is null)
                 {
-                    SetStatusForConversation(conversationId, decision.Reason);
+                    SetStatusForConversation(
+                        conversationId,
+                        LanguageRuntime.GroupRelayReason(decision.Reason));
                     return;
                 }
 
@@ -1160,7 +1198,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 SetStatusForConversation(
                     conversationId,
-                    "预计上下文超过当前模型上限，消息未发送，也没有自动截断内容。");
+                    LanguageRuntime.GetString("Chat.Send.ContextOverLimit"));
                 return;
             }
 
@@ -1186,7 +1224,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 SetStatusForConversation(
                     conversationId,
-                    "用户消息已保存；按当前模式未调用模型。");
+                    LanguageRuntime.GetString("Chat.Send.SaveOnly"));
                 return;
             }
 
@@ -1213,13 +1251,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         catch (OperationCanceledException)
             when (operationCancellation.IsCancellationRequested)
         {
-            SetStatusForConversation(conversationId, "发送已停止；消息未提交。");
+            SetStatusForConversation(
+                conversationId,
+                LanguageRuntime.GetString("Chat.Send.Stopped"));
         }
         catch (Exception exception)
         {
             SetStatusForConversation(
                 conversationId,
-                $"发送或生成失败：{exception.Message}");
+                LanguageRuntime.Format("Chat.Send.FailedFormat", LanguageRuntime.ErrorMessage(exception)));
             await ReloadGroupsPreservingSelectionAsync();
         }
         finally
@@ -1307,7 +1347,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             snapshot.ConversationId,
             snapshot.OperationId);
         var group = snapshot.Context.Group
-                    ?? throw new InvalidOperationException("群聊上下文快照不存在。");
+                    ?? throw new InvalidOperationException(
+                        LanguageRuntime.GetString("Chat.Group.ContextMissing"));
         var automaticTurns = 0;
         var current = currentSpeakerMessage;
         while (true)
@@ -1327,7 +1368,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 operationCancellation);
             if (shouldPause)
             {
-                SetStatusForConversation(snapshot.ConversationId, decision.Reason);
+                SetStatusForConversation(
+                    snapshot.ConversationId,
+                    LanguageRuntime.GroupRelayReason(decision.Reason));
                 return;
             }
 
@@ -1335,13 +1378,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 SetStatusForConversation(
                     snapshot.ConversationId,
-                    $"{decision.Reason} 自动接力未开启，可点击“继续群聊”。");
+                    LanguageRuntime.Format(
+                        "Chat.Group.AutoRelayOffFormat",
+                        LanguageRuntime.GroupRelayReason(decision.Reason)));
                 return;
             }
 
             if (automaticTurns >= group.Settings.MaximumAutomaticTurns)
             {
-                const string reason = "已达到本轮自动接力次数上限，等待用户决定是否继续。";
+                var reason = LanguageRuntime.GetString("Chat.Group.AutoRelayLimit");
                 await SaveGroupStateAsync(
                     snapshot.ConversationId,
                     current.SenderId,
@@ -1366,7 +1411,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
-                const string reason = "下一轮群聊上下文超过模型上限，自动接力已暂停。";
+                var reason = LanguageRuntime.GetString("Chat.Group.NextContextOverLimit");
                 await SaveGroupStateAsync(
                     snapshot.ConversationId,
                     current.SenderId,
@@ -1402,7 +1447,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         IReadOnlyList<ChatMessage> messages)
     {
         var group = context.Group
-                    ?? throw new InvalidOperationException("当前没有群聊设置快照。");
+                    ?? throw new InvalidOperationException(
+                        LanguageRuntime.GetString("Chat.Group.SettingsMissing"));
         return _groupRelayPlanner.DecideNext(
             group.Settings,
             group.Members,
@@ -1482,7 +1528,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             candidate.CandidateIndex);
         item.ApplyCandidate(candidate);
         ScheduleContextRefresh();
-        Status = $"已切换到{item.CandidateNavigationLabel}。";
+        Status = LanguageRuntime.Format(
+            "Chat.CandidateSwitchedFormat",
+            item.CandidateNavigationLabel);
     }
 
     private void RefreshPersonaPresentation()
@@ -1552,8 +1600,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         item.CloseTools();
         var edited = await _interaction.EditTextAsync(
-            "编辑消息",
-            "修改当前消息不会截断或重写后续对话。",
+            LanguageRuntime.GetString("Chat.Message.EditTitle"),
+            LanguageRuntime.GetString("Chat.Message.EditPrompt"),
             item.Content);
         if (edited is null || string.Equals(edited.Trim(), item.Content, StringComparison.Ordinal))
         {
@@ -1565,7 +1613,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         item.Message.UpdatedAt = DateTimeOffset.Now;
         item.RefreshContent();
         await ReloadGroupsAsync(SelectedConversation?.Id);
-        Status = "消息已原位修改；后续消息保持不变。";
+        Status = LanguageRuntime.GetString("Chat.Message.Edited");
     }
 
     private async Task DeleteMessageAsync(ChatMessageItemViewModel item)
@@ -1583,8 +1631,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             decision == DeleteMessageDecision.SelectedAndFollowing);
         await ReloadGroupsAsync(conversationId);
         Status = decision == DeleteMessageDecision.SelectedAndFollowing
-            ? "当前消息及后续消息已永久删除。"
-            : "当前消息已永久删除。";
+            ? LanguageRuntime.GetString("Chat.Message.DeletedTail")
+            : LanguageRuntime.GetString("Chat.Message.DeletedOne");
     }
 
     private async Task ForkMessageAsync(ChatMessageItemViewModel item)
@@ -1597,7 +1645,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
         var fork = await _repository.ForkThroughMessageAsync(SelectedConversation.Id, item.Id);
         await ReloadGroupsAsync(fork.Id);
-        Status = "已复制到完全独立的新聊天；两条记录不会互相跳转。";
+        Status = LanguageRuntime.GetString("Chat.Fork.Done");
     }
 
     private async Task RegenerateMessageAsync(ChatMessageItemViewModel item)
@@ -1615,8 +1663,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         if (assignment is null)
         {
             Status = conversationMode == ConversationMode.Group
-                ? "群聊接力功能尚未分配模型，不能重新生成。"
-                : "角色聊天功能尚未分配模型，不能重新生成。";
+                ? LanguageRuntime.GetString("Chat.Regenerate.GroupModelUnassigned")
+                : LanguageRuntime.GetString("Chat.Regenerate.ChatModelUnassigned");
             return;
         }
 
@@ -1624,7 +1672,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             await _interaction.PromptRegenerationRequirementAsync();
         if (additionalRequirement is null)
         {
-            Status = "已取消重新生成。";
+            Status = LanguageRuntime.GetString("Chat.Regenerate.Cancelled");
             return;
         }
 
@@ -1637,7 +1685,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 conversationId,
                 out var operationId))
         {
-            Status = "当前会话已有生成任务；同一会话不会并发覆盖候选。";
+            Status = LanguageRuntime.GetString("Chat.Generation.AlreadyRunning");
             return;
         }
 
@@ -1678,7 +1726,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
-                Status = "重新生成所需上下文超过模型上限，未调用模型。";
+                Status = LanguageRuntime.GetString("Chat.Regenerate.ContextOverLimit");
                 return;
             }
 
@@ -1752,20 +1800,27 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 telemetry.FinishReason,
                 "length",
                 StringComparison.OrdinalIgnoreCase)
-                ? "；输出达到上限，候选可能未完成"
+                ? LanguageRuntime.GetString("Chat.Regenerate.OutputLimitSuffix")
                 : string.Empty;
             SetStatusForConversation(
                 conversationId,
                 generationInterrupted
-                    ? $"生成已中断；已把部分正文保存为候选 {nextIndex + 1}，后续消息未截断。"
-                    : $"已生成并切换到候选 {nextIndex + 1}；后续消息未截断{suffix}。");
+                    ? LanguageRuntime.Format(
+                        "Chat.Regenerate.InterruptedFormat",
+                        nextIndex + 1)
+                    : LanguageRuntime.Format(
+                        "Chat.Regenerate.DoneFormat",
+                        nextIndex + 1,
+                        suffix));
         }
         catch (OperationCanceledException)
             when (operationCancellation.IsCancellationRequested)
         {
             item.Message.Content = original;
             item.RefreshContent();
-            SetStatusForConversation(conversationId, "重新生成已停止。");
+            SetStatusForConversation(
+                conversationId,
+                LanguageRuntime.GetString("Chat.Regenerate.Stopped"));
         }
         catch (Exception exception)
         {
@@ -1773,7 +1828,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             item.RefreshContent();
             SetStatusForConversation(
                 conversationId,
-                $"重新生成失败：{exception.Message}");
+                LanguageRuntime.Format("Chat.Regenerate.FailedFormat", LanguageRuntime.ErrorMessage(exception)));
         }
         finally
         {
@@ -1801,13 +1856,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var assignment = _chatAssignment;
         if (assignment is null)
         {
-            Status = "角色聊天功能尚未分配模型，不能继续生成。";
+            Status = LanguageRuntime.GetString("Chat.Continue.ModelUnassigned");
             return;
         }
 
         if (!_generationSessions.TryBegin(selected.Id, out var operationId))
         {
-            Status = "当前会话已有生成任务。";
+            Status = LanguageRuntime.GetString("Chat.Generation.AlreadyRunningShort");
             return;
         }
 
@@ -1835,7 +1890,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 cancellationToken: operationCancellation);
             if (context.Estimate.ExceedsLimit)
             {
-                Status = "继续生成所需上下文超过当前模型上限。";
+                Status = LanguageRuntime.GetString("Chat.Continue.ContextOverLimit");
                 return;
             }
 
@@ -1855,13 +1910,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         catch (OperationCanceledException)
             when (operationCancellation.IsCancellationRequested)
         {
-            SetStatusForConversation(selected.Id, "继续生成已停止。");
+            SetStatusForConversation(
+                selected.Id,
+                LanguageRuntime.GetString("Chat.Continue.Stopped"));
         }
         catch (Exception exception)
         {
             SetStatusForConversation(
                 selected.Id,
-                $"继续生成失败：{exception.Message}");
+                LanguageRuntime.Format("Chat.Continue.FailedFormat", LanguageRuntime.ErrorMessage(exception)));
             await ReloadGroupsPreservingSelectionAsync();
         }
         finally
@@ -1876,7 +1933,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         item.CloseTools();
         _interaction.CopyText(item.DisplayContent);
-        Status = "消息正文已复制。";
+        Status = LanguageRuntime.GetString("Chat.Message.Copied");
     }
 
     private void StopCurrentGeneration()
@@ -1891,7 +1948,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         stopped = _generationCoordinator.Cancel(conversationId) || stopped;
         if (stopped)
         {
-            Status = "正在中断当前会话的生成；其他会话的流不会受影响。";
+            Status = LanguageRuntime.GetString("Chat.Generation.StoppingCurrent");
         }
     }
 
@@ -1919,7 +1976,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
         catch (Exception exception)
         {
-            Status = $"保存聊天显示模式失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Chat.Display.SaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -1964,7 +2021,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             var character = await _characters.GetAsync(characterId);
             if (character is null)
             {
-                CharacterPromptStatus = "角色卡已不存在，无法保存局部提示词。";
+                CharacterPromptStatus = LanguageRuntime.GetString("Chat.CharacterPrompt.Missing");
                 return;
             }
 
@@ -1975,11 +2032,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 : buffer.SystemPrompt;
             var edited = await _interaction.EditTextAsync(
                 editPostHistory
-                    ? $"编辑“{character.Name}”的历史后指令"
-                    : $"编辑“{character.Name}”的角色 System Prompt",
+                    ? LanguageRuntime.Format(
+                        "Chat.CharacterPrompt.EditPostHistoryFormat",
+                        character.Name)
+                    : LanguageRuntime.Format(
+                        "Chat.CharacterPrompt.EditSystemFormat",
+                        character.Name),
                 editPostHistory
-                    ? "该内容会在聊天历史之后注入，用于强调当前角色每次回复前必须遵守的要求；留空表示不追加。"
-                    : "该内容属于角色卡本身，用于补充该角色的专属扮演职责；全局聊天提示词仍会先行生效。留空表示仅使用全局职责与角色卡其他字段。",
+                    ? LanguageRuntime.GetString("Chat.CharacterPrompt.PostHistoryHelp")
+                    : LanguageRuntime.GetString("Chat.CharacterPrompt.SystemHelp"),
                 currentText);
             if (edited is null
                 || string.Equals(edited, currentText, StringComparison.Ordinal))
@@ -2005,14 +2066,16 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 ApplyCharacterPrompts(character);
                 CharacterPromptStatus = editPostHistory
-                    ? "已保存角色卡的历史后指令；该角色的下一次请求开始生效。"
-                    : "已保存角色卡的 System Prompt；该角色的下一次请求开始生效。";
+                    ? LanguageRuntime.GetString("Chat.CharacterPrompt.PostHistorySaved")
+                    : LanguageRuntime.GetString("Chat.CharacterPrompt.SystemSaved");
                 await RefreshContextEstimateAsync(immediate: true);
             }
         }
         catch (Exception exception)
         {
-            CharacterPromptStatus = $"保存角色局部提示词失败：{exception.Message}";
+            CharacterPromptStatus = LanguageRuntime.Format(
+                "Chat.CharacterPrompt.SaveFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -2021,11 +2084,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         if (character is null)
         {
             _characterPromptCharacterId = string.Empty;
-            CharacterPromptCharacterName = "未选择角色";
+            CharacterPromptCharacterName = LanguageRuntime.GetString("Chat.Character.None");
             CharacterSystemPrompt = string.Empty;
             CharacterPostHistoryInstructions = string.Empty;
             CharacterPromptStatus =
-                "选择个人聊天后可直接查看和修改该角色卡的提示词。";
+                LanguageRuntime.GetString("Chat.CharacterPrompt.Select");
         }
         else
         {
@@ -2039,8 +2102,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             CharacterPromptStatus =
                 string.IsNullOrWhiteSpace(buffer.SystemPrompt)
                 && string.IsNullOrWhiteSpace(buffer.PostHistoryInstructions)
-                    ? "该角色尚未填写局部提示词；当前由全局聊天提示词、角色描述和聊天历史共同指导。"
-                    : "以下内容直接来自角色卡，并会用于该角色的所有个人聊天。";
+                    ? LanguageRuntime.GetString("Chat.CharacterPrompt.Empty")
+                    : LanguageRuntime.GetString("Chat.CharacterPrompt.FromCard");
         }
 
         EditCharacterSystemPromptCommand.RaiseCanExecuteChanged();
@@ -2053,7 +2116,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             || parameter is not string keyText
             || !Enum.TryParse<GlobalPromptKey>(keyText, out var key))
         {
-            Status = "当前窗口不能打开全局提示词设置。";
+            Status = LanguageRuntime.GetString("Chat.GlobalPrompt.Unavailable");
             return;
         }
 
@@ -2080,15 +2143,19 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private void ApplyActiveAssignmentBudget(ConversationMode mode)
     {
         var assignment = AssignmentFor(mode);
-        var functionName = mode == ConversationMode.Group ? "群聊接力" : "角色聊天";
+        var functionName = mode == ConversationMode.Group
+            ? LanguageRuntime.GetString("Chat.Function.Group")
+            : LanguageRuntime.GetString("Chat.Function.Character");
         if (assignment is null)
         {
             _contextBudget.UpdateBudget(new ContextBudget(
                 32768,
                 4096,
-                $"{functionName}尚未分配模型"));
+                LanguageRuntime.Format("Chat.Model.FunctionUnassignedFormat", functionName)));
             ActiveModelText =
-                $"{functionName}尚未分配模型；可切换为“只保存用户消息”。";
+                LanguageRuntime.Format(
+                    "Chat.Model.FunctionUnassignedSaveOnlyFormat",
+                    functionName);
         }
         else
         {
@@ -2098,7 +2165,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 $"{assignment.ProviderId} / {assignment.ModelId}",
                 assignment.ModelId));
             ActiveModelText =
-                $"{functionName} · {assignment.ModelId} · 上下文 {assignment.ContextLimit} · 输出 {assignment.MaxOutputTokens}";
+                LanguageRuntime.Format(
+                    "Chat.Model.ActiveFormat",
+                    functionName,
+                    assignment.ModelId,
+                    assignment.ContextLimit,
+                    assignment.MaxOutputTokens);
         }
 
         OnPropertyChanged(nameof(EstimatedTokenText));
@@ -2165,7 +2237,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             if (version == _contextVersion)
             {
-                Status = $"上下文估算失败：{exception.Message}";
+                Status = LanguageRuntime.Format("Chat.ContextEstimate.FailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -2359,7 +2431,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void BeginProviderGeneration(string conversationId)
     {
-        SetStatusForConversation(conversationId, "正在等待模型响应…");
+        SetStatusForConversation(
+            conversationId,
+            LanguageRuntime.GetString("Chat.Generation.Waiting"));
     }
 
     // Reasoning is deliberately reduced to a UI-only signal. Only Content events
@@ -2386,7 +2460,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                         streamEvent.Content);
                     SetStatusForConversation(
                         conversationId,
-                        "模型正在思考；思考过程不会写入聊天记录。");
+                        LanguageRuntime.GetString("Chat.Generation.Thinking"));
                     break;
 
                 case ProviderStreamEventKind.Content:
@@ -2395,7 +2469,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                         break;
                     }
 
-                    SetStatusForConversation(conversationId, "正在接收模型正文…");
+                    SetStatusForConversation(
+                        conversationId,
+                        LanguageRuntime.GetString("Chat.Generation.Receiving"));
                     yield return streamEvent.Content;
                     break;
 
@@ -2414,8 +2490,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             == ConversationGenerationStatus.Interrupted)
         {
             return telemetry.SawReasoning
-                ? "生成已停止；思考过程未保存，也没有产生正文。"
-                : "生成已停止，没有产生可保存正文。";
+                ? LanguageRuntime.GetString("Chat.Generation.StoppedAfterThinking")
+                : LanguageRuntime.GetString("Chat.Generation.StoppedNoBody");
         }
 
         if (string.Equals(
@@ -2424,12 +2500,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 StringComparison.OrdinalIgnoreCase)
             && telemetry.SawReasoning)
         {
-            return "输出上限在思考阶段耗尽，未生成可保存正文；请提高输出上限。";
+            return LanguageRuntime.GetString("Chat.Generation.OutputLimitNoBody");
         }
 
         return isCandidate
-            ? "模型没有返回新的候选正文。"
-            : "模型没有返回可保存的正文。";
+            ? LanguageRuntime.GetString("Chat.Generation.NoCandidate")
+            : LanguageRuntime.GetString("Chat.Generation.NoBody");
     }
 
     private string CompletedReplyStatus(
@@ -2440,15 +2516,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         if (_generationCoordinator.GetState(conversationId).Status
             == ConversationGenerationStatus.Interrupted)
         {
-            return "生成已中断；已保存收到的部分回复。";
+            return LanguageRuntime.GetString("Chat.Generation.InterruptedPartial");
         }
 
         return string.Equals(
             telemetry.FinishReason,
             "length",
             StringComparison.OrdinalIgnoreCase)
-            ? "已保存收到的正文；输出达到上限，回复可能未完成。"
-            : $"已由 {modelId} 完成回复。";
+            ? LanguageRuntime.GetString("Chat.Generation.SavedAtLimit")
+            : LanguageRuntime.Format("Chat.Generation.CompletedFormat", modelId);
     }
 
     private void SetStatusForConversation(string conversationId, string value)
@@ -2463,12 +2539,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private static string FinishReasonLabel(string? finishReason) =>
         finishReason?.ToLowerInvariant() switch
         {
-            "stop" => "正常结束",
-            "length" => "达到输出上限",
-            "content_filter" => "内容过滤终止",
-            "tool_calls" => "工具调用终止",
-            null or "" => "服务未报告完成原因",
-            _ => $"完成原因 {finishReason}"
+            "stop" => LanguageRuntime.GetString("Chat.Finish.Stop"),
+            "length" => LanguageRuntime.GetString("Chat.Finish.Length"),
+            "content_filter" => LanguageRuntime.GetString("Chat.Finish.ContentFilter"),
+            "tool_calls" => LanguageRuntime.GetString("Chat.Finish.ToolCalls"),
+            null or "" => LanguageRuntime.GetString("Chat.Finish.NotReported"),
+            _ => LanguageRuntime.Format("Chat.Finish.OtherFormat", finishReason)
         };
 
     private void RefreshTokenEstimate(TokenEstimate estimate)
@@ -2522,11 +2598,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         ApplyLiveSession(session);
         if (session.IsThinking)
         {
-            Status = "模型正在思考；思考过程不会写入聊天记录。";
+            Status = LanguageRuntime.GetString("Chat.Generation.Thinking");
         }
         else if (session.IsBusy && session.SawContent)
         {
-            Status = "正在接收模型正文…";
+            Status = LanguageRuntime.GetString("Chat.Generation.Receiving");
         }
 
         if (!session.IsBusy && session.OperationId is not null)
@@ -2610,7 +2686,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             SetStatusForConversation(
                 conversationId,
-                $"刷新已完成回复失败：{exception.Message}");
+                LanguageRuntime.Format(
+                    "Chat.RefreshCompletedFailedFormat",
+                    LanguageRuntime.ErrorMessage(exception)));
         }
         finally
         {

@@ -1,5 +1,8 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
@@ -11,11 +14,19 @@ public partial class App : Application
 {
     private const string SingleInstanceMutexName =
         @"Local\TavernDesk.App.SingleInstance.v1";
+    private const string FirstRunLanguagePendingFileName =
+        ".first-run-language.pending";
+    private static readonly TimeSpan UnhandledExceptionDuplicateWindow =
+        TimeSpan.FromSeconds(3);
+    private static string? _lastReportedUnhandledExceptionSignature;
+    private static DateTimeOffset _lastReportedUnhandledExceptionAt;
+    private static bool _isShowingUnhandledException;
     private SingleInstanceGate? _singleInstanceGate;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        LanguageRuntime.Apply(System.Globalization.CultureInfo.CurrentUICulture.Name);
         ScrollViewerWheelRouter.Register();
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -29,8 +40,7 @@ public partial class App : Application
                 _singleInstanceGate.Dispose();
                 _singleInstanceGate = null;
                 MessageBox.Show(
-                    "TavernDesk 已经在运行。\n\n"
-                    + "请使用现有主窗口，或在其中打开独立聊天等子窗口。",
+                    LanguageRuntime.GetString("Startup.AlreadyRunning"),
                     "TavernDesk",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -39,7 +49,21 @@ public partial class App : Application
             }
 
             var services = new InfrastructureServices(ParseDataRoot(e.Args));
+            var databaseExistedAtStartup = File.Exists(services.Paths.DatabasePath);
+            var pendingLanguagePath = Path.Combine(
+                services.Paths.RootDirectory,
+                FirstRunLanguagePendingFileName);
+            if (!databaseExistedAtStartup)
+            {
+                Directory.CreateDirectory(services.Paths.RootDirectory);
+                await File.WriteAllTextAsync(pendingLanguagePath, string.Empty);
+            }
+
             await services.InitializeAsync();
+            await ConfigureLanguageAsync(
+                services,
+                databaseExistedAtStartup,
+                pendingLanguagePath);
 
             var windowPlacement = new WindowPlacementService(services.Settings);
             var interaction = new UserInteractionService(windowPlacement);
@@ -69,8 +93,8 @@ public partial class App : Application
         catch (Exception exception)
         {
             MessageBox.Show(
-                $"TavernDesk 启动失败。\n\n{exception.Message}",
-                "启动失败",
+                LanguageRuntime.Format("Startup.Failed.Message", LanguageRuntime.ErrorMessage(exception)),
+                LanguageRuntime.GetString("Startup.Failed.Title"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);
@@ -88,13 +112,40 @@ public partial class App : Application
         object sender,
         DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(
-            Application.Current.MainWindow,
-            $"操作未完成。\n\n{e.Exception.Message}",
-            "TavernDesk",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
         e.Handled = true;
+        var rootException = e.Exception.GetBaseException();
+        var signature = $"{rootException.GetType().FullName}|{rootException.Message}";
+        var reportedAt = DateTimeOffset.UtcNow;
+        if (_isShowingUnhandledException
+            || (string.Equals(
+                    signature,
+                    _lastReportedUnhandledExceptionSignature,
+                    StringComparison.Ordinal)
+                && reportedAt - _lastReportedUnhandledExceptionAt
+                < UnhandledExceptionDuplicateWindow))
+        {
+            return;
+        }
+
+        _lastReportedUnhandledExceptionSignature = signature;
+        _lastReportedUnhandledExceptionAt = reportedAt;
+        Trace.TraceError(e.Exception.ToString());
+        _isShowingUnhandledException = true;
+        try
+        {
+            MessageBox.Show(
+                Application.Current.MainWindow,
+                LanguageRuntime.Format(
+                    "Startup.Unhandled.Message",
+                    LanguageRuntime.ErrorMessage(rootException)),
+                "TavernDesk",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isShowingUnhandledException = false;
+        }
     }
 
     private static string? ParseDataRoot(IReadOnlyList<string> args)
@@ -108,12 +159,63 @@ public partial class App : Application
 
             if (index + 1 >= args.Count || string.IsNullOrWhiteSpace(args[index + 1]))
             {
-                throw new ArgumentException("--data-root 后必须提供数据目录路径。");
+                throw new ArgumentException(
+                    LanguageRuntime.GetString("Startup.DataRootArgumentMissing"));
             }
 
             return args[index + 1];
         }
 
         return null;
+    }
+
+    private static async Task ConfigureLanguageAsync(
+        InfrastructureServices services,
+        bool databaseExistedAtStartup,
+        string pendingLanguagePath)
+    {
+        var savedCultureName = await services.Settings.GetAsync(
+            LanguageRuntime.SettingKey);
+        if (!string.IsNullOrWhiteSpace(savedCultureName))
+        {
+            LanguageRuntime.Apply(savedCultureName);
+            TryDeletePendingLanguageMarker(pendingLanguagePath);
+            return;
+        }
+
+        var selectedCultureName = LanguageRuntime.DefaultCultureName;
+        if (!databaseExistedAtStartup || File.Exists(pendingLanguagePath))
+        {
+            var dialog = new FirstRunLanguageDialog();
+            if (dialog.ShowDialog() == true
+                && !string.IsNullOrWhiteSpace(dialog.SelectedCultureName))
+            {
+                selectedCultureName = dialog.SelectedCultureName;
+            }
+        }
+
+        selectedCultureName = LanguageRuntime.NormalizeCultureName(selectedCultureName);
+        await services.Settings.SetAsync(
+            LanguageRuntime.SettingKey,
+            selectedCultureName);
+        LanguageRuntime.Apply(selectedCultureName);
+        TryDeletePendingLanguageMarker(pendingLanguagePath);
+    }
+
+    private static void TryDeletePendingLanguageMarker(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // A saved database setting is authoritative. A stale marker is
+            // harmless and will be retried on the next launch.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // See the IOException case above.
+        }
     }
 }

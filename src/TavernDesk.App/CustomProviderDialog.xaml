@@ -1,7 +1,7 @@
 <Window x:Class="TavernDesk.App.CustomProviderDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="添加自定义接入商"
+        Title="{StaticResource CustomProvider.Title}"
         Width="560"
         Height="500"
         ResizeMode="NoResize"
@@ -19,7 +19,7 @@
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,0,6,0">
-                <TextBlock Text="添加自定义接入商"
+                <TextBlock Text="{StaticResource CustomProvider.Title}"
                            Style="{StaticResource SectionTitleStyle}" />
                 <Border Margin="0,8,0,0"
                         Padding="12"
@@ -28,31 +28,31 @@
                         BorderThickness="1"
                         CornerRadius="10">
                     <StackPanel>
-                        <TextBlock Text="接口要求：必须使用 OpenAI 兼容协议"
+                        <TextBlock Text="{StaticResource CustomProvider.ProtocolTitle}"
                                    FontWeight="SemiBold" />
                         <TextBlock Margin="0,4,0,0"
-                                   Text="该服务必须提供与 OpenAI Chat Completions 兼容的 /v1/chat/completions 接口；Anthropic Messages、Gemini 原生及其他专用格式目前无法使用。"
+                                   Text="{StaticResource CustomProvider.ProtocolDescription}"
                                    Foreground="{DynamicResource MutedTextBrush}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 
                 <TextBlock Margin="0,18,0,4"
-                           Text="名称" />
+                           Text="{StaticResource CustomProvider.NameLabel}" />
                 <TextBox x:Name="NameEditor"
                          MinHeight="36"
                          Padding="10,6"
-                         Text="自定义 API 提供商" />
+                         Text="{StaticResource CustomProvider.DefaultName}" />
 
                 <StackPanel Margin="0,14,0,0">
-                    <TextBlock Text="OpenAI 兼容 API 地址" />
+                    <TextBlock Text="{StaticResource CustomProvider.BaseUrlLabel}" />
                     <TextBox x:Name="BaseUrlEditor"
                              Margin="0,4,0,0"
                              MinHeight="36"
                              Padding="10,6"
-                             ToolTip="填写到 /api/v1 或 /v1 结束，不要加入 /chat；例如 https://example.com/api/v1。" />
+                             ToolTip="{StaticResource CustomProvider.BaseUrlToolTip}" />
                     <TextBlock Margin="0,5,0,0"
-                               Text="填写到 api/v1 结束，不要加入 /chat。示例：https://example.com/api/v1"
+                               Text="{StaticResource CustomProvider.BaseUrlHelp}"
                                Foreground="{DynamicResource MutedTextBrush}"
                                TextWrapping="Wrap" />
                 </StackPanel>
@@ -64,11 +64,11 @@
                     Orientation="Horizontal">
             <Button Width="100"
                     Margin="0,0,10,0"
-                    Content="取消"
+                    Content="{StaticResource Common.Cancel}"
                     IsCancel="True"
                     Style="{StaticResource SecondaryButtonStyle}" />
             <Button Width="120"
-                    Content="添加"
+                    Content="{StaticResource Common.Add}"
                     IsDefault="True"
                     Click="AddButton_OnClick"
                     Style="{StaticResource PrimaryButtonStyle}" />

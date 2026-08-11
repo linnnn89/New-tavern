@@ -35,11 +35,11 @@
                     Orientation="Horizontal">
             <Button Width="100"
                     Margin="0,0,10,0"
-                    Content="取消"
+                    Content="{StaticResource Common.Cancel}"
                     IsCancel="True"
                     Style="{StaticResource SecondaryButtonStyle}" />
             <Button Width="120"
-                    Content="保存修改"
+                    Content="{StaticResource Common.SaveChanges}"
                     IsDefault="True"
                     Click="SaveButton_OnClick"
                     Style="{StaticResource PrimaryButtonStyle}" />

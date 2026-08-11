@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -81,7 +82,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
     private PlayerPersonaProfileViewModel? _selectedProfile;
     private string _editorName = string.Empty;
     private string _editorDescription = string.Empty;
-    private string _status = "玩家人设保存在本机个人资料中。";
+    private string _status = LanguageRuntime.GetString("Persona.Status.Intro");
     private bool _loaded;
     private bool _suppressSelectionPersistence;
     private bool _isNewProfile;
@@ -281,14 +282,15 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
             if (migratedUnsafeName is not null)
             {
                 ShowValidationWarning(
-                    "已修正不安全的玩家人设名称",
-                    $"检测到旧资料中的名称“{migratedUnsafeName}”可能与程序保留值或内部对象字段冲突。\n\n"
-                    + "该名称已自动改为“用户”，并已清理保存。为避免出现 BUG，后续请改用普通名称，例如“玩家1”“冒险者”或你自己的普通昵称。");
+                    LanguageRuntime.GetString("Persona.MigratedUnsafe.Title"),
+                    LanguageRuntime.Format(
+                        "Persona.MigratedUnsafe.MessageFormat",
+                        migratedUnsafeName));
             }
 
             Status = Profiles.Count == 1
-                ? "已载入 1 个玩家人设。"
-                : $"已载入 {Profiles.Count} 个玩家人设。";
+                ? LanguageRuntime.GetString("Persona.LoadedOne")
+                : LanguageRuntime.Format("Persona.LoadedManyFormat", Profiles.Count);
         }
         finally
         {
@@ -301,53 +303,47 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
         await LoadAsync();
         if (_selectedProfile is null)
         {
-            Status = "请先选择一个玩家人设。";
+            Status = LanguageRuntime.GetString("Persona.SelectFirst");
             ShowValidationWarning(
-                "无法保存玩家人设",
-                "请先选择一个玩家人设后再保存。\n\n当前内容未保存。");
+                LanguageRuntime.GetString("Persona.SaveNoSelection.Title"),
+                LanguageRuntime.GetString("Persona.SaveNoSelection.Message"));
             return;
         }
 
         var name = EditorName.Trim();
         if (name.Length == 0)
         {
-            Status = "玩家人设名称不能为空。";
+            Status = LanguageRuntime.GetString("Persona.NameRequired.Status");
             ShowValidationWarning(
-                "玩家人设名称不能为空",
-                "请填写一个普通的玩家人设名称后再保存。\n\n"
-                + "建议使用“玩家1”“冒险者”或你自己的普通昵称。\n"
-                + "当前内容未保存。");
+                LanguageRuntime.GetString("Persona.NameRequired.Title"),
+                LanguageRuntime.GetString("Persona.NameRequired.Message"));
             return;
         }
 
         if (name.Length > 80)
         {
-            Status = "玩家人设名称不能超过 80 个字符。";
+            Status = LanguageRuntime.GetString("Persona.NameTooLong.Status");
             ShowValidationWarning(
-                "玩家人设名称过长",
-                "名称不能超过 80 个字符。为避免显示或存储异常，建议缩短为普通名称。\n\n"
-                + "当前内容未保存。");
+                LanguageRuntime.GetString("Persona.NameTooLong.Title"),
+                LanguageRuntime.GetString("Persona.NameTooLong.Message"));
             return;
         }
 
         if (ContainsControlCharacter(name))
         {
-            Status = "玩家人设名称不能包含换行、制表符或其他控制字符。";
+            Status = LanguageRuntime.GetString("Persona.NameControl.Status");
             ShowValidationWarning(
-                "玩家人设名称不安全",
-                "名称包含换行、制表符或其他控制字符。为避免出现 BUG，建议只使用普通中英文、数字和空格。\n\n"
-                + "当前内容未保存。");
+                LanguageRuntime.GetString("Persona.NameUnsafe.Title"),
+                LanguageRuntime.GetString("Persona.NameControl.Message"));
             return;
         }
 
         if (IsReservedName(name))
         {
-            Status = "玩家人设名称不能使用程序保留值，例如 null、undefined、NaN、__proto__、constructor 或 prototype。";
+            Status = LanguageRuntime.GetString("Persona.NameReserved.Status");
             ShowValidationWarning(
-                "玩家人设名称不安全",
-                $"“{name}”可能与程序保留值或内部对象字段冲突。为避免出现 BUG，请更换为更安全的普通名称。\n\n"
-                + "建议使用“玩家1”“冒险者”或你自己的普通昵称；不要使用 null、undefined、NaN、constructor、prototype 或 __proto__。\n"
-                + "当前内容未保存。");
+                LanguageRuntime.GetString("Persona.NameUnsafe.Title"),
+                LanguageRuntime.Format("Persona.NameReserved.MessageFormat", name));
             return;
         }
 
@@ -360,7 +356,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
         await PersistAsync();
         OnPropertyChanged(nameof(ActiveName));
         OnPropertyChanged(nameof(ActiveDescription));
-        Status = $"已保存玩家人设“{name}”；后续新请求将使用当前选择。";
+        Status = LanguageRuntime.Format("Persona.SavedFormat", name);
         RaiseCommandState();
     }
 
@@ -395,13 +391,13 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
                 _suppressSelectionPersistence = false;
             }
 
-            Status = "已取消新增，空白玩家人设未保存。";
+            Status = LanguageRuntime.GetString("Persona.NewCancelled");
             RaiseCommandState();
             return;
         }
 
         LoadEditorFromSelected();
-        Status = $"已取消编辑，恢复玩家人设“{_selectedProfile.Name}”的已保存内容。";
+        Status = LanguageRuntime.Format("Persona.EditCancelledFormat", _selectedProfile.Name);
         RaiseCommandState();
     }
 
@@ -433,7 +429,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
         _isNewProfile = true;
         EditorName = string.Empty;
         EditorDescription = string.Empty;
-        Status = "已新增空白人设草稿；请输入名称后点击保存，空白名称不会保存。";
+        Status = LanguageRuntime.GetString("Persona.NewDraft");
         RaiseCommandState();
     }
 
@@ -447,7 +443,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
         await LoadAsync();
         if (!CanDelete() || SelectedProfile is null)
         {
-            Status = "至少保留一个玩家人设。";
+            Status = LanguageRuntime.GetString("Persona.KeepOne");
             return;
         }
 
@@ -467,7 +463,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
         }
 
         await PersistAsync();
-        Status = $"已删除玩家人设“{deletedName}”。";
+        Status = LanguageRuntime.Format("Persona.DeletedFormat", deletedName);
         RaiseCommandState();
     }
 
@@ -532,7 +528,7 @@ public sealed class PlayerPersonaManagerViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            Status = $"当前玩家人设选择未保存：{exception.Message}";
+            Status = LanguageRuntime.Format("Persona.SelectionSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 

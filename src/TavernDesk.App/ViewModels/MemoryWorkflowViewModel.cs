@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
@@ -21,7 +22,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private CancellationTokenSource? _generationCancellation;
     private string? _ownerId;
     private string? _conversationId;
-    private string _ownerLabel = "未选择记忆";
+    private string _ownerLabel = LanguageRuntime.GetString("Memory.OwnerNone");
     private string _userIdentity = "用户";
     private string _body = string.Empty;
     private string _targetTokens = "5000";
@@ -29,11 +30,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private string _updateIntervalTurns = "20";
     private string _maximumSourceUserTurns = "20";
     private bool _sendOnlyNewMessages = true;
-    private string _status = "选择会话后载入角色或群聊的独立记忆银行。";
-    private string _checkpointText = "尚无处理检查点。";
-    private string _requestPreview = "生成或预览后显示记忆 API 发送结构；不会包含 API Key。";
+    private string _status = LanguageRuntime.GetString("Memory.SelectConversation");
+    private string _checkpointText = LanguageRuntime.GetString("Memory.CheckpointNone");
+    private string _requestPreview = LanguageRuntime.GetString("Memory.RequestPreviewHint");
     private string _pendingBody = string.Empty;
-    private string _pendingTargetText = "没有待保存草稿。";
+    private string _pendingTargetText = LanguageRuntime.GetString("Memory.NoPendingDraft");
     private MemoryUpdateDraft? _pendingDraft;
     private long _loadVersion;
     private bool _isGenerating;
@@ -223,8 +224,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         ApplyCheckpoint(checkpointTask.Result);
         ApplyDraft(draftsTask.Result.FirstOrDefault());
         Status = bank is null
-            ? $"{ownerLabel}尚未保存记忆；默认目标 5000 tokens。"
-            : $"已载入{ownerLabel}；最后保存 {bank.UpdatedAt:yyyy-MM-dd HH:mm}。";
+            ? LanguageRuntime.Format("Memory.NotSavedFormat", ownerLabel)
+            : LanguageRuntime.Format("Memory.LoadedFormat", ownerLabel, bank.UpdatedAt);
         RaiseCommandStates();
     }
 
@@ -234,13 +235,13 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         _ownerId = null;
         _conversationId = null;
         _userIdentity = "用户";
-        OwnerLabel = "未选择记忆";
+        OwnerLabel = LanguageRuntime.GetString("Memory.OwnerNone");
         Body = string.Empty;
         TargetTokens = "5000";
         ApplySettings(new MemoryWorkflowSettings { OwnerId = "__none__" });
         ApplyCheckpoint(null);
         ApplyDraft(null);
-        Status = "选择会话后载入角色或群聊的独立记忆银行。";
+        Status = LanguageRuntime.GetString("Memory.SelectConversation");
         RaiseCommandStates();
     }
 
@@ -298,7 +299,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             await GeneratePlanAsync(
                 plan,
                 ModelFunctionKind.MemoryUpdate,
-                "已按阈值自动保存记忆正文，并推进本会话处理检查点。",
+                LanguageRuntime.GetString("Memory.AutoSaved"),
                 cancellationToken,
                 autoCommit: true);
         }
@@ -309,7 +310,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         {
             if (_ownerId == ownerId && _conversationId == conversationId)
             {
-                Status = $"自动保存记忆失败，已保留草稿：{exception.Message}";
+                Status = LanguageRuntime.Format("Memory.AutoSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -338,7 +339,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         await GeneratePlanAsync(
             plan,
             ModelFunctionKind.GroupMemoryMerge,
-            $"已生成“{character.Name}”的合并草稿；角色记忆尚未覆盖。",
+            LanguageRuntime.Format("Memory.MergeDraftGeneratedFormat", character.Name),
             cancellationToken);
     }
 
@@ -350,7 +351,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         }
 
         await _memoryBanks.SaveBodyAsync(_ownerId, Body, targetTokens);
-        Status = $"已直接保存{OwnerLabel}；本操作不会推进聊天处理检查点。";
+        Status = LanguageRuntime.Format("Memory.DirectSavedFormat", OwnerLabel);
     }
 
     private async Task SaveSettingsAsync()
@@ -359,14 +360,14 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             || !int.TryParse(UpdateIntervalTurns, out var interval)
             || interval is < 1 or > 10000)
         {
-            Status = "自动生成阈值必须是 1–10000 之间的用户轮次数。";
+            Status = LanguageRuntime.GetString("Memory.AutoIntervalRange");
             return;
         }
 
         if (!int.TryParse(MaximumSourceUserTurns, out var maximumSourceUserTurns)
             || maximumSourceUserTurns is < 1 or > 10000)
         {
-            Status = "单次发送上限必须是 1–10000 之间的用户轮次数。";
+            Status = LanguageRuntime.GetString("Memory.SourceLimitRange");
             return;
         }
 
@@ -388,11 +389,15 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         };
         await _workflow.SaveSettingsAsync(settings);
         var sourceMode = SendOnlyNewMessages
-            ? "仅发送检查点后的新增对话"
-            : "允许重新发送已有对话";
+            ? LanguageRuntime.GetString("Memory.SourceNewOnly")
+            : LanguageRuntime.GetString("Memory.SourceAllowExisting");
         Status = AutoGenerateEnabled
-            ? $"已保存记忆工作流；每新增 {interval} 个用户轮次触发，单次最多发送 {maximumSourceUserTurns} 个用户轮次；{sourceMode}。"
-            : "已保存记忆工作流；自动生成保持关闭。";
+            ? LanguageRuntime.Format(
+                "Memory.WorkflowSavedFormat",
+                interval,
+                maximumSourceUserTurns,
+                sourceMode)
+            : LanguageRuntime.GetString("Memory.WorkflowDisabled");
     }
 
     private async Task PreviewUpdateAsync()
@@ -401,12 +406,14 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         {
             var plan = await BuildUpdatePlanAsync();
             RequestPreview = RenderPreview(plan, assignment: null);
-            Status =
-                $"已预览增量更新：{plan.SourceUserTurns} 个用户轮次，处理到消息 #{plan.SourceThroughSequenceNo}；未调用模型。";
+            Status = LanguageRuntime.Format(
+                "Memory.PreviewedFormat",
+                plan.SourceUserTurns,
+                plan.SourceThroughSequenceNo);
         }
         catch (Exception exception)
         {
-            Status = $"无法生成更新预览：{exception.Message}";
+            Status = LanguageRuntime.Format("Memory.PreviewFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -418,11 +425,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             await GeneratePlanAsync(
                 plan,
                 ModelFunctionKind.MemoryUpdate,
-                "已生成记忆更新草稿；编辑确认后再保存并推进检查点。");
+                LanguageRuntime.GetString("Memory.UpdateDraftGenerated"));
         }
         catch (Exception exception)
         {
-            Status = $"生成记忆更新失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Memory.UpdateFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -456,11 +463,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             await GeneratePlanAsync(
                 plan,
                 ModelFunctionKind.MemoryCompression,
-                "已生成压缩草稿；聊天处理检查点不会改变。");
+                LanguageRuntime.GetString("Memory.CompressionDraftGenerated"));
         }
         catch (Exception exception)
         {
-            Status = $"生成记忆压缩失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Memory.CompressionFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -468,7 +475,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     {
         if (_ownerId is null || _conversationId is null)
         {
-            throw new InvalidOperationException("尚未选择记忆所有者和来源会话。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Memory.OwnerAndConversationRequired"));
         }
 
         if (!TryReadTargetTokens(out var targetTokens))
@@ -504,7 +512,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         {
             if (IsCurrent(plan))
             {
-                Status = "已有记忆生成任务正在运行。";
+                Status = LanguageRuntime.GetString("Memory.GenerationAlreadyRunning");
             }
 
             return;
@@ -519,7 +527,9 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 functionKind,
                 _generationCancellation.Token)
                 ?? throw new InvalidOperationException(
-                    $"“{FunctionLabel(functionKind)}”尚未分配模型。");
+                    LanguageRuntime.Format(
+                        "Memory.ModelUnassignedFormat",
+                        FunctionLabel(functionKind)));
             var request = new ModelExecutionRequest(
                 assignment.ProviderId,
                 assignment.ModelId,
@@ -536,7 +546,10 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             {
                 RequestPreview = preview;
                 PendingBody = string.Empty;
-                Status = $"正在由 {assignment.ModelId} 生成{FunctionLabel(functionKind)}…";
+                Status = LanguageRuntime.Format(
+                    "Memory.GeneratingFormat",
+                    assignment.ModelId,
+                    FunctionLabel(functionKind));
             }
 
             var buffer = new StringBuilder();
@@ -555,7 +568,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                         sawReasoning = true;
                         if (IsCurrent(plan))
                         {
-                            Status = "模型正在思考；思考过程不会写入记忆草稿。";
+                            Status = LanguageRuntime.GetString("Memory.Thinking");
                         }
 
                         break;
@@ -565,7 +578,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                         if (IsCurrent(plan))
                         {
                             PendingBody = buffer.ToString();
-                            Status = $"正在接收{FunctionLabel(functionKind)}正文…";
+                            Status = LanguageRuntime.Format("Memory.ReceivingFormat", FunctionLabel(functionKind));
                         }
 
                         break;
@@ -583,7 +596,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             {
                 if (IsCurrent(plan))
                 {
-                    Status = "记忆生成已停止；未保存不完整草稿。";
+                    Status = LanguageRuntime.GetString("Memory.Stopped");
                 }
 
                 return;
@@ -598,10 +611,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                         StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException(
-                        "输出上限在思考阶段耗尽，未生成可保存的记忆正文。");
+                        LanguageRuntime.GetString("Memory.NoBodyAfterThinking"));
                 }
 
-                throw new InvalidOperationException("模型没有返回可保存的记忆正文。");
+                throw new InvalidOperationException(
+                    LanguageRuntime.GetString("Memory.NoBody"));
             }
 
             var draft = new MemoryUpdateDraft
@@ -652,7 +666,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         {
             if (IsCurrent(plan))
             {
-                Status = "记忆生成已停止；未保存不完整草稿。";
+                Status = LanguageRuntime.GetString("Memory.Stopped");
             }
         }
         finally
@@ -696,11 +710,9 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
         Status = draft.Kind switch
         {
-            MemoryDraftKind.Update =>
-                "已保存更新后的记忆正文，并原子推进本会话处理检查点。",
-            MemoryDraftKind.Compression =>
-                "已保存压缩后的记忆正文；聊天处理检查点保持不变。",
-            _ => "已把合并草稿保存到目标角色记忆；群聊独立记忆保持不变。"
+            MemoryDraftKind.Update => LanguageRuntime.GetString("Memory.DraftSaved.Update"),
+            MemoryDraftKind.Compression => LanguageRuntime.GetString("Memory.DraftSaved.Compression"),
+            _ => LanguageRuntime.GetString("Memory.DraftSaved.Merge")
         };
     }
 
@@ -713,7 +725,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
         await _workflow.DeleteDraftAsync(_pendingDraft.Id);
         ApplyDraft(null);
-        Status = "已丢弃待保存草稿；现有记忆正文和检查点均未改变。";
+        Status = LanguageRuntime.GetString("Memory.DraftDiscarded");
     }
 
     private void StopGeneration() => _generationCancellation?.Cancel();
@@ -767,7 +779,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         _ownerId == ownerId && !string.IsNullOrWhiteSpace(OwnerLabel)
             ? OwnerLabel
             : string.IsNullOrWhiteSpace(ownerId)
-                ? "当前记忆主体"
+                ? LanguageRuntime.GetString("Memory.OwnerCurrent")
                 : ownerId.Trim();
 
     private static string NormalizeUserIdentity(string? value) =>
@@ -778,7 +790,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         if (!int.TryParse(TargetTokens, out targetTokens)
             || targetTokens is < 1000 or > 20000)
         {
-            Status = "记忆目标必须是 1000–20000 之间的整数 tokens。";
+            Status = LanguageRuntime.GetString("Memory.TargetRange");
             return false;
         }
 
@@ -799,8 +811,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private void ApplyCheckpoint(MemoryCheckpoint? checkpoint)
     {
         CheckpointText = checkpoint is null
-            ? "尚无处理检查点；下次更新会读取本会话全部用户/角色消息。"
-            : $"已处理到消息 #{checkpoint.LastSequenceNo}；累计 {checkpoint.ProcessedUserTurns} 个用户轮次。";
+            ? LanguageRuntime.GetString("Memory.CheckpointAllNext")
+            : LanguageRuntime.Format(
+                "Memory.CheckpointFormat",
+                checkpoint.LastSequenceNo,
+                checkpoint.ProcessedUserTurns);
     }
 
     private void ApplyDraft(MemoryUpdateDraft? draft)
@@ -808,10 +823,15 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         _pendingDraft = draft;
         PendingBody = draft?.Body ?? string.Empty;
         RequestPreview = draft?.RequestPreview
-                         ?? "生成或预览后显示记忆 API 发送结构；不会包含 API Key。";
+                         ?? LanguageRuntime.GetString("Memory.RequestPreviewHint");
         PendingTargetText = draft is null
-            ? "没有待保存草稿。"
-            : $"{DraftLabel(draft.Kind)} · 目标 {draft.TargetOwnerId} · 目标 {draft.TargetTokens} tokens · 来源处理到 #{draft.SourceThroughSequenceNo}";
+            ? LanguageRuntime.GetString("Memory.NoPendingDraft")
+            : LanguageRuntime.Format(
+                "Memory.PendingTargetFormat",
+                DraftLabel(draft.Kind),
+                draft.TargetOwnerId,
+                draft.TargetTokens,
+                draft.SourceThroughSequenceNo);
         SaveDraftCommand.RaiseCanExecuteChanged();
         DiscardDraftCommand.RaiseCanExecuteChanged();
     }
@@ -833,8 +853,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             new
             {
                 function = plan.Kind.ToString(),
-                provider = assignment?.ProviderId ?? "尚未调用",
-                model = assignment?.ModelId ?? "尚未调用",
+                provider = assignment?.ProviderId ?? LanguageRuntime.GetString("Memory.NotCalled"),
+                model = assignment?.ModelId ?? LanguageRuntime.GetString("Memory.NotCalled"),
                 target_tokens = plan.TargetTokens,
                 source_through_sequence = plan.SourceThroughSequenceNo,
                 source_user_turns = plan.SourceUserTurns,
@@ -849,17 +869,17 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private static string FunctionLabel(ModelFunctionKind kind) =>
         kind switch
         {
-            ModelFunctionKind.MemoryUpdate => "记忆更新",
-            ModelFunctionKind.MemoryCompression => "记忆压缩",
-            ModelFunctionKind.GroupMemoryMerge => "群聊记忆合并",
+            ModelFunctionKind.MemoryUpdate => LanguageRuntime.GetString("Memory.Function.Update"),
+            ModelFunctionKind.MemoryCompression => LanguageRuntime.GetString("Memory.Function.Compression"),
+            ModelFunctionKind.GroupMemoryMerge => LanguageRuntime.GetString("Memory.Function.GroupMerge"),
             _ => kind.ToString()
         };
 
     private static string DraftLabel(MemoryDraftKind kind) =>
         kind switch
         {
-            MemoryDraftKind.Update => "增量更新草稿",
-            MemoryDraftKind.Compression => "压缩草稿",
-            _ => "群聊合并草稿"
+            MemoryDraftKind.Update => LanguageRuntime.GetString("Memory.Draft.Update"),
+            MemoryDraftKind.Compression => LanguageRuntime.GetString("Memory.Draft.Compression"),
+            _ => LanguageRuntime.GetString("Memory.Draft.GroupMerge")
         };
 }

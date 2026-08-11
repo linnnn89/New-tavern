@@ -14,7 +14,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="角色书架" Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="{StaticResource Characters.Title}" Style="{StaticResource PageTitleStyle}" />
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -31,16 +31,16 @@
                 <TextBox Width="210"
                          Margin="0,0,12,0"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="按名称、描述或性格即时过滤" />
-                <Button Content="密集" Command="{Binding SetDenseCommand}" Style="{StaticResource SecondaryButtonStyle}" />
-                <Button Content="中等" Command="{Binding SetMediumCommand}" Margin="6,0"
+                         ToolTip="{StaticResource Characters.SearchToolTip}" />
+                <Button Content="{StaticResource Characters.Layout.Dense}" Command="{Binding SetDenseCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                <Button Content="{StaticResource Characters.Layout.Medium}" Command="{Binding SetMediumCommand}" Margin="6,0"
                         Style="{StaticResource SecondaryButtonStyle}" />
-                <Button Content="大图" Command="{Binding SetLargeCommand}" Style="{StaticResource SecondaryButtonStyle}" />
-                <Button Content="导入角色卡" Command="{Binding ImportCommand}" Margin="12,0,0,0"
+                <Button Content="{StaticResource Characters.Layout.Large}" Command="{Binding SetLargeCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                <Button Content="{StaticResource Characters.ImportCard}" Command="{Binding ImportCommand}" Margin="12,0,0,0"
                         Style="{StaticResource PrimaryButtonStyle}" />
             </StackPanel>
             <Button Grid.Column="1"
-                    Content="← 返回角色书架"
+                    Content="{StaticResource Characters.BackToShelf}"
                     Command="{Binding CloseCharacterToolsCommand}">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
@@ -71,9 +71,9 @@
                 </Style>
             </Border.Style>
             <TextBlock>
-                <Run Text="当前排列：" />
+                <Run Text="{StaticResource Characters.CurrentLayout}" />
                 <Run Text="{Binding ScaleLabel, Mode=OneWay}" FontWeight="SemiBold" />
-                <Run Text="　竖向封面按原比例裁切；悬停放大并提供聊天、编辑两个快捷入口。" />
+                <Run Text="{StaticResource Characters.LayoutHelp}" />
             </TextBlock>
         </Border>
 
@@ -101,7 +101,7 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="我的书架" Margin="8,6,8,10" Style="{StaticResource SectionTitleStyle}" />
+                    <TextBlock Text="{StaticResource Characters.MyShelves}" Margin="8,6,8,10" Style="{StaticResource SectionTitleStyle}" />
                     <ListBox Grid.Row="1"
                              ItemsSource="{Binding ShelfItems}"
                              SelectedItem="{Binding SelectedShelf}"
@@ -120,7 +120,7 @@
                         </ListBox.ItemContainerStyle>
                     </ListBox>
                     <StackPanel Grid.Row="2">
-                        <Button Content="+ 新建书架"
+                        <Button Content="{StaticResource Characters.NewShelf}"
                                 Command="{Binding CreateShelfCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
                         <Grid Margin="0,7,0,0">
@@ -129,21 +129,21 @@
                                 <ColumnDefinition Width="64" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Button Content="重命名"
+                            <Button Content="{StaticResource Characters.Rename}"
                                     Command="{Binding RenameShelfCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Grid.Column="1"
                                     Margin="6,0,0,0"
                                     Command="{Binding ToggleShelfBatchModeCommand}"
                                     CommandParameter="{Binding SelectedItems, ElementName=CharacterCardList}"
-                                    ToolTip="进入或退出角色多选整理模式">
+                                    ToolTip="{StaticResource Characters.Batch.ToolTip}">
                                 <Button.Style>
                                     <Style TargetType="Button"
                                            BasedOn="{StaticResource SecondaryButtonStyle}">
-                                        <Setter Property="Content" Value="批量" />
+                                        <Setter Property="Content" Value="{StaticResource Characters.Batch.Start}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsShelfBatchMode}" Value="True">
-                                                <Setter Property="Content" Value="完成" />
+                                                <Setter Property="Content" Value="{StaticResource Characters.Batch.Done}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -151,7 +151,7 @@
                             </Button>
                             <Button Grid.Column="2"
                                     Margin="6,0,0,0"
-                                    Content="删除"
+                                    Content="{StaticResource Characters.Delete}"
                                     Command="{Binding DeleteShelfCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </Grid>
@@ -176,9 +176,9 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="{Binding SelectedShelf.Name, StringFormat=批量整理“{0}”}"
+                            <TextBlock Text="{Binding SelectedShelf.Name, StringFormat={StaticResource Characters.BatchTitleFormat}}"
                                        FontWeight="SemiBold" />
-                            <TextBlock Text="勾选多个角色后可一次移出当前书架；角色卡和聊天记录不会删除。"
+                            <TextBlock Text="{StaticResource Characters.BatchDescription}"
                                        Margin="0,3,12,0"
                                        Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
@@ -187,14 +187,14 @@
                                     VerticalAlignment="Center">
                             <TextBlock Margin="0,0,12,0"
                                        VerticalAlignment="Center">
-                                <Run Text="已选 " />
+                                <Run Text="{StaticResource Characters.SelectedPrefix}" />
                                 <Run Text="{Binding SelectedItems.Count, ElementName=CharacterCardList, Mode=OneWay}" />
-                                <Run Text=" 项" />
+                                <Run Text="{StaticResource Characters.SelectedSuffix}" />
                             </TextBlock>
-                            <Button Content="移出所选"
+                            <Button Content="{StaticResource Characters.RemoveSelected}"
                                     Command="{Binding RemoveSelectedFromShelfCommand}"
                                     CommandParameter="{Binding SelectedItems, ElementName=CharacterCardList}"
-                                    ToolTip="只移出当前自定义书架，不删除角色卡或聊天"
+                                    ToolTip="{StaticResource Characters.RemoveSelectedToolTip}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
                     </Grid>
@@ -270,7 +270,7 @@
                                                         VerticalAlignment="Center">
                                                 <Button MinWidth="110"
                                                         MinHeight="46"
-                                                        Content="聊天"
+                                                        Content="{StaticResource Characters.Chat}"
                                                         FontSize="16"
                                                          FontWeight="SemiBold"
                                                          Command="{Binding DataContext.StartChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -279,7 +279,7 @@
                                                 <Button MinWidth="110"
                                                         MinHeight="46"
                                                         Margin="0,12,0,0"
-                                                        Content="编辑"
+                                                        Content="{StaticResource Characters.Edit}"
                                                         FontSize="16"
                                                          FontWeight="SemiBold"
                                                          Command="{Binding DataContext.EditCharacterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -292,7 +292,7 @@
                                                   Padding="6,4"
                                                   HorizontalAlignment="Left"
                                                   VerticalAlignment="Top"
-                                                  Content="选择"
+                                                  Content="{StaticResource Characters.Select}"
                                                   Background="#EEFFFFFF"
                                                   IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=TwoWay}"
                                                   Visibility="{Binding DataContext.IsShelfBatchMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -311,8 +311,8 @@
                                                TextWrapping="NoWrap" />
                                     <Button Grid.Column="1"
                                             Margin="7,0,0,0"
-                                            Content="进入"
-                                             ToolTip="打开完整角色工具"
+                                            Content="{StaticResource Characters.Enter}"
+                                             ToolTip="{StaticResource Characters.OpenToolsToolTip}"
                                              Command="{Binding DataContext.OpenCharacterToolsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                              CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                              Style="{StaticResource SecondaryButtonStyle}" />
@@ -399,31 +399,31 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="{Binding ActiveCharacter.Name, StringFormat=角色主页 · {0}}"
+                                <TextBlock Text="{Binding ActiveCharacter.Name, StringFormat={StaticResource Characters.HomeTitleFormat}}"
                                            Style="{StaticResource SectionTitleStyle}" />
-                                <TextBlock Text="角色卡资料、归类和该角色的全部聊天都集中在这里。"
+                                <TextBlock Text="{StaticResource Characters.HomeDescription}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Margin="12,3,0,0"
-                                       Text="● 未保存"
+                                       Text="{StaticResource Characters.Unsaved}"
                                        Foreground="{DynamicResource DangerBrush}"
                                        Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </Grid>
                         <WrapPanel Grid.Row="1" Margin="0,12,0,0">
-                            <Button Content="编辑"
+                            <Button Content="{StaticResource Characters.Edit}"
                                     Command="{Binding ShowCharacterEditorCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
-                                    Content="归类"
+                                    Content="{StaticResource Characters.Classify}"
                                     Command="{Binding ToggleClassificationCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
-                                    Content="替换图片"
+                                    Content="{StaticResource Characters.ReplaceImage}"
                                     Command="{Binding ReplaceCharacterAvatarCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
-                                    Content="删除"
+                                    Content="{StaticResource Characters.Delete}"
                                     Foreground="{DynamicResource DangerBrush}"
                                     Command="{Binding DeleteCharacterCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
@@ -468,12 +468,12 @@
                                                TextTrimming="CharacterEllipsis"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                     <WrapPanel>
-                                                <Button Content="继续最后聊天"
+                                                <Button Content="{StaticResource Characters.ContinueLastChat}"
                                                         Command="{Binding StartChatCommand}"
                                                         CommandParameter="{Binding ActiveCharacter}"
                                                         Style="{StaticResource PrimaryButtonStyle}" />
                                                 <Button Margin="8,0,0,0"
-                                                        Content="新建对话"
+                                                        Content="{StaticResource Characters.NewConversation}"
                                                         Command="{Binding CreateNewChatCommand}"
                                                         CommandParameter="{Binding ActiveCharacter}"
                                                         Style="{StaticResource SecondaryButtonStyle}" />
@@ -488,9 +488,9 @@
                                     BorderThickness="1"
                                     Visibility="{Binding IsClassificationOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <StackPanel>
-                                    <TextBlock Text="书架归类" FontWeight="SemiBold" />
+                                    <TextBlock Text="{StaticResource Characters.ShelfClassification}" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,3,0,9"
-                                               Text="选择一个书架后加入或移除；删除书架不会删除角色。"
+                                               Text="{StaticResource Characters.ShelfClassificationHelp}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                     <ComboBox Margin="0,0,0,8"
                                               ItemsSource="{Binding CustomShelfItems}"
@@ -501,12 +501,12 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <Button Content="加入所选书架"
+                                        <Button Content="{StaticResource Characters.AddToShelf}"
                                                 Command="{Binding AddToShelfCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                         <Button Grid.Column="1"
                                                 Margin="8,0,0,0"
-                                                Content="从所选书架移除"
+                                                Content="{StaticResource Characters.RemoveFromShelf}"
                                                 Command="{Binding RemoveFromShelfCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                     </Grid>
@@ -518,16 +518,16 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="聊天记录"
+                                <TextBlock Text="{StaticResource Characters.ChatHistory}"
                                            Style="{StaticResource SectionTitleStyle}" />
                                 <TextBlock Grid.Column="1"
                                            VerticalAlignment="Center"
-                                           Text="{Binding CharacterConversationCount, StringFormat={}{0} 条}"
+                                           Text="{Binding CharacterConversationCount, StringFormat={StaticResource Characters.ConversationCountFormat}}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                             </Grid>
                             <TextBlock Margin="2,14"
                                        HorizontalAlignment="Center"
-                                       Text="这个角色还没有聊天记录。"
+                                       Text="{StaticResource Characters.NoConversations}"
                                        Foreground="{DynamicResource MutedTextBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
@@ -563,7 +563,7 @@
                                                 Style="{StaticResource SecondaryButtonStyle}">
                                             <Button.ContextMenu>
                                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                    <MenuItem Header="删除整个聊天记录"
+                                                    <MenuItem Header="{StaticResource Characters.DeleteConversation}"
                                                               Command="{Binding DeleteConversationCommand}" />
                                                 </ContextMenu>
                                             </Button.ContextMenu>
@@ -596,7 +596,7 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
-                            <Expander Margin="0,12,0,0" Header="导入报告">
+                            <Expander Margin="0,12,0,0" Header="{StaticResource Characters.ImportReport}">
                                 <TextBox Margin="0,8,0,0"
                                          MinHeight="120"
                                          IsReadOnly="True"
@@ -621,27 +621,27 @@
                         <StackPanel>
                             <StackPanel DataContext="{Binding Editor}">
                                 <TabControl MinHeight="430" Margin="0,0,0,12">
-                                    <TabItem Header="基础">
+                                    <TabItem Header="{StaticResource Characters.Tab.Basic}">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,12,8,0">
                                             <StackPanel>
-                                                <TextBlock Text="名称" />
+                                                <TextBlock Text="{StaticResource Characters.Name}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="描述" />
+                                                <TextBlock Text="{StaticResource Characters.Description}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="120"
                                                          AcceptsReturn="True"
                                                          VerticalContentAlignment="Top"
                                                          TextWrapping="Wrap"
                                                          Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="性格" />
+                                                <TextBlock Text="{StaticResource Characters.Personality}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="110"
                                                          AcceptsReturn="True"
                                                          VerticalContentAlignment="Top"
                                                          TextWrapping="Wrap"
                                                          Text="{Binding Personality, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="场景" />
+                                                <TextBlock Text="{StaticResource Characters.Scenario}" />
                                                 <TextBox Margin="0,5,0,8"
                                                          MinHeight="110"
                                                          AcceptsReturn="True"
@@ -651,23 +651,23 @@
                                             </StackPanel>
                                         </ScrollViewer>
                                     </TabItem>
-                                    <TabItem Header="对话">
+                                    <TabItem Header="{StaticResource Characters.Tab.Dialogue}">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,12,8,0">
                                             <StackPanel>
-                                                <TextBlock Text="首次发言" />
+                                                <TextBlock Text="{StaticResource Characters.FirstMessage}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="150"
                                                          AcceptsReturn="True"
                                                          VerticalContentAlignment="Top"
                                                          TextWrapping="Wrap"
                                                          Text="{Binding FirstMessage, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="对话示例（mes_example）" />
+                                                <TextBlock Text="{StaticResource Characters.MessageExample}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="130"
                                                          AcceptsReturn="True"
                                                          TextWrapping="Wrap"
                                                          Text="{Binding MessageExample, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="备选开场白" />
+                                                <TextBlock Text="{StaticResource Characters.AlternateGreetings}" />
                                                 <ItemsControl Margin="0,5,0,0"
                                                               ItemsSource="{Binding AlternateGreetings}">
                                                     <ItemsControl.ItemTemplate>
@@ -685,11 +685,11 @@
                                                                     <DockPanel Margin="0,0,0,7"
                                                                                LastChildFill="False">
                                                                         <TextBlock DockPanel.Dock="Left"
-                                                                                   Text="开场白"
+                                                                                   Text="{StaticResource Characters.Greeting}"
                                                                                    VerticalAlignment="Center"
                                                                                    FontWeight="SemiBold" />
                                                                         <Button DockPanel.Dock="Right"
-                                                                                Content="删除"
+                                                                                Content="{StaticResource Characters.Delete}"
                                                                                 Command="{Binding DataContext.RemoveAlternateGreetingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                                 CommandParameter="{Binding}"
                                                                                 Style="{StaticResource SecondaryButtonStyle}" />
@@ -706,28 +706,28 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                                 <Button Margin="0,0,0,12"
-                                                        Content="+ 追加开场白"
+                                                        Content="{StaticResource Characters.AppendGreeting}"
                                                         Command="{Binding AddAlternateGreetingCommand}"
                                                         Style="{StaticResource SecondaryButtonStyle}" />
                                             </StackPanel>
                                         </ScrollViewer>
                                     </TabItem>
-                                    <TabItem Header="提示词">
+                                    <TabItem Header="{StaticResource Characters.Tab.Prompts}">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,12,8,0">
                                             <StackPanel>
-                                                <TextBlock Text="系统提示词" />
+                                                <TextBlock Text="{StaticResource Characters.SystemPrompt}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="120"
                                                          AcceptsReturn="True"
                                                          TextWrapping="Wrap"
                                                          Text="{Binding SystemPrompt, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="历史后指令" />
+                                                <TextBlock Text="{StaticResource Characters.PostHistoryInstructions}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="110"
                                                          AcceptsReturn="True"
                                                          TextWrapping="Wrap"
                                                          Text="{Binding PostHistoryInstructions, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="深度提示词" />
+                                                <TextBlock Text="{StaticResource Characters.DepthPrompt}" />
                                                 <TextBox Margin="0,5,0,8"
                                                          MinHeight="100"
                                                          AcceptsReturn="True"
@@ -740,7 +740,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock VerticalAlignment="Center" Text="depth" />
+                                                    <TextBlock VerticalAlignment="Center" Text="{StaticResource Characters.DepthField}" />
                                                      <TextBox Grid.Column="1"
                                                               Margin="7,0,14,0"
                                                               Padding="5,0"
@@ -749,26 +749,26 @@
                                                               Text="{Binding DepthPromptDepth, UpdateSourceTrigger=PropertyChanged}" />
                                                     <TextBlock Grid.Column="2"
                                                                VerticalAlignment="Center"
-                                                               Text="role" />
+                                                               Text="{StaticResource Characters.RoleField}" />
                                                     <ComboBox Grid.Column="3"
                                                               Margin="7,0,0,0"
                                                               SelectedValuePath="Content"
                                                               SelectedValue="{Binding DepthPromptRole}">
-                                                        <ComboBoxItem Content="system" />
-                                                        <ComboBoxItem Content="user" />
-                                                        <ComboBoxItem Content="assistant" />
+                                                        <ComboBoxItem Content="{StaticResource Characters.Role.System}" />
+                                                        <ComboBoxItem Content="{StaticResource Characters.Role.User}" />
+                                                        <ComboBoxItem Content="{StaticResource Characters.Role.Assistant}" />
                                                     </ComboBox>
                                                 </Grid>
                                             </StackPanel>
                                         </ScrollViewer>
                                     </TabItem>
-                                    <TabItem Header="元数据">
+                                    <TabItem Header="{StaticResource Characters.Tab.Metadata}">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,12,8,0">
                                             <StackPanel>
-                                                <TextBlock Text="标签（逗号或换行分隔）" />
+                                                <TextBlock Text="{StaticResource Characters.Tags}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Text="作者说明" />
+                                                <TextBlock Text="{StaticResource Characters.CreatorNotes}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="90"
                                                          AcceptsReturn="True"
@@ -781,17 +781,17 @@
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
-                                                        <TextBlock Text="作者" />
+                                                        <TextBlock Text="{StaticResource Characters.Creator}" />
                                                         <TextBox Margin="0,5,0,0"
                                                                  Text="{Binding Creator, UpdateSourceTrigger=PropertyChanged}" />
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="角色版本" />
+                                                        <TextBlock Text="{StaticResource Characters.Version}" />
                                                         <TextBox Margin="0,5,0,0"
                                                                  Text="{Binding CharacterVersion, UpdateSourceTrigger=PropertyChanged}" />
                                                     </StackPanel>
                                                 </Grid>
-                                                <TextBlock Text="内嵌世界书（JSON 对象）" />
+                                                <TextBlock Text="{StaticResource Characters.EmbeddedWorldbook}" />
                                                 <TextBox Margin="0,5,0,12"
                                                          MinHeight="150"
                                                          AcceptsReturn="True"
@@ -801,7 +801,7 @@
                                                          HorizontalScrollBarVisibility="Auto"
                                                          VerticalScrollBarVisibility="Auto"
                                                          Text="{Binding CharacterBookJson, UpdateSourceTrigger=PropertyChanged}" />
-                                                <Button Content="编辑并校验原始 JSON"
+                                                <Button Content="{StaticResource Characters.EditRawJson}"
                                                         Command="{Binding DataContext.EditRawCardJsonCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         Style="{StaticResource SecondaryButtonStyle}" />
                                             </StackPanel>
@@ -835,22 +835,22 @@
                                     Padding="12,8"
                                     Command="{Binding ShowCharacterOverviewCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}"
-                                    ToolTip="返回当前角色主页">
+                                    ToolTip="{StaticResource Characters.BackHomeToolTip}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,7,0"
                                                Text="←"
                                                FontSize="16" />
-                                    <TextBlock Text="角色主页"
+                                    <TextBlock Text="{StaticResource Characters.Home}"
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                             <Button Grid.Column="2"
-                                    Content="导出角色卡"
+                                    Content="{StaticResource Characters.ExportCard}"
                                     Command="{Binding ExportCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Grid.Column="3"
                                     Margin="8,0,0,0"
-                                    Content="保存角色设定"
+                                    Content="{StaticResource Characters.SaveSettings}"
                                     Command="{Binding SaveCharacterCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                         </Grid>

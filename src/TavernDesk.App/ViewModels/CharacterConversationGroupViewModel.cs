@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using TavernDesk.App.Presentation;
 
+using TavernDesk.App.Localization;
+
 namespace TavernDesk.App.ViewModels;
 
 public sealed class CharacterConversationGroupViewModel : ViewModelBase
@@ -42,7 +44,9 @@ public sealed class CharacterConversationGroupViewModel : ViewModelBase
     public DateTimeOffset UpdatedAt => AllConversations[0].UpdatedAt;
     public string UpdatedText => ConversationTextFormatter.FriendlyTime(UpdatedAt);
     public string LatestPreview => AllConversations[0].PreviewText;
-    public string ConversationCountText => $"{AllConversations.Count} 次对话";
+    public string ConversationCountText => LanguageRuntime.Format(
+        "Conversation.CountFormat",
+        AllConversations.Count);
 
     public bool IsExpanded
     {

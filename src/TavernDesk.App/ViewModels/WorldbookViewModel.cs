@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -20,16 +21,16 @@ public sealed class WorldbookMountListItem
         Mount = mount;
         ScopeText = mount.ScopeKind switch
         {
-            WorldbookScopeKind.Character => $"角色：{(characterNames.TryGetValue(
-                mount.ScopeId,
-                out var characterName)
-                ? characterName
-                : mount.ScopeId)}",
-            WorldbookScopeKind.Campaign => $"跑团剧本：{(campaignNames.TryGetValue(
-                mount.ScopeId,
-                out var campaignName)
-                ? campaignName
-                : mount.ScopeId)}",
+            WorldbookScopeKind.Character => LanguageRuntime.Format(
+                "Worldbook.Scope.CharacterFormat",
+                characterNames.TryGetValue(mount.ScopeId, out var characterName)
+                    ? characterName
+                    : mount.ScopeId),
+            WorldbookScopeKind.Campaign => LanguageRuntime.Format(
+                "Worldbook.Scope.CampaignFormat",
+                campaignNames.TryGetValue(mount.ScopeId, out var campaignName)
+                    ? campaignName
+                    : mount.ScopeId),
             _ => mount.ScopeText
         };
     }
@@ -74,7 +75,7 @@ public sealed class WorldbookViewModel : ViewModelBase
     private WorldbookScopeOption _selectedScopeOption;
     private string _entryTitle = string.Empty;
     private string _status =
-        "支持酒馆独立 world_info JSON，以及 PNG/JSON/CHARX 角色卡内置世界书；导入不会修改原文件。";
+        LanguageRuntime.GetString("Worldbook.Status.Intro");
 
     public WorldbookViewModel(
         IWorldbookService service,
@@ -90,9 +91,9 @@ public sealed class WorldbookViewModel : ViewModelBase
         _interaction = interaction;
         ScopeOptions =
         [
-            new(WorldbookScopeKind.Global, "挂载到全局"),
-            new(WorldbookScopeKind.Character, "绑定到角色"),
-            new(WorldbookScopeKind.Campaign, "绑定到跑团剧本")
+            new(WorldbookScopeKind.Global, LanguageRuntime.GetString("Worldbook.Scope.Global")),
+            new(WorldbookScopeKind.Character, LanguageRuntime.GetString("Worldbook.Scope.Character")),
+            new(WorldbookScopeKind.Campaign, LanguageRuntime.GetString("Worldbook.Scope.Campaign"))
         ];
         _selectedScopeOption = ScopeOptions[0];
 
@@ -289,8 +290,8 @@ public sealed class WorldbookViewModel : ViewModelBase
         SelectedBook = Books.FirstOrDefault(book => book.Id == preferredBookId)
                        ?? Books.FirstOrDefault();
         Status = Books.Count == 0
-            ? "尚未导入世界书。先导入独立 JSON，或选择包含 character_book 的角色卡。"
-            : $"已加载 {Books.Count} 本世界书；关键词触发始终独立于语义索引。";
+            ? LanguageRuntime.GetString("Worldbook.Empty")
+            : LanguageRuntime.Format("Worldbook.LoadedFormat", Books.Count);
     }
 
     private async Task LoadSelectedBookAsync(string worldbookId)
@@ -367,7 +368,7 @@ public sealed class WorldbookViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            Status = $"读取世界书条目失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.EntryReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -431,12 +432,15 @@ public sealed class WorldbookViewModel : ViewModelBase
             await _service.ReplaceCharacterMountsAsync(book.Id, desiredMounts);
             await LoadSelectedBookAsync(book.Id);
             Status = desiredMounts.Count == 0
-                ? $"已清除“{book.Name}”的角色绑定；全局及其他范围挂载未改变。"
-                : $"已将“{book.Name}”绑定到 {desiredMounts.Count} 个角色；全局及其他范围挂载未改变。";
+                ? LanguageRuntime.Format("Worldbook.CharacterBindingsClearedFormat", book.Name)
+                : LanguageRuntime.Format(
+                    "Worldbook.CharacterBindingsSavedFormat",
+                    book.Name,
+                    desiredMounts.Count);
         }
         catch (Exception exception)
         {
-            Status = $"保存角色绑定失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.CharacterBindingsFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -467,12 +471,15 @@ public sealed class WorldbookViewModel : ViewModelBase
                 desiredMounts);
             await LoadSelectedBookAsync(book.Id);
             Status = desiredMounts.Length == 0
-                ? $"已清除“{book.Name}”的跑团剧本绑定。"
-                : $"已将“{book.Name}”绑定到 {desiredMounts.Length} 个跑团剧本。";
+                ? LanguageRuntime.Format("Worldbook.CampaignBindingsClearedFormat", book.Name)
+                : LanguageRuntime.Format(
+                    "Worldbook.CampaignBindingsSavedFormat",
+                    book.Name,
+                    desiredMounts.Length);
         }
         catch (Exception exception)
         {
-            Status = $"保存跑团剧本绑定失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.CampaignBindingsFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -487,7 +494,7 @@ public sealed class WorldbookViewModel : ViewModelBase
         var title = EntryTitle.Trim();
         if (title.Length == 0)
         {
-            Status = "词条名不能为空。";
+            Status = LanguageRuntime.GetString("Worldbook.EntryNameRequired");
             return;
         }
 
@@ -501,11 +508,11 @@ public sealed class WorldbookViewModel : ViewModelBase
             }
 
             SelectedEntry = Entries.FirstOrDefault(item => item.Id == entry.Id);
-            Status = $"已保存词条名“{title}”；原始来源文件未修改。若要让新标题进入 FTS/向量索引，请点击“重建 Embedding 索引”。";
+            Status = LanguageRuntime.Format("Worldbook.EntryNameSavedFormat", title);
         }
         catch (Exception exception)
         {
-            Status = $"保存词条名失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.EntryNameSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -519,13 +526,13 @@ public sealed class WorldbookViewModel : ViewModelBase
 
         if (IsCharacterScope && SelectedCharacter is null)
         {
-            Status = "请选择要绑定的角色。";
+            Status = LanguageRuntime.GetString("Worldbook.SelectCharacter");
             return;
         }
 
         if (IsCampaignScope && SelectedCampaignScenario is null)
         {
-            Status = "请选择要绑定的跑团剧本。";
+            Status = LanguageRuntime.GetString("Worldbook.SelectCampaign");
             return;
         }
 
@@ -543,12 +550,19 @@ public sealed class WorldbookViewModel : ViewModelBase
             await LoadAsync();
             SelectedBook = Books.FirstOrDefault(book => book.Id == result.Worldbook.Id);
             Status = result.Warnings.Count == 0
-                ? $"已导入“{result.Worldbook.Name}”，共 {result.Entries.Count} 个条目；原文件未修改。"
-                : $"已导入“{result.Worldbook.Name}”，共 {result.Entries.Count} 个条目；有 {result.Warnings.Count} 条兼容性提示。";
+                ? LanguageRuntime.Format(
+                    "Worldbook.ImportedFormat",
+                    result.Worldbook.Name,
+                    result.Entries.Count)
+                : LanguageRuntime.Format(
+                    "Worldbook.ImportedWithWarningsFormat",
+                    result.Worldbook.Name,
+                    result.Entries.Count,
+                    result.Warnings.Count);
         }
         catch (Exception exception)
         {
-            Status = $"导入世界书失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.ImportFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -564,11 +578,11 @@ public sealed class WorldbookViewModel : ViewModelBase
         {
             await _service.DeleteAsync(book.Id);
             await LoadAsync();
-            Status = $"已删除世界书“{book.Name}”；原始来源文件未修改。";
+            Status = LanguageRuntime.Format("Worldbook.DeletedFormat", book.Name);
         }
         catch (Exception exception)
         {
-            Status = $"删除世界书失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.DeleteFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -584,11 +598,14 @@ public sealed class WorldbookViewModel : ViewModelBase
             var result = await _service.RebuildIndexAsync(book.Id);
             await LoadAsync();
             SelectedBook = Books.FirstOrDefault(item => item.Id == book.Id);
-            Status = string.Join(" ", result.Diagnostics);
+            Status = LanguageRuntime.Format(
+                "Worldbook.IndexRebuiltFormat",
+                result.ChunkCount,
+                result.EmbeddingDimension);
         }
         catch (Exception exception)
         {
-            Status = $"重建 Embedding 索引失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Worldbook.RebuildFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 

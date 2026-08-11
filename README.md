@@ -6,14 +6,15 @@ TavernDesk 是面向 Windows 10/11 x64 的本地优先角色聊天与独立跑�
 
 ## 当前状态
 
-状态日期：2026-08-10。
+状态日期：2026-08-11。
 
 - 应用闭环已完成：角色卡、单聊、群聊、长期记忆、世界书/RAG、Provider 管理和独立跑团均可在本地使用。
 - 当前数据库 schema 为 v19；迁移在事务中执行，遇到未来版本数据库会拒绝降级打开。
 - 主壳、仪表盘和聊天主工作区已采用 Appica 风格。聊天页是全高四栏结构：主导航、会话列表、对话正文和上下文检查器。
 - 设置页支持“默认浅色 / 深炭黑”主题、80%–150% 应用内缩放，以及全局字体与 10–32 字号设置；主题与缩放均可即时预览并显式保存。
+- 界面语言支持简体中文、台湾繁体中文、English 和日本語。新建个人数据时会先显示一次语言选择；已有数据库不会被强制弹窗，缺少语言设置时保持简体中文。
 - 应用缩放或窗口宽度不足以安全显示四栏时，聊天会自动收起右侧上下文栏；只有自动收起的右栏会在空间恢复后自动展开，手动折叠状态保持不变。
-- 根目录启动器指向 `app/TavernDesk.App.exe`；当前 `app/` 已同步本轮 UI 与业务程序集。
+- 根目录启动器指向 `app/TavernDesk.App.exe`。当前 `app/` 已同步本轮四语源码并通过根启动器探针，可直接从根目录 EXE 启动当前交付版本。
 - 当前公开解决方案包含 App、Core、Infrastructure 和 AgentHost 四个项目，没有测试项目；因此当前分支的可信验证是 Release 构建、存储 smoke、启动探针和真实 WPF 界面检查，而不是空跑 `dotnet test`。
 
 ## 快速开始
@@ -173,6 +174,15 @@ Appica 资源只由主壳、仪表盘和聊天主工作区显式引用。次级�
 
 在“设置 → 界面”选择主题后会立即预览；点击“保存界面设置”后写入本地 `ui.theme`，下次启动继续使用。深炭黑主题只替换现有语义色令牌和 Windows 主题模式，不改变聊天四栏、次级窗口、弹窗、命令或数据流程。
 
+### 界面语言
+
+- 可选项使用各自语言显示为 `简体中文`、`繁體中文`、`English`、`日本語`。
+- 对全新数据根，数据库首次创建后会显示一次强制语言选择，选择完成后才创建主窗口。若初始化期间异常退出，待选标记会保留到下次启动。
+- 对已有数据库，若没有 `ui.language` 且没有待选标记，则静默使用简体中文，不打断原用户。
+- 设置 → 界面可保存下一次启动使用的语言；为避免运行中重建窗口和 ViewModel，普通设置变更不会即时切换，重启 TavernDesk 后生效。
+- UI 固定文字位于 `src/TavernDesk.App/Localization/Strings.*.xaml`。模型 Prompt、角色卡内容、聊天正文、协议字面量和用户资料不会因界面语言而翻译或改写。
+- 高级页面若收到只以简体中文提供的内部诊断，会在其他语言下显示本地化摘要并把原文写入诊断跟踪，避免把简体中文直接混入界面。
+
 ## 数据、安全与兼容性
 
 - SQLite、角色卡、剧本卡、导出和密钥均留在本机；应用不提供云同步。
@@ -188,6 +198,7 @@ Appica 资源只由主壳、仪表盘和聊天主工作区显式引用。次级�
 ```text
 src/
   TavernDesk.App             WPF 页面、窗口、ViewModel、主题和 UI 状态
+    Localization/            四语资源、语言归一化和运行时展示边界
   TavernDesk.Core            领域模型、稳定接口与上下文/跑团契约
   TavernDesk.Infrastructure SQLite、Provider、角色卡、世界书、记忆和本地服务
   TavernDesk.AgentHost       不连接 API 的本地存储 smoke 入口
@@ -200,6 +211,8 @@ docs/
   codex_worklog.md           按时间追加的实施与验证日志
 tools/
   TavernDesk.RootLauncher.cs 根目录薄启动器源码
+scripts/
+  Test-Localization.ps1      语言键、占位符、硬编码和 XAML 资源检查
 app/                          win-x64 自包含运行快照
 ```
 
@@ -217,6 +230,7 @@ app/                          win-x64 自包含运行快照
 
 ```powershell
 dotnet restore TavernDesk.sln
+& .\scripts\Test-Localization.ps1
 dotnet build TavernDesk.sln -c Release --no-restore
 dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj -c Release --no-build
 ```
@@ -259,13 +273,16 @@ $tavernProbe.ExitCode
 
 本分支最近完成：
 
-- Release 解决方案构建：0 个警告、0 个错误。
-- `win-x64` 自包含 `app/` 发布完成，根目录启动器目标已同步。
+- 四种语言各 1400 个资源键一致；占位符、空值、未完成标记、App 层简体硬编码和 1553 个直接 XAML 资源声明/引用检查通过。
+- Debug 与 Release 解决方案构建：0 个警告、0 个错误。
 - AgentHost 隔离 `--storage-smoke`：11 项 PASS，包含旧 Provider 适配器契约迁移，API 请求数为 0。
-- 修改的 XAML 通过 XML 解析，`git diff --check` 通过。
+- 全新隔离数据根通过首次语言选择进入 English 主界面；自动导航到 Characters 后只有一个 TavernDesk 顶层窗口，无异常弹窗，进程正常退出。
+- 最终 Release 在同一 English 隔离数据根进入 InputIdle，取得非零主窗口句柄并以退出码 0 正常关闭。
+- 用户从实际 EXE 手动检查 English 界面，未发现问题；此前的下拉框英文裁切、透明首次语言窗和 Characters 静态资源连续弹窗均已定点修复。
+- 修改的 XAML 资源图检查和 `git diff --check` 通过。
 - Windows 150% DPI 下真实启动 WPF，检查 Appica 四栏聊天、用户右/角色左消息、Persona 编辑、搜索框、`depth` 输入和发送模式下拉框；未出现运行时绑定对话框、裁切或溢出。
 - 应用内缩放布局矩阵确认默认主窗口 150%、最小主窗口 110% 和独立聊天 150% 会自动收起右栏，收起后剩余两栏均满足最小宽度；本轮未替代用户进行新的肉眼界面验收。
-- 实际资料只用于只读界面检查；未保存角色、Persona、聊天或 Provider，未读取 API Key，也未发送真实模型请求。
+- 本轮只使用隔离资料目录；未读取 API Key，也未发送真实模型请求。`app/` 已同步本轮多语言源码，三个业务 DLL 与 RID Release 输出的 SHA-256 一致，无 PDB，根启动器 `--probe` 退出码为 0。
 
 仍需真实使用验证：
 
@@ -275,6 +292,7 @@ $tavernProbe.ExitCode
 - 真实多模型跑团短局与中等长度跑团，包括上下文预算、途中换模型、秘密同投和失败重试。
 - 大型历史数据库迁移、长列表性能、键盘无障碍和强制结束进程后的流式恢复体验。
 - 应用内 110%–150% 缩放下自动收起/恢复右侧上下文栏的最终视觉与点击体验。
+- 台湾繁中和日语的完整页面级视觉、长文本换行与术语自然度仍需人工短验收；静态资源与构建检查不能替代母语使用反馈。
 
 ## 稳定边界与非目标
 

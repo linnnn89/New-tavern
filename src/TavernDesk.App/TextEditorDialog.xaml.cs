@@ -1,4 +1,5 @@
 using System.Windows;
+using TavernDesk.App.Localization;
 
 namespace TavernDesk.App;
 
@@ -22,8 +23,8 @@ public partial class TextEditorDialog : Window
         {
             MessageBox.Show(
                 this,
-                "正文不能为空。",
-                "无法保存",
+                LanguageRuntime.GetString("TextEditor.BodyRequired"),
+                LanguageRuntime.GetString("Common.CannotSave"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;

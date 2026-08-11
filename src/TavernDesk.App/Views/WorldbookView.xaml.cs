@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using TavernDesk.App.Localization;
 using TavernDesk.App.ViewModels;
 
 namespace TavernDesk.App.Views;
@@ -24,8 +25,8 @@ public partial class WorldbookView : UserControl
         {
             MessageBox.Show(
                 Window.GetWindow(this),
-                "请先选择一本世界书。",
-                "管理世界书挂载",
+                LanguageRuntime.GetString("Worldbook.Mount.SelectFirst"),
+                LanguageRuntime.GetString("Worldbook.Mount.Title"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;

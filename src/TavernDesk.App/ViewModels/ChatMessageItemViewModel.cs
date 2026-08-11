@@ -1,5 +1,6 @@
 using System.Windows.Threading;
 using System.Text.RegularExpressions;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Models;
 
@@ -56,7 +57,9 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
         _openingTools = openingTools;
         _senderLabel = senderLabel;
         _personaMacroValue = NormalizeMacroValue(personaName, "USER");
-        _characterMacroValue = NormalizeMacroValue(characterName, "角色");
+        _characterMacroValue = NormalizeMacroValue(
+            characterName,
+            LanguageRuntime.GetString("ChatMessage.Sender.Character"));
         AvatarPath = avatarPath ?? string.Empty;
         OpenToolsCommand = new RelayCommand(OpenTools);
         EditCommand = new AsyncRelayCommand(() => _edit(this));
@@ -96,12 +99,12 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
     public string SenderLabel => _senderLabel ?? SenderKind switch
     {
         MessageSenderKind.User => "USER",
-        MessageSenderKind.Character => "角色",
+        MessageSenderKind.Character => LanguageRuntime.GetString("ChatMessage.Sender.Character"),
         MessageSenderKind.System => "SYSTEM",
-        _ => "工具"
+        _ => LanguageRuntime.GetString("ChatMessage.Sender.Tool")
     };
     public string CandidateLabel => SenderKind == MessageSenderKind.Character
-        ? $"候选 {Message.ActiveCandidateIndex + 1}"
+        ? LanguageRuntime.Format("ChatMessage.CandidateFormat", Message.ActiveCandidateIndex + 1)
         : string.Empty;
     public bool HasMultipleCandidates =>
         SenderKind == MessageSenderKind.Character && _candidates.Count > 1;
@@ -166,7 +169,9 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
     public void UpdateTavernNames(string? personaName, string? characterName)
     {
         var normalizedPersona = NormalizeMacroValue(personaName, "USER");
-        var normalizedCharacter = NormalizeMacroValue(characterName, "角色");
+        var normalizedCharacter = NormalizeMacroValue(
+            characterName,
+            LanguageRuntime.GetString("ChatMessage.Sender.Character"));
         if (string.Equals(
                 _personaMacroValue,
                 normalizedPersona,

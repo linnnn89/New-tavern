@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -23,7 +24,7 @@ public sealed class GroupChatViewModel : ViewModelBase
     private string _groupSystemPrompt = GroupPromptDefaults.SystemPrompt;
     private GroupMemberItemViewModel? _selectedNextSpeaker;
     private GroupMemberItemViewModel? _selectedMergeMember;
-    private string _status = "新建或选择群聊后配置成员与接力模式。";
+    private string _status = LanguageRuntime.GetString("GroupChat.ConfigureHint");
     private GroupChatState? _state;
     private long _loadVersion;
 
@@ -45,10 +46,10 @@ public sealed class GroupChatViewModel : ViewModelBase
         _mergeMemory = mergeMemory;
         RelayModes =
         [
-            new(GroupRelayMode.Manual, "手动指定"),
-            new(GroupRelayMode.FixedOrder, "固定顺序"),
-            new(GroupRelayMode.MentionDirected, "@ 提及接力"),
-            new(GroupRelayMode.Random, "随机接力")
+            new(GroupRelayMode.Manual, LanguageRuntime.GetString("GroupChat.Relay.Manual")),
+            new(GroupRelayMode.FixedOrder, LanguageRuntime.GetString("GroupChat.Relay.FixedOrder")),
+            new(GroupRelayMode.MentionDirected, LanguageRuntime.GetString("GroupChat.Relay.MentionDirected")),
+            new(GroupRelayMode.Random, LanguageRuntime.GetString("GroupChat.Relay.Random"))
         ];
 
         CreateGroupCommand = new AsyncRelayCommand(CreateGroupAsync);
@@ -131,14 +132,22 @@ public sealed class GroupChatViewModel : ViewModelBase
         private set => SetProperty(ref _status, value);
     }
 
-    public string PauseButtonText => _state?.IsPaused == true ? "恢复接力" : "暂停接力";
+    public string PauseButtonText => _state?.IsPaused == true
+        ? LanguageRuntime.GetString("GroupChat.Resume")
+        : LanguageRuntime.GetString("GroupChat.Pause");
     public string RelayStateText => _state is null
-        ? "未载入接力状态。"
+        ? LanguageRuntime.GetString("GroupChat.StateNotLoaded")
         : _state.IsPaused
-            ? $"已暂停：{_state.PauseReason}"
+            ? LanguageRuntime.Format(
+                "GroupChat.PausedFormat",
+                LanguageRuntime.GroupRelayReason(_state.PauseReason))
             : _state.NextSpeakerId.Length > 0
-                ? $"下一位：{MemberNames.GetValueOrDefault(_state.NextSpeakerId, "未知角色")}"
-                : "接力就绪。";
+                ? LanguageRuntime.Format(
+                    "GroupChat.NextSpeakerFormat",
+                    MemberNames.GetValueOrDefault(
+                        _state.NextSpeakerId,
+                        LanguageRuntime.GetString("GroupChat.UnknownCharacter")))
+                : LanguageRuntime.GetString("GroupChat.Ready");
 
     public IReadOnlyDictionary<string, string> MemberNames =>
         Members.ToDictionary(
@@ -159,7 +168,8 @@ public sealed class GroupChatViewModel : ViewModelBase
     {
         if (_conversationId is null)
         {
-            throw new InvalidOperationException("当前不是群聊。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("GroupChat.NotGroup"));
         }
 
         return new GroupChatSettings
@@ -212,7 +222,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         await _groups.SaveStateAsync(_state, cancellationToken);
         OnPropertyChanged(nameof(PauseButtonText));
         OnPropertyChanged(nameof(RelayStateText));
-        Status = reason;
+        Status = LanguageRuntime.GroupRelayReason(reason);
     }
 
     public void ApplyState(GroupChatState state)
@@ -225,7 +235,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         _state = state;
         OnPropertyChanged(nameof(PauseButtonText));
         OnPropertyChanged(nameof(RelayStateText));
-        Status = state.PauseReason;
+        Status = LanguageRuntime.GroupRelayReason(state.PauseReason);
     }
 
     public async Task LoadAsync(
@@ -275,7 +285,7 @@ public sealed class GroupChatViewModel : ViewModelBase
                                   member.Character.Id == _state.NextSpeakerId)
                               ?? Members.FirstOrDefault(member => member.IsEnabled);
         SelectedMergeMember = Members.FirstOrDefault(member => member.IsEnabled);
-        Status = $"已载入群聊：{Members.Count} 个成员。";
+        Status = LanguageRuntime.Format("GroupChat.LoadedFormat", Members.Count);
         RaiseStates();
     }
 
@@ -284,7 +294,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         var characters = await _characters.ListAsync();
         if (characters.Count < 2)
         {
-            Status = "至少导入两个角色后才能新建群聊。";
+            Status = LanguageRuntime.GetString("GroupChat.NeedTwoCharacters");
             return;
         }
 
@@ -312,7 +322,7 @@ public sealed class GroupChatViewModel : ViewModelBase
             })
             .ToArray();
         await _groups.CreateAsync(conversation, settings, members);
-        Status = $"已创建群聊“{conversation.Title}”。";
+        Status = LanguageRuntime.Format("GroupChat.CreatedFormat", conversation.Title);
         await _openGroup(conversation.Id);
     }
 
@@ -328,11 +338,11 @@ public sealed class GroupChatViewModel : ViewModelBase
             var settings = SettingsSnapshot();
             await _groups.SaveSettingsAsync(settings);
             await _groups.ReplaceMembersAsync(_conversationId, SnapshotMembers());
-            Status = "已保存群聊接力、成员启用状态和可编辑提示词。";
+            Status = LanguageRuntime.GetString("GroupChat.Saved");
         }
         catch (Exception exception)
         {
-            Status = $"保存群聊设置失败：{exception.Message}";
+            Status = LanguageRuntime.Format("GroupChat.SaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -340,7 +350,7 @@ public sealed class GroupChatViewModel : ViewModelBase
     {
         if (_state?.IsPaused == true)
         {
-            Status = "群聊当前已暂停；请先恢复接力。";
+            Status = LanguageRuntime.GetString("GroupChat.PausedNotice");
             return;
         }
 
@@ -360,7 +370,9 @@ public sealed class GroupChatViewModel : ViewModelBase
             _state?.NextSpeakerId ?? string.Empty,
             _state?.AutomaticTurns ?? 0,
             isPaused,
-            isPaused ? "用户手动暂停自动接力。" : "用户已恢复群聊接力。");
+            isPaused
+                ? LanguageRuntime.GetString("GroupChat.PauseReasonManual")
+                : LanguageRuntime.GetString("GroupChat.ResumeReason"));
     }
 
     private async Task MergeMemoryAsync()
@@ -376,7 +388,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            Status = $"生成角色记忆合并草稿失败：{exception.Message}";
+            Status = LanguageRuntime.Format("GroupChat.MergeDraftFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -385,7 +397,8 @@ public sealed class GroupChatViewModel : ViewModelBase
         if (!int.TryParse(MaximumAutomaticTurns, out var maximum)
             || maximum is < 1 or > 100)
         {
-            throw new InvalidOperationException("自动接力上限必须是 1–100 之间的整数。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("GroupChat.AutoRelayLimitRange"));
         }
 
         return maximum;
@@ -398,7 +411,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         SelectedNextSpeaker = null;
         SelectedMergeMember = null;
         _state = null;
-        Status = "当前是单角色会话；群聊设置未启用。";
+        Status = LanguageRuntime.GetString("GroupChat.SingleConversation");
         RaiseStates();
     }
 

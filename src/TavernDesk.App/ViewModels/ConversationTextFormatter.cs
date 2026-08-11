@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using TavernDesk.App.Localization;
 
 namespace TavernDesk.App.ViewModels;
 
@@ -21,7 +22,9 @@ internal static partial class ConversationTextFormatter
     public static string NormalizePreview(string content)
     {
         var normalized = WhitespacePattern().Replace(content ?? string.Empty, " ").Trim();
-        return normalized.Length == 0 ? "新对话" : normalized;
+        return normalized.Length == 0
+            ? LanguageRuntime.GetString("Conversation.New")
+            : normalized;
     }
 
     public static string FriendlyTime(DateTimeOffset value)
@@ -35,7 +38,7 @@ internal static partial class ConversationTextFormatter
 
         if (local.Date == now.Date.AddDays(-1))
         {
-            return "昨天";
+            return LanguageRuntime.GetString("Conversation.Yesterday");
         }
 
         return local.Year == now.Year

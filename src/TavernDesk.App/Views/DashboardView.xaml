@@ -21,7 +21,7 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="TAVERNDESK · 本地工作区"
+                        <TextBlock Text="{StaticResource Dashboard.Eyebrow}"
                                    Style="{StaticResource AppicaDashboardHeroEyebrowStyle}" />
                         <TextBlock Text="{Binding Title}"
                                    Style="{StaticResource AppicaDashboardHeroTitleStyle}" />
@@ -40,7 +40,7 @@
                                              Margin="0,0,7,0"
                                              VerticalAlignment="Center"
                                              Fill="{DynamicResource AppicaShellSuccessBrush}" />
-                                    <TextBlock Text="本地数据已就绪"
+                                    <TextBlock Text="{StaticResource Dashboard.LocalDataReady}"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppicaShellMutedBrush}" />
                                 </StackPanel>
@@ -70,12 +70,12 @@
                             <StackPanel Grid.Row="1"
                                         Margin="0,16,0,0"
                                         VerticalAlignment="Bottom">
-                                <TextBlock Text="本地优先"
+                                <TextBlock Text="{StaticResource Dashboard.LocalFirst}"
                                            FontSize="17"
                                            FontWeight="SemiBold"
                                            Foreground="White" />
                                 <TextBlock Margin="0,5,0,0"
-                                           Text="角色、会话与模型配置都保留在当前设备。"
+                                           Text="{StaticResource Dashboard.LocalFirstDescription}"
                                            FontSize="12"
                                            LineHeight="18"
                                            TextWrapping="Wrap"
@@ -115,7 +115,7 @@
                             </Border>
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="角色"
+                                       Text="{StaticResource Dashboard.Characters}"
                                        Style="{StaticResource AppicaDashboardStatLabelStyle}" />
                         </Grid>
                         <Grid Grid.Row="1"
@@ -129,7 +129,7 @@
                             <TextBlock Grid.Column="1"
                                        Margin="12,0,0,3"
                                        VerticalAlignment="Bottom"
-                                       Text="本地角色书架"
+                                       Text="{StaticResource Dashboard.CharacterShelf}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
                         </Grid>
@@ -162,7 +162,7 @@
                             </Border>
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="会话"
+                                       Text="{StaticResource Dashboard.Conversations}"
                                        Style="{StaticResource AppicaDashboardStatLabelStyle}" />
                         </Grid>
                         <Grid Grid.Row="1"
@@ -176,7 +176,7 @@
                             <TextBlock Grid.Column="1"
                                        Margin="12,0,0,3"
                                        VerticalAlignment="Bottom"
-                                       Text="全部保存在本地"
+                                       Text="{StaticResource Dashboard.ConversationsLocal}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
                         </Grid>
@@ -209,7 +209,7 @@
                             </Border>
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       Text="接入商"
+                                       Text="{StaticResource Dashboard.Providers}"
                                        Style="{StaticResource AppicaDashboardStatLabelStyle}" />
                         </Grid>
                         <Grid Grid.Row="1"
@@ -223,7 +223,7 @@
                             <TextBlock Grid.Column="1"
                                        Margin="12,0,0,3"
                                        VerticalAlignment="Bottom"
-                                       Text="保存配置不会联网"
+                                       Text="{StaticResource Dashboard.ProviderSaveOffline}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
                         </Grid>
@@ -241,12 +241,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="最近会话"
+                            <TextBlock Text="{StaticResource Dashboard.RecentConversations}"
                                        FontSize="17"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AppicaShellTextBrush}" />
                             <TextBlock Margin="0,3,0,0"
-                                       Text="从上次停下的位置继续"
+                                       Text="{StaticResource Dashboard.ResumeConversation}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
                         </StackPanel>
@@ -257,7 +257,7 @@
                                      Height="6"
                                      Margin="0,0,7,0"
                                      Fill="{DynamicResource AppicaShellSuccessBrush}" />
-                            <TextBlock Text="仅展示本地记录"
+                            <TextBlock Text="{StaticResource Dashboard.LocalRecordsOnly}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AppicaShellMutedBrush}" />
                         </StackPanel>

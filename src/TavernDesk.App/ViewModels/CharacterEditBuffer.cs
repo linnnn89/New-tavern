@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Models;
 
@@ -102,7 +103,9 @@ public sealed class CharacterEditBuffer : ViewModelBase
         get => FormatJson(BuildAlternateGreetingsArray());
         set
         {
-            var array = ParseStringArray(value, "备选开场白");
+            var array = ParseStringArray(
+                value,
+                LanguageRuntime.GetString("Validation.Character.AlternateGreetings"));
             ReplaceAlternateGreetings(array);
             OnPropertyChanged();
             if (!_loading)
@@ -203,7 +206,8 @@ public sealed class CharacterEditBuffer : ViewModelBase
     {
         if (!string.Equals(character.Id, CharacterId, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("编辑缓冲区与目标角色不匹配。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Validation.Character.Mismatch"));
         }
 
         var root = ParseRoot(RawCardJson);
@@ -212,20 +216,21 @@ public sealed class CharacterEditBuffer : ViewModelBase
         var alternateGreetings = BuildAlternateGreetingsArray();
         var characterBook = ParseObject(
             CharacterBookJson,
-            "角色世界书");
+            LanguageRuntime.GetString("Validation.Character.CharacterBook"));
         string? depthPromptRole = null;
         if (!string.IsNullOrWhiteSpace(DepthPrompt))
         {
             if (DepthPromptDepth is < 1 or > 100)
             {
-                throw new InvalidDataException("深度提示词 depth 必须在 1–100 之间。");
+                throw new InvalidDataException(
+                    LanguageRuntime.GetString("Validation.Character.DepthRange"));
             }
 
             var role = DepthPromptRole.Trim().ToLowerInvariant();
             if (role is not ("system" or "user" or "assistant"))
             {
                 throw new InvalidDataException(
-                    "深度提示词 role 只能是 system、user 或 assistant。");
+                    LanguageRuntime.GetString("Validation.Character.DepthRole"));
             }
 
             depthPromptRole = role;
@@ -407,7 +412,8 @@ public sealed class CharacterEditBuffer : ViewModelBase
                     return text;
                 }
 
-                throw new InvalidDataException("备选开场白数组只能包含字符串。");
+                throw new InvalidDataException(
+                    LanguageRuntime.GetString("Validation.Character.StringArrayOnly"));
             })
             .ToArray();
 
@@ -453,14 +459,17 @@ public sealed class CharacterEditBuffer : ViewModelBase
                     CommentHandling = JsonCommentHandling.Skip,
                     MaxDepth = 256
                 }) as JsonObject
-                ?? throw new InvalidDataException("角色卡 JSON 根节点必须是对象。");
+                ?? throw new InvalidDataException(
+                    LanguageRuntime.GetString("Validation.Character.RootObject"));
             _ = GetDataObject(root);
             return root;
         }
         catch (JsonException exception)
         {
             throw new InvalidDataException(
-                $"角色卡 JSON 无法解析：{exception.Message}",
+                LanguageRuntime.Format(
+                    "Validation.Character.ParseFailedFormat",
+                    LanguageRuntime.ErrorMessage(exception)),
                 exception);
         }
     }
@@ -472,7 +481,9 @@ public sealed class CharacterEditBuffer : ViewModelBase
         {
             return root["data"] as JsonObject
                    ?? throw new InvalidDataException(
-                       $"{spec} 角色卡必须包含 data 对象。");
+                       LanguageRuntime.Format(
+                           "Validation.Character.DataObjectRequiredFormat",
+                           spec));
         }
 
         return root["data"] as JsonObject ?? root;
@@ -485,12 +496,14 @@ public sealed class CharacterEditBuffer : ViewModelBase
             var array = JsonNode.Parse(
                 string.IsNullOrWhiteSpace(json) ? "[]" : json)
                 as JsonArray
-                ?? throw new InvalidDataException($"{label}必须是 JSON 数组。");
+                ?? throw new InvalidDataException(
+                    LanguageRuntime.Format("Validation.Json.ArrayRequiredFormat", label));
             if (array.Any(node =>
                     node is not JsonValue value
                     || !value.TryGetValue<string>(out _)))
             {
-                throw new InvalidDataException($"{label}数组只能包含字符串。");
+                throw new InvalidDataException(
+                    LanguageRuntime.Format("Validation.Json.StringArrayOnlyFormat", label));
             }
 
             return (JsonArray)array.DeepClone();
@@ -498,7 +511,10 @@ public sealed class CharacterEditBuffer : ViewModelBase
         catch (JsonException exception)
         {
             throw new InvalidDataException(
-                $"{label} JSON 无法解析：{exception.Message}",
+                LanguageRuntime.Format(
+                    "Validation.Json.ParseFailedFormat",
+                    label,
+                    LanguageRuntime.ErrorMessage(exception)),
                 exception);
         }
     }
@@ -509,12 +525,16 @@ public sealed class CharacterEditBuffer : ViewModelBase
         {
             return JsonNode.Parse(string.IsNullOrWhiteSpace(json) ? "{}" : json)
                        as JsonObject
-                   ?? throw new InvalidDataException($"{label}必须是 JSON 对象。");
+                   ?? throw new InvalidDataException(
+                       LanguageRuntime.Format("Validation.Json.ObjectRequiredFormat", label));
         }
         catch (JsonException exception)
         {
             throw new InvalidDataException(
-                $"{label} JSON 无法解析：{exception.Message}",
+                LanguageRuntime.Format(
+                    "Validation.Json.ParseFailedFormat",
+                    label,
+                    LanguageRuntime.ErrorMessage(exception)),
                 exception);
         }
     }

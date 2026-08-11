@@ -11,34 +11,34 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel>
-                    <TextBlock Text="跑团" Style="{StaticResource PageTitleStyle}" />
-                    <TextBlock Text="剧本是 GM 的结构化主持模板；每一局保存独立历史，可继续或用左侧剧本开新局。"
+                    <TextBlock Text="{StaticResource Campaigns.Title}" Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="{StaticResource Campaigns.Description}"
                                Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
                 <StackPanel Grid.Row="1" Margin="0,18,0,16" Orientation="Horizontal">
-                    <Button Content="新建剧本"
+                    <Button Content="{StaticResource Campaigns.NewScenario}"
                             Command="{Binding NewScenarioCommand}"
-                            ToolTip="按问卷式结构填写并保存一个新的跑团剧本。"
+                            ToolTip="{StaticResource Campaigns.NewScenarioToolTip}"
                             Style="{StaticResource PrimaryButtonStyle}" />
-                    <Button Content="导入剧本卡"
+                    <Button Content="{StaticResource Campaigns.ImportScenario}"
                             Margin="8,0,0,0"
                             Command="{Binding ImportScenarioCommand}"
-                            ToolTip="从本地选择一张剧本卡并加入剧本库。"
+                            ToolTip="{StaticResource Campaigns.ImportScenarioToolTip}"
                             Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Content="编辑所选剧本"
+                    <Button Content="{StaticResource Campaigns.EditScenario}"
                             Margin="8,0,0,0"
                             Command="{Binding EditScenarioCommand}"
-                            ToolTip="打开所选剧本的结构化编辑界面；保存后更新剧本库。"
+                            ToolTip="{StaticResource Campaigns.EditScenarioToolTip}"
                             Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Content="用所选剧本开新局"
+                    <Button Content="{StaticResource Campaigns.StartNew}"
                             Margin="24,0,0,0"
                             Command="{Binding OpenScenarioLobbyCommand}"
-                            ToolTip="进入起始大厅，选择 GM、参与方式、角色和模型后创建一局全新跑团。"
+                            ToolTip="{StaticResource Campaigns.StartNewToolTip}"
                             Style="{StaticResource PrimaryButtonStyle}" />
-                    <Button Content="继续所选跑团"
+                    <Button Content="{StaticResource Campaigns.Continue}"
                             Margin="24,0,0,0"
                             Command="{Binding ContinueCampaignCommand}"
-                            ToolTip="打开右侧选中的跑团，并从已自动保存的状态继续。"
+                            ToolTip="{StaticResource Campaigns.ContinueToolTip}"
                             Style="{StaticResource SecondaryButtonStyle}" />
                 </StackPanel>
                 <Grid Grid.Row="2">
@@ -53,7 +53,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="剧本库" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="{StaticResource Campaigns.ScenarioLibrary}" Style="{StaticResource SectionTitleStyle}" />
                             <ListBox Grid.Row="1"
                                      Margin="0,12,0,0"
                                      HorizontalContentAlignment="Stretch"
@@ -109,24 +109,24 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="已保存的跑团" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="{StaticResource Campaigns.SavedCampaigns}" Style="{StaticResource SectionTitleStyle}" />
                             <ListBox Grid.Row="1"
                                      Margin="0,12,0,0"
                                      HorizontalContentAlignment="Stretch"
                                      ItemsSource="{Binding Campaigns}"
                                      SelectedItem="{Binding SelectedCampaign}"
-                                     ToolTip="选择跑团继续；右键可重命名或永久删除该局及其记录。">
+                                     ToolTip="{StaticResource Campaigns.SavedCampaignsToolTip}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="6"
                                               Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
                                             <Grid.ContextMenu>
                                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                    <MenuItem Header="重命名…"
+                                                    <MenuItem Header="{StaticResource Campaigns.Rename}"
                                                               Command="{Binding PlacementTarget.Tag.RenameCampaignCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                               CommandParameter="{Binding}" />
                                                     <Separator />
-                                                    <MenuItem Header="删除跑团…"
+                                                    <MenuItem Header="{StaticResource Campaigns.DeleteCampaign}"
                                                               Command="{Binding PlacementTarget.Tag.DeleteCampaignCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                               CommandParameter="{Binding}" />
                                                 </ContextMenu>
@@ -138,11 +138,11 @@
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
                                                 <TextBlock Foreground="{DynamicResource MutedTextBrush}">
-                                                    <Run Text="回合 " />
+                                                    <Run Text="{StaticResource Campaigns.RoundPrefix}" />
                                                     <Run Text="{Binding CurrentRound, Mode=OneWay}" />
                                                     <Run Text=" · " />
                                                     <Run Text="{Binding ParticipantCount, Mode=OneWay}" />
-                                                    <Run Text=" 席位" />
+                                                    <Run Text="{StaticResource Campaigns.SeatSuffix}" />
                                                 </TextBlock>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" HorizontalAlignment="Right">
@@ -181,14 +181,14 @@
                         <StackPanel Grid.Column="1"
                                     HorizontalAlignment="Right"
                                     Orientation="Horizontal">
-                            <Button Content="返回剧本库"
+                            <Button Content="{StaticResource Campaigns.BackToLibrary}"
                                     Command="{Binding BackToLibraryCommand}"
-                                    ToolTip="放弃未保存的剧本修改并返回剧本库。"
+                                    ToolTip="{StaticResource Campaigns.BackDiscardToolTip}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Content="保存剧本"
+                            <Button Content="{StaticResource Campaigns.SaveScenario}"
                                     Margin="8,0,0,0"
                                     Command="{Binding SaveScenarioCommand}"
-                                    ToolTip="保存当前结构化字段；不会改写原始来源卡片文件。"
+                                    ToolTip="{StaticResource Campaigns.SaveScenarioToolTip}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                         </StackPanel>
                     </Grid>
@@ -197,25 +197,25 @@
                             Padding="18"
                             Style="{StaticResource CardStyle}">
                         <StackPanel>
-                            <TextBlock Text="按结构填写剧本"
+                            <TextBlock Text="{StaticResource Campaigns.Edit.StructuredTitle}"
                                        FontSize="18"
                                        FontWeight="SemiBold" />
                             <TextBlock Margin="0,4,0,18"
-                                       Text="每一项都会成为独立的剧本资料。可以先写简短版本，保存后再继续编辑。"
+                                       Text="{StaticResource Campaigns.Edit.StructuredDescription}"
                                        Foreground="{DynamicResource MutedTextBrush}" />
 
                             <TabControl Margin="0,4,0,0">
-                                <TabItem Header="基础">
+                                <TabItem Header="{StaticResource Campaigns.Edit.Tab.Basic}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="0,12,0,4">
-                                            <TextBlock Text="剧本标题" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.ScenarioTitle}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="剧本名称或冒险主题。"
+                                                       Text="{StaticResource Campaigns.Edit.ScenarioTitleHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Text="{Binding ScenarioTitle, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Margin="0,18,0,0" Text="剧本简介" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Margin="0,18,0,0" Text="{StaticResource Campaigns.Edit.Summary}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="用几句话说明玩家将面对什么故事。"
+                                                       Text="{StaticResource Campaigns.Edit.SummaryHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Height="110"
                                                      AcceptsReturn="True"
@@ -226,12 +226,12 @@
                                         </StackPanel>
                                     </ScrollViewer>
                                 </TabItem>
-                                <TabItem Header="世界与规则">
+                                <TabItem Header="{StaticResource Campaigns.Edit.Tab.WorldRules}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="0,12,0,4">
-                                            <TextBlock Text="世界观" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.World}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="时代、地点、势力、重要事实、能力体系和氛围。"
+                                                       Text="{StaticResource Campaigns.Edit.WorldHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Height="220"
                                                      AcceptsReturn="True"
@@ -239,9 +239,9 @@
                                                      VerticalContentAlignment="Top"
                                                      VerticalScrollBarVisibility="Auto"
                                                      Text="{Binding ScenarioWorldSetting, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Margin="0,18,0,0" Text="公开规则" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Margin="0,18,0,0" Text="{StaticResource Campaigns.Edit.PublicRules}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="玩家行动、掷骰和 GM 裁定的公开边界。"
+                                                       Text="{StaticResource Campaigns.Edit.PublicRulesHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Height="220"
                                                      AcceptsReturn="True"
@@ -252,12 +252,12 @@
                                         </StackPanel>
                                     </ScrollViewer>
                                 </TabItem>
-                                <TabItem Header="主持与开场">
+                                <TabItem Header="{StaticResource Campaigns.Edit.Tab.GmOpening}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="0,12,0,4">
-                                            <TextBlock Text="GM 主持指令" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.GmInstructions}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="GM 的叙事口吻、主持职责、信息公开方式和边界。"
+                                                       Text="{StaticResource Campaigns.Edit.GmInstructionsHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Height="220"
                                                      AcceptsReturn="True"
@@ -265,9 +265,9 @@
                                                      VerticalContentAlignment="Top"
                                                      VerticalScrollBarVisibility="Auto"
                                                      Text="{Binding ScenarioGmInstructions, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Margin="0,18,0,0" Text="开场设置" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Margin="0,18,0,0" Text="{StaticResource Campaigns.Edit.OpeningSetup}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="第一幕开始时的任务、地点、人物关系和待解决问题。"
+                                                       Text="{StaticResource Campaigns.Edit.OpeningSetupHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Height="180"
                                                      AcceptsReturn="True"
@@ -275,9 +275,9 @@
                                                      VerticalContentAlignment="Top"
                                                      VerticalScrollBarVisibility="Auto"
                                                      Text="{Binding ScenarioOpeningSetup, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Margin="0,18,0,0" Text="开场旁白" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Margin="0,18,0,0" Text="{StaticResource Campaigns.Edit.OpeningNarration}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
-                                                       Text="玩家看到的第一段场景文字或事件。"
+                                                       Text="{StaticResource Campaigns.Edit.OpeningNarrationHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBox Height="180"
                                                      AcceptsReturn="True"
@@ -288,17 +288,17 @@
                                         </StackPanel>
                                     </ScrollViewer>
                                 </TabItem>
-                                <TabItem Header="叙事权限">
+                                <TabItem Header="{StaticResource Campaigns.Edit.Tab.NarrativeAuthority}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="0,12,0,4">
-                                            <TextBlock Text="GM 可以改变什么"
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.AuthorityTitle}"
                                                        Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,16"
-                                                       Text="这些权限会在开局时冻结。‘仅限玩家明确提交’要求变化关联本轮已经锁定的 PlayerIntent。"
+                                                       Text="{StaticResource Campaigns.Edit.AuthorityHelp}"
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
 
-                                            <TextBlock Text="新增 NPC" />
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.AddNpc}" />
                                             <ComboBox Margin="0,6,0,0"
                                                       ItemsSource="{Binding NarrativePermissionChoices}"
                                                       SelectedItem="{Binding ScenarioNewNpcPermission}"
@@ -308,7 +308,7 @@
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
 
-                                            <TextBlock Text="改变关系或互动对象" />
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.ChangeRelationship}" />
                                             <ComboBox Margin="0,6,0,0"
                                                       ItemsSource="{Binding NarrativePermissionChoices}"
                                                       SelectedItem="{Binding ScenarioRelationshipChangePermission}"
@@ -318,7 +318,7 @@
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
 
-                                            <TextBlock Text="开启独立剧情支线" />
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.StartSubplot}" />
                                             <ComboBox Margin="0,6,0,0"
                                                       ItemsSource="{Binding NarrativePermissionChoices}"
                                                       SelectedItem="{Binding ScenarioIndependentPlotPermission}"
@@ -330,12 +330,12 @@
                                         </StackPanel>
                                     </ScrollViewer>
                                 </TabItem>
-                                <TabItem Header="资料">
+                                <TabItem Header="{StaticResource Campaigns.Edit.Tab.Materials}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel Margin="0,12,0,4">
-                                            <Expander Header="旧示例 / 历史归档（可选）">
+                                            <Expander Header="{StaticResource Campaigns.Edit.LegacyArchive}">
                                                 <StackPanel Margin="0,8,0,0">
-                                                    <TextBlock Text="旧对话示例、参考片段或迁移记录；不会伪装成当前跑团历史。"
+                                                    <TextBlock Text="{StaticResource Campaigns.Edit.LegacyArchiveHelp}"
                                                                Foreground="{DynamicResource MutedTextBrush}"
                                                                TextWrapping="Wrap" />
                                                     <TextBox Margin="0,8,0,0"
@@ -347,9 +347,9 @@
                                                              Text="{Binding ScenarioLegacyExamplesArchive, UpdateSourceTrigger=PropertyChanged}" />
                                                 </StackPanel>
                                             </Expander>
-                                            <TextBlock Margin="0,18,0,0" Text="世界书绑定" Style="{StaticResource SectionTitleStyle}" />
+                                            <TextBlock Margin="0,18,0,0" Text="{StaticResource Campaigns.Edit.WorldbookBindings}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,10"
-                                                       Text="选择会随这个剧本一起使用的世界书；保存逻辑保持不变。"
+                                                       Text="{StaticResource Campaigns.Edit.WorldbookBindingsHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <ItemsControl ItemsSource="{Binding ScenarioWorldbookBindings}">
                                                 <ItemsControl.ItemTemplate>
@@ -371,7 +371,7 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <TextBlock Text="尚未导入世界书；也可以先保存剧本，再到“世界书”页面选择跑团剧本绑定。"
+                                            <TextBlock Text="{StaticResource Campaigns.Edit.NoWorldbooks}"
                                                        Foreground="{DynamicResource MutedTextBrush}"
                                                        TextWrapping="Wrap">
                                                 <TextBlock.Style>
@@ -396,7 +396,7 @@
                                Text="{Binding StatusText}"
                                Foreground="{DynamicResource MutedTextBrush}" />
                     <TextBlock Margin="0,8,0,0"
-                               Text="原始来源卡片不会被覆盖；保存的是 TavernDesk 本地剧本副本。已经开始的跑团不会被事后编辑影响。"
+                               Text="{StaticResource Campaigns.Edit.SourcePreserved}"
                                FontSize="12"
                                Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
@@ -415,14 +415,14 @@
                     </Grid.RowDefinitions>
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="起始大厅" Style="{StaticResource PageTitleStyle}" />
-                            <TextBlock Text="点击“开始游戏”时冻结剧本、角色快照、记忆导入与初始模型；首次问候和旧聊天示例不会作为开场历史发送。"
+                            <TextBlock Text="{StaticResource Campaigns.Lobby.Title}" Style="{StaticResource PageTitleStyle}" />
+                            <TextBlock Text="{StaticResource Campaigns.Lobby.Description}"
                                        Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                         <Button HorizontalAlignment="Right"
-                                Content="返回剧本库"
+                                Content="{StaticResource Campaigns.BackToLibrary}"
                                 Command="{Binding BackToLibraryCommand}"
-                                ToolTip="放弃当前未保存的界面改动并返回剧本库。"
+                                ToolTip="{StaticResource Campaigns.Lobby.BackToolTip}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
                     </Grid>
 
@@ -443,29 +443,29 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.ColumnSpan="4" Text="本局设置" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Grid.Row="1" Margin="0,14,10,0" Text="本局标题" VerticalAlignment="Center" />
+                            <TextBlock Grid.ColumnSpan="4" Text="{StaticResource Campaigns.Lobby.Settings}" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Grid.Row="1" Margin="0,14,10,0" Text="{StaticResource Campaigns.Lobby.TitleLabel}" VerticalAlignment="Center" />
                             <TextBox Grid.Row="1" Grid.Column="1" Margin="0,14,16,0"
                                      Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,14,10,0" Text="流程方式" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,14,10,0" Text="{StaticResource Campaigns.Lobby.FlowMode}" VerticalAlignment="Center" />
                             <ComboBox Grid.Row="1" Grid.Column="3" Margin="0,14,0,0"
                                       ItemsSource="{Binding FlowChoices}"
                                       SelectedItem="{Binding SelectedFlow}"
                                       DisplayMemberPath="Name" />
 
-                            <TextBlock Grid.Row="2" Margin="0,10,10,0" Text="谁担任 GM" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="2" Margin="0,10,10,0" Text="{StaticResource Campaigns.Lobby.GmOwner}" VerticalAlignment="Center" />
                             <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,10,16,0"
                                       ItemsSource="{Binding GmChoices}"
                                       SelectedItem="{Binding SelectedGm}"
                                       DisplayMemberPath="Name" />
-                            <TextBlock Grid.Row="2" Grid.Column="2" Margin="0,10,10,0" Text="GM 模型" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Margin="0,10,10,0" Text="{StaticResource Campaigns.Lobby.GmModel}" VerticalAlignment="Center" />
                             <ComboBox Grid.Row="2" Grid.Column="3" Margin="0,10,0,0"
                                       ItemsSource="{Binding ModelOptions}"
                                       SelectedItem="{Binding SelectedGmRoute}"
                                       DisplayMemberPath="DisplayLabel"
                                       Visibility="{Binding IsAiGm, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                            <TextBlock Grid.Row="3" Margin="0,10,10,0" Text="你的参与方式" VerticalAlignment="Top" />
+                            <TextBlock Grid.Row="3" Margin="0,10,10,0" Text="{StaticResource Campaigns.Lobby.Participation}" VerticalAlignment="Top" />
                             <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,10,16,0">
                                 <ComboBox ItemsSource="{Binding UserParticipationChoices}"
                                           SelectedItem="{Binding SelectedUserParticipation}"
@@ -476,7 +476,7 @@
                                            Text="{Binding SelectedUserParticipation.Description}" />
                             </StackPanel>
                             <TextBlock Grid.Row="3" Grid.Column="2" Margin="0,10,10,0"
-                                       Text="你的席位名称"
+                                       Text="{StaticResource Campaigns.Lobby.UserSeatName}"
                                        VerticalAlignment="Top" />
                             <TextBox Grid.Row="3" Grid.Column="3" Margin="0,10,0,0"
                                      VerticalAlignment="Top"
@@ -497,7 +497,7 @@
                                       Grid.RowSpan="2"
                                       Grid.ColumnSpan="4"
                                       Margin="0,12,0,0"
-                                      Header="高级设置">
+                                      Header="{StaticResource Campaigns.Lobby.Advanced}">
                                 <StackPanel Margin="0,8,0,0">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -507,29 +507,29 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Margin="0,0,10,0"
-                                                   Text="玩家历史 tokens"
+                                                   Text="{StaticResource Campaigns.Lobby.PlayerHistoryTokens}"
                                                    VerticalAlignment="Center" />
                                         <TextBox Grid.Column="1"
                                                  Margin="0,0,16,0"
                                                  Text="{Binding PlayerHistoryBudget}" />
                                         <TextBlock Grid.Column="2"
                                                    Margin="0,0,10,0"
-                                                   Text="GM 历史 tokens"
+                                                   Text="{StaticResource Campaigns.Lobby.GmHistoryTokens}"
                                                    VerticalAlignment="Center" />
                                         <TextBox Grid.Column="3"
                                                  Text="{Binding GmHistoryBudget}" />
                                     </Grid>
                                     <WrapPanel Margin="0,12,0,0">
                                         <Button Margin="0,0,8,0"
-                                                Content="编辑 GM 职责提示词"
+                                                Content="{StaticResource Campaigns.Lobby.EditGmPrompt}"
                                                 Command="{Binding OpenGlobalPromptCommand}"
                                                 CommandParameter="CampaignGmSystem"
-                                                ToolTip="打开全局提示词设置，编辑 AI GM 在所有跑团中遵循的主持职责。"
+                                                ToolTip="{StaticResource Campaigns.Lobby.EditGmPromptToolTip}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Content="编辑 AI 玩家职责提示词"
+                                        <Button Content="{StaticResource Campaigns.Lobby.EditPlayerPrompt}"
                                                 Command="{Binding OpenGlobalPromptCommand}"
                                                 CommandParameter="CampaignPlayerSystem"
-                                                ToolTip="打开全局提示词设置，编辑所有 AI 玩家在跑团中遵循的行动规范。"
+                                                ToolTip="{StaticResource Campaigns.Lobby.EditPlayerPromptToolTip}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                     </WrapPanel>
                                 </StackPanel>
@@ -539,7 +539,7 @@
 
                     <Border Grid.Row="2" Margin="0,14,0,0" Style="{StaticResource CardStyle}">
                         <StackPanel>
-                            <TextBlock Text="剧本内容摘要" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="{StaticResource Campaigns.Lobby.Summary}" Style="{StaticResource SectionTitleStyle}" />
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -547,7 +547,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="世界观" FontWeight="SemiBold" />
+                                    <TextBlock Text="{StaticResource Campaigns.Edit.World}" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,5,0,0"
                                                MaxHeight="70"
                                                Text="{Binding WorldSetting}"
@@ -556,7 +556,7 @@
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="8,0">
-                                    <TextBlock Text="公开规则" FontWeight="SemiBold" />
+                                    <TextBlock Text="{StaticResource Campaigns.Edit.PublicRules}" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,5,0,0"
                                                MaxHeight="70"
                                                Text="{Binding Rules}"
@@ -565,7 +565,7 @@
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Margin="8,0,0,0">
-                                    <TextBlock Text="开场设置" FontWeight="SemiBold" />
+                                    <TextBlock Text="{StaticResource Campaigns.Edit.OpeningSetup}" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,5,0,0"
                                                MaxHeight="70"
                                                Text="{Binding OpeningPrompt}"
@@ -574,7 +574,7 @@
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                             </Grid>
-                            <Expander Margin="0,12,0,0" Header="本局覆盖剧本内容…">
+                            <Expander Margin="0,12,0,0" Header="{StaticResource Campaigns.Lobby.OverrideScenario}">
                                 <Grid Margin="0,10,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -582,21 +582,21 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="世界观" Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Text="{StaticResource Campaigns.Edit.World}" Style="{StaticResource SectionTitleStyle}" />
                                         <TextBox Margin="0,8,0,0" MinHeight="150"
                                                  AcceptsReturn="True" TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto"
                                                  Text="{Binding WorldSetting}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="8,0">
-                                        <TextBlock Text="公开规则" Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Text="{StaticResource Campaigns.Edit.PublicRules}" Style="{StaticResource SectionTitleStyle}" />
                                         <TextBox Margin="0,8,0,0" MinHeight="150"
                                                  AcceptsReturn="True" TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto"
                                                  Text="{Binding Rules}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="8,0,0,0">
-                                        <TextBlock Text="开场设置（给 GM）" Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Text="{StaticResource Campaigns.Lobby.OpeningForGm}" Style="{StaticResource SectionTitleStyle}" />
                                         <TextBox Margin="0,8,0,0" MinHeight="150"
                                                  AcceptsReturn="True" TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto"
@@ -615,10 +615,10 @@
                             </Grid.RowDefinitions>
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="AI 玩家（0–4 个；勾选角色即增加，取消勾选即减少）"
+                                    <TextBlock Text="{StaticResource Campaigns.Lobby.AiPlayers}"
                                                Style="{StaticResource SectionTitleStyle}" />
                                     <TextBlock Margin="0,5,0,0"
-                                               Text="旁观模式至少选择 1 名 AI 玩家；参与模式也允许只有 USER 玩家。每个 AI 席位可使用不同模型。"
+                                               Text="{StaticResource Campaigns.Lobby.AiPlayersHelp}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                                 <Border HorizontalAlignment="Right"
@@ -646,14 +646,14 @@
                                                           FontWeight="SemiBold"
                                                           IsChecked="{Binding IsSelected}"
                                                           IsEnabled="{Binding IsSelectionEnabled}"
-                                                          ToolTip="勾选加入本局，取消勾选移出本局"
+                                                          ToolTip="{StaticResource Campaigns.Lobby.IncludeCharacterToolTip}"
                                                           VerticalAlignment="Center" />
                                                 <ComboBox Grid.Column="1" Margin="12,0"
                                                           ItemsSource="{Binding DataContext.ModelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                           SelectedItem="{Binding SelectedRoute}"
                                                           DisplayMemberPath="DisplayLabel" />
                                                 <CheckBox Grid.Column="2" Margin="8,0"
-                                                          Content="导入聊天记忆"
+                                                          Content="{StaticResource Campaigns.Lobby.ImportChatMemory}"
                                                           IsChecked="{Binding IncludeMemory}" />
                                             </Grid>
                                         </Border>
@@ -668,14 +668,14 @@
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource MutedTextBrush}" />
                         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                            <Button Content="保存大厅草稿"
+                            <Button Content="{StaticResource Campaigns.Lobby.SaveDraft}"
                                     Command="{Binding SaveLobbyCommand}"
-                                    ToolTip="保存当前剧本、角色、GM、参与方式与模型选择；暂不开始游玩。"
+                                    ToolTip="{StaticResource Campaigns.Lobby.SaveDraftToolTip}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Content="开始本局并冻结配置"
+                            <Button Content="{StaticResource Campaigns.Lobby.Start}"
                                     Margin="8,0,0,0"
                                     Command="{Binding StartCampaignCommand}"
-                                    ToolTip="校验并冻结剧本、角色快照、记忆与初始模型，然后生成 GM 开场并进入第 1 回合。"
+                                    ToolTip="{StaticResource Campaigns.Lobby.StartToolTip}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                         </StackPanel>
                     </Grid>
@@ -696,19 +696,19 @@
                         <TextBlock Text="{Binding GamePhaseText}" Foreground="{DynamicResource MutedTextBrush}" />
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="跑团设置"
+                        <Button Content="{StaticResource Campaigns.Play.Settings}"
                                 Click="MemorySettingsButton_OnClick"
-                                ToolTip="管理当前跑团的上下文预算与升级版跑团记忆。"
+                                ToolTip="{StaticResource Campaigns.Play.SettingsToolTip}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
-                        <Button Content="↻ 刷新"
+                        <Button Content="{StaticResource Campaigns.Play.Refresh}"
                                 Margin="8,0,0,0"
                                 Command="{Binding RefreshGameCommand}"
-                                ToolTip="从本地数据库重新载入当前跑团；不会调用模型或新增记录。"
+                                ToolTip="{StaticResource Campaigns.Play.RefreshToolTip}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
-                        <Button Content="返回剧本库"
+                        <Button Content="{StaticResource Campaigns.BackToLibrary}"
                                 Margin="8,0,0,0"
                                 Command="{Binding BackToLibraryCommand}"
-                                ToolTip="离开游玩页并返回剧本库；本局记录已自动保存，可随时继续。"
+                                ToolTip="{StaticResource Campaigns.Play.BackToolTip}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
                     </StackPanel>
                 </Grid>
@@ -729,9 +729,9 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <StackPanel>
-                                <TextBlock Text="玩家席位" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="{StaticResource Campaigns.Play.PlayerSeats}" Style="{StaticResource SectionTitleStyle}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Text="协作圆桌可任选未行动的 AI；严格先攻只开放当前席位。"
+                                           Text="{StaticResource Campaigns.Play.PlayerSeatsHelp}"
                                            FontSize="12"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
@@ -780,17 +780,17 @@
                                                         </Button.Style>
                                                     </Button>
                                                     <Expander Margin="0,8,0,0"
-                                                              Header="席位模型设置"
+                                                              Header="{StaticResource Campaigns.Play.SeatModelSettings}"
                                                               Visibility="{Binding IsAi, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <StackPanel Margin="0,7,0,0">
                                                             <ComboBox ItemsSource="{Binding DataContext.ModelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                       SelectedItem="{Binding SelectedRoute}"
                                                                       DisplayMemberPath="DisplayLabel" />
                                                             <Button Margin="0,6,0,0"
-                                                            Content="从下次行动起使用此模型"
+                                                            Content="{StaticResource Campaigns.Play.ApplySeatModel}"
                                                             Command="{Binding DataContext.ApplySeatRouteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
-                                                            ToolTip="仅切换这个 AI 席位之后的模型；角色卡、记忆快照和既有记录保持不变。"
+                                                            ToolTip="{StaticResource Campaigns.Play.ApplySeatModelToolTip}"
                                                             Style="{StaticResource SecondaryButtonStyle}" />
                                                         </StackPanel>
                                                     </Expander>
@@ -810,7 +810,7 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <Grid>
-                                <TextBlock Text="跑团记录" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="{StaticResource Campaigns.Play.Log}" Style="{StaticResource SectionTitleStyle}" />
                                 <TextBlock HorizontalAlignment="Right"
                                            Text="{Binding SaveStateText}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
@@ -841,13 +841,13 @@
                                                                 Visibility="{Binding HasCandidates, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <TextBlock Margin="0,0,6,0"
                                                                    VerticalAlignment="Center"
-                                                                   Text="GM 候选"
+                                                                   Text="{StaticResource Campaigns.Play.GmCandidate}"
                                                                    FontSize="11"
                                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                                         <Button Content="‹"
                                                                 Command="{Binding DataContext.PreviousGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource CandidateNavigationButtonStyle}"
-                                                                ToolTip="查看上一个 GM 候选" />
+                                                                ToolTip="{StaticResource Campaigns.Play.PreviousGmCandidateToolTip}" />
                                                         <TextBlock MinWidth="32"
                                                                    VerticalAlignment="Center"
                                                                    TextAlignment="Center"
@@ -857,7 +857,7 @@
                                                         <Button Content="›"
                                                                 Command="{Binding DataContext.NextGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource CandidateNavigationButtonStyle}"
-                                                                ToolTip="查看下一个 GM 候选" />
+                                                                ToolTip="{StaticResource Campaigns.Play.NextGmCandidateToolTip}" />
                                                     </StackPanel>
                                                     <TextBlock Margin="0,4,0,0"
                                                                Text="{Binding CandidateHelpText}"
@@ -889,7 +889,7 @@
                         <StackPanel>
                             <Border Style="{StaticResource CardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="当前步骤" Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Text="{StaticResource Campaigns.Play.CurrentStep}" Style="{StaticResource SectionTitleStyle}" />
                                     <StackPanel Margin="0,8,0,0">
                                         <Border Margin="0,0,0,6"
                                                 Padding="9,6"
@@ -919,7 +919,7 @@
                                                Foreground="{DynamicResource AccentBrush}" />
 
                                     <Expander Margin="0,12,0,0"
-                                              Header="本轮上下文估算"
+                                              Header="{StaticResource Campaigns.Play.ContextEstimate}"
                                               IsExpanded="False"
                                               Visibility="{Binding HasContextPreview, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <StackPanel Margin="0,8,0,0">
@@ -982,10 +982,10 @@
 
                                     <StackPanel Margin="0,14,0,0"
                                                 Visibility="{Binding ShowUserActionSection, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <TextBlock Text="你的本回合行动"
+                                        <TextBlock Text="{StaticResource Campaigns.Play.UserAction}"
                                                    FontWeight="SemiBold" />
                                         <TextBlock Margin="0,5,0,0"
-                                                   Text="提交时会自动附带一枚 1d20；GM 会结合角色、行动方法和局势灵活裁定。"
+                                                   Text="{StaticResource Campaigns.Play.UserActionHelp}"
                                                    FontSize="12"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
@@ -995,7 +995,7 @@
                                                  TextWrapping="Wrap"
                                                  Text="{Binding ActionInput, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Margin="0,8,0,0"
-                                                Content="提交我的行动"
+                                                Content="{StaticResource Campaigns.Play.SubmitUserAction}"
                                                 IsEnabled="{Binding CanSubmitUserAction}"
                                                 Command="{Binding SubmitUserActionCommand}"
                                                 ToolTip="{Binding UserActionHelpText}"
@@ -1004,10 +1004,10 @@
 
                                     <StackPanel Margin="0,14,0,0"
                                                 Visibility="{Binding ShowBlindAiAction, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <TextBlock Text="AI 秘密行动"
+                                        <TextBlock Text="{StaticResource Campaigns.Play.SecretActions}"
                                                    FontWeight="SemiBold" />
                                         <Button Margin="0,7,0,0"
-                                                Content="让所有 AI 秘密提交行动"
+                                                Content="{StaticResource Campaigns.Play.SubmitSecretActions}"
                                                 IsEnabled="{Binding CanGenerateBlindAiActions}"
                                                 Command="{Binding GenerateAiActionsCommand}"
                                                 ToolTip="{Binding BlindAiActionHelpText}"
@@ -1016,7 +1016,7 @@
 
                                     <StackPanel Margin="0,14,0,0"
                                                 Visibility="{Binding ShowResolveSection, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <TextBlock Text="本回合 GM 裁定"
+                                        <TextBlock Text="{StaticResource Campaigns.Play.GmResolution}"
                                                    FontWeight="SemiBold" />
                                         <TextBox Margin="0,7,0,0"
                                                  MinHeight="88"
@@ -1038,10 +1038,10 @@
                                     Style="{StaticResource CardStyle}"
                                     Visibility="{Binding ShowUserJoinSection, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <StackPanel>
-                                    <TextBlock Text="想亲自加入？"
+                                    <TextBlock Text="{StaticResource Campaigns.Play.JoinTitle}"
                                                Style="{StaticResource SectionTitleStyle}" />
                                     <TextBlock Margin="0,7,0,0"
-                                               Text="可以预约 USER 席位，从下一完整回合开始参与；当前回合不会改变。"
+                                               Text="{StaticResource Campaigns.Play.JoinHelp}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                     <Button Margin="0,8,0,0"
                                             Content="{Binding ScheduleUserJoinButtonText}"
@@ -1053,9 +1053,9 @@
                             </Border>
 
                             <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}">
-                                <Expander Header="额外掷骰与记录">
+                                <Expander Header="{StaticResource Campaigns.Play.ExtraDice}">
                                     <StackPanel Margin="0,9,0,0">
-                                        <TextBlock Text="每次玩家行动已经自动附带一枚 1d20。这里仅用于额外的剧情、环境或 GM 公开掷骰。"
+                                        <TextBlock Text="{StaticResource Campaigns.Play.ExtraDiceHelp}"
                                                    FontSize="12"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
@@ -1066,9 +1066,9 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBox Text="{Binding DiceExpression, UpdateSourceTrigger=PropertyChanged}" />
                                             <Button Grid.Column="1" Margin="8,0,0,0"
-                                                    Content="进行额外公开掷骰"
+                                                    Content="{StaticResource Campaigns.Play.RollExtraDice}"
                                                     Command="{Binding RollDiceCommand}"
-                                                    ToolTip="按左侧表达式生成一条独立的公开骰点记录；它不会替代玩家行动自动附带的 1d20。"
+                                                    ToolTip="{StaticResource Campaigns.Play.RollExtraDiceToolTip}"
                                                     Style="{StaticResource SecondaryButtonStyle}" />
                                         </Grid>
                                     </StackPanel>
@@ -1077,7 +1077,7 @@
 
                             <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}"
                                     Visibility="{Binding IsAiGm, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <Expander Header="GM 模型设置">
+                                <Expander Header="{StaticResource Campaigns.Play.GmModelSettings}">
                                     <StackPanel Margin="0,9,0,0">
                                         <ComboBox ItemsSource="{Binding ModelOptions}"
                                                   SelectedItem="{Binding SelectedGmRoute}"
@@ -1089,7 +1089,7 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Margin="0,0,10,0"
                                                        VerticalAlignment="Center"
-                                                       Text="GM 输出 Token" />
+                                                       Text="{StaticResource Campaigns.Play.GmOutputTokens}" />
                                             <TextBox Grid.Column="1"
                                                      Text="{Binding GmMaxOutputTokensText, UpdateSourceTrigger=PropertyChanged}" />
                                         </Grid>
@@ -1097,11 +1097,11 @@
                                                    FontSize="11"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}"
-                                                   Text="每次 GM 裁定的最大输出长度；范围 512–6000，且不能超过所选模型能力。" />
+                                                   Text="{StaticResource Campaigns.Play.GmOutputTokensHelp}" />
                                         <Button Margin="0,8,0,0"
-                                                Content="应用 GM 模型与输出长度"
+                                                Content="{StaticResource Campaigns.Play.ApplyGmModel}"
                                                 Command="{Binding ApplyGmRouteCommand}"
-                                                ToolTip="从下一次裁定起使用所选模型与输出长度；剧本、世界状态和既有记录保持不变。"
+                                                ToolTip="{StaticResource Campaigns.Play.ApplyGmModelToolTip}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                     </StackPanel>
                                 </Expander>

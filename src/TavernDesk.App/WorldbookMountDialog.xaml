@@ -1,7 +1,7 @@
 <Window x:Class="TavernDesk.App.WorldbookMountDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="管理世界书挂载"
+        Title="{StaticResource WorldbookMount.Title}"
         Width="720"
         Height="620"
         MinWidth="560"
@@ -19,19 +19,19 @@
         </Grid.RowDefinitions>
 
         <StackPanel>
-            <TextBlock Text="管理世界书挂载"
+            <TextBlock Text="{StaticResource WorldbookMount.Title}"
                        Style="{StaticResource PageTitleStyle}" />
             <TextBlock Margin="0,5,0,0"
-                       Text="{Binding SelectedBook.Name, StringFormat=当前世界书：{0}, TargetNullValue=当前世界书：未选择}"
+                       Text="{Binding SelectedBook.Name, StringFormat={StaticResource WorldbookMount.CurrentBookFormat}, TargetNullValue={StaticResource WorldbookMount.NoBook}}"
                        FontWeight="SemiBold" />
             <TextBlock Margin="0,4,0,0"
-                       Text="选择角色或跑团剧本并分别保存。关闭窗口时，未保存的勾选会被丢弃；全局及其他作用域挂载保持不变。"
+                       Text="{StaticResource WorldbookMount.Description}"
                        TextWrapping="Wrap"
                        Foreground="{DynamicResource MutedTextBrush}" />
         </StackPanel>
 
         <TabControl Grid.Row="1" Margin="0,18,0,0">
-            <TabItem Header="角色">
+            <TabItem Header="{StaticResource WorldbookMount.CharactersTab}">
                 <Grid Margin="10,8,10,6">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -41,16 +41,16 @@
 
                     <DockPanel LastChildFill="True">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Button Content="全选"
+                            <Button Content="{StaticResource Common.SelectAll}"
                                     Command="{Binding SelectAllCharacterBindingsCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
-                                    Content="清空"
+                                    Content="{StaticResource Common.Clear}"
                                     Command="{Binding ClearCharacterBindingsCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
                         <TextBlock VerticalAlignment="Center"
-                                   Text="选择要使用这本世界书的角色。"
+                                   Text="{StaticResource WorldbookMount.CharactersHelp}"
                                    Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
 
@@ -73,7 +73,7 @@
                             </ScrollViewer>
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
-                                       Text="当前没有可挂载的角色。"
+                                       Text="{StaticResource WorldbookMount.NoCharacters}"
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        IsHitTestVisible="False">
                                 <TextBlock.Style>
@@ -93,13 +93,13 @@
                     <Button Grid.Row="2"
                             Margin="0,12,0,0"
                             HorizontalAlignment="Right"
-                            Content="保存角色挂载"
+                            Content="{StaticResource WorldbookMount.SaveCharacters}"
                             Command="{Binding SaveCharacterBindingsCommand}"
                             Style="{StaticResource PrimaryButtonStyle}" />
                 </Grid>
             </TabItem>
 
-            <TabItem Header="跑团剧本">
+            <TabItem Header="{StaticResource WorldbookMount.CampaignsTab}">
                 <Grid Margin="10,8,10,6">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -109,16 +109,16 @@
 
                     <DockPanel LastChildFill="True">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Button Content="全选"
+                            <Button Content="{StaticResource Common.SelectAll}"
                                     Command="{Binding SelectAllCampaignBindingsCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
-                                    Content="清空"
+                                    Content="{StaticResource Common.Clear}"
                                     Command="{Binding ClearCampaignBindingsCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
                         <TextBlock VerticalAlignment="Center"
-                                   Text="选择要使用这本世界书的跑团剧本。"
+                                   Text="{StaticResource WorldbookMount.CampaignsHelp}"
                                    Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
 
@@ -146,7 +146,7 @@
                             </ScrollViewer>
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
-                                       Text="当前没有可挂载的跑团剧本。"
+                                       Text="{StaticResource WorldbookMount.NoCampaigns}"
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        IsHitTestVisible="False">
                                 <TextBlock.Style>
@@ -166,7 +166,7 @@
                     <Button Grid.Row="2"
                             Margin="0,12,0,0"
                             HorizontalAlignment="Right"
-                            Content="保存跑团挂载"
+                            Content="{StaticResource WorldbookMount.SaveCampaigns}"
                             Command="{Binding SaveCampaignBindingsCommand}"
                             Style="{StaticResource PrimaryButtonStyle}" />
                 </Grid>
@@ -185,7 +185,7 @@
                        Foreground="{DynamicResource MutedTextBrush}" />
             <Button Grid.Column="1"
                     Width="96"
-                    Content="关闭"
+                    Content="{StaticResource Common.Close}"
                     IsCancel="True"
                     Style="{StaticResource SecondaryButtonStyle}" />
         </Grid>

@@ -1,4 +1,5 @@
 using TavernDesk.App.Presentation;
+using TavernDesk.App.Localization;
 using TavernDesk.Core.Models;
 
 namespace TavernDesk.App.ViewModels;
@@ -16,7 +17,10 @@ public sealed class CampaignWorldbookBindingItem : ViewModelBase
     public Worldbook Worldbook { get; }
     public string Name => Worldbook.Name;
     public string Description => string.IsNullOrWhiteSpace(Worldbook.Description)
-        ? $"{Worldbook.EntryCount} 个条目 · {Worldbook.SourceKindText}"
+        ? LanguageRuntime.Format(
+            "Worldbook.BindingEntryCountFormat",
+            Worldbook.EntryCount,
+            Worldbook.SourceKindText)
         : Worldbook.Description;
 
     public bool IsBound

@@ -1,4 +1,5 @@
 using System.Windows;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -18,8 +19,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     private bool _isRuntimeReceiving;
     private int _runtimeReceivedTokens;
     private string _runtimeReceiveText = string.Empty;
-    private string _currentSection = "仪表盘";
-    private string _runtimeStatusText = "本地数据已就绪 · 当前无生成请求";
+    private string _currentSection = LanguageRuntime.GetString("Runtime.Section.Dashboard");
+    private string _runtimeStatusText = LanguageRuntime.GetString("Runtime.Ready");
 
     public MainWindowViewModel(
         InfrastructureServices services,
@@ -252,7 +253,10 @@ public sealed class MainWindowViewModel : ViewModelBase
         RuntimeReceivedTokens = receivedTokens;
         RuntimeReceiveText = activeCount == 0
             ? string.Empty
-            : $"{activeCount} 个请求 · 已接收约 {receivedTokens:N0} tokens";
+            : LanguageRuntime.Format(
+                "Runtime.RequestSummaryFormat",
+                activeCount,
+                receivedTokens);
 
         if (IsStoppingAll)
         {
@@ -261,22 +265,22 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         RuntimeStatusText = activeCount switch
         {
-            0 => "本地数据已就绪 · 当前无生成请求",
-            1 => "本地数据已就绪 · 正在接收模型响应",
-            _ => $"本地数据已就绪 · 正在接收 {activeCount} 个模型响应"
+            0 => LanguageRuntime.GetString("Runtime.Ready"),
+            1 => LanguageRuntime.GetString("Runtime.ReceivingOne"),
+            _ => LanguageRuntime.Format("Runtime.ReceivingManyFormat", activeCount)
         };
     }
 
     private async Task StopAllGenerationAsync()
     {
         IsStoppingAll = true;
-        RuntimeStatusText = "正在停止全部模型请求…";
+        RuntimeStatusText = LanguageRuntime.GetString("Runtime.StoppingAll");
         try
         {
             var stopped = await _generationCoordinator.CancelAllAsync();
             RuntimeStatusText = stopped == 0
-                ? "本地数据已就绪 · 当前无生成请求"
-                : $"已停止 {stopped} 个模型请求";
+                ? LanguageRuntime.GetString("Runtime.Ready")
+                : LanguageRuntime.Format("Runtime.StoppedFormat", stopped);
         }
         finally
         {
@@ -293,7 +297,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         await Dashboard.LoadAsync();
         CurrentPage = Dashboard;
-        CurrentSection = "仪表盘";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Dashboard");
     }
 
     private async Task ShowCharactersAsync()
@@ -310,7 +314,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         await Characters.LoadAsync();
         CurrentPage = Characters;
-        CurrentSection = "角色书架";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Characters");
     }
 
     private async Task ShowChatAsync()
@@ -322,7 +326,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         await Chat.LoadAsync();
         CurrentPage = Chat;
-        CurrentSection = "聊天";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Chat");
     }
 
     private async Task ShowCampaignsAsync()
@@ -334,7 +338,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         await Campaigns.LoadAsync();
         CurrentPage = Campaigns;
-        CurrentSection = "跑团";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Campaigns");
     }
 
     private async Task ShowWorldbooksAsync()
@@ -351,7 +355,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         await Worldbooks.LoadAsync();
         CurrentPage = Worldbooks;
-        CurrentSection = "世界书";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Worldbook");
     }
 
     private async Task ShowSettingsAsync()
@@ -368,7 +372,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         await Settings.LoadAsync();
         CurrentPage = Settings;
-        CurrentSection = "设置";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Settings");
     }
 
     public async Task OpenPromptSettingsAsync(GlobalPromptKey key)
@@ -382,7 +386,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         await Settings.LoadAsync();
         Settings.OpenPrompt(key);
         CurrentPage = Settings;
-        CurrentSection = "设置 · 提示词管理";
+        CurrentSection = LanguageRuntime.GetString("Runtime.Section.Prompts");
     }
 
     public Task<bool> ConfirmCanCloseAsync() => ConfirmPageChangeAsync();
@@ -391,21 +395,27 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         await Chat.OpenCharacterChatAsync(character);
         CurrentPage = Chat;
-        CurrentSection = $"聊天 · {character.Name}";
+        CurrentSection = LanguageRuntime.Format(
+            "Runtime.Section.CharacterChatFormat",
+            character.Name);
     }
 
     private async Task CreateNewCharacterChatAsync(Character character)
     {
         await Chat.CreateNewCharacterChatAsync(character);
         CurrentPage = Chat;
-        CurrentSection = $"聊天 · {character.Name} · 新对话";
+        CurrentSection = LanguageRuntime.Format(
+            "Runtime.Section.NewCharacterChatFormat",
+            character.Name);
     }
 
     private async Task OpenRecentConversationAsync(ConversationSummary conversation)
     {
         await Chat.OpenConversationAsync(conversation.Id);
         CurrentPage = Chat;
-        CurrentSection = $"聊天 · {conversation.Title}";
+        CurrentSection = LanguageRuntime.Format(
+            "Runtime.Section.CharacterChatFormat",
+            conversation.Title);
     }
 
     private Task<bool> ConfirmPageChangeAsync()

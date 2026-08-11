@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Models;
@@ -30,13 +31,13 @@ public partial class GroupChatDialog : Window
             .ToArray();
         if (title.Length == 0)
         {
-            ValidationText.Text = "群聊名称不能为空。";
+            ValidationText.Text = LanguageRuntime.GetString("GroupChat.NameRequired");
             return;
         }
 
         if (selectedIds.Length < 2)
         {
-            ValidationText.Text = "请至少选择两个角色。";
+            ValidationText.Text = LanguageRuntime.GetString("GroupChat.MinimumMembers");
             return;
         }
 

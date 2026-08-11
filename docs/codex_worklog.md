@@ -1504,3 +1504,47 @@
 - 新隔离目录 `work/verification/premerge-fixes-final-20260810-02` 的 `--storage-smoke` 为 `11` 项 PASS，覆盖五种旧 Provider 记录的修复或停用，API 请求数为 `0`。
 - `win-x64` 自包含发布已同步到工作树 `app/`；App EXE 及三个业务 DLL 与当前 Release/RID 输出 SHA-256 一致，无 PDB；根目录 `TavernDesk.exe --probe` 退出码为 `0`。
 - 本轮没有启动 GUI，没有读取用户数据或 API Key，没有刷新模型目录或调用真实 Provider；最终 110%–150% 应用缩放视觉与点击体验留给用户从根 EXE 验收。原工作树 `I:\New-tarven` 未编辑，未提交、未合并。
+
+## 2026-08-11 — 四语界面系统、日语收尾与代码/翻译审核
+
+### 目标与边界
+
+- 在独立工作树 `I:\New-tarven-appica-ui` 建立简体中文、台湾繁体中文、English、日本語四语 UI 系统；全新个人数据首次创建后必须完成一次语言选择，旧数据库保持简体中文且不被弹窗打断。
+- 设置页语言修改保存到 `ui.language`，重启后生效。只剥离和翻译应用 UI；模型 Prompt、角色卡、聊天正文、用户资料和 `depth/role/system/user/assistant` 等协议值保持原文。
+- 本轮不安装依赖、不下载翻译模型、不读取真实玩家资料或 API Key，不调用 Provider；不提交、不合并、不推送，也不发布覆盖工作树 `app/`。
+
+### 实现
+
+- 新增 `LanguageRuntime`、四份 `Strings.*.xaml`、首次语言窗口及启动期待选标记；语言在主窗口/ViewModel 构造前应用。全新数据库初始化中断会保留待选标记，下次继续；旧数据库没有设置且没有标记时静默使用简体中文。
+- 设置 → 界面加入语言选项与重启提示。四语固定 UI 文本从 App XAML/C# 剥离到资源字典；文件对话框、确认框、状态栏、Provider、角色、聊天、世界书、跑团和高级检查器均接入语言资源。
+- 首次窗口由透明无边框背景改为不透明现有主题资源，避免透出桌面壁纸。英文下拉框改用短标签和单行省略模板，修复 `Bubble mode`、`Send and generate reply` 的两行裁切。
+- English 角色页连续异常的根因是空 `Characters.SelectedSuffix` 资源；改为非空值，并让检查脚本拒绝任何空语言值。全局未处理异常按根异常签名做三秒防抖，防止同一 XAML 失败形成弹窗风暴，同时允许用户稍后重试时再次看到错误。
+- 系统/第三方异常若与当前 UI 文字体系不兼容，显示本地化内部错误而不拼接另一语言。检索、预设、世界书、跑团记忆、群聊接力、角色/剧本导入提示和跑团上下文分区在 App 展示边界本地化；原始诊断只写入 Trace，不修改 Infrastructure Prompt 或存储内容。
+- 台湾繁中按台湾术语清理；日语尾段全部直接依据简中资源翻译。删除临时 `_ja.tsv`，未使用外部翻译服务。
+- 新增 `scripts/Test-Localization.ps1`，检查四语键集合、重复/空值、占位符、翻译标记、App 层简体硬编码、直接 XAML 资源引用以及协议字面量不被翻译。
+
+### 验证、失败过程与证据边界
+
+- 最终资源规模为每种语言 `1400` 键；四语键集合和占位符一致，空值/翻译标记为 0，`1553` 个直接 XAML 资源声明/引用检查通过。英文与简中完全相同的值只有五个协议字面量；日语简体字扫描仅命中首次多语提示和旧数据保留值“用户”；台湾繁中既定大陆术语命中数为 0。
+- Debug 与 Release 解决方案构建均成功，`0` 警告、`0` 错误；`git diff --check` 通过。AgentHost 在新隔离目录的 `--storage-smoke` 为 `11` 项 PASS，API 请求数为 `0`。
+- 使用全新隔离数据根，通过首次窗口语义选择 English 后进入主界面；自动导航 Characters 后仅有一个 TavernDesk 顶层窗口、无异常弹窗，进程正常退出。用户随后从实际 EXE 手动检查 English 界面，未发现问题。
+- 最终 Release 复用该 English 隔离数据根进入 InputIdle，取得非零主窗口句柄并以退出码 `0` 正常关闭；关闭后工作树 TavernDesk 进程数为 0。
+- 直接写临时 SQLite 语言设置的验证命令被自动策略拦截，未重试或规避，改用应用自己的首次语言按钮。第二次自动像素截图受 Windows UI Automation `RPC_E_SERVERFAULT` 影响失败，停止重复尝试；因此首次窗口、台湾繁中和日语的最终像素级验收仍留给人工。
+- `app/` 与根启动器尚未重新发布本轮多语言源码；从旧根 EXE 看不到变化不代表源码未生效。5 个已知隔离 QA 目录只含临时数据库；清理命令被自动策略拦截，未重试或规避，因此这些目录仍保留在 `%LOCALAPPDATA%\Temp\TavernDesk-l10n-*`，不属于交付文件。
+
+## 2026-08-11 — 四语版本最终审查、发布与本地合并交付
+
+### 审查与修复
+
+- 合并前重新核对工作树边界：`I:\New-tarven` 主工作树干净，`codex/appica-ui-upgrade` 与 `codex/update-campaign-memory` 从同一提交分出，可使用 `--ff-only` 快进合并；没有改动 Core、Infrastructure、数据库 schema 或 Provider 协议。
+- XAML 契约比对确认既有 `x:Name` 及其控件类型、事件处理器和命令绑定未改变；新增绑定只用于设置页语言选择和聊天紧凑下拉显示模板。
+- 修复包装异常被直接剥到最内层的问题：App 层已经本地化的外层异常优先展示，避免把 JSON 解析器原文重新混入界面；未处理异常去重改为三秒防抖，避免永久屏蔽用户后续重试。
+- 本地化格式化改用当前 UI 文化，使英语、台湾繁中和日语界面的数字/日期格式与所选语言一致，不改变输入解析、持久化格式或用户内容。
+
+### 验证与交付
+
+- 四种语言各 `1400` 个资源键及 `1553` 个直接 XAML 资源声明/引用复检通过；Debug、Release 构建均为 `0` 警告、`0` 错误，`git diff --check` 通过。
+- 新隔离目录 `work/verification/premerge-l10n-20260811-214201` 的 AgentHost `--storage-smoke` 为 `11` 项 PASS，API 请求数为 `0`。解决方案不含测试项目，因此 `dotnet test` 没有可执行测试；未把空跑结果表述为单元测试通过。
+- `dotnet format --verify-no-changes` 仍报告基线已有的 10 个文件；逐文件计数与干净主工作树基线完全一致，本轮没有新增格式错误，也没有为此格式化无关代码。
+- `win-x64` 自包含发布已同步到工作树 `app/`；App、Core、Infrastructure 三个 DLL 与 RID Release 输出的 SHA-256 一致，无 PDB，`runtimes/` 仅含 `win-x64/native/e_sqlite3.dll`，根启动器 `TavernDesk.exe --probe` 退出码为 `0`。
+- 本条交付提交随后按用户授权以 `--ff-only` 快进合并到 `I:\New-tarven`；不推送 GitHub。未读取 API Key，未刷新模型目录，未调用真实 Provider，也未再次打开可见 GUI。

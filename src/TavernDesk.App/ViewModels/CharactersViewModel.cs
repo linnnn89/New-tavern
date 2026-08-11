@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -26,7 +27,7 @@ public sealed class CharactersViewModel : ViewModelBase
     private IReadOnlySet<string> _selectedShelfCharacterIds =
         new HashSet<string>(StringComparer.Ordinal);
     private CharacterCardScale _scale = CharacterCardScale.Medium;
-    private string _status = "支持 PNG、JSON 与 CHARX；导入采用本地工作副本，不修改原文件。";
+    private string _status = LanguageRuntime.GetString("Characters.Status.Intro");
     private string _searchText = string.Empty;
     private readonly CharacterEditBuffer _inactiveEditor = new();
     private readonly ObservableCollection<CharacterConversationListItemViewModel>
@@ -34,7 +35,7 @@ public sealed class CharactersViewModel : ViewModelBase
     private CharacterDetailSession? _characterSession;
     private CharacterShelfListItemViewModel? _selectedShelf;
     private CharacterShelfListItemViewModel? _membershipShelf;
-    private string _importReportText = "选择角色后可查看导入报告。";
+    private string _importReportText = LanguageRuntime.GetString("Characters.ImportReport.Select");
     private int _shelfSelectionVersion;
     private bool _isShelfBatchMode;
 
@@ -265,9 +266,9 @@ public sealed class CharactersViewModel : ViewModelBase
 
     public string ScaleLabel => Scale switch
     {
-        CharacterCardScale.Dense => "密集",
-        CharacterCardScale.Large => "大图",
-        _ => "中等"
+        CharacterCardScale.Dense => LanguageRuntime.GetString("Characters.Scale.Dense"),
+        CharacterCardScale.Large => LanguageRuntime.GetString("Characters.Scale.Large"),
+        _ => LanguageRuntime.GetString("Characters.Scale.Medium")
     };
 
     public string Status
@@ -337,7 +338,7 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             if (EndCharacterSession(sessionAtStart))
             {
-                Status = "原角色已不存在，已返回角色书架。";
+                Status = LanguageRuntime.GetString("Characters.MissingReturned");
             }
         }
     }
@@ -366,7 +367,9 @@ public sealed class CharactersViewModel : ViewModelBase
             await LoadAsync();
             if (!ReferenceEquals(_characterSession, sessionAtStart))
             {
-                Status = $"已导入：{result.Character.Name}；当前角色页面保持不变。";
+                Status = LanguageRuntime.Format(
+                    "Characters.ImportedBackgroundFormat",
+                    result.Character.Name);
                 return;
             }
 
@@ -374,14 +377,17 @@ public sealed class CharactersViewModel : ViewModelBase
             var session = BeginCharacterSession(imported, editImmediately: false);
             await LoadCharacterConversationsAsync(session);
             Status = result.Report.Warnings.Count == 0
-                ? $"已导入：{result.Character.Name}；原文件未修改，工作副本已保存。"
-                : $"已导入：{result.Character.Name}；报告包含 {result.Report.Warnings.Count} 条提示。";
+                ? LanguageRuntime.Format("Characters.ImportedFormat", result.Character.Name)
+                : LanguageRuntime.Format(
+                    "Characters.ImportedWarningsFormat",
+                    result.Character.Name,
+                    result.Report.Warnings.Count);
         }
         catch (Exception exception)
         {
             if (ReferenceEquals(_characterSession, sessionAtStart))
             {
-                Status = $"导入失败：{exception.Message}";
+                Status = LanguageRuntime.Format("Characters.ImportFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -409,15 +415,24 @@ public sealed class CharactersViewModel : ViewModelBase
             if (IsCurrentCharacterSession(session))
             {
                 Status = result.Warnings.Count == 0
-                    ? $"已导出 {Path.GetFileName(result.DestinationPath)}；保留资源 {result.PreservedResourceCount} 项。"
-                    : $"导出完成；{string.Join("；", result.Warnings)}";
+                    ? LanguageRuntime.Format(
+                        "Characters.ExportedFormat",
+                        Path.GetFileName(result.DestinationPath),
+                        result.PreservedResourceCount)
+                    : LanguageRuntime.Format(
+                        "Characters.ExportWarningsFormat",
+                        string.Join(
+                            LanguageRuntime.GetString("Common.ListSeparator"),
+                            LanguageRuntime.LocalizeDiagnostics(
+                                result.Warnings,
+                                "Characters.ExportWarningSummaryFormat")));
             }
         }
         catch (Exception exception)
         {
             if (IsCurrentCharacterSession(session))
             {
-                Status = $"导出失败：{exception.Message}";
+                Status = LanguageRuntime.Format("Characters.ExportFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -436,7 +451,7 @@ public sealed class CharactersViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(session.Editor.Name))
         {
-            Status = "角色名称不能为空。";
+            Status = LanguageRuntime.GetString("Characters.NameRequired");
             return false;
         }
 
@@ -445,7 +460,7 @@ public sealed class CharactersViewModel : ViewModelBase
                 session.Character.Id,
                 StringComparison.Ordinal))
         {
-            Status = "角色编辑会话已失效，未执行保存。请返回书架后重新进入。";
+            Status = LanguageRuntime.GetString("Characters.SessionExpiredSave");
             return false;
         }
 
@@ -462,7 +477,7 @@ public sealed class CharactersViewModel : ViewModelBase
             if (IsCurrentCharacterSession(session))
             {
                 NotifyCharacterSessionChanged();
-                Status = $"已保存角色设定：{savedCharacter.Name}；现有聊天内容未改动。";
+                Status = LanguageRuntime.Format("Characters.SavedFormat", savedCharacter.Name);
             }
 
             await RefreshCharactersPreservingEditorAsync(session);
@@ -472,7 +487,7 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             if (IsCurrentCharacterSession(session))
             {
-                Status = $"角色设定未保存：{exception.Message}";
+                Status = LanguageRuntime.Format("Characters.SaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
 
             return false;
@@ -488,8 +503,8 @@ public sealed class CharactersViewModel : ViewModelBase
         }
 
         var edited = await _interaction.EditTextAsync(
-            $"原始角色卡 JSON · {session.Editor.Name}",
-            "编辑后会先解析和校验，再同步到当前角色编辑缓冲区；关闭窗口不会修改角色。",
+            LanguageRuntime.Format("Characters.RawJson.TitleFormat", session.Editor.Name),
+            LanguageRuntime.GetString("Characters.RawJson.Prompt"),
             session.Editor.RawCardJson);
         if (edited is null || !IsCurrentCharacterSession(session))
         {
@@ -499,11 +514,11 @@ public sealed class CharactersViewModel : ViewModelBase
         try
         {
             session.Editor.ReplaceRawJson(edited);
-            Status = "原始 JSON 已通过解析并进入未保存缓冲区。";
+            Status = LanguageRuntime.GetString("Characters.RawJson.Applied");
         }
         catch (Exception exception)
         {
-            Status = $"原始 JSON 未应用：{exception.Message}";
+            Status = LanguageRuntime.Format("Characters.RawJson.ApplyFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -565,7 +580,7 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             if (editImmediately && !previousSession.HasValidEditorBinding)
             {
-                Status = "角色编辑会话已失效，未打开空白编辑器。请返回书架后重新进入。";
+                Status = LanguageRuntime.GetString("Characters.SessionExpiredOpen");
                 return;
             }
 
@@ -587,8 +602,8 @@ public sealed class CharactersViewModel : ViewModelBase
             currentCharacter,
             editImmediately);
         Status = editImmediately
-            ? $"正在编辑：{currentCharacter.Name}"
-            : $"已进入角色主页：{currentCharacter.Name}";
+            ? LanguageRuntime.Format("Characters.EditingFormat", currentCharacter.Name)
+            : LanguageRuntime.Format("Characters.OverviewFormat", currentCharacter.Name);
         try
         {
             await LoadCharacterConversationsAsync(session);
@@ -597,7 +612,9 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             if (IsCurrentCharacterSession(session))
             {
-                Status = $"角色主页已打开，但聊天列表读取失败：{exception.Message}";
+                Status = LanguageRuntime.Format(
+                    "Characters.OverviewChatFailedFormat",
+                    LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -612,12 +629,12 @@ public sealed class CharactersViewModel : ViewModelBase
 
         if (!session.HasValidEditorBinding)
         {
-            Status = "角色编辑会话已失效，未打开空白编辑器。请返回书架后重新进入。";
+            Status = LanguageRuntime.GetString("Characters.SessionExpiredOpen");
             return Task.CompletedTask;
         }
 
         SetCharacterDetailMode(CharacterDetailMode.Edit);
-        Status = $"正在编辑：{session.Character.Name}";
+        Status = LanguageRuntime.Format("Characters.EditingFormat", session.Character.Name);
         return Task.CompletedTask;
     }
 
@@ -632,7 +649,9 @@ public sealed class CharactersViewModel : ViewModelBase
         }
 
         SetCharacterDetailMode(CharacterDetailMode.Overview);
-        Status = $"已返回 {session.Character.Name} 的角色主页。";
+        Status = LanguageRuntime.Format(
+            "Characters.ReturnedOverviewFormat",
+            session.Character.Name);
     }
 
     private async Task ToggleClassificationAsync()
@@ -692,14 +711,16 @@ public sealed class CharactersViewModel : ViewModelBase
             await RefreshCharactersPreservingEditorAsync(session);
             if (IsCurrentCharacterSession(session))
             {
-                Status = $"已替换 {session.Character.Name} 的本地展示图片；原始角色卡文件未修改。";
+                Status = LanguageRuntime.Format(
+                    "Characters.ImageReplacedFormat",
+                    session.Character.Name);
             }
         }
         catch (Exception exception)
         {
             if (IsCurrentCharacterSession(session))
             {
-                Status = $"替换图片失败：{exception.Message}";
+                Status = LanguageRuntime.Format("Characters.ImageReplaceFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -733,7 +754,7 @@ public sealed class CharactersViewModel : ViewModelBase
             await LoadAsync();
             if (endedCurrentSession)
             {
-                Status = $"已从角色书架删除 {character.Name}；聊天记录和导入工作副本仍保留。";
+                Status = LanguageRuntime.Format("Characters.DeletedFormat", character.Name);
             }
         }
         catch (Exception exception)
@@ -741,7 +762,7 @@ public sealed class CharactersViewModel : ViewModelBase
             if (IsCurrentCharacterSession(session)
                 || _characterSession is null)
             {
-                Status = $"删除角色卡失败：{exception.Message}";
+                Status = LanguageRuntime.Format("Characters.DeleteFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
@@ -758,7 +779,7 @@ public sealed class CharactersViewModel : ViewModelBase
 
         if (EndCharacterSession(session))
         {
-            Status = "已返回角色书架。";
+            Status = LanguageRuntime.GetString("Characters.ReturnedShelf");
         }
     }
 
@@ -821,7 +842,7 @@ public sealed class CharactersViewModel : ViewModelBase
 
         session.Conversations.Remove(item);
         OnPropertyChanged(nameof(CharacterConversationCount));
-        Status = $"已删除聊天记录“{conversationTitle}”；角色卡和角色整体记忆未受影响。";
+        Status = LanguageRuntime.Format("Characters.ChatDeletedFormat", conversationTitle);
     }
 
     private async Task<bool> ConfirmCanLeaveAsync(
@@ -856,8 +877,8 @@ public sealed class CharactersViewModel : ViewModelBase
     private async Task CreateShelfAsync()
     {
         var name = await _interaction.EditTextAsync(
-            "新建书架",
-            "输入自定义书架名称。角色卡可同时放入多个书架。",
+            LanguageRuntime.GetString("Characters.Shelf.CreateTitle"),
+            LanguageRuntime.GetString("Characters.Shelf.CreatePrompt"),
             string.Empty);
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -873,11 +894,11 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             await _shelves.UpsertAsync(shelf);
             await ReloadShelvesAsync(shelf.Id);
-            Status = $"已新建书架：{shelf.Name}";
+            Status = LanguageRuntime.Format("Characters.Shelf.CreatedFormat", shelf.Name);
         }
         catch (Exception exception)
         {
-            Status = $"新建书架失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Characters.Shelf.CreateFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -889,8 +910,8 @@ public sealed class CharactersViewModel : ViewModelBase
         }
 
         var name = await _interaction.EditTextAsync(
-            "重命名书架",
-            "修改书架名称。角色卡和聊天记录不会受影响。",
+            LanguageRuntime.GetString("Characters.Shelf.RenameTitle"),
+            LanguageRuntime.GetString("Characters.Shelf.RenamePrompt"),
             shelf.Name);
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -903,11 +924,11 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             await _shelves.UpsertAsync(shelf);
             await ReloadShelvesAsync(shelf.Id);
-            Status = $"书架已重命名为：{shelf.Name}";
+            Status = LanguageRuntime.Format("Characters.Shelf.RenamedFormat", shelf.Name);
         }
         catch (Exception exception)
         {
-            Status = $"重命名失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Characters.Shelf.RenameFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -921,7 +942,7 @@ public sealed class CharactersViewModel : ViewModelBase
 
         await _shelves.DeleteAsync(shelf.Id);
         await ReloadShelvesAsync(CharacterShelfListItemViewModel.All.Id);
-        Status = $"已删除书架：{shelf.Name}；角色卡未删除。";
+        Status = LanguageRuntime.Format("Characters.Shelf.DeletedFormat", shelf.Name);
     }
 
     private async Task AddToShelfAsync()
@@ -937,7 +958,10 @@ public sealed class CharactersViewModel : ViewModelBase
         await LoadSelectedShelfAsync(++_shelfSelectionVersion);
         if (IsCurrentCharacterSession(session))
         {
-            Status = $"已把 {character.Name} 加入书架“{shelf.Name}”。";
+            Status = LanguageRuntime.Format(
+                "Characters.Shelf.CharacterAddedFormat",
+                character.Name,
+                shelf.Name);
         }
     }
 
@@ -954,7 +978,10 @@ public sealed class CharactersViewModel : ViewModelBase
         await LoadSelectedShelfAsync(++_shelfSelectionVersion);
         if (IsCurrentCharacterSession(session))
         {
-            Status = $"已从书架“{shelf.Name}”移除 {character.Name}；角色卡未删除。";
+            Status = LanguageRuntime.Format(
+                "Characters.Shelf.CharacterRemovedFormat",
+                shelf.Name,
+                character.Name);
         }
     }
 
@@ -975,8 +1002,8 @@ public sealed class CharactersViewModel : ViewModelBase
 
         IsShelfBatchMode = next;
         Status = next
-            ? $"批量整理“{SelectedShelf!.Name}”：勾选角色后可从本书架移出。"
-            : $"已退出“{SelectedShelf!.Name}”的批量整理。";
+            ? LanguageRuntime.Format("Characters.Shelf.BatchModeFormat", SelectedShelf!.Name)
+            : LanguageRuntime.Format("Characters.Shelf.BatchExitFormat", SelectedShelf!.Name);
     }
 
     private async Task RemoveSelectedFromShelfAsync(object? parameter)
@@ -997,7 +1024,7 @@ public sealed class CharactersViewModel : ViewModelBase
             .ToArray();
         if (characterIds.Length == 0)
         {
-            Status = $"请先勾选要从书架“{shelf.Name}”移出的角色。";
+            Status = LanguageRuntime.Format("Characters.Shelf.BatchSelectFormat", shelf.Name);
             return;
         }
 
@@ -1020,16 +1047,21 @@ public sealed class CharactersViewModel : ViewModelBase
             if (version == _shelfSelectionVersion
                 && string.Equals(SelectedShelf?.Id, shelf.Id, StringComparison.Ordinal))
             {
-                Status =
-                    $"已从书架“{shelf.Name}”移出 {removedCount} 个角色；角色卡和聊天记录未删除。";
+                Status = LanguageRuntime.Format(
+                    "Characters.Shelf.BatchRemovedFormat",
+                    shelf.Name,
+                    removedCount);
             }
         }
         catch (Exception exception)
         {
             if (string.Equals(SelectedShelf?.Id, shelf.Id, StringComparison.Ordinal))
             {
-                Status =
-                    $"批量移出未全部完成（已完成 {removedCount}/{characterIds.Length}）：{exception.Message}";
+                Status = LanguageRuntime.Format(
+                    "Characters.Shelf.BatchPartialFormat",
+                    removedCount,
+                    characterIds.Length,
+                    LanguageRuntime.ErrorMessage(exception));
                 await LoadSelectedShelfAsync(++_shelfSelectionVersion);
             }
         }
@@ -1093,7 +1125,7 @@ public sealed class CharactersViewModel : ViewModelBase
         }
         catch (Exception exception) when (version == _shelfSelectionVersion)
         {
-            Status = $"书架读取失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Characters.Shelf.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -1267,7 +1299,7 @@ public sealed class CharactersViewModel : ViewModelBase
         if (SelectedCharacter is null
             || string.IsNullOrWhiteSpace(SelectedCharacter.ImportReportJson))
         {
-            ImportReportText = "选择角色后可查看导入报告。";
+            ImportReportText = LanguageRuntime.GetString("Characters.ImportReport.Select");
             return;
         }
 
@@ -1281,17 +1313,32 @@ public sealed class CharactersViewModel : ViewModelBase
                 || report.Resources is null
                 || report.Warnings is null)
             {
-                ImportReportText = "此角色没有可读取的导入报告。";
+                ImportReportText = LanguageRuntime.GetString("Characters.ImportReport.None");
                 return;
             }
 
             var text = new StringBuilder()
-                .AppendLine($"格式：{report.FormatName}")
-                .AppendLine($"规格：{report.Spec} {report.SpecVersion}".TrimEnd())
-                .AppendLine($"源文件：{report.SourceFileName}")
-                .AppendLine($"原始工作副本：{(report.SourcePreserved ? "已保存" : "未保存")}")
-                .AppendLine($"未知字段：{report.UnknownFieldPaths.Count} 项")
-                .AppendLine($"内嵌资源：{report.Resources.Count} 项");
+                .AppendLine(LanguageRuntime.Format(
+                    "Characters.ImportReport.FormatFormat",
+                    report.FormatName))
+                .AppendLine(LanguageRuntime.Format(
+                    "Characters.ImportReport.SpecFormat",
+                    report.Spec,
+                    report.SpecVersion).TrimEnd())
+                .AppendLine(LanguageRuntime.Format(
+                    "Characters.ImportReport.SourceFormat",
+                    report.SourceFileName))
+                .AppendLine(LanguageRuntime.Format(
+                    "Characters.ImportReport.PreservedFormat",
+                    report.SourcePreserved
+                        ? LanguageRuntime.GetString("Characters.ImportReport.Preserved")
+                        : LanguageRuntime.GetString("Characters.ImportReport.NotPreserved")))
+                .AppendLine(LanguageRuntime.Format(
+                    "Characters.ImportReport.UnknownFieldsFormat",
+                    report.UnknownFieldPaths.Count))
+                .AppendLine(LanguageRuntime.Format(
+                    "Characters.ImportReport.ResourcesFormat",
+                    report.Resources.Count));
             foreach (var resource in report.Resources)
             {
                 text.AppendLine(
@@ -1300,8 +1347,10 @@ public sealed class CharactersViewModel : ViewModelBase
 
             if (report.Warnings.Count > 0)
             {
-                text.AppendLine("提示：");
-                foreach (var warning in report.Warnings)
+                text.AppendLine(LanguageRuntime.GetString("Characters.ImportReport.Warnings"));
+                foreach (var warning in LanguageRuntime.LocalizeDiagnostics(
+                             report.Warnings,
+                             "Characters.ImportWarningSummaryFormat"))
                 {
                     text.AppendLine($"  • {warning}");
                 }
@@ -1311,7 +1360,7 @@ public sealed class CharactersViewModel : ViewModelBase
         }
         catch (JsonException)
         {
-            ImportReportText = "导入报告 JSON 已损坏或来自不兼容版本。";
+            ImportReportText = LanguageRuntime.GetString("Characters.ImportReport.Corrupt");
         }
     }
 
@@ -1408,7 +1457,7 @@ public sealed class CharactersViewModel : ViewModelBase
                     StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
-                    "不能把详情会话重新绑定到另一个角色。");
+                    LanguageRuntime.GetString("Characters.DetailCannotRebind"));
             }
 
             Character = character;
@@ -1423,7 +1472,7 @@ public sealed class CharactersViewModel : ViewModelBase
                     StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
-                    "不能用另一个角色替换当前详情会话。");
+                    LanguageRuntime.GetString("Characters.DetailCannotReplace"));
             }
 
             Character = character;

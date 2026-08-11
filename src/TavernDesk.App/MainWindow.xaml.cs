@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 
@@ -60,8 +61,8 @@ public partial class MainWindow : Window
         {
             MessageBox.Show(
                 this,
-                exception.Message,
-                "无法保存大厅草稿",
+                LanguageRuntime.ErrorMessage(exception),
+                LanguageRuntime.GetString("Shell.SaveLobbyDraftFailed"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }

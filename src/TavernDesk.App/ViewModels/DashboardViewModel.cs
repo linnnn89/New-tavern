@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
@@ -28,8 +29,8 @@ public sealed class DashboardViewModel : ViewModelBase
         OpenConversationCommand = new AsyncRelayCommand(OpenConversationAsync);
     }
 
-    public string Title => "今天想和谁见面？";
-    public string Subtitle => "从最近对话继续，或从角色书架开启一段新故事。";
+    public string Title => LanguageRuntime.GetString("Dashboard.Title");
+    public string Subtitle => LanguageRuntime.GetString("Dashboard.Subtitle");
     public ObservableCollection<ConversationSummary> RecentConversations { get; } = [];
     public AsyncRelayCommand OpenConversationCommand { get; }
 

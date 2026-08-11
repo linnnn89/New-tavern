@@ -5,6 +5,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using TavernDesk.App.Localization;
 using System.Windows.Threading;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
@@ -121,8 +122,9 @@ public partial class ChatView : UserControl
         RightPanelSplitter.Background = Brushes.Transparent;
         RightPanelCollapseArrow.Visibility = Visibility.Visible;
         RightPanelExpandArrow.Visibility = Visibility.Collapsed;
-        RightPanelToggleButton.ToolTip = "折叠右侧栏";
-        AutomationProperties.SetName(RightPanelToggleButton, "折叠右侧栏");
+        var collapseLabel = LanguageRuntime.GetString("Chat.RightPanel.Collapse");
+        RightPanelToggleButton.ToolTip = collapseLabel;
+        AutomationProperties.SetName(RightPanelToggleButton, collapseLabel);
         _isRightPanelCollapsed = false;
         _isRightPanelAutoCollapsed = false;
     }
@@ -130,8 +132,8 @@ public partial class ChatView : UserControl
     private void UpdateCollapsedToggleMetadata(bool isWidthConstrained)
     {
         var label = isWidthConstrained
-            ? "窗口空间不足；放大窗口后可展开右侧栏"
-            : "展开右侧栏";
+            ? LanguageRuntime.GetString("Chat.RightPanel.WidthConstrained")
+            : LanguageRuntime.GetString("Chat.RightPanel.Expand");
         RightPanelToggleButton.ToolTip = label;
         AutomationProperties.SetName(RightPanelToggleButton, label);
     }

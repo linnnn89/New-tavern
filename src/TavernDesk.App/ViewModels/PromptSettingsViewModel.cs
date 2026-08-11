@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -23,7 +24,7 @@ public sealed class PromptSettingsViewModel : ViewModelBase
     private PromptCategoryViewModel? _selectedCategory;
     private PromptEditorItemViewModel? _selectedPrompt;
     private string _status =
-        "这里保存全局默认；角色卡、剧本和仍开放的局部提示词可按各模块规则追加或覆盖。";
+        LanguageRuntime.GetString("PromptSettings.Status.Intro");
 
     public PromptSettingsViewModel(
         IGlobalPromptConfiguration configuration,
@@ -34,48 +35,48 @@ public sealed class PromptSettingsViewModel : ViewModelBase
         Categories =
         [
             new(
-                "聊天",
+                LanguageRuntime.GetString("PromptSettings.Category.Chat"),
                 [
                     Create(
                         GlobalPromptKey.ChatSystem,
-                        "角色聊天 · 全局 System Prompt",
-                        "所有个人角色聊天共享的基础扮演职责；角色卡的 System Prompt 会在其后补充。")
+                        LanguageRuntime.GetString("PromptSettings.ChatSystem.Label"),
+                        LanguageRuntime.GetString("PromptSettings.ChatSystem.Description"))
                 ]),
             new(
-                "记忆银行",
+                LanguageRuntime.GetString("PromptSettings.Category.Memory"),
                 [
                     Create(
                         GlobalPromptKey.MemoryUpdateSystem,
-                        "记忆更新 · 全局提示词",
-                        "唯一可编辑提示词；旧记忆、新增记录和目标 tokens 由程序作为固定数据载荷附加。"),
+                        LanguageRuntime.GetString("PromptSettings.MemoryUpdate.Label"),
+                        LanguageRuntime.GetString("PromptSettings.MemoryUpdate.Description")),
                     Create(
                         GlobalPromptKey.MemoryCompressionSystem,
-                        "记忆压缩 · 全局提示词",
-                        "唯一可编辑提示词；待压缩记忆和目标 tokens 由程序作为固定数据载荷附加。")
+                        LanguageRuntime.GetString("PromptSettings.MemoryCompression.Label"),
+                        LanguageRuntime.GetString("PromptSettings.MemoryCompression.Description"))
                 ]),
             new(
-                "群聊",
+                LanguageRuntime.GetString("PromptSettings.Category.GroupChat"),
                 [
                     Create(
                         GlobalPromptKey.GroupRelaySystem,
-                        "群聊接力 · System Prompt",
-                        "规定当前发言角色如何在多人场景中行动，不替其他成员作答。"),
+                        LanguageRuntime.GetString("PromptSettings.GroupRelay.Label"),
+                        LanguageRuntime.GetString("PromptSettings.GroupRelay.Description")),
                     Create(
                         GlobalPromptKey.GroupMemoryMergeSystem,
-                        "群聊记忆合并 · 全局提示词",
-                        "唯一可编辑提示词；角色记忆、群聊记忆、角色名和目标 tokens 由程序作为固定数据载荷附加。")
+                        LanguageRuntime.GetString("PromptSettings.GroupMemory.Label"),
+                        LanguageRuntime.GetString("PromptSettings.GroupMemory.Description"))
                 ]),
             new(
-                "跑团",
+                LanguageRuntime.GetString("PromptSettings.Category.Campaign"),
                 [
                     Create(
                         GlobalPromptKey.CampaignGmSystem,
-                        "跑团 · GM 职责",
-                        "固定 GM 的裁判、世界事实写入和信息隔离职责；剧本专用说明会在其后追加。"),
+                        LanguageRuntime.GetString("PromptSettings.CampaignGm.Label"),
+                        LanguageRuntime.GetString("PromptSettings.CampaignGm.Description")),
                     Create(
                         GlobalPromptKey.CampaignPlayerSystem,
-                        "跑团 · AI 玩家职责",
-                        "固定 AI 玩家只声明自身行动、不替 GM 判定结果的职责。")
+                        LanguageRuntime.GetString("PromptSettings.CampaignPlayer.Label"),
+                        LanguageRuntime.GetString("PromptSettings.CampaignPlayer.Description"))
                 ])
         ];
         NavigationItems = new ObservableCollection<PromptNavigationItemViewModel>(
@@ -195,7 +196,7 @@ public sealed class PromptSettingsViewModel : ViewModelBase
             _saved[item.Key] = item.Text;
         }
 
-        Status = "已保存全局提示词配置；后续模型请求立即使用新值。";
+        Status = LanguageRuntime.GetString("PromptSettings.Saved");
         RaiseDirtyState();
     }
 
@@ -217,7 +218,9 @@ public sealed class PromptSettingsViewModel : ViewModelBase
         await File.WriteAllTextAsync(
             path,
             JsonSerializer.Serialize(profile, ExportJsonOptions));
-        Status = $"已另存当前完整提示词配置：{Path.GetFileName(path)}";
+        Status = LanguageRuntime.Format(
+            "PromptSettings.ExportedFormat",
+            Path.GetFileName(path));
     }
 
     private void RestoreSelectedDefault()
@@ -228,7 +231,9 @@ public sealed class PromptSettingsViewModel : ViewModelBase
         }
 
         SelectedPrompt.Text = GlobalPromptDefaults.Get(SelectedPrompt.Key);
-        Status = $"“{SelectedPrompt.Label}”已恢复到内置默认；点击保存后生效。";
+        Status = LanguageRuntime.Format(
+            "PromptSettings.RestoredFormat",
+            SelectedPrompt.Label);
     }
 
     private void RaiseDirtyState()
@@ -291,19 +296,19 @@ public sealed class PromptEditorItemViewModel : ViewModelBase
         Key switch
         {
             GlobalPromptKey.ChatSystem =>
-                "角色局部入口：打开个人聊天 → 角色提示词。那里直接修改角色卡的 system_prompt 与历史后指令，不创建第二份副本。",
+                LanguageRuntime.GetString("PromptSettings.OverrideHint.Chat"),
             GlobalPromptKey.MemoryUpdateSystem
                 or GlobalPromptKey.MemoryCompressionSystem =>
-                "唯一生效来源：每项记忆功能只有这一份可编辑全局提示词；运行资料由程序附加，不存在第二份 User 模板或局部版本。",
+                LanguageRuntime.GetString("PromptSettings.OverrideHint.Memory"),
             GlobalPromptKey.GroupRelaySystem =>
-                "局部补充入口：打开群聊 → 群聊 → 当前群聊的接力提示词（高级）。只影响该群聊的角色接力。",
+                LanguageRuntime.GetString("PromptSettings.OverrideHint.GroupRelay"),
             GlobalPromptKey.GroupMemoryMergeSystem =>
-                "唯一生效来源：群聊记忆合并只有这一份可编辑全局提示词；运行资料由程序附加，不存在第二份 User 模板或群聊局部版本。",
+                LanguageRuntime.GetString("PromptSettings.OverrideHint.GroupMemory"),
             GlobalPromptKey.CampaignGmSystem
                 or GlobalPromptKey.CampaignPlayerSystem =>
-                "本局专用内容来自跑团大厅与剧本结构；全局职责可从跑团大厅按钮直接返回这里修改。",
+                LanguageRuntime.GetString("PromptSettings.OverrideHint.Campaign"),
             _ =>
-                "更具体的角色卡、预设与会话配置仍按现有优先级生效；这里不重复创建第二份聊天文本框。"
+                LanguageRuntime.GetString("PromptSettings.OverrideHint.Other")
         };
 
     public string Text

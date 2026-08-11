@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Windows.Media;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -23,17 +24,17 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         new(LoadSystemFontFamilies);
     private static readonly IReadOnlyList<InterfaceScaleOption> InterfaceScaleOptions =
     [
-        new(80, "80%（紧凑）"),
+        new(80, LanguageRuntime.GetString("Settings.Scale.Compact")),
         new(90, "90%"),
-        new(100, "100%（默认）"),
+        new(100, LanguageRuntime.GetString("Settings.Scale.Default")),
         new(110, "110%"),
         new(125, "125%"),
-        new(150, "150%（放大）")
+        new(150, LanguageRuntime.GetString("Settings.Scale.Large"))
     ];
     private static readonly IReadOnlyList<InterfaceThemeOption> InterfaceThemeOptions =
     [
-        new(InterfaceSettingsRuntime.LightThemeName, "默认浅色"),
-        new(InterfaceSettingsRuntime.DarkThemeName, "深炭黑")
+        new(InterfaceSettingsRuntime.LightThemeName, LanguageRuntime.GetString("Settings.Theme.Light")),
+        new(InterfaceSettingsRuntime.DarkThemeName, LanguageRuntime.GetString("Settings.Theme.Dark"))
     ];
 
     private readonly IProviderProfileRepository _repository;
@@ -60,7 +61,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private ProviderModel? _selectedAssignmentModel;
     private ModelFunctionOption _selectedFunction;
     private string _pendingApiKey = string.Empty;
-    private string _keyStatus = "未保存 API Key。";
+    private string _keyStatus = LanguageRuntime.GetString("Settings.Key.NotSaved");
     private string _catalogSearchText = string.Empty;
     private string _assignmentSearchText = string.Empty;
     private string _modelContextLimit = "32768";
@@ -69,7 +70,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private string _assignmentMaxOutputTokens = "4096";
     private string _assignmentTemperature = "0.8";
     private string _assignmentTopP = "1";
-    private string _status = "保存接入商不会联网；只有主动点击“刷新模型目录”才会请求对应 API。";
+    private string _status = LanguageRuntime.GetString("Settings.Status.Intro");
     private bool _chatAutoScrollEnabled =
         InterfaceSettingsRuntime.DefaultChatAutoScroll;
     private string _interfaceFontFamily =
@@ -82,12 +83,14 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private InterfaceThemeOption _selectedInterfaceThemeOption =
         InterfaceThemeOptions.Single(option =>
             option.Value == InterfaceSettingsRuntime.DefaultThemeName);
+    private SupportedLanguage _selectedLanguageOption =
+        LanguageRuntime.Resolve(LanguageRuntime.CurrentCultureName);
     private string _interfaceScaleRecommendationText =
-        "自动推荐尚未启用；后续可读取本机显示分辨率与 DPI 给出建议，不会自动更改。";
+        LanguageRuntime.GetString("Settings.ScaleRecommendation.Pending");
     private string _interfaceSettingsStatus =
-        "界面缩放、聊天自动滚动、字体和字号会保存到本地设置。";
+        LanguageRuntime.GetString("Settings.Interface.Intro");
     private string _dataRoot = string.Empty;
-    private string _dataRootStatus = "个人资料目录由 Windows 用户级配置管理。";
+    private string _dataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Intro");
     private int _selectedSettingsTabIndex;
     private int _catalogLoadVersion;
     private int _assignmentLoadVersion;
@@ -125,12 +128,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         Prompts = new PromptSettingsViewModel(globalPrompts, fileDialog);
         FunctionOptions =
         [
-            new(ModelFunctionKind.Chat, "角色聊天"),
-            new(ModelFunctionKind.MemoryUpdate, "记忆银行更新"),
-            new(ModelFunctionKind.MemoryCompression, "记忆银行压缩"),
-            new(ModelFunctionKind.GroupChat, "群聊接力"),
-            new(ModelFunctionKind.GroupMemoryMerge, "群聊记忆合并"),
-            new(ModelFunctionKind.Embedding, "Embedding 向量化")
+            new(ModelFunctionKind.Chat, LanguageRuntime.GetString("Settings.Function.Chat")),
+            new(ModelFunctionKind.MemoryUpdate, LanguageRuntime.GetString("Settings.Function.MemoryUpdate")),
+            new(ModelFunctionKind.MemoryCompression, LanguageRuntime.GetString("Settings.Function.MemoryCompression")),
+            new(ModelFunctionKind.GroupChat, LanguageRuntime.GetString("Settings.Function.GroupChat")),
+            new(ModelFunctionKind.GroupMemoryMerge, LanguageRuntime.GetString("Settings.Function.GroupMemory")),
+            new(ModelFunctionKind.Embedding, LanguageRuntime.GetString("Settings.Function.Embedding"))
         ];
         _selectedFunction = FunctionOptions[0];
 
@@ -246,12 +249,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SelectedProfile is not null && !IsGrokCliSelected;
 
     public string ConnectionKindLabel => IsGrokCliSelected
-        ? "Grok CLI（本机订阅登录）"
-        : "OpenAI Chat Completions 兼容";
+        ? LanguageRuntime.GetString("Settings.Connection.Grok")
+        : LanguageRuntime.GetString("Settings.Connection.OpenAi");
 
     public string CredentialHelpText => IsGrokCliSelected
-        ? "使用本机 grok login 的订阅登录；TavernDesk 不要求或保存 Grok API Key。"
-        : "Key 文件独立保存在数据目录的 secrets 文件夹；受 Windows DPAPI 当前用户保护，数据库只保存随机引用。这不是应用进程隔离：同一 Windows 用户下的恶意程序或管理员仍可能取得访问能力。";
+        ? LanguageRuntime.GetString("Settings.Credential.Grok")
+        : LanguageRuntime.GetString("Settings.Credential.OpenAi");
 
     public ProviderProfile? CatalogProvider
     {
@@ -339,7 +342,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public bool IsEmbeddingFunctionSelected =>
         SelectedFunction.Value == ModelFunctionKind.Embedding;
 
-    public string CustomModelButtonText => "添加自定义模型";
+    public string CustomModelButtonText => LanguageRuntime.GetString("Settings.CustomModel.Add");
 
     public string PendingApiKey
     {
@@ -351,7 +354,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 OnPropertyChanged(nameof(HasUnsavedChanges));
                 KeyStatus = value.Length == 0
                     ? KeyStatusFor(SelectedProfile)
-                    : "已输入新的 API Key；尚未保存，不会显示或写入数据库。";
+                    : LanguageRuntime.GetString("Settings.Key.Pending");
             }
         }
     }
@@ -467,8 +470,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(InterfaceScalePercent));
             InterfaceSettingsRuntime.ApplyScale(normalized.Percent);
-            InterfaceSettingsStatus =
-                $"界面缩放已预览为 {normalized.Percent}%；点击“保存界面设置”后将在下次启动继续使用。";
+            InterfaceSettingsStatus = LanguageRuntime.Format(
+                "Settings.ScalePreviewFormat",
+                normalized.Percent);
         }
     }
 
@@ -491,8 +495,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             }
 
             InterfaceSettingsRuntime.ApplyTheme(normalized.Value);
-            InterfaceSettingsStatus =
-                $"主题已预览为“{normalized.Label}”；点击“保存界面设置”后将在下次启动继续使用。";
+            InterfaceSettingsStatus = LanguageRuntime.Format(
+                "Settings.ThemePreviewFormat",
+                normalized.Label);
         }
     }
 
@@ -506,6 +511,21 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         get => _interfaceSettingsStatus;
         private set => SetProperty(ref _interfaceSettingsStatus, value);
+    }
+
+    public IReadOnlyList<SupportedLanguage> LanguageOptions =>
+        LanguageRuntime.SupportedLanguages;
+
+    public SupportedLanguage SelectedLanguageOption
+    {
+        get => _selectedLanguageOption;
+        set
+        {
+            if (value is not null)
+            {
+                SetProperty(ref _selectedLanguageOption, LanguageRuntime.Resolve(value.CultureName));
+            }
+        }
     }
 
     public string DataRoot
@@ -568,7 +588,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         SelectedSettingsTabIndex = 5;
         Prompts.Open(key);
-        Status = "已定位到对应的全局提示词；修改后请保存。";
+        Status = LanguageRuntime.GetString("Settings.PromptLocated");
     }
 
     public async Task<bool> ConfirmCanLeaveAsync()
@@ -579,7 +599,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
 
         switch (_interaction.ConfirmUnsavedProviderChanges(
-                    Editor.Name.Length == 0 ? "未命名接入商" : Editor.Name))
+                    Editor.Name.Length == 0
+                        ? LanguageRuntime.GetString("Settings.ProviderUnnamed")
+                        : Editor.Name))
         {
             case UnsavedChangesDecision.Cancel:
                 return false;
@@ -613,12 +635,14 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         var fontSizeTask = _appSettings.GetAsync(InterfaceFontSizeSettingKey);
         var scaleTask = _appSettings.GetAsync(InterfaceScalePercentSettingKey);
         var themeTask = _appSettings.GetAsync(InterfaceThemeSettingKey);
+        var languageTask = _appSettings.GetAsync(LanguageRuntime.SettingKey);
         await Task.WhenAll(
             autoScrollTask,
             fontFamilyTask,
             fontSizeTask,
             scaleTask,
-            themeTask);
+            themeTask,
+            languageTask);
 
         ChatAutoScrollEnabled =
             !bool.TryParse(autoScrollTask.Result, out var autoScroll)
@@ -627,6 +651,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         InterfaceFontSize = NormalizeFontSize(fontSizeTask.Result);
         SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(scaleTask.Result);
         SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(themeTask.Result);
+        SelectedLanguageOption = LanguageRuntime.Resolve(languageTask.Result);
         InterfaceSettingsRuntime.Apply(
             InterfaceFontFamily,
             InterfaceFontSize,
@@ -634,17 +659,19 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             InterfaceScalePercent,
             SelectedInterfaceThemeOption.Value);
         LoadInterfaceScaleRecommendation();
-        InterfaceSettingsStatus = "界面设置已载入；修改后点击“保存界面设置”。";
+        InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.Loaded");
     }
 
     private void LoadDataRootSettings()
     {
         DataRoot = _dataLocation?.CurrentRoot ?? string.Empty;
         DataRootStatus = _dataLocation is null
-            ? "当前环境没有可用的个人资料目录管理器。"
+            ? LanguageRuntime.GetString("Settings.DataRoot.Unavailable")
             : _dataLocation.IsExternallyOverridden
-                ? "当前目录由 --data-root 或 TAVERNDESK_DATA_ROOT 覆盖；请移除覆盖后再从这里修改。"
-                : $"配置文件：{_dataLocation.ConfigurationPath}。修改后需要重启 TavernDesk 才会切换当前服务。";
+                ? LanguageRuntime.GetString("Settings.DataRoot.Overridden")
+                : LanguageRuntime.Format(
+                    "Settings.DataRoot.ConfigFormat",
+                    _dataLocation.ConfigurationPath);
     }
 
     private void PickDataRoot()
@@ -653,7 +680,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(selected))
         {
             DataRoot = Path.GetFullPath(selected);
-            DataRootStatus = "已选择新目录；点击“保存并切换”后会先询问是否迁移当前资料。";
+            DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Selected");
         }
     }
 
@@ -661,13 +688,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         if (_dataLocation is null)
         {
-            DataRootStatus = "当前环境没有可用的个人资料目录管理器。";
+            DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Unavailable");
             return;
         }
 
         if (_dataLocation.IsExternallyOverridden)
         {
-            DataRootStatus = "当前目录由 --data-root 或 TAVERNDESK_DATA_ROOT 覆盖，未修改配置。";
+            DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.OverrideBlocked");
             return;
         }
 
@@ -678,7 +705,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception) when (exception is ArgumentException or IOException)
         {
-            DataRootStatus = $"个人资料目录无效：{exception.Message}";
+            DataRootStatus = LanguageRuntime.Format("Settings.DataRoot.InvalidFormat", LanguageRuntime.ErrorMessage(exception));
             return;
         }
 
@@ -688,7 +715,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 StringComparison.OrdinalIgnoreCase))
         {
             DataRoot = requestedRoot;
-            DataRootStatus = "个人资料目录没有变化。";
+            DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Unchanged");
             return;
         }
 
@@ -697,7 +724,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             requestedRoot);
         if (decision == DataRootMigrationDecision.Cancel)
         {
-            DataRootStatus = "已取消个人资料目录切换。";
+            DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Cancelled");
             return;
         }
 
@@ -711,12 +738,15 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 mode);
             DataRoot = result.NewRoot;
             DataRootStatus = result.Migrated
-                ? $"已复制 {result.CopiedFiles} 个文件（{result.CopiedBytes:N0} B）并切换配置；旧目录保留为安全备份。请重启 TavernDesk。"
-                : "已切换配置但未迁移文件；请确认新目录已有可用个人资料后重启 TavernDesk。";
+                ? LanguageRuntime.Format(
+                    "Settings.DataRoot.MigratedFormat",
+                    result.CopiedFiles,
+                    result.CopiedBytes)
+                : LanguageRuntime.GetString("Settings.DataRoot.Switched");
         }
         catch (Exception exception)
         {
-            DataRootStatus = $"个人资料目录切换失败，原配置未改变：{exception.Message}";
+            DataRootStatus = LanguageRuntime.Format("Settings.DataRoot.FailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -724,7 +754,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         if (_appSettings is null)
         {
-            InterfaceSettingsStatus = "当前环境没有可用的本地设置仓储。";
+            InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.RepositoryUnavailable");
             return;
         }
 
@@ -745,18 +775,26 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 InterfaceScalePercent.ToString(CultureInfo.InvariantCulture)),
             _appSettings.SetAsync(
                 InterfaceThemeSettingKey,
-                SelectedInterfaceThemeOption.Value));
+                SelectedInterfaceThemeOption.Value),
+            _appSettings.SetAsync(
+                LanguageRuntime.SettingKey,
+                SelectedLanguageOption.CultureName));
         InterfaceSettingsRuntime.Apply(
             InterfaceFontFamily,
             InterfaceFontSize,
             ChatAutoScrollEnabled,
             InterfaceScalePercent,
             SelectedInterfaceThemeOption.Value);
-        InterfaceSettingsStatus =
-            $"界面设置已保存：缩放 {InterfaceScalePercent}%，"
-            + $"主题 {SelectedInterfaceThemeOption.Label}，"
-            + $"{InterfaceFontFamily}，字号 {InterfaceFontSize:0}；"
-            + (ChatAutoScrollEnabled ? "聊天自动滚动已开启。" : "聊天自动滚动已关闭。");
+        InterfaceSettingsStatus = LanguageRuntime.Format(
+            "Settings.Interface.SavedFormat",
+            SelectedLanguageOption.NativeName,
+            InterfaceScalePercent,
+            SelectedInterfaceThemeOption.Label,
+            InterfaceFontFamily,
+            InterfaceFontSize,
+            ChatAutoScrollEnabled
+                ? LanguageRuntime.GetString("Settings.Interface.AutoScrollOn")
+                : LanguageRuntime.GetString("Settings.Interface.AutoScrollOff"));
     }
 
     private void RestoreInterfaceDefaults()
@@ -768,8 +806,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             InterfaceSettingsRuntime.DefaultScalePercent);
         SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(
             InterfaceSettingsRuntime.DefaultThemeName);
-        InterfaceSettingsStatus =
-            "已恢复默认值；缩放和主题已预览，点击“保存界面设置”后将在下次启动继续使用。";
+        SelectedLanguageOption = LanguageRuntime.Resolve(LanguageRuntime.DefaultCultureName);
+        InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.Restored");
     }
 
     private string NormalizeFontFamily(string? value)
@@ -843,15 +881,17 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
             var option = ResolveInterfaceScaleOption(recommendation.Percent);
             var reason = string.IsNullOrWhiteSpace(recommendation.Reason)
-                ? "根据本机显示信息计算"
+                ? LanguageRuntime.GetString("Settings.ScaleRecommendation.DefaultReason")
                 : recommendation.Reason.Trim();
-            InterfaceScaleRecommendationText =
-                $"推荐 {option.Percent}%：{reason}。仅供选择，不会自动更改。";
+            InterfaceScaleRecommendationText = LanguageRuntime.Format(
+                "Settings.ScaleRecommendation.Format",
+                option.Percent,
+                reason);
         }
         catch
         {
             InterfaceScaleRecommendationText =
-                "暂时无法读取缩放建议；当前手动设置不受影响。";
+                LanguageRuntime.GetString("Settings.ScaleRecommendation.Failed");
         }
     }
 
@@ -894,21 +934,21 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         var normalizedBaseUrl = baseUrl.Trim().TrimEnd('/');
         if (normalizedName.Length == 0)
         {
-            Status = "接入商名称不能为空。";
+            Status = LanguageRuntime.GetString("Validation.Provider.NameRequired");
             return null;
         }
 
         if (!Uri.TryCreate(normalizedBaseUrl, UriKind.Absolute, out var baseUri)
             || baseUri.Scheme is not ("http" or "https"))
         {
-            Status = "API 地址必须是完整的 http 或 https 地址。";
+            Status = LanguageRuntime.GetString("Validation.Provider.InvalidUrl");
             return null;
         }
 
         if (!string.IsNullOrEmpty(baseUri.Query)
             || !string.IsNullOrEmpty(baseUri.Fragment))
         {
-            Status = "API 地址不能包含查询参数或片段。";
+            Status = LanguageRuntime.GetString("Validation.Provider.UrlQueryNotAllowed");
             return null;
         }
 
@@ -919,7 +959,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 "/chat/completions",
                 StringComparison.OrdinalIgnoreCase))
         {
-            Status = "API 地址请填写到 /api/v1 或 /v1 结束，不要加入 /chat。";
+            Status = LanguageRuntime.GetString("Validation.Provider.UrlPathHint");
             return null;
         }
 
@@ -939,11 +979,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            Status = $"添加接入商失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Settings.Provider.AddFailedFormat", LanguageRuntime.ErrorMessage(exception));
             return null;
         }
 
-        Status = $"已添加“{profile.Name}”；固定使用 OpenAI Chat Completions 兼容协议，请填写 API Key 后保存。";
+        Status = LanguageRuntime.Format("Settings.Provider.AddedFormat", profile.Name);
         return Profiles.FirstOrDefault(item => item.Id == profile.Id) ?? profile;
     }
 
@@ -984,7 +1024,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            Status = $"接入商删除失败，配置和 DPAPI Key 均已保留：{exception.Message}";
+            Status = LanguageRuntime.Format("Settings.Provider.DeleteFailedFormat", LanguageRuntime.ErrorMessage(exception));
             return;
         }
 
@@ -1001,7 +1041,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 // dependent rows. An encrypted orphan is safer than restoring
                 // a partial provider without its models and assignments.
                 secretCleanupWarning =
-                    $"接入商已删除，但本地加密 Key 文件清理失败：{exception.Message}";
+                    LanguageRuntime.Format(
+                        "Settings.Provider.KeyCleanupFailedFormat",
+                        LanguageRuntime.ErrorMessage(exception));
             }
         }
 
@@ -1026,7 +1068,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         await LoadFunctionAssignmentSafeAsync(++_assignmentLoadVersion);
         await RefreshAssignmentOverviewAsync();
         Status = secretCleanupWarning
-                 ?? $"已删除“{profile.Name}”；模型目录、功能分配和本地 DPAPI Key 已清理。";
+                 ?? LanguageRuntime.Format("Settings.Provider.DeletedFormat", profile.Name);
     }
 
     public async Task<bool> SelectProfileAsync(ProviderProfile profile)
@@ -1051,7 +1093,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         PendingApiKey = string.Empty;
         if (profile is null)
         {
-            KeyStatus = "未选择接入商。";
+            KeyStatus = LanguageRuntime.GetString("Settings.Provider.NoneSelected");
             return;
         }
 
@@ -1087,7 +1129,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         if (SelectedProfile.AdapterKind == ProviderAdapterKind.GrokCli
             && !string.IsNullOrWhiteSpace(PendingApiKey))
         {
-            Status = "Grok CLI 使用本机 grok login 的订阅登录，不接收或保存 API Key。";
+            Status = LanguageRuntime.GetString("Settings.Provider.GrokNoKey");
             return;
         }
 
@@ -1139,7 +1181,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             catch (Exception exception)
             {
                 cleanupWarning =
-                    $"；旧密钥引用已停用，但保护文件清理失败：{exception.Message}";
+                    LanguageRuntime.Format(
+                        "Settings.Provider.OldKeyCleanupWarningFormat",
+                        LanguageRuntime.ErrorMessage(exception));
             }
         }
 
@@ -1147,7 +1191,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         Editor.MarkSaved();
         PendingApiKey = string.Empty;
         KeyStatus = KeyStatusFor(SelectedProfile);
-        Status = $"已保存：{SelectedProfile.Name}；没有发起网络请求{cleanupWarning}。";
+        Status = LanguageRuntime.Format(
+            "Settings.Provider.SavedFormat",
+            SelectedProfile.Name,
+            cleanupWarning);
         await RefreshProfileReferencesAsync(SelectedProfile.Id);
     }
 
@@ -1181,13 +1228,18 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         catch (Exception exception)
         {
             cleanupWarning =
-                $"；数据库已停用该密钥，但保护文件清理失败：{exception.Message}";
+                LanguageRuntime.Format(
+                    "Settings.Provider.KeyDisabledCleanupWarningFormat",
+                    LanguageRuntime.ErrorMessage(exception));
         }
 
         PendingApiKey = string.Empty;
-        KeyStatus = "API Key 已清除。";
+        KeyStatus = LanguageRuntime.GetString("Settings.Provider.KeyCleared");
         ClearKeyCommand.RaiseCanExecuteChanged();
-        Status = $"已清除 {SelectedProfile.Name} 的本机密钥{cleanupWarning}。";
+        Status = LanguageRuntime.Format(
+            "Settings.Provider.KeyClearedFormat",
+            SelectedProfile.Name,
+            cleanupWarning);
     }
 
     private async Task DiscardCurrentEditsAsync()
@@ -1242,13 +1294,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
         if (!_persistedProfileIds.Contains(CatalogProvider.Id))
         {
-            Status = "请先保存接入商，再刷新模型目录。";
+            Status = LanguageRuntime.GetString("Settings.Models.SaveProviderFirst");
             return;
         }
 
         try
         {
-            Status = $"正在请求 {CatalogProvider.Name} 的模型目录…";
+            Status = LanguageRuntime.Format("Settings.Models.RequestingFormat", CatalogProvider.Name);
             var descriptors = (await _gateway.RefreshModelsAsync(
                     CatalogProvider.Id))
                 .ToList();
@@ -1265,7 +1317,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 catch (HttpRequestException exception)
                 {
                     embeddingStatus =
-                        $"Embedding 专用目录未刷新：{exception.Message}";
+                        LanguageRuntime.Format(
+                            "Settings.Models.EmbeddingRefreshFailedFormat",
+                            LanguageRuntime.ErrorMessage(exception));
                 }
             }
 
@@ -1278,12 +1332,19 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
             await LoadCatalogSafeAsync(++_catalogLoadVersion);
             Status = embeddingStatus is null
-                ? $"已刷新 {CatalogProvider.Name}：{descriptors.Count} 个模型。"
-                : $"已刷新 {CatalogProvider.Name}：{descriptors.Count} 个模型；{embeddingStatus}";
+                ? LanguageRuntime.Format(
+                    "Settings.Models.RefreshedFormat",
+                    CatalogProvider.Name,
+                    descriptors.Count)
+                : LanguageRuntime.Format(
+                    "Settings.Models.RefreshedWithNoticeFormat",
+                    CatalogProvider.Name,
+                    descriptors.Count,
+                    embeddingStatus);
         }
         catch (Exception exception)
         {
-            Status = $"刷新模型失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Settings.Models.RefreshFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -1291,13 +1352,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         if (CatalogProvider is null)
         {
-            Status = "请先选择供应商。";
+            Status = LanguageRuntime.GetString("Settings.Models.SelectProvider");
             return;
         }
 
         if (!_persistedProfileIds.Contains(CatalogProvider.Id))
         {
-            Status = "请先保存接入商，再添加自定义模型。";
+            Status = LanguageRuntime.GetString("Settings.Models.SaveBeforeCustom");
             return;
         }
 
@@ -1319,27 +1380,27 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         if (CatalogProvider is null)
         {
-            Status = "请先选择供应商。";
+            Status = LanguageRuntime.GetString("Settings.Models.SelectProvider");
             return false;
         }
 
         if (!_persistedProfileIds.Contains(CatalogProvider.Id))
         {
-            Status = "请先保存接入商，再添加自定义模型。";
+            Status = LanguageRuntime.GetString("Settings.Models.SaveBeforeCustom");
             return false;
         }
 
         var normalizedModelId = modelId.Trim();
         if (normalizedModelId.Length == 0)
         {
-            Status = "模型 ID 或名称不能为空。";
+            Status = LanguageRuntime.GetString("Settings.Models.IdRequired");
             return false;
         }
 
         if (normalizedModelId.Contains('\r')
             || normalizedModelId.Contains('\n'))
         {
-            Status = "模型 ID 或名称必须是一行文本。";
+            Status = LanguageRuntime.GetString("Settings.Models.IdSingleLine");
             return false;
         }
 
@@ -1362,12 +1423,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             SelectedCatalogModel = VisibleCatalogModels.FirstOrDefault(model =>
                 model.ModelId == normalizedModelId
                 && model.ModelKind == ModelCatalogKind.Custom);
-            Status = $"已保存自定义模型：{normalizedModelId}。";
+            Status = LanguageRuntime.Format("Settings.Models.CustomSavedFormat", normalizedModelId);
             return true;
         }
         catch (Exception exception)
         {
-            Status = $"保存自定义模型失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Settings.Models.CustomSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
             return false;
         }
     }
@@ -1391,7 +1452,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception) when (version == _catalogLoadVersion)
         {
-            Status = $"读取模型目录失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Settings.Models.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -1417,7 +1478,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         if (SelectedCatalogModel is null)
         {
-            Status = "请先选择一个模型。";
+            Status = LanguageRuntime.GetString("Settings.Models.SelectModelStatus");
             return;
         }
 
@@ -1436,7 +1497,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SelectedCatalogModel.MaxOutputTokens = maxOutput;
         SelectedCatalogModel.UpdatedAt = DateTimeOffset.Now;
         await _models.UpsertAsync(SelectedCatalogModel);
-        Status = $"已保存 {SelectedCatalogModel.ModelId} 的本地 Token 上限。";
+        Status = LanguageRuntime.Format(
+            "Settings.Models.LimitsSavedFormat",
+            SelectedCatalogModel.ModelId);
     }
 
     private async Task LoadFunctionAssignmentSafeAsync(int version)
@@ -1478,7 +1541,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception) when (version == _assignmentLoadVersion)
         {
-            Status = $"读取功能分配失败：{exception.Message}";
+            Status = LanguageRuntime.Format("Settings.Assignments.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -1504,8 +1567,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 option.Value,
                 option.Label,
                 assignment is null
-                    ? "未分配"
-                    : provider?.Name ?? "接入商已删除",
+                    ? LanguageRuntime.GetString("Settings.Assignments.Unassigned")
+                    : provider?.Name
+                      ?? LanguageRuntime.GetString("Settings.Assignments.ProviderDeleted"),
                 assignment?.ModelId ?? "—",
                 reasoningAvailable,
                 reasoningAvailable && assignment!.ReasoningEnabled));
@@ -1533,7 +1597,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception) when (version == _assignmentLoadVersion)
         {
-            Status = $"读取分配模型失败：{exception.Message}";
+            Status = LanguageRuntime.Format(
+                "Settings.Assignments.ModelsReadFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -1559,7 +1625,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         if (AssignmentProvider is null || SelectedAssignmentModel is null)
         {
-            Status = "请先选择供应商，再从搜索结果中选择具体模型。";
+            Status = LanguageRuntime.GetString("Settings.Assignments.SelectProviderModel");
             return;
         }
 
@@ -1594,14 +1660,14 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             if (!double.TryParse(AssignmentTemperature, out temperature)
                 || temperature is < 0 or > 2)
             {
-                Status = "temperature 必须在 0–2 之间。";
+                Status = LanguageRuntime.GetString("Settings.Assignments.TemperatureRange");
                 return;
             }
 
             if (!double.TryParse(AssignmentTopP, out topP)
                 || topP is <= 0 or > 1)
             {
-                Status = "top_p 必须在 0（不含）–1 之间。";
+                Status = LanguageRuntime.GetString("Settings.Assignments.TopPRange");
                 return;
             }
         }
@@ -1640,8 +1706,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
 
         await RefreshAssignmentOverviewAsync();
-        Status =
-            $"已把“{SelectedFunction.Label}”分配给 {AssignmentProvider.Name} / {assignment.ModelId}。";
+        Status = LanguageRuntime.Format(
+            "Settings.Assignments.SavedFormat",
+            SelectedFunction.Label,
+            AssignmentProvider.Name,
+            assignment.ModelId);
     }
 
     private async Task ToggleReasoningAsync(object? parameter)
@@ -1660,7 +1729,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 provider,
                 assignment.ModelId))
         {
-            Status = "该分配不是 OpenRouter DeepSeek 模型，未修改推理设置。";
+            Status = LanguageRuntime.GetString("Settings.Assignments.NotOpenRouterDeepSeek");
             await RefreshAssignmentOverviewAsync();
             return;
         }
@@ -1669,8 +1738,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         assignment.UpdatedAt = DateTimeOffset.Now;
         await _assignments.UpsertAsync(assignment);
         await RefreshAssignmentOverviewAsync();
-        Status =
-            $"“{overview.Label}”的 DeepSeek 推理已{(assignment.ReasoningEnabled ? "开启" : "关闭")}。";
+        Status = LanguageRuntime.Format(
+            "Settings.Assignments.ReasoningFormat",
+            overview.Label,
+            assignment.ReasoningEnabled
+                ? LanguageRuntime.GetString("Settings.Assignments.ReasoningOn")
+                : LanguageRuntime.GetString("Settings.Assignments.ReasoningOff"));
     }
 
     private static bool TryReadLimits(
@@ -1685,7 +1758,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             || contextLimit is < 1024 or > 4_194_304)
         {
             maxOutput = 0;
-            error = "上下文上限必须是 1024–4194304 之间的整数。";
+            error = LanguageRuntime.GetString("Settings.Limits.ContextRange");
             return false;
         }
 
@@ -1693,7 +1766,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             || maxOutput < 1
             || maxOutput > contextLimit)
         {
-            error = "输出上限必须是正整数，且不能超过上下文上限。";
+            error = LanguageRuntime.GetString("Settings.Limits.OutputRange");
             return false;
         }
 
@@ -1704,12 +1777,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         profile switch
         {
             { Id: ProviderProfileIds.GrokCli, SecretReference.Length: > 0 } =>
-                "Grok CLI 不使用此 API Key；建议清除旧 Key，并在终端执行 grok login。",
+                LanguageRuntime.GetString("Settings.Key.GrokLegacy"),
             { Id: ProviderProfileIds.GrokCli } =>
-                "Grok CLI 使用 grok login 的订阅登录；这里不需要 API Key。",
+                LanguageRuntime.GetString("Settings.Key.GrokNone"),
             { SecretReference.Length: > 0 } =>
-                "API Key：已受 Windows DPAPI（当前用户）保护保存。",
-            _ => "未保存 API Key；无需鉴权的兼容服务可以留空。"
+                LanguageRuntime.GetString("Settings.Key.Protected"),
+            _ => LanguageRuntime.GetString("Settings.Key.Optional")
         };
 }
 

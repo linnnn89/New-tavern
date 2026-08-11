@@ -1,4 +1,5 @@
 using System.Windows;
+using TavernDesk.App.Localization;
 
 namespace TavernDesk.App;
 
@@ -7,9 +8,8 @@ public partial class CustomModelDialog : Window
     public CustomModelDialog(string initialText)
     {
         InitializeComponent();
-        Title = "添加自定义模型";
-        PromptText.Text =
-            "输入要保存到本地目录的任意模型 ID 或名称";
+        Title = LanguageRuntime.GetString("CustomModel.Title");
+        PromptText.Text = LanguageRuntime.GetString("CustomModel.Instruction");
         ModelNameEditor.Text = initialText;
         Loaded += (_, _) =>
         {
@@ -26,8 +26,8 @@ public partial class CustomModelDialog : Window
         {
             MessageBox.Show(
                 this,
-                "模型 ID 或名称不能为空。",
-                "无法保存",
+                LanguageRuntime.GetString("CustomModel.Required"),
+                LanguageRuntime.GetString("Common.CannotSave"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;

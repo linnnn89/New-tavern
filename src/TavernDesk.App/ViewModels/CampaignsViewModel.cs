@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Windows;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
@@ -41,7 +42,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     private CampaignModelOption? _selectedGmRoute;
     private CampaignEventItemViewModel? _selectedEvent;
     private string _screen = "library";
-    private string _statusText = "选择剧本创建新局，或继续已有跑团。";
+    private string _statusText = LanguageRuntime.GetString("Campaigns.Status.Intro");
     private bool _isCreatingScenario;
     private string _title = string.Empty;
     private string _worldSetting = string.Empty;
@@ -83,7 +84,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     private bool _updatingCharacterSelection;
     private bool _campaignMemoryPending;
     private bool _campaignMemoryNeedsEstablish;
-    private string _campaignMemoryStatusText = "跑团记忆：未检查";
+    private string _campaignMemoryStatusText = LanguageRuntime.GetString("Campaigns.Memory.Unchecked");
     private string? _campaignMemoryLastError;
     private string _campaignContextTokenBudgetText = "15000";
     private string _campaignPlayerHistoryBudgetText = "12000";
@@ -91,7 +92,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     private string _campaignMemoryUpdateIntervalRoundsText = "3";
     private string _campaignMemoryPendingTokenThresholdText = "4000";
     private string _campaignMemorySettingsStatusText = string.Empty;
-    private string _contextPreviewSummary = "打开后显示本阶段的上下文预算估算。";
+    private string _contextPreviewSummary = LanguageRuntime.GetString("Campaigns.ContextPreview.Hint");
     private bool _contextPreviewBlocked;
     private string? _contextPreviewBlockingReason;
     private readonly Dictionary<string, string> _contextBlockedSeatReasons =
@@ -148,53 +149,53 @@ public sealed class CampaignsViewModel : ViewModelBase
         [
             new CampaignFlowChoice(
                 CampaignFlowPreset.CollaborativeTable,
-                "协作圆桌",
-                "按席位依次行动，后行动者能看到同伴的公开行动，适合共同冒险。"),
+                LanguageRuntime.GetString("Campaigns.Flow.Collaborative"),
+                LanguageRuntime.GetString("Campaigns.Flow.CollaborativeHelp")),
             new CampaignFlowChoice(
                 CampaignFlowPreset.BlindSubmission,
-                "秘密同投",
-                "AI 并发提交且彼此看不到当轮意图，只有 GM 收齐后裁定，适合竞争和秘密身份。"),
+                LanguageRuntime.GetString("Campaigns.Flow.Blind"),
+                LanguageRuntime.GetString("Campaigns.Flow.BlindHelp")),
             new CampaignFlowChoice(
                 CampaignFlowPreset.StrictInitiative,
-                "严格先攻",
-                "每次只轮到一个席位，GM 随后立即裁定，再进入下一席位。")
+                LanguageRuntime.GetString("Campaigns.Flow.Strict"),
+                LanguageRuntime.GetString("Campaigns.Flow.StrictHelp"))
         ];
         NarrativePermissionChoices =
         [
             new CampaignNarrativePermissionChoice(
                 CampaignNarrativePermission.Forbidden,
-                "禁止",
-                "GM 不得创建这类变化。"),
+                LanguageRuntime.GetString("Campaigns.Permission.Forbidden"),
+                LanguageRuntime.GetString("Campaigns.Permission.ForbiddenHelp")),
             new CampaignNarrativePermissionChoice(
                 CampaignNarrativePermission.PlayerIntentOnly,
-                "仅限玩家明确提交",
-                "必须关联本次已锁定 PlayerIntent，GM 不能自行决定。"),
+                LanguageRuntime.GetString("Campaigns.Permission.PlayerIntent"),
+                LanguageRuntime.GetString("Campaigns.Permission.PlayerIntentHelp")),
             new CampaignNarrativePermissionChoice(
                 CampaignNarrativePermission.GmDiscretion,
-                "允许 GM 自主决定",
-                "GM 可依据剧本、规则和当前事实主动创建。")
+                LanguageRuntime.GetString("Campaigns.Permission.GmDiscretion"),
+                LanguageRuntime.GetString("Campaigns.Permission.GmDiscretionHelp"))
         ];
         GmChoices =
         [
             new CampaignGmChoice(
                 CampaignGmKind.Ai,
-                "AI 担任 GM",
-                "由独立模型读取 GM 专用说明并裁定。"),
+                LanguageRuntime.GetString("Campaigns.Gm.Ai"),
+                LanguageRuntime.GetString("Campaigns.Gm.AiHelp")),
             new CampaignGmChoice(
                 CampaignGmKind.User,
-                "USER 担任 GM",
-                "你手动主持；若同时勾选 USER 玩家，即“裁判下场踢球了”模式。")
+                LanguageRuntime.GetString("Campaigns.Gm.User"),
+                LanguageRuntime.GetString("Campaigns.Gm.UserHelp"))
         ];
         UserParticipationChoices =
         [
             new CampaignUserParticipationChoice(
                 true,
-                "我要作为玩家参与",
-                "创建并启用一个 USER 玩家席位；你可以在每回合提交自己的行动。"),
+                LanguageRuntime.GetString("Campaigns.Participation.Player"),
+                LanguageRuntime.GetString("Campaigns.Participation.PlayerHelp")),
             new CampaignUserParticipationChoice(
                 false,
-                "仅观看 AI 演出",
-                "本局只有 AI 玩家行动；游玩页不会显示无法使用的 USER 输入框。")
+                LanguageRuntime.GetString("Campaigns.Participation.Watch"),
+                LanguageRuntime.GetString("Campaigns.Participation.WatchHelp"))
         ];
         _selectedFlow = FlowChoices[0];
         _selectedGm = GmChoices[0];
@@ -294,10 +295,12 @@ public sealed class CampaignsViewModel : ViewModelBase
     public bool IsScenarioEditor => _screen == "scenario-editor";
     public bool IsCreatingScenario => _isCreatingScenario;
     public string ScenarioEditorTitle =>
-        IsCreatingScenario ? "新建剧本" : "编辑剧本";
+        IsCreatingScenario
+            ? LanguageRuntime.GetString("Campaigns.Scenario.NewTitle")
+            : LanguageRuntime.GetString("Campaigns.Scenario.EditTitle");
     public string ScenarioEditorDescription => IsCreatingScenario
-        ? "按下面的结构逐项填写剧本；保存后即可在剧本库中开局。"
-        : "按下面的结构修改剧本副本；已经开始的跑团不会被事后编辑影响。";
+        ? LanguageRuntime.GetString("Campaigns.Scenario.NewDescription")
+        : LanguageRuntime.GetString("Campaigns.Scenario.EditDescription");
     public bool IsLobby => _screen == "lobby";
     public bool IsGame => _screen == "game";
     public bool IsAiGm => SelectedGm.Value == CampaignGmKind.Ai;
@@ -305,21 +308,27 @@ public sealed class CampaignsViewModel : ViewModelBase
     public int SelectedAiPlayerCount =>
         CharacterChoices.Count(item => item.IsSelected);
     public string LobbyRosterText =>
-        $"当前阵容：1 GM + {(UserAlsoPlayer ? 1 : 0)} USER 玩家"
-        + $" + {SelectedAiPlayerCount} AI 玩家";
+        LanguageRuntime.Format(
+            "Campaigns.Lobby.RosterFormat",
+            UserAlsoPlayer ? 1 : 0,
+            SelectedAiPlayerCount);
     public bool IsMemoryUpdating => _isMemoryUpdating;
     public bool IsRequestReceiving =>
         _generationProgresses.Values.Any(item =>
             item.Status == CampaignGenerationStatus.Streaming);
     public string RequestProgressText => IsRequestReceiving
-        ? $"正在接收模型输出（{_generationProgresses.Count} 个请求）"
+        ? LanguageRuntime.Format(
+            "Campaigns.Request.ReceivingFormat",
+            _generationProgresses.Count)
         : string.Empty;
     public string RequestReceivedTokenText => IsRequestReceiving
-        ? $"已接收约 {_generationProgresses.Values.Sum(item => item.ReceivedTokens):N0} tokens"
+        ? LanguageRuntime.Format(
+            "Campaigns.Request.TokensFormat",
+            _generationProgresses.Values.Sum(item => item.ReceivedTokens))
         : string.Empty;
     public string MemoryProgressText => _memoryProgressText;
     public string MemoryReceivedTokenText => _isMemoryUpdating
-        ? $"已接收约 {_memoryReceivedTokens:N0} tokens"
+        ? LanguageRuntime.Format("Campaigns.Request.TokensFormat", _memoryReceivedTokens)
         : string.Empty;
     // Memory updates run in the background and must not disable local campaign
     // navigation or seat controls.  Provider-generation commands still use
@@ -364,7 +373,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     public string UserActionHelpText =>
         string.IsNullOrWhiteSpace(ActionInput)
         && _gameUiState.UserSeatCanAct
-            ? "先输入你的本回合行动，按钮才会启用。"
+            ? LanguageRuntime.GetString("Campaigns.UserAction.Required")
             : _gameUiState.UserActionHelpText;
     public string BlindAiActionHelpText =>
         _contextPreviewBlocked
@@ -373,16 +382,16 @@ public sealed class CampaignsViewModel : ViewModelBase
     public string ResolveButtonText =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
             ? IsGmCandidatePending
-                ? "采用当前 GM 候选并进入下一回合"
+                ? LanguageRuntime.GetString("Campaigns.Resolve.CommitCandidate")
                 : AiGmResolutionNeedsRetry
-                ? "重试 AI GM 裁定"
-                : "让 AI GM 裁定本回合"
-            : "提交我的 GM 裁定";
+                ? LanguageRuntime.GetString("Campaigns.Resolve.RetryAi")
+                : LanguageRuntime.GetString("Campaigns.Resolve.Ai")
+            : LanguageRuntime.GetString("Campaigns.Resolve.User");
     public string ResolveHelpText =>
         IsGmCandidatePending
             ? IsSelectedGmCandidateValid
-                ? "当前只会采用屏幕上选中的 GM 候选；确认后进入下一回合，上一回合候选将不可再切换。"
-                : "当前候选未通过 GM 协议校验，不能发送到下一次 API；请切换到已通过校验的候选。"
+                ? LanguageRuntime.GetString("Campaigns.Resolve.CandidateValid")
+                : LanguageRuntime.GetString("Campaigns.Resolve.CandidateInvalid")
         :
         _game?.Campaign.GmKind == CampaignGmKind.Ai
         && _contextPreviewBlocked
@@ -390,32 +399,38 @@ public sealed class CampaignsViewModel : ViewModelBase
         : _game?.Campaign.GmKind == CampaignGmKind.User
         && _gameUiState.ShowResolveSection
         && string.IsNullOrWhiteSpace(GmResolutionInput)
-            ? "先填写本回合的 GM 裁定，按钮才会启用。"
+            ? LanguageRuntime.GetString("Campaigns.Resolve.InputRequired")
             : _gameUiState.ResolveHelpText;
     public string ScheduleUserJoinButtonText =>
         HasPendingUserJoin
-            ? "USER 将从下一回合加入"
-            : "从下一回合加入本局";
+            ? LanguageRuntime.GetString("Campaigns.UserJoin.Pending")
+            : LanguageRuntime.GetString("Campaigns.UserJoin.Action");
     public string ScheduleUserJoinHelpText =>
         HasPendingUserJoin
-            ? "加入已安排；当前回合阵容保持不变，完成 GM 裁定后生效。"
-            : "为当前跑团预约一个 USER 玩家席位；从下一完整回合起生效，加入后不能移除。";
+            ? LanguageRuntime.GetString("Campaigns.UserJoin.PendingHelp")
+            : LanguageRuntime.GetString("Campaigns.UserJoin.Help");
     public string GameTitle => _game?.Campaign.Title ?? string.Empty;
     public string GamePhaseText => _game is null
         ? string.Empty
-        : $"第 {_game.Campaign.CurrentRound} 回合 · {FlowName(_game.Campaign.FlowPreset)} · {PhaseName(_game.Campaign.Phase)}";
+        : LanguageRuntime.Format(
+            "Campaigns.Game.MetaFormat",
+            _game.Campaign.CurrentRound,
+            FlowName(_game.Campaign.FlowPreset),
+            PhaseName(_game.Campaign.Phase));
     public string SaveStateText => _game is null
         ? string.Empty
-        : $"已自动保存到本地 · 状态版本 {_game.Campaign.StateVersion}";
+        : LanguageRuntime.Format("Campaigns.Game.SavedFormat", _game.Campaign.StateVersion);
     public string CampaignMemoryStatusText => _campaignMemoryStatusText;
     public bool IsCampaignMemoryEnabled => _game?.Campaign.MemoryEnabled == true;
     public string CampaignMemoryToggleText =>
-        IsCampaignMemoryEnabled ? "记忆 ON" : "记忆 OFF";
+        IsCampaignMemoryEnabled
+            ? LanguageRuntime.GetString("Campaigns.Memory.ToggleOn")
+            : LanguageRuntime.GetString("Campaigns.Memory.ToggleOff");
     public bool CanToggleCampaignMemory =>
         IsGame && !IsCampaignOperationBusy && _game is not null;
     public string CampaignMemoryActionText => _campaignMemoryNeedsEstablish
-        ? "从已裁定历史建立"
-        : "重试跑团记忆";
+        ? LanguageRuntime.GetString("Campaigns.Memory.Establish")
+        : LanguageRuntime.GetString("Campaigns.Memory.Retry");
     public bool ShowCampaignMemoryAction =>
         IsGame
         && IsCampaignMemoryEnabled
@@ -782,7 +797,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            StatusText = exception.Message;
+            StatusText = LanguageRuntime.ErrorMessage(exception);
         }
     }
 
@@ -832,7 +847,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                     provider.Id,
                     provider.Name,
                     GrokCliProviderGateway.DefaultModelId,
-                    "订阅默认模型",
+                    LanguageRuntime.GetString("Campaigns.Model.SubscriptionDefault"),
                     131072,
                     4096));
             }
@@ -918,8 +933,15 @@ public sealed class CampaignsViewModel : ViewModelBase
             SelectedScenario = Scenarios.FirstOrDefault(item =>
                 item.Id == result.Scenario.Id);
             StatusText = result.Warnings.Count == 0
-                ? $"已导入剧本“{result.Scenario.Title}”。"
-                : $"已导入剧本“{result.Scenario.Title}”；{string.Join("；", result.Warnings)}";
+                ? LanguageRuntime.Format("Campaigns.Scenario.ImportedFormat", result.Scenario.Title)
+                : LanguageRuntime.Format(
+                    "Campaigns.Scenario.ImportedWarningsFormat",
+                    result.Scenario.Title,
+                    string.Join(
+                        LanguageRuntime.GetString("Common.ListSeparator"),
+                        LanguageRuntime.LocalizeDiagnostics(
+                            result.Warnings,
+                            "Campaigns.Scenario.WarningSummaryFormat")));
         });
     }
 
@@ -935,7 +957,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             LoadScenarioEditor(SelectedScenario);
             await LoadScenarioWorldbookBindingsAsync(SelectedScenario.Id);
             ShowScreen("scenario-editor");
-            StatusText = "请按问卷顺序填写剧本结构；保存后才会加入剧本库。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.FillHint");
         });
     }
 
@@ -943,14 +965,15 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (SelectedScenario is not { } selected)
         {
-            StatusText = "请先选择一个剧本。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.Select");
             return;
         }
 
         await RunUiAsync(async () =>
         {
             var scenario = await _scenarios.GetAsync(selected.Id)
-                           ?? throw new InvalidOperationException("剧本不存在。");
+                           ?? throw new InvalidOperationException(
+                               LanguageRuntime.GetString("Campaigns.Scenario.Missing"));
             _isCreatingScenario = false;
             OnPropertyChanged(nameof(IsCreatingScenario));
             OnPropertyChanged(nameof(ScenarioEditorTitle));
@@ -958,7 +981,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             LoadScenarioEditor(scenario);
             await LoadScenarioWorldbookBindingsAsync(scenario.Id);
             ShowScreen("scenario-editor");
-            StatusText = "可编辑剧本的结构化字段；点击保存后才会写入本地剧本库。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.EditHint");
         });
     }
 
@@ -966,13 +989,13 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (SelectedScenario is not { } scenario)
         {
-            StatusText = "没有正在编辑的剧本。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.NoEditor");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(ScenarioTitle))
         {
-            StatusText = "剧本标题不能为空。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.TitleRequired");
             return;
         }
 
@@ -1000,7 +1023,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             OnPropertyChanged(nameof(ScenarioEditorTitle));
             OnPropertyChanged(nameof(ScenarioEditorDescription));
             ShowScreen("library");
-            StatusText = $"剧本“{scenario.Title}”已保存。已经开始的跑团仍使用各自冻结的剧本快照。";
+            StatusText = LanguageRuntime.Format("Campaigns.Scenario.SavedFormat", scenario.Title);
         });
     }
 
@@ -1087,7 +1110,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (SelectedScenario is null)
         {
-            StatusText = "请先选择一个剧本。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.Select");
             return;
         }
 
@@ -1098,7 +1121,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             ApplyScenarioToLobby(SelectedScenario);
             Title = await NextCampaignTitleAsync(SelectedScenario);
             ShowScreen("lobby");
-            StatusText = "开局前可修改世界观、规则、角色记忆导入和每个席位的模型；开始后这些内容冻结。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Lobby.Intro");
         });
     }
 
@@ -1106,25 +1129,26 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (SelectedCampaign is null)
         {
-            StatusText = "请先选择一局跑团。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Game.Select");
             return;
         }
 
         await RunUiAsync(async () =>
         {
             var aggregate = await _campaigns.GetAsync(SelectedCampaign.Id)
-                            ?? throw new InvalidOperationException("跑团不存在。");
+                            ?? throw new InvalidOperationException(
+                                LanguageRuntime.GetString("Campaigns.Game.Missing"));
             if (aggregate.Campaign.Status == CampaignStatus.Draft)
             {
                 await LoadDraftIntoLobbyAsync(aggregate);
                 StatusText =
-                    "大厅草稿已载入；确认参与方式、角色和模型后再开始本局。";
+                    LanguageRuntime.GetString("Campaigns.Lobby.DraftLoaded");
             }
             else
             {
                 await LoadGameAsync(aggregate.Campaign.Id);
                 StatusText =
-                    "本局已从本地记录载入；请按右侧“当前步骤”继续。";
+                    LanguageRuntime.GetString("Campaigns.Game.Loaded");
             }
         });
     }
@@ -1133,13 +1157,13 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (parameter is not CampaignSummaryItemViewModel selected)
         {
-            StatusText = "请右键选择要重命名的跑团。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Game.RenameSelect");
             return;
         }
 
         var edited = await _interaction.EditTextAsync(
-            "重命名跑团",
-            "输入新的跑团名称。名称只影响列表显示，不会修改剧本或跑团记录。",
+            LanguageRuntime.GetString("Campaigns.Game.RenameTitle"),
+            LanguageRuntime.GetString("Campaigns.Game.RenamePrompt"),
             selected.Title);
         if (edited is null)
         {
@@ -1149,7 +1173,9 @@ public sealed class CampaignsViewModel : ViewModelBase
         var normalized = edited.Trim();
         if (normalized.Length == 0)
         {
-            _interaction.ShowWarning("无法重命名", "跑团名称不能为空。");
+            _interaction.ShowWarning(
+                LanguageRuntime.GetString("Campaigns.Game.RenameCannot"),
+                LanguageRuntime.GetString("Campaigns.Game.NameRequired"));
             return;
         }
 
@@ -1159,7 +1185,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             await RefreshLibraryAsync();
             SelectedCampaign = Campaigns.FirstOrDefault(item =>
                 item.Id == selected.Id);
-            StatusText = $"跑团已重命名为“{normalized}”。";
+            StatusText = LanguageRuntime.Format("Campaigns.Game.RenamedFormat", normalized);
         });
     }
 
@@ -1167,7 +1193,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (parameter is not CampaignSummaryItemViewModel selected)
         {
-            StatusText = "请右键选择要删除的跑团。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Game.DeleteSelect");
             return;
         }
 
@@ -1177,7 +1203,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             if (aggregate is null)
             {
                 await RefreshLibraryAsync();
-                StatusText = "该跑团已经不存在。";
+                StatusText = LanguageRuntime.GetString("Campaigns.Game.AlreadyMissing");
                 return;
             }
 
@@ -1201,8 +1227,10 @@ public sealed class CampaignsViewModel : ViewModelBase
             }
 
             await RefreshLibraryAsync();
-            StatusText =
-                $"跑团“{aggregate.Campaign.Title}”及其 {aggregate.Events.Count} 条记录已永久删除。";
+            StatusText = LanguageRuntime.Format(
+                "Campaigns.Game.DeletedFormat",
+                aggregate.Campaign.Title,
+                aggregate.Events.Count);
         });
     }
 
@@ -1225,9 +1253,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             ShowScreen("library");
             StatusText = wasEditingScenario
                 ? wasCreatingScenario
-                    ? "已取消新建剧本，未保存的内容已丢弃。"
-                    : "已取消剧本编辑，未保存的修改已丢弃。"
-                : "所有已开始的跑团均已即时保存；新局请从左侧剧本创建。";
+                    ? LanguageRuntime.GetString("Campaigns.Scenario.NewCancelled")
+                    : LanguageRuntime.GetString("Campaigns.Scenario.EditCancelled")
+                : LanguageRuntime.GetString("Campaigns.Library.AllSaved");
         });
     }
 
@@ -1237,7 +1265,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             await SaveLobbyCoreAsync();
             await RefreshLibraryAsync();
-            StatusText = "起始大厅草稿已保存；尚未冻结。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Lobby.DraftSaved");
         });
     }
 
@@ -1248,7 +1276,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             var campaign = await SaveLobbyCoreAsync();
             var started = await _runner.StartAsync(campaign.Id);
             await LoadGameAsync(started.Campaign.Id);
-            StatusText = "游戏已开始：剧本、角色快照、记忆导入和初始配置已经冻结。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Game.Started");
         });
     }
 
@@ -1256,7 +1284,8 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         if (SelectedScenario is null)
         {
-            throw new InvalidOperationException("起始大厅没有关联剧本。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Campaigns.Lobby.NoScenario"));
         }
 
         var selectedCharacters = CharacterChoices
@@ -1264,23 +1293,26 @@ public sealed class CampaignsViewModel : ViewModelBase
             .ToArray();
         if (selectedCharacters.Length > 4)
         {
-            throw new InvalidOperationException("一局最多选择 4 个 AI 角色。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Campaigns.Lobby.MaxAi"));
         }
 
         if (!UserAlsoPlayer && selectedCharacters.Length == 0)
         {
             throw new InvalidOperationException(
-                "至少需要一个玩家：请让 USER 作为玩家，或选择至少一个 AI 角色。");
+                LanguageRuntime.GetString("Campaigns.Lobby.NeedPlayer"));
         }
 
         if (selectedCharacters.Any(item => item.SelectedRoute is null))
         {
-            throw new InvalidOperationException("每个 AI 玩家都必须选择模型。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Campaigns.Lobby.AiModelRequired"));
         }
 
         if (SelectedGm.Value == CampaignGmKind.Ai && SelectedGmRoute is null)
         {
-            throw new InvalidOperationException("AI GM 必须选择模型。");
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Campaigns.Lobby.GmModelRequired"));
         }
 
         var campaign = _draftCampaign ?? new Campaign
@@ -1420,7 +1452,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         await RunUiAsync(async () =>
         {
             await LoadGameAsync(_game.Campaign.Id);
-            StatusText = "已重新载入本局最新状态；没有调用任何模型。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Game.Reloaded");
         });
     }
 
@@ -1436,7 +1468,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             await _runner.SubmitUserActionAsync(_game.Campaign.Id, ActionInput);
             ActionInput = string.Empty;
             await LoadGameAsync(_game.Campaign.Id);
-            StatusText = "USER 行动已写入本回合独立缓存。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Action.UserSaved");
         });
     }
 
@@ -1454,8 +1486,11 @@ public sealed class CampaignsViewModel : ViewModelBase
             var failures = results.Count(item =>
                 item.GenerationStatus != CampaignGenerationStatus.Completed);
             StatusText = failures == 0
-                ? $"已收回 {results.Count} 个秘密 AI 行动。"
-                : $"已收回 {results.Count} 个缓存，其中 {failures} 个失败或中断，可在记录中重试。";
+                ? LanguageRuntime.Format("Campaigns.Action.BlindDoneFormat", results.Count)
+                : LanguageRuntime.Format(
+                    "Campaigns.Action.BlindPartialFormat",
+                    results.Count,
+                    failures);
         });
     }
 
@@ -1479,7 +1514,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                     _game.Campaign.Id,
                     seat.RetryEventId
                     ?? throw new InvalidOperationException(
-                        "当前席位没有可以重试的失败记录。"))
+                        LanguageRuntime.GetString("Campaigns.Action.NoRetryRecord")))
                 : await _runner.GenerateAiActionAsync(
                     _game.Campaign.Id,
                     seat.Id);
@@ -1487,9 +1522,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             StatusText = result.GenerationStatus
                          == CampaignGenerationStatus.Completed
                 ? wasRetry
-                    ? $"{seat.Name} 重试成功，本回合行动已锁定。"
-                    : $"{seat.Name} 的本回合行动已锁定。"
-                : $"{seat.Name} 的行动仍未完成；可再次点击席位上的重试按钮，或先切换该席位模型。";
+                    ? LanguageRuntime.Format("Campaigns.Action.RetrySucceededFormat", seat.Name)
+                    : LanguageRuntime.Format("Campaigns.Action.LockedFormat", seat.Name)
+                : LanguageRuntime.Format("Campaigns.Action.StillIncompleteFormat", seat.Name);
         });
     }
 
@@ -1508,7 +1543,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             {
                 var candidate = GetSelectedGmCandidate()
                                 ?? throw new InvalidOperationException(
-                                    "当前没有可采用的 GM 候选。");
+                                    LanguageRuntime.GetString("Campaigns.Resolve.NoCandidate"));
                 resolution = await _runner.CommitGmResolutionCandidateAsync(
                     _game.Campaign.Id,
                     candidate.Id);
@@ -1533,16 +1568,18 @@ public sealed class CampaignsViewModel : ViewModelBase
             StatusText = resolution.GenerationStatus
                          == CampaignGenerationStatus.Completed
                  ? committingCandidate
-                     ? "已采用当前 GM 候选并进入下一行动阶段；上一回合候选已锁定。"
+                     ? LanguageRuntime.GetString("Campaigns.Resolve.CandidateCommitted")
                      : waitingForGmCandidate
-                         ? "AI GM 重试成功；请选择候选并确认后进入下一行动阶段。"
-                     : "GM 裁定已保存，已进入下一行动阶段。"
+                         ? LanguageRuntime.GetString("Campaigns.Resolve.RetrySucceeded")
+                     : LanguageRuntime.GetString("Campaigns.Resolve.Saved")
                 : resolution.EndReason == CampaignEndReason.ProtocolViolation
-                    ? "本次 AI GM 输出缺少有效的“下一轮评定参考”；原文已保留，回合未推进，请重试。"
+                    ? LanguageRuntime.GetString("Campaigns.Resolve.ProtocolViolation")
                     : resolution.EndReason
                       == CampaignEndReason.NarrativeAuthorityViolation
-                        ? "本次 AI GM 输出未通过剧本叙事权限校验；回合未推进，内容不会进入记忆，请重试。"
-                    : $"本次 GM 裁定未完成：{EndReasonName(resolution.EndReason)}。原记录已保留，请重试。";
+                        ? LanguageRuntime.GetString("Campaigns.Resolve.AuthorityViolation")
+                    : LanguageRuntime.Format(
+                        "Campaigns.Resolve.IncompleteFormat",
+                        EndReasonName(resolution.EndReason));
         });
     }
 
@@ -1571,8 +1608,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                         _game.Campaign.UserPersonaDescription.Trim()
                 }));
             await LoadGameAsync(_game.Campaign.Id);
-            StatusText =
-                "USER 已安排从下一完整回合加入；当前回合仍按原阵容完成。";
+            StatusText = LanguageRuntime.GetString("Campaigns.UserJoin.Scheduled");
         });
     }
 
@@ -1593,7 +1629,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                 actor,
                 DiceExpression);
             await LoadGameAsync(_game.Campaign.Id);
-            StatusText = $"掷骰结果：{roll.Content}";
+            StatusText = LanguageRuntime.Format("Campaigns.Dice.ResultFormat", roll.Content);
         });
     }
 
@@ -1612,8 +1648,8 @@ public sealed class CampaignsViewModel : ViewModelBase
                 item.Event.Id);
             await LoadGameAsync(_game.Campaign.Id);
             StatusText = retry.GenerationStatus == CampaignGenerationStatus.Completed
-                ? "AI 行动重试成功；旧失败记录已从当前跑团记录隐藏，仅保留用于审计。"
-                : "重试仍未完成，可再次重试或更换该席位模型。";
+                ? LanguageRuntime.GetString("Campaigns.Action.RetrySuccess")
+                : LanguageRuntime.GetString("Campaigns.Action.RetryIncomplete");
         });
     }
 
@@ -1634,7 +1670,10 @@ public sealed class CampaignsViewModel : ViewModelBase
                 seat.Id,
                 seat.SelectedRoute.ToRoute());
             await LoadGameAsync(_game.Campaign.Id);
-            StatusText = $"已把“{seat.Name}”切换到 {seat.SelectedRoute.DisplayLabel}；角色与记忆快照未改变。";
+            StatusText = LanguageRuntime.Format(
+                "Campaigns.Seat.ModelChangedFormat",
+                seat.Name,
+                seat.SelectedRoute.DisplayLabel);
         });
     }
 
@@ -1652,8 +1691,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             || requestedTokens < 512
             || requestedTokens > maximumAllowed)
         {
-            StatusText =
-                $"GM 输出长度必须是 512–{maximumAllowed} 之间的整数。";
+            StatusText = LanguageRuntime.Format(
+                "Campaigns.Gm.OutputRangeFormat",
+                maximumAllowed);
             return;
         }
 
@@ -1665,8 +1705,10 @@ public sealed class CampaignsViewModel : ViewModelBase
                     0.7,
                     maximumOutputTokens: requestedTokens));
             await LoadGameAsync(_game.Campaign.Id);
-            StatusText =
-                $"GM 已切换到 {SelectedGmRoute.DisplayLabel}，输出长度 {requestedTokens} tokens。";
+            StatusText = LanguageRuntime.Format(
+                "Campaigns.Gm.ModelChangedFormat",
+                SelectedGmRoute.DisplayLabel,
+                requestedTokens);
         });
     }
 
@@ -1676,7 +1718,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             || parameter is not string keyText
             || !Enum.TryParse<GlobalPromptKey>(keyText, out var key))
         {
-            StatusText = "当前窗口不能打开全局提示词设置。";
+            StatusText = LanguageRuntime.GetString("Campaigns.GlobalPrompt.Unavailable");
             return;
         }
 
@@ -1711,7 +1753,9 @@ public sealed class CampaignsViewModel : ViewModelBase
         }
 
         var decision = _interaction.ConfirmUnsavedCampaignLobby(
-            string.IsNullOrWhiteSpace(Title) ? "未命名跑团" : Title.Trim());
+            string.IsNullOrWhiteSpace(Title)
+                ? LanguageRuntime.GetString("Campaigns.Game.Unnamed")
+                : Title.Trim());
         switch (decision)
         {
             case UnsavedChangesDecision.Cancel:
@@ -1741,31 +1785,31 @@ public sealed class CampaignsViewModel : ViewModelBase
                 CampaignContextTokenBudgetText,
                 8_000,
                 200_000,
-                "单次输入预算",
+                LanguageRuntime.GetString("Campaigns.MemorySetting.InputBudget"),
                 out var contextTokenBudget)
             || !TryParseSetting(
                 CampaignPlayerHistoryBudgetText,
                 512,
                 200_000,
-                "AI 玩家历史预算",
+                LanguageRuntime.GetString("Campaigns.MemorySetting.PlayerHistory"),
                 out var playerHistoryBudget)
             || !TryParseSetting(
                 CampaignGmHistoryBudgetText,
                 512,
                 200_000,
-                "GM 历史预算",
+                LanguageRuntime.GetString("Campaigns.MemorySetting.GmHistory"),
                 out var gmHistoryBudget)
             || !TryParseSetting(
                 CampaignMemoryUpdateIntervalRoundsText,
                 1,
                 50,
-                "自动更新间隔",
+                LanguageRuntime.GetString("Campaigns.MemorySetting.UpdateInterval"),
                 out var memoryUpdateIntervalRounds)
             || !TryParseSetting(
                 CampaignMemoryPendingTokenThresholdText,
                 1_000,
                 50_000,
-                "待处理事件阈值",
+                LanguageRuntime.GetString("Campaigns.MemorySetting.PendingThreshold"),
                 out var memoryUpdatePendingTokenThreshold))
         {
             return;
@@ -1788,12 +1832,12 @@ public sealed class CampaignsViewModel : ViewModelBase
                 await LoadGameAsync(campaignId);
                 PrepareCampaignMemorySettings();
                 CampaignMemorySettingsStatusText =
-                    "已保存。本轮预估和后续模型请求将使用新设置。";
-                StatusText = "跑团记忆与上下文设置已保存。";
+                    LanguageRuntime.GetString("Campaigns.MemorySetting.Saved");
+                StatusText = LanguageRuntime.GetString("Campaigns.MemorySetting.StatusSaved");
             }
             catch (Exception exception)
             {
-                CampaignMemorySettingsStatusText = exception.Message;
+                CampaignMemorySettingsStatusText = LanguageRuntime.ErrorMessage(exception);
             }
         });
     }
@@ -1823,7 +1867,10 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             _selectedGmCandidateId = candidates[targetIndex].Id;
             await LoadGameAsync(_game!.Campaign.Id);
-            StatusText = $"已切换到 GM 候选 {targetIndex + 1}/{candidates.Count}；只有当前选中的已通过校验候选可以进入下一回合。";
+            StatusText = LanguageRuntime.Format(
+                "Campaigns.Resolve.CandidateChangedFormat",
+                targetIndex + 1,
+                candidates.Count);
         });
     }
 
@@ -1839,7 +1886,11 @@ public sealed class CampaignsViewModel : ViewModelBase
             || result > maximum)
         {
             CampaignMemorySettingsStatusText =
-                $"{label}必须是 {minimum:N0} 到 {maximum:N0} 之间的整数。";
+                LanguageRuntime.Format(
+                    "Campaigns.MemorySetting.RangeFormat",
+                    label,
+                    minimum,
+                    maximum);
             return false;
         }
 
@@ -1864,8 +1915,8 @@ public sealed class CampaignsViewModel : ViewModelBase
                 enabled);
             await LoadGameAsync(campaignId);
             StatusText = enabled
-                ? "已开启本局升级版记忆；下一次成功 GM 裁定后按原阈值继续处理。"
-                : "已关闭本局升级版记忆；不会总结或向 API 注入长期记忆。";
+                ? LanguageRuntime.GetString("Campaigns.Memory.Enabled")
+                : LanguageRuntime.GetString("Campaigns.Memory.Disabled");
         });
     }
 
@@ -1883,14 +1934,16 @@ public sealed class CampaignsViewModel : ViewModelBase
         if (latestResolution is null)
         {
             _campaignMemoryPending = false;
-            SetCampaignMemoryStatus("跑团记忆：暂无可建立的 GM 裁定");
+            SetCampaignMemoryStatus(
+                LanguageRuntime.GetString("Campaigns.Memory.NothingToEstablish"));
             return;
         }
 
         await RunUiAsync(async () =>
         {
             _campaignMemoryLastError = null;
-            SetCampaignMemoryStatus("跑团记忆：正在更新…");
+            SetCampaignMemoryStatus(
+                LanguageRuntime.GetString("Campaigns.Memory.Updating"));
             var result = await _campaignMemoryUpdater.UpdateAsync(
                 campaignId,
                 latestResolution.SequenceNo,
@@ -1904,8 +1957,10 @@ public sealed class CampaignsViewModel : ViewModelBase
 
             await RefreshCampaignMemoryStatusAsync();
             StatusText = result.Succeeded
-                ? "跑团记忆已更新。"
-                : $"跑团记忆更新未完成：{_campaignMemoryLastError}";
+                ? LanguageRuntime.GetString("Campaigns.Memory.Updated")
+                : LanguageRuntime.Format(
+                    "Campaigns.Memory.UpdateIncompleteFormat",
+                    _campaignMemoryLastError);
         });
     }
 
@@ -1917,7 +1972,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             _campaignMemoryNeedsEstablish = false;
             _campaignMemoryLastError = null;
             SetCampaignMemoryStatus(
-                "升级版记忆：已关闭（不会总结，也不会向 API 注入长期记忆）");
+                LanguageRuntime.GetString("Campaigns.Memory.UpgradeDisabled"));
             return;
         }
 
@@ -1925,7 +1980,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             _campaignMemoryPending = false;
             _campaignMemoryNeedsEstablish = false;
-            SetCampaignMemoryStatus("跑团记忆：未启用");
+            SetCampaignMemoryStatus(
+                LanguageRuntime.GetString("Campaigns.Memory.NotEnabled"));
             return;
         }
 
@@ -1952,28 +2008,39 @@ public sealed class CampaignsViewModel : ViewModelBase
             && _campaignMemoryPending)
         {
             SetCampaignMemoryStatus(
-                $"跑团记忆：更新失败（GM 裁定 #{latestResolutionSequence}，可重试）");
+                LanguageRuntime.Format(
+                    "Campaigns.Memory.UpdateFailedFormat",
+                    latestResolutionSequence));
         }
         else if (latestResolution is null)
         {
-            SetCampaignMemoryStatus("跑团记忆：暂无已完成 GM 裁定");
+            SetCampaignMemoryStatus(
+                LanguageRuntime.GetString("Campaigns.Memory.NoResolution"));
         }
         else if (gmCheckpointTask.Result is null
                  && publicCheckpointTask.Result is null)
         {
             SetCampaignMemoryStatus(
-                $"跑团记忆：尚未建立（GM 裁定 #{latestResolutionSequence}，可手动建立）");
+                LanguageRuntime.Format(
+                    "Campaigns.Memory.NotEstablishedFormat",
+                    latestResolutionSequence));
         }
         else if (_campaignMemoryPending)
         {
             SetCampaignMemoryStatus(
-                $"跑团记忆：待更新（GM #{gmSequence} · 公共 #{publicSequence} · 最新 GM 裁定 #{latestResolutionSequence}）");
+                LanguageRuntime.Format(
+                    "Campaigns.Memory.PendingFormat",
+                    gmSequence,
+                    publicSequence,
+                    latestResolutionSequence));
         }
         else
         {
             _campaignMemoryLastError = null;
             SetCampaignMemoryStatus(
-                $"跑团记忆：已更新到 GM 裁定 #{latestResolutionSequence}");
+                LanguageRuntime.Format(
+                    "Campaigns.Memory.UpdatedThroughFormat",
+                    latestResolutionSequence));
         }
     }
 
@@ -2010,7 +2077,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         }
         var previousCampaignId = _game?.Campaign.Id;
         _game = await _campaigns.GetAsync(campaignId)
-                ?? throw new InvalidOperationException("跑团不存在。");
+                ?? throw new InvalidOperationException(
+                    LanguageRuntime.GetString("Campaigns.Game.Missing"));
         if (!string.Equals(previousCampaignId, campaignId, StringComparison.Ordinal))
         {
             _activeMemoryOperations.Clear();
@@ -2130,7 +2198,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                     selectedCandidate.GenerationStatus
                         == CampaignGenerationStatus.Completed
                         ? selectedCandidate.Content
-                        : "该 GM 候选未通过协议校验；未锁定，也不会进入下一次 API 请求。",
+                        : LanguageRuntime.GetString("Campaigns.Event.InvalidGmCandidate"),
                     CanRetry: false,
                     gmCandidates,
                     SelectedGmCandidateIndex(gmCandidates)));
@@ -2167,7 +2235,7 @@ public sealed class CampaignsViewModel : ViewModelBase
 
             var content = CanDisplayEvent(_game, campaignEvent, userSeat)
                 ? campaignEvent.Content
-                : "该 AI 的秘密行动生成失败；正文未向玩家公开。";
+                : LanguageRuntime.GetString("Campaigns.Event.SecretActionFailed");
             Events.Add(new CampaignEventItemViewModel(
                 campaignEvent,
                 names.GetValueOrDefault(campaignEvent.ActorId, campaignEvent.ActorId),
@@ -2214,7 +2282,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         _contextPreviewBlocked = false;
         _contextPreviewBlockingReason = null;
         OnPropertyChanged(nameof(HasContextPreview));
-        _contextPreviewSummary = "打开后显示本阶段的上下文预算估算。";
+        _contextPreviewSummary = LanguageRuntime.GetString("Campaigns.ContextPreview.Hint");
         OnPropertyChanged(nameof(ContextPreviewSummary));
 
         if (_game is null || _campaignContextPlanner is null)
@@ -2244,10 +2312,11 @@ public sealed class CampaignsViewModel : ViewModelBase
                     includeLongTermMemory: _game.Campaign.MemoryEnabled);
                 AddContextPreviewItem("AI GM", plan);
                 SetContextPreviewBlock(plan);
-                _contextPreviewSummary =
-                    $"GM 裁定：输入 {plan.Estimate.InputTokens:N0} / "
-                    + $"{EffectiveInputBudget(plan):N0} · "
-                    + $"输出上限 {plan.Estimate.ReservedOutputTokens:N0}";
+                _contextPreviewSummary = LanguageRuntime.Format(
+                    "Campaigns.ContextPreview.GmFormat",
+                    plan.Estimate.InputTokens,
+                    EffectiveInputBudget(plan),
+                    plan.Estimate.ReservedOutputTokens);
             }
             else if (_game.Campaign.Phase == CampaignPhase.AwaitingActions)
             {
@@ -2277,30 +2346,32 @@ public sealed class CampaignsViewModel : ViewModelBase
                         == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge)
                     {
                         _contextBlockedSeatReasons[aiParticipants[index].Id] =
-                            plans[index].BlockingReason
-                            ?? "固定资料或当前回合内容超过预算。";
+                            ContextBlockReason(plans[index]);
                     }
                 }
                 _contextPreviewBlocked = plans.Any(plan =>
                     plan.Status
                     == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge);
                 _contextPreviewBlockingReason = plans
-                    .Select(plan => plan.BlockingReason)
-                    .FirstOrDefault(reason => !string.IsNullOrWhiteSpace(reason));
+                    .Where(plan => plan.Status
+                                   == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge)
+                    .Select(ContextBlockReason)
+                    .FirstOrDefault();
 
                 if (_flowEngine.Inspect(_game).ActionPlan.ExecutionMode
                     == CampaignActionExecutionMode.Parallel)
                 {
-                    _contextPreviewSummary =
-                        $"秘密同投：{plans.Length} 个 AI 请求 · "
-                        + $"输入合计 {plans.Sum(plan => plan.Estimate.InputTokens):N0} · "
-                        + $"输出合计 {plans.Sum(plan => plan.Estimate.ReservedOutputTokens):N0} "
-                        + "（成本提示，不是统一阻断上限）";
+                    _contextPreviewSummary = LanguageRuntime.Format(
+                        "Campaigns.ContextPreview.BlindCostFormat",
+                        plans.Length,
+                        plans.Sum(plan => plan.Estimate.InputTokens),
+                        plans.Sum(plan => plan.Estimate.ReservedOutputTokens));
                 }
                 else
                 {
-                    _contextPreviewSummary =
-                        $"本阶段 {plans.Length} 个 AI 席位；每个请求独立受本局与模型上限约束。";
+                    _contextPreviewSummary = LanguageRuntime.Format(
+                        "Campaigns.ContextPreview.SeatsFormat",
+                        plans.Length);
                 }
             }
 
@@ -2326,7 +2397,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             _contextBlockedSeatReasons.Clear();
             _contextPreviewBlocked = false;
             _contextPreviewBlockingReason = null;
-            _contextPreviewSummary = $"上下文估算暂不可用：{exception.Message}";
+            _contextPreviewSummary = LanguageRuntime.Format(
+                "Campaigns.ContextPreview.UnavailableFormat",
+                LanguageRuntime.ErrorMessage(exception));
             RefreshSeatActionStates();
             OnPropertyChanged(nameof(HasContextPreview));
             OnPropertyChanged(nameof(ContextPreviewSummary));
@@ -2341,7 +2414,10 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         _contextPreviewBlocked =
             plan.Status == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge;
-        _contextPreviewBlockingReason = plan.BlockingReason;
+        _contextPreviewBlockingReason = plan.Status
+            == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge
+                ? ContextBlockReason(plan)
+                : null;
     }
 
     private void AddContextPreviewItem(
@@ -2356,15 +2432,17 @@ public sealed class CampaignsViewModel : ViewModelBase
                                  && !section.WasIncluded
                                  && !section.WasTruncated))
             .Select(section => new CampaignContextSectionItemViewModel(
-                section.Title,
+                ContextSectionTitle(section),
                 $"{section.EstimatedTokens:N0} tokens",
                 ContextSectionStateText(section)))
             .ToArray();
         ContextPreviewItems.Add(new CampaignContextPreviewItemViewModel(
             title,
-            $"输入 {plan.Estimate.InputTokens:N0} / "
-            + $"{EffectiveInputBudget(plan):N0} · "
-            + $"输出上限 {plan.Estimate.ReservedOutputTokens:N0}",
+            LanguageRuntime.Format(
+                "Campaigns.ContextPreview.ItemFormat",
+                plan.Estimate.InputTokens,
+                EffectiveInputBudget(plan),
+                plan.Estimate.ReservedOutputTokens),
             status,
             sections));
     }
@@ -2379,27 +2457,67 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         var status = plan.Status switch
         {
-            CampaignContextPlanStatus.Ready => "上下文在预算内",
-            CampaignContextPlanStatus.HistoryTrimmed => "较旧历史已按预算省略",
+            CampaignContextPlanStatus.Ready => LanguageRuntime.GetString("Campaigns.ContextPlan.Ready"),
+            CampaignContextPlanStatus.HistoryTrimmed => LanguageRuntime.GetString("Campaigns.ContextPlan.Trimmed"),
             CampaignContextPlanStatus.BlockedMandatoryContextTooLarge =>
-                "固定资料与当前回合内容已超过预算",
+                LanguageRuntime.GetString("Campaigns.ContextPlan.Blocked"),
             _ => plan.Status.ToString()
         };
         if (plan.Status == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge
             && !string.IsNullOrWhiteSpace(plan.BlockingReason))
         {
-            status += $"：{plan.BlockingReason}";
+            status = LanguageRuntime.Format(
+                "Campaigns.ContextPlan.BlockedWithReasonFormat",
+                status,
+                ContextBlockReason(plan));
         }
 
         return plan.Estimate.IsExact
             ? status
-            : $"{status} · 当前模型使用启发式 Token 估算";
+            : LanguageRuntime.Format("Campaigns.ContextPlan.HeuristicFormat", status);
     }
+
+    private static string ContextBlockReason(CampaignContextPlan plan) =>
+        LanguageRuntime.BackendMessage(
+            plan.BlockingReason,
+            "Campaigns.ContextPreview.DefaultBlock");
+
+    private static string ContextSectionTitle(
+        CampaignContextSectionEstimate section) =>
+        LanguageRuntime.GetString(section.Id switch
+        {
+            "player.global" => "Campaigns.ContextSection.PlayerGlobal",
+            "player.protocol" => "Campaigns.ContextSection.PlayerProtocol",
+            "player.world" => "Campaigns.ContextSection.PlayerWorld",
+            "player.identity" => "Campaigns.ContextSection.PlayerIdentity",
+            "player.character-card" => "Campaigns.ContextSection.PlayerCharacterCard",
+            "player.initial-memory" => "Campaigns.ContextSection.PlayerInitialMemory",
+            "player.history-header" => "Campaigns.ContextSection.PlayerHistoryHeader",
+            "player.public-memory" => "Campaigns.ContextSection.PlayerPublicMemory",
+            "player.history" => "Campaigns.ContextSection.PlayerHistory",
+            "player.latest-gm" => "Campaigns.ContextSection.PlayerLatestGm",
+            "player.pending-intents" => "Campaigns.ContextSection.PlayerPendingIntents",
+            "player.current-task" => "Campaigns.ContextSection.PlayerCurrentTask",
+            "gm.global" => "Campaigns.ContextSection.GmGlobal",
+            "gm.protocol" => "Campaigns.ContextSection.GmProtocol",
+            "gm.world" => "Campaigns.ContextSection.GmWorld",
+            "gm.opening" => "Campaigns.ContextSection.GmOpening",
+            "gm.roster" => "Campaigns.ContextSection.GmRoster",
+            "gm.authority" => "Campaigns.ContextSection.GmAuthority",
+            "gm.history-header" => "Campaigns.ContextSection.GmHistoryHeader",
+            "gm.memory" => "Campaigns.ContextSection.GmMemory",
+            "gm.history" => "Campaigns.ContextSection.GmHistory",
+            "gm.current-intents" => "Campaigns.ContextSection.GmCurrentIntents",
+            "gm.current-task" => "Campaigns.ContextSection.GmCurrentTask",
+            _ => "Campaigns.ContextSection.Unknown"
+        });
 
     private string ContextBlockedHelpText() =>
         string.IsNullOrWhiteSpace(_contextPreviewBlockingReason)
-            ? "上下文固定资料或当前回合内容超过预算；请调整模型上限、角色资料或本局预算后重试。"
-            : $"上下文固定资料或当前回合内容超过预算：{_contextPreviewBlockingReason}";
+            ? LanguageRuntime.GetString("Campaigns.Context.Blocked")
+            : LanguageRuntime.Format(
+                "Campaigns.Context.BlockedFormat",
+                _contextPreviewBlockingReason);
 
     private static string ContextSectionStateText(
         CampaignContextSectionEstimate section) =>
@@ -2407,16 +2525,16 @@ public sealed class CampaignsViewModel : ViewModelBase
         && !section.WasIncluded
         && !section.WasTruncated
         && section.EstimatedTokens == 0
-            ? "已关闭（0 tokens）"
+            ? LanguageRuntime.GetString("Campaigns.ContextSection.Disabled")
             : section.WasIncluded
             ? section.WasTruncated
-                ? "已纳入（已裁剪）"
-                : "已纳入"
+                ? LanguageRuntime.GetString("Campaigns.ContextSection.IncludedTrimmed")
+                : LanguageRuntime.GetString("Campaigns.ContextSection.Included")
             : section.IsMandatory
-                ? "固定资料超限"
+                ? LanguageRuntime.GetString("Campaigns.ContextSection.MandatoryOverLimit")
                 : section.WasTruncated
-                    ? "按预算省略"
-                    : "未纳入";
+                    ? LanguageRuntime.GetString("Campaigns.ContextSection.Omitted")
+                    : LanguageRuntime.GetString("Campaigns.ContextSection.NotIncluded");
 
     private bool CanDisplayEvent(
         CampaignAggregate aggregate,
@@ -2517,7 +2635,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             _updatingCharacterSelection = true;
             changed.IsSelected = false;
             _updatingCharacterSelection = false;
-            StatusText = "一局最多只能加入 4 名 AI 玩家。";
+            StatusText = LanguageRuntime.GetString("Campaigns.Lobby.MaxAiStatus");
         }
 
         RefreshCharacterSelectionState();
@@ -2585,7 +2703,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             seat.IsRetryAction = actionState.IsRetry;
             seat.RetryEventId = actionState.RetryEventId;
             seat.ActionHelpText = contextBlocked
-                ? $"上下文预算不足：{contextReason}"
+                ? LanguageRuntime.Format("Campaigns.Seat.ContextInsufficientFormat", contextReason)
                 : actionState.HelpText;
         }
     }
@@ -2654,7 +2772,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            StatusText = exception.Message;
+            StatusText = LanguageRuntime.ErrorMessage(exception);
         }
         finally
         {
@@ -2708,8 +2826,8 @@ public sealed class CampaignsViewModel : ViewModelBase
                     _memoryTokensByOperation[operationId] = 0;
                     _isMemoryUpdating = true;
                     _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
-                    _memoryProgressText = progress.Message
-                                           ?? "跑团记忆更新中；后台处理中，不影响本地导航。";
+                    _memoryProgressText = LanguageRuntime.GetString(
+                        "Campaigns.Memory.ProgressDefault");
                     StatusText = _memoryProgressText;
                     break;
                 case CampaignMemoryUpdateProgressStatus.Receiving:
@@ -2720,20 +2838,26 @@ public sealed class CampaignsViewModel : ViewModelBase
                     _isMemoryUpdating = true;
                     _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
                     _memoryProgressText = progress.Scope is null
-                        ? "正在更新跑团记忆"
-                        : $"正在更新{MemoryScopeName(progress.Scope.Value)}跑团记忆";
+                        ? LanguageRuntime.GetString("Campaigns.Memory.Progress")
+                        : LanguageRuntime.Format(
+                            "Campaigns.Memory.ProgressScopeFormat",
+                            MemoryScopeName(progress.Scope.Value));
                     break;
                 case CampaignMemoryUpdateProgressStatus.Completed:
                     CompleteMemoryOperation(
                         operationId,
-                        "跑团记忆更新完成；本地操作可继续。");
+                        LanguageRuntime.GetString("Campaigns.Memory.ProgressDone"));
                     break;
                 case CampaignMemoryUpdateProgressStatus.Failed:
                     CompleteMemoryOperation(
                         operationId,
                         string.IsNullOrWhiteSpace(progress.Message)
-                            ? "跑团记忆更新失败；本地操作可继续。"
-                            : $"跑团记忆更新失败：{progress.Message}");
+                            ? LanguageRuntime.GetString("Campaigns.Memory.ProgressFailed")
+                            : LanguageRuntime.Format(
+                                "Campaigns.Memory.ProgressFailedFormat",
+                                LanguageRuntime.BackendMessage(
+                                    progress.Message,
+                                    "Common.NoFurtherDetails")));
                     break;
             }
 
@@ -2763,7 +2887,9 @@ public sealed class CampaignsViewModel : ViewModelBase
     }
 
     private static string MemoryScopeName(CampaignMemoryScope scope) =>
-        scope == CampaignMemoryScope.GameMaster ? "GM" : "公共";
+        scope == CampaignMemoryScope.GameMaster
+            ? "GM"
+            : LanguageRuntime.GetString("Campaigns.Memory.ScopePublic");
 
     private static void RunOnUi(Action action)
     {
@@ -2797,65 +2923,67 @@ public sealed class CampaignsViewModel : ViewModelBase
                        snapshot.CurrentParticipantId,
                        participant.Id,
                        StringComparison.Ordinal)
-                ? "当前行动席位"
-                : "等待轮次";
+                ? LanguageRuntime.GetString("Campaigns.Seat.Current")
+                : LanguageRuntime.GetString("Campaigns.Seat.WaitingRound");
         }
 
-        return "等待行动";
+        return LanguageRuntime.GetString("Campaigns.Generation.Waiting");
     }
 
     private static string GenerationStatusName(CampaignEvent campaignEvent) =>
         campaignEvent.GenerationStatus switch
         {
-            CampaignGenerationStatus.Queued => "排队中",
-            CampaignGenerationStatus.Streaming => "接收中",
+            CampaignGenerationStatus.Queued => LanguageRuntime.GetString("Campaigns.Generation.Queued"),
+            CampaignGenerationStatus.Streaming => LanguageRuntime.GetString("Campaigns.Generation.Streaming"),
             CampaignGenerationStatus.Completed => campaignEvent.IsLocked
-                ? "已锁定"
-                : "已完成，待确认",
-            CampaignGenerationStatus.Interrupted => "已中断，可重试",
+                ? LanguageRuntime.GetString("Campaigns.Generation.Locked")
+                : LanguageRuntime.GetString("Campaigns.Generation.CompletedPending"),
+            CampaignGenerationStatus.Interrupted => LanguageRuntime.GetString("Campaigns.Generation.Interrupted"),
             CampaignGenerationStatus.Failed =>
-                $"失败：{EndReasonName(campaignEvent.EndReason)}",
-            _ => "本地事件"
+                LanguageRuntime.Format(
+                    "Campaigns.Generation.FailedFormat",
+                    EndReasonName(campaignEvent.EndReason)),
+            _ => LanguageRuntime.GetString("Campaigns.Generation.LocalEvent")
         };
 
     private static string EndReasonName(CampaignEndReason reason) => reason switch
     {
-        CampaignEndReason.OutputLimit => "达到输出上限",
-        CampaignEndReason.ContextLimit => "超出上下文",
-        CampaignEndReason.RepetitionDetected => "检测到重复死循环",
-        CampaignEndReason.StreamDisconnected => "流式连接中断",
-        CampaignEndReason.GlobalStop => "全部 API 已停止",
-        CampaignEndReason.UserStopped => "用户停止",
-        CampaignEndReason.ProtocolViolation => "缺少下一轮评定说明",
-        CampaignEndReason.NarrativeAuthorityViolation => "违反剧本叙事权限",
-        _ => "供应商错误"
+        CampaignEndReason.OutputLimit => LanguageRuntime.GetString("Campaigns.End.OutputLimit"),
+        CampaignEndReason.ContextLimit => LanguageRuntime.GetString("Campaigns.End.ContextLimit"),
+        CampaignEndReason.RepetitionDetected => LanguageRuntime.GetString("Campaigns.End.Repetition"),
+        CampaignEndReason.StreamDisconnected => LanguageRuntime.GetString("Campaigns.End.Disconnected"),
+        CampaignEndReason.GlobalStop => LanguageRuntime.GetString("Campaigns.End.GlobalStop"),
+        CampaignEndReason.UserStopped => LanguageRuntime.GetString("Campaigns.End.UserStopped"),
+        CampaignEndReason.ProtocolViolation => LanguageRuntime.GetString("Campaigns.End.Protocol"),
+        CampaignEndReason.NarrativeAuthorityViolation => LanguageRuntime.GetString("Campaigns.End.Authority"),
+        _ => LanguageRuntime.GetString("Campaigns.End.Provider")
     };
 
     private static string EventKindName(CampaignEventKind kind) => kind switch
     {
-        CampaignEventKind.GmOpening => "GM 开场",
-        CampaignEventKind.PlayerIntent => "玩家行动",
-        CampaignEventKind.GmResolution => "GM 裁定",
-        CampaignEventKind.DiceRoll => "掷骰",
-        CampaignEventKind.System => "系统",
-        CampaignEventKind.StateDelta => "状态变化",
-        _ => "私有传递"
+        CampaignEventKind.GmOpening => LanguageRuntime.GetString("Campaigns.Event.GmOpening"),
+        CampaignEventKind.PlayerIntent => LanguageRuntime.GetString("Campaigns.Event.PlayerIntent"),
+        CampaignEventKind.GmResolution => LanguageRuntime.GetString("Campaigns.Event.GmResolution"),
+        CampaignEventKind.DiceRoll => LanguageRuntime.GetString("Campaigns.Event.Dice"),
+        CampaignEventKind.System => LanguageRuntime.GetString("Campaigns.Event.System"),
+        CampaignEventKind.StateDelta => LanguageRuntime.GetString("Campaigns.Event.StateDelta"),
+        _ => LanguageRuntime.GetString("Campaigns.Event.Private")
     };
 
     private static string FlowName(CampaignFlowPreset flow) => flow switch
     {
-        CampaignFlowPreset.CollaborativeTable => "协作圆桌",
-        CampaignFlowPreset.BlindSubmission => "秘密同投",
-        _ => "严格先攻"
+        CampaignFlowPreset.CollaborativeTable => LanguageRuntime.GetString("Campaigns.Flow.Collaborative"),
+        CampaignFlowPreset.BlindSubmission => LanguageRuntime.GetString("Campaigns.Flow.Blind"),
+        _ => LanguageRuntime.GetString("Campaigns.Flow.Strict")
     };
 
     private static string PhaseName(CampaignPhase phase) => phase switch
     {
-        CampaignPhase.AwaitingActions => "等待行动",
-        CampaignPhase.ReadyForResolution => "等待 GM 裁定",
-        CampaignPhase.Resolving => "GM 裁定中",
-        CampaignPhase.Paused => "已暂停",
-        CampaignPhase.Completed => "已完成",
+        CampaignPhase.AwaitingActions => LanguageRuntime.GetString("Campaigns.Phase.Awaiting"),
+        CampaignPhase.ReadyForResolution => LanguageRuntime.GetString("Campaigns.Phase.Ready"),
+        CampaignPhase.Resolving => LanguageRuntime.GetString("Campaigns.Phase.Resolving"),
+        CampaignPhase.Paused => LanguageRuntime.GetString("Campaigns.Phase.Paused"),
+        CampaignPhase.Completed => LanguageRuntime.GetString("Campaigns.Phase.Completed"),
         _ => phase.ToString()
     };
 }

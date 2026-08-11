@@ -1,4 +1,5 @@
 using System.Windows;
+using TavernDesk.App.Localization;
 
 namespace TavernDesk.App;
 
@@ -23,8 +24,8 @@ public partial class CustomProviderDialog : Window
         {
             MessageBox.Show(
                 this,
-                "接入商名称不能为空。",
-                "无法添加",
+                LanguageRuntime.GetString("CustomProvider.NameRequired"),
+                LanguageRuntime.GetString("CustomProvider.CannotAdd"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
@@ -35,8 +36,8 @@ public partial class CustomProviderDialog : Window
         {
             MessageBox.Show(
                 this,
-                "OpenAI 兼容 API 地址必须是完整的 http 或 https 地址。",
-                "无法添加",
+                LanguageRuntime.GetString("CustomProvider.BaseUrlAbsoluteRequired"),
+                LanguageRuntime.GetString("CustomProvider.CannotAdd"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
@@ -47,8 +48,8 @@ public partial class CustomProviderDialog : Window
         {
             MessageBox.Show(
                 this,
-                "API 地址不能包含查询参数或片段。",
-                "无法添加",
+                LanguageRuntime.GetString("CustomProvider.BaseUrlNoQuery"),
+                LanguageRuntime.GetString("CustomProvider.CannotAdd"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
@@ -63,8 +64,8 @@ public partial class CustomProviderDialog : Window
         {
             MessageBox.Show(
                 this,
-                "请填写到 /api/v1 或 /v1 结束，不要加入 /chat。",
-                "无法添加",
+                LanguageRuntime.GetString("CustomProvider.BaseUrlVersionRootRequired"),
+                LanguageRuntime.GetString("CustomProvider.CannotAdd"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
@@ -16,7 +17,7 @@ public sealed class RetrievalViewModel : ViewModelBase
     private int _recentMessageCount = 20;
     private int _maximumResults = 6;
     private int _tokenBudget = 1200;
-    private string _status = "选择会话后可配置长期上下文召回。";
+    private string _status = LanguageRuntime.GetString("Retrieval.SelectConversation");
     private bool _loading;
     private long _loadVersion;
 
@@ -42,8 +43,8 @@ public sealed class RetrievalViewModel : ViewModelBase
     public RelayCommand ClearExclusionsCommand { get; }
     public IReadOnlyList<RetrievalScopeOption> ScopeOptions { get; } =
     [
-        new(RetrievalScope.CurrentConversation, "仅当前会话"),
-        new(RetrievalScope.SameCharacter, "同一角色的全部会话")
+        new(RetrievalScope.CurrentConversation, LanguageRuntime.GetString("Retrieval.Scope.CurrentConversation")),
+        new(RetrievalScope.SameCharacter, LanguageRuntime.GetString("Retrieval.Scope.SameCharacter"))
     ];
 
     public bool IsAvailable => _conversationId.Length > 0;
@@ -115,8 +116,8 @@ public sealed class RetrievalViewModel : ViewModelBase
             Matches.Clear();
             Diagnostics.Clear();
             Status = conversation.Mode == ConversationMode.Group
-                ? "群聊召回限定当前群聊 ID，避免跨群聊记忆污染。"
-                : "默认只召回当前会话；可主动切换为同一角色的其他会话。";
+                ? LanguageRuntime.GetString("Retrieval.GroupScopeNotice")
+                : LanguageRuntime.GetString("Retrieval.DefaultScopeNotice");
             OnPropertyChanged(nameof(IsAvailable));
             OnPropertyChanged(nameof(ExcludedCount));
             SaveSettingsCommand.RaiseCanExecuteChanged();
@@ -138,7 +139,7 @@ public sealed class RetrievalViewModel : ViewModelBase
             _excludedIds.Clear();
             Matches.Clear();
             Diagnostics.Clear();
-            Status = "选择会话后可配置长期上下文召回。";
+            Status = LanguageRuntime.GetString("Retrieval.SelectConversation");
             OnPropertyChanged(nameof(IsAvailable));
             OnPropertyChanged(nameof(ExcludedCount));
             SaveSettingsCommand.RaiseCanExecuteChanged();
@@ -177,14 +178,16 @@ public sealed class RetrievalViewModel : ViewModelBase
         }
 
         Diagnostics.Clear();
-        foreach (var diagnostic in result.Diagnostics ?? [])
+        foreach (var diagnostic in LanguageRuntime.LocalizeDiagnostics(
+                     result.Diagnostics,
+                     "Retrieval.DiagnosticsSummaryFormat"))
         {
             Diagnostics.Add(diagnostic);
         }
 
         Status = IsEnabled
-            ? $"本轮已注入 {Matches.Count} 条召回；排除 {_excludedIds.Count} 条。"
-            : "本轮已关闭自动召回，历史仍按原始完整列表组装。";
+            ? LanguageRuntime.Format("Retrieval.InjectedFormat", Matches.Count, _excludedIds.Count)
+            : LanguageRuntime.GetString("Retrieval.Disabled");
     }
 
     private async Task SaveSettingsAsync()
@@ -205,12 +208,12 @@ public sealed class RetrievalViewModel : ViewModelBase
                 MaximumResults = MaximumResults,
                 TokenBudget = TokenBudget
             });
-            Status = "召回设置已保存到当前会话。";
+            Status = LanguageRuntime.GetString("Retrieval.Saved");
             _contextChanged();
         }
         catch (Exception exception)
         {
-            Status = $"召回设置未保存：{exception.Message}";
+            Status = LanguageRuntime.Format("Retrieval.SaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
 
@@ -224,7 +227,7 @@ public sealed class RetrievalViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(ExcludedCount));
         ClearExclusionsCommand.RaiseCanExecuteChanged();
-        Status = $"本轮已排除：{match.Title}";
+        Status = LanguageRuntime.Format("Retrieval.ExcludedFormat", match.Title);
         _contextChanged();
     }
 
@@ -238,7 +241,7 @@ public sealed class RetrievalViewModel : ViewModelBase
         _excludedIds.Clear();
         OnPropertyChanged(nameof(ExcludedCount));
         ClearExclusionsCommand.RaiseCanExecuteChanged();
-        Status = "已清除本轮排除项。";
+        Status = LanguageRuntime.GetString("Retrieval.ExclusionsCleared");
         _contextChanged();
     }
 
