@@ -8,6 +8,7 @@ using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Diagnostics;
 using TavernDesk.Infrastructure.Storage;
 
 namespace TavernDesk.App.ViewModels;
@@ -19,6 +20,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public const string InterfaceFontSizeSettingKey = "ui.font.size";
     public const string InterfaceScalePercentSettingKey = "ui.scale.percent";
     public const string InterfaceThemeSettingKey = "ui.theme";
+    public const string ApiTestModeSettingKey = "diagnostics.apiTestMode.enabled";
 
     private static readonly Lazy<IReadOnlyList<string>> SystemFontFamilies =
         new(LoadSystemFontFamilies);
@@ -47,6 +49,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private readonly IFileDialogService _fileDialog;
     private readonly IAppSettingsRepository? _appSettings;
     private readonly AppDataLocationService? _dataLocation;
+    private readonly ITavernDeskDiagnostics _diagnostics;
     private readonly PlayerPersonaManagerViewModel? _personas;
     private readonly IInterfaceScaleRecommendationProvider?
         _interfaceScaleRecommendationProvider;
@@ -91,6 +94,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         LanguageRuntime.GetString("Settings.Interface.Intro");
     private string _dataRoot = string.Empty;
     private string _dataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Intro");
+    private bool _isApiTestModeEnabled;
+    private string _diagnosticsStatus =
+        LanguageRuntime.GetString("Settings.Diagnostics.Status.Disabled");
+    private string _apiTestOutputSummary =
+        LanguageRuntime.Format("Settings.Diagnostics.OutputSummaryFormat", 0, "0 B");
     private int _selectedSettingsTabIndex;
     private int _catalogLoadVersion;
     private int _assignmentLoadVersion;
@@ -108,7 +116,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         IAppSettingsRepository? appSettings = null,
         AppDataLocationService? dataLocation = null,
         PlayerPersonaManagerViewModel? personas = null,
-        IInterfaceScaleRecommendationProvider? interfaceScaleRecommendationProvider = null)
+        IInterfaceScaleRecommendationProvider? interfaceScaleRecommendationProvider = null,
+        ITavernDeskDiagnostics? diagnostics = null)
     {
         _repository = repository;
         _models = models;
@@ -120,6 +129,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         _fileDialog = fileDialog;
         _appSettings = appSettings;
         _dataLocation = dataLocation;
+        _diagnostics = diagnostics ?? NullTavernDeskDiagnostics.Instance;
         _personas = personas
                     ?? (appSettings is null
                         ? null
@@ -176,6 +186,12 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             () => _dataLocation is not null
                   && !_dataLocation.IsExternallyOverridden
                   && !string.IsNullOrWhiteSpace(DataRoot));
+        SetApiTestModeCommand = new AsyncRelayCommand(
+            parameter => SetApiTestModeAsync(parameter is true));
+        OpenApiTestOutputCommand = new AsyncRelayCommand(
+            OpenApiTestOutputAsync);
+        ClearApiTestOutputCommand = new AsyncRelayCommand(
+            ClearApiTestOutputAsync);
         _editor.PropertyChanged += OnEditorPropertyChanged;
     }
 
@@ -216,6 +232,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public RelayCommand RestoreInterfaceDefaultsCommand { get; }
     public RelayCommand PickDataRootCommand { get; }
     public AsyncRelayCommand ChangeDataRootCommand { get; }
+    public AsyncRelayCommand SetApiTestModeCommand { get; }
+    public AsyncRelayCommand OpenApiTestOutputCommand { get; }
+    public AsyncRelayCommand ClearApiTestOutputCommand { get; }
     public IReadOnlyList<string> AvailableInterfaceFontFamilies =>
         SystemFontFamilies.Value;
     public IReadOnlyList<InterfaceScaleOption> AvailableInterfaceScaleOptions =>
@@ -552,6 +571,29 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         private set => SetProperty(ref _dataRootStatus, value);
     }
 
+    public string ErrorLogDirectory => _diagnostics.ErrorLogDirectory;
+
+    public string ApiTestOutputDirectory =>
+        _diagnostics.ApiTestOutputDirectory;
+
+    public bool IsApiTestModeEnabled
+    {
+        get => _isApiTestModeEnabled;
+        private set => SetProperty(ref _isApiTestModeEnabled, value);
+    }
+
+    public string DiagnosticsStatus
+    {
+        get => _diagnosticsStatus;
+        private set => SetProperty(ref _diagnosticsStatus, value);
+    }
+
+    public string ApiTestOutputSummary
+    {
+        get => _apiTestOutputSummary;
+        private set => SetProperty(ref _apiTestOutputSummary, value);
+    }
+
     public int SelectedSettingsTabIndex
     {
         get => _selectedSettingsTabIndex;
@@ -561,6 +603,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public async Task LoadAsync()
     {
         LoadDataRootSettings();
+        await LoadDiagnosticsSettingsAsync();
         await LoadInterfaceSettingsAsync();
         if (_personas is not null)
         {
@@ -672,6 +715,179 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 : LanguageRuntime.Format(
                     "Settings.DataRoot.ConfigFormat",
                     _dataLocation.ConfigurationPath);
+    }
+
+    private async Task LoadDiagnosticsSettingsAsync()
+    {
+        try
+        {
+            var shouldEnable = false;
+            if (_appSettings is not null)
+            {
+                shouldEnable = bool.TryParse(
+                    await _appSettings.GetAsync(ApiTestModeSettingKey),
+                    out var saved)
+                    && saved;
+            }
+
+            await _diagnostics.SetApiTestModeEnabledAsync(shouldEnable);
+            IsApiTestModeEnabled = _diagnostics.IsApiTestModeEnabled;
+            DiagnosticsStatus = IsApiTestModeEnabled
+                ? LanguageRuntime.GetString("Settings.Diagnostics.Status.Enabled")
+                : LanguageRuntime.GetString("Settings.Diagnostics.Status.Disabled");
+        }
+        catch (Exception exception)
+        {
+            IsApiTestModeEnabled = false;
+            DiagnosticsStatus = LanguageRuntime.Format(
+                "Settings.Diagnostics.Status.EnableFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
+        }
+
+        await RefreshApiTestOutputSummaryAsync();
+    }
+
+    private async Task SetApiTestModeAsync(bool enabled)
+    {
+        if (enabled == IsApiTestModeEnabled)
+        {
+            return;
+        }
+
+        try
+        {
+            if (enabled)
+            {
+                await _diagnostics.SetApiTestModeEnabledAsync(true);
+                if (_appSettings is not null)
+                {
+                    try
+                    {
+                        await _appSettings.SetAsync(
+                            ApiTestModeSettingKey,
+                            bool.TrueString);
+                    }
+                    catch
+                    {
+                        await _diagnostics.SetApiTestModeEnabledAsync(false);
+                        throw;
+                    }
+                }
+            }
+            else
+            {
+                if (_appSettings is not null)
+                {
+                    await _appSettings.SetAsync(
+                        ApiTestModeSettingKey,
+                        bool.FalseString);
+                }
+
+                await _diagnostics.SetApiTestModeEnabledAsync(false);
+            }
+
+            IsApiTestModeEnabled = _diagnostics.IsApiTestModeEnabled;
+            DiagnosticsStatus = IsApiTestModeEnabled
+                ? LanguageRuntime.GetString("Settings.Diagnostics.Status.Enabled")
+                : LanguageRuntime.GetString("Settings.Diagnostics.Status.Disabled");
+        }
+        catch (Exception exception)
+        {
+            IsApiTestModeEnabled = _diagnostics.IsApiTestModeEnabled;
+            OnPropertyChanged(nameof(IsApiTestModeEnabled));
+            DiagnosticsStatus = LanguageRuntime.Format(
+                enabled
+                    ? "Settings.Diagnostics.Status.EnableFailedFormat"
+                    : "Settings.Diagnostics.Status.DisableFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
+        }
+
+        await RefreshApiTestOutputSummaryAsync();
+    }
+
+    private async Task OpenApiTestOutputAsync()
+    {
+        try
+        {
+            Directory.CreateDirectory(ApiTestOutputDirectory);
+            _fileDialog.OpenFolder(ApiTestOutputDirectory);
+            DiagnosticsStatus = LanguageRuntime.GetString(
+                "Settings.Diagnostics.Status.FolderOpened");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticsStatus = LanguageRuntime.Format(
+                "Settings.Diagnostics.Status.OpenFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
+        }
+
+        await RefreshApiTestOutputSummaryAsync();
+    }
+
+    private async Task ClearApiTestOutputAsync()
+    {
+        if (!_interaction.ConfirmClearApiTestOutput(ApiTestOutputDirectory))
+        {
+            return;
+        }
+
+        try
+        {
+            var deletedEntries = await _diagnostics.ClearApiTestOutputAsync();
+            DiagnosticsStatus = LanguageRuntime.Format(
+                "Settings.Diagnostics.Status.ClearedFormat",
+                deletedEntries);
+        }
+        catch (ApiTestOutputBusyException)
+        {
+            DiagnosticsStatus = LanguageRuntime.GetString(
+                "Settings.Diagnostics.Status.ClearBusy");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticsStatus = LanguageRuntime.Format(
+                "Settings.Diagnostics.Status.ClearFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
+        }
+
+        await RefreshApiTestOutputSummaryAsync();
+    }
+
+    private async Task RefreshApiTestOutputSummaryAsync()
+    {
+        try
+        {
+            var summary = await _diagnostics.GetApiTestOutputSummaryAsync();
+            ApiTestOutputSummary = LanguageRuntime.Format(
+                "Settings.Diagnostics.OutputSummaryFormat",
+                summary.FileCount,
+                FormatFileSize(summary.TotalBytes));
+        }
+        catch (Exception exception)
+        {
+            ApiTestOutputSummary = LanguageRuntime.Format(
+                "Settings.Diagnostics.OutputSummaryFailedFormat",
+                LanguageRuntime.ErrorMessage(exception));
+        }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        var units = new[] { "B", "KiB", "MiB", "GiB" };
+        var value = Math.Max(0, bytes);
+        var unitIndex = 0;
+        var displayValue = (double)value;
+        while (displayValue >= 1024 && unitIndex < units.Length - 1)
+        {
+            displayValue /= 1024;
+            unitIndex++;
+        }
+
+        return string.Format(
+            CultureInfo.CurrentUICulture,
+            unitIndex == 0 ? "{0:0} {1}" : "{0:0.##} {1}",
+            displayValue,
+            units[unitIndex]);
     }
 
     private void PickDataRoot()

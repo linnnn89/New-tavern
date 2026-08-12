@@ -66,6 +66,7 @@ public interface IUserInteractionService
     DataRootMigrationDecision ConfirmDataRootMigration(
         string currentRoot,
         string newRoot) => DataRootMigrationDecision.Cancel;
+    bool ConfirmClearApiTestOutput(string outputDirectory) => false;
     Task<GroupChatDraft?> CreateGroupChatAsync(IReadOnlyList<Character> characters);
     void CopyText(string text);
 }
@@ -289,6 +290,17 @@ public sealed class UserInteractionService : IUserInteractionService
             _ => DataRootMigrationDecision.Cancel
         };
     }
+
+    public bool ConfirmClearApiTestOutput(string outputDirectory) =>
+        LocalizedMessageBox.Show(
+            Application.Current.MainWindow,
+            LanguageRuntime.Format(
+                "Interaction.Diagnostics.Clear.MessageFormat",
+                outputDirectory),
+            LanguageRuntime.GetString("Interaction.Diagnostics.Clear.Title"),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
 
     public async Task<GroupChatDraft?> CreateGroupChatAsync(
         IReadOnlyList<Character> characters)

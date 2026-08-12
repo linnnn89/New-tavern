@@ -549,6 +549,29 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Data.Browse">参照…</sys:String>
     <sys:String x:Key="Settings.Data.ConfigurationFile">設定ファイル：</sys:String>
     <sys:String x:Key="Settings.Data.SaveAndSwitch">保存して個人データディレクトリを切り替え</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Title">診断とテスト記録</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Description">エラーログはアプリの不具合調査に使用します。API テストモードはモデル通信の利用状況を一時的に記録します。どちらもこの端末内にのみ保存されます。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">ローカルエラーログ（常時有効）</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogDescription">エラー分類、例外の種類、マスク済みの呼び出し位置、状態のみを記録し、API リクエスト本文、応答本文、思考内容、API キーは記録しません。1 ファイルは最大 10 MiB、最大 10 ファイルを保持します。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogPath">エラーログフォルダー：</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeTitle">API テストモード</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeDescription">有効にすると、各リクエストの論理本文、表示される応答、所要時間、最初の文字までの時間、Token 使用量、エラー状態を保存します。無効にすると新規記録を停止します。設定は再起動後も保持され、合計が 500 MiB を超えると古いファイルから削除されます。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeToggle">API テストモードをオンまたはオフにする</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.PrivacyWarning">注意：テスト記録にはチャット内容、システムプロンプト、表示されるモデル応答が含まれます。API キー、認証ヘッダー、Cookie、非表示の思考内容、完全な Embedding ベクトルは書き込みません。分析が必要な間だけ有効にしてください。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputPath">テスト出力フォルダー（アプリケーションルートからの相対位置）：</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFormat">現在 {0} ファイル、使用量 {1}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFailedFormat">テスト出力の統計を読み取れません：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OpenOutput">エクスプローラーで開く</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ClearOutput">テスト出力をクリア</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Disabled">API テストモードはオフです。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Enabled">API テストモードはオンです。以後の API リクエストをテスト出力フォルダーへ保存します。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.EnableFailedFormat">API テストモードを有効にできません：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.DisableFailedFormat">API テストモードを無効にできません：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.FolderOpened">新しいエクスプローラーウィンドウでテスト出力フォルダーを開きました。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.OpenFailedFormat">テスト出力フォルダーを開けません：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearedFormat">テスト出力をクリアし、{0} 個の子項目を削除しました。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearBusy">API リクエストがまだ記録中です。完了してからフォルダーをクリアしてください。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearFailedFormat">テスト出力をクリアできません：{0}</sys:String>
     <!-- Runtime and dashboard text -->
     <sys:String x:Key="Runtime.Section.Dashboard">ダッシュボード</sys:String>
     <sys:String x:Key="Runtime.Section.Characters">キャラクター棚</sys:String>
@@ -655,6 +678,8 @@ Choose the TavernDesk interface language.
 現在：{0}
 新しいディレクトリ：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">個人データディレクトリを切り替え</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">次のディレクトリ内にあるすべての子ファイルと子フォルダーを完全に削除します。ディレクトリ自体は残します：&#10;&#10;{0}&#10;&#10;続行しますか？</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.Title">API テスト出力をクリア</sys:String>
     <!-- Conversation and message runtime text -->
     <sys:String x:Key="Conversation.New">新しい会話</sys:String>
     <sys:String x:Key="Conversation.Yesterday">昨日</sys:String>

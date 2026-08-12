@@ -556,6 +556,29 @@
     <sys:String x:Key="Settings.Data.Browse">浏览…</sys:String>
     <sys:String x:Key="Settings.Data.ConfigurationFile">配置文件：</sys:String>
     <sys:String x:Key="Settings.Data.SaveAndSwitch">保存并切换个人资料目录</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Title">诊断与测试记录</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Description">错误日志用于定位软件故障；API 测试模式用于临时分析模型请求的实际利用情况。两类文件都只保存在本机。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">本地错误日志（始终启用）</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogDescription">仅记录错误类别、异常类型、脱敏后的调用位置和状态，不记录 API 请求正文、回复正文、思考内容或 API Key。单个文件最大 10 MiB，最多保留 10 个。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogPath">错误日志目录：</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeTitle">API 测试模式</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeDescription">开启后，每次请求都会保存逻辑请求正文、可见回复、耗时、首字时间、Token 用量和错误状态；关闭后停止新增记录。设置会在重启后保留，记录总量超过 500 MiB 时自动删除最旧文件。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeToggle">开启或关闭 API 测试模式</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.PrivacyWarning">注意：测试记录会包含聊天内容、系统提示词和模型可见回复。API Key、授权头、Cookie、隐藏思考内容和完整 Embedding 向量不会写入。请只在需要分析时开启。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputPath">测试输出目录（相对于软件根目录）：</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFormat">当前共有 {0} 个文件，占用 {1}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFailedFormat">无法读取测试输出统计：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OpenOutput">在资源管理器中打开</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ClearOutput">清空测试输出</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Disabled">API 测试模式已关闭。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Enabled">API 测试模式已开启，后续 API 请求将写入测试输出目录。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.EnableFailedFormat">无法开启 API 测试模式：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.DisableFailedFormat">无法关闭 API 测试模式：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.FolderOpened">已在新的资源管理器窗口中打开测试输出目录。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.OpenFailedFormat">无法打开测试输出目录：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearedFormat">已清空测试输出，共删除 {0} 个子项。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearBusy">当前仍有 API 请求正在写入，请等待请求结束后再清空。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearFailedFormat">无法清空测试输出：{0}</sys:String>
 
     <!-- Runtime and dashboard text -->
     <sys:String x:Key="Runtime.Section.Dashboard">仪表盘</sys:String>
@@ -629,6 +652,8 @@
     <sys:String x:Key="Interaction.ClearKey.Title">清除 API Key</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">个人资料目录即将切换。是否先把当前数据库、聊天记录、角色卡、剧本、附件和其他个人资料复制到新目录？&#10;&#10;选择“是”会复制当前资料并保留旧目录作为安全备份；选择“否”只切换配置，不会覆盖新目录中的已有文件；选择“取消”保持不变。&#10;&#10;当前：{0}&#10;新目录：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">切换个人资料目录</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">将永久删除以下目录中的全部子文件和子文件夹，但保留目录本身：&#10;&#10;{0}&#10;&#10;是否继续？</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.Title">清空 API 测试输出</sys:String>
 
     <!-- Conversation and message runtime text -->
     <sys:String x:Key="Conversation.New">新对话</sys:String>

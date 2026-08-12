@@ -549,6 +549,29 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Data.Browse">Browse…</sys:String>
     <sys:String x:Key="Settings.Data.ConfigurationFile">Configuration file:</sys:String>
     <sys:String x:Key="Settings.Data.SaveAndSwitch">Save and switch personal data directory</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Title">Diagnostics and test records</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Description">Error logs help diagnose application faults. API test mode temporarily records model traffic for utilization analysis. Both remain on this device.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">Local error log (always on)</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogDescription">Records only error categories, exception types, redacted call locations, and status. It does not record API request bodies, reply bodies, reasoning content, or API keys. Each file is limited to 10 MiB, with up to 10 files retained.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogPath">Error log folder:</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeTitle">API test mode</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeDescription">When enabled, each request records its logical body, visible reply, total duration, time to first text, token usage, and error status. Disabling stops new records. The setting persists across restarts, and the oldest files are removed after the total exceeds 500 MiB.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeToggle">Turn API test mode on or off</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.PrivacyWarning">Caution: test records contain chat content, system prompts, and visible model replies. API keys, authorization headers, cookies, hidden reasoning content, and full embedding vectors are never written. Enable this only while you need to analyze requests.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputPath">Test output folder (relative to the application root):</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFormat">{0} files currently use {1}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFailedFormat">Could not read test output statistics: {0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OpenOutput">Open in File Explorer</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ClearOutput">Clear test output</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Disabled">API test mode is off.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Enabled">API test mode is on. Future API requests will be written to the test output folder.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.EnableFailedFormat">Could not enable API test mode: {0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.DisableFailedFormat">Could not disable API test mode: {0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.FolderOpened">Opened the test output folder in a new File Explorer window.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.OpenFailedFormat">Could not open the test output folder: {0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearedFormat">Test output cleared. {0} child items were deleted.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearBusy">An API request is still writing a record. Wait for it to finish before clearing the folder.</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearFailedFormat">Could not clear test output: {0}</sys:String>
     <!-- Runtime and dashboard text -->
     <sys:String x:Key="Runtime.Section.Dashboard">Dashboard</sys:String>
     <sys:String x:Key="Runtime.Section.Characters">Character shelf</sys:String>
@@ -655,6 +678,8 @@ Select “Yes” to copy the current data and keep the old directory as a safety
 Current: {0}
 New directory: {1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">Change personal data directory</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">This permanently deletes every child file and folder inside the following directory while keeping the directory itself:&#10;&#10;{0}&#10;&#10;Continue?</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.Title">Clear API test output</sys:String>
     <!-- Conversation and message runtime text -->
     <sys:String x:Key="Conversation.New">New conversation</sys:String>
     <sys:String x:Key="Conversation.Yesterday">Yesterday</sys:String>
