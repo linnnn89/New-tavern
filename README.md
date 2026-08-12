@@ -103,7 +103,15 @@ Campaign mode is a separate runtime, not group chat with an extra GM prompt.
 
 ## Quick start
 
-The repository includes a self-contained `win-x64` build. .NET does not need to be installed to run that build.
+For players, the recommended option is the `TavernDesk-Setup-x64.exe` installer in the repository root:
+
+1. Run the installer and choose the setup language.
+2. Choose an installation folder and whether to create Desktop and Start menu shortcuts.
+3. Launch TavernDesk, choose the application language on first run, then open **Settings → AI & Models** to configure a provider and assign models.
+
+The installer includes a private .NET 10 runtime and all required dependencies. It does not create registry entries and therefore does not appear in Windows Installed apps. Use the Start menu uninstall shortcut, or `Uninstall TavernDesk.cmd` in the installation folder.
+
+The repository also includes a portable self-contained `win-x64` build. .NET does not need to be installed to run it:
 
 1. [Download the repository ZIP](https://github.com/linnnn89/New-tavern/archive/refs/heads/%E8%B7%91%E5%9B%A2%E8%AE%B0%E5%BF%86%E5%8D%87%E7%BA%A7%E7%89%88.zip) and extract it, or clone the repository.
 2. Keep `TavernDesk.exe` beside the complete `app/` directory.
