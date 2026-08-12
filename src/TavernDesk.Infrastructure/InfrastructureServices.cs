@@ -3,6 +3,7 @@ using TavernDesk.Core.Flow;
 using TavernDesk.Infrastructure.Campaigns;
 using TavernDesk.Infrastructure.Compatibility;
 using TavernDesk.Infrastructure.Context;
+using TavernDesk.Infrastructure.Diagnostics;
 using TavernDesk.Infrastructure.Group;
 using TavernDesk.Infrastructure.Memory;
 using TavernDesk.Infrastructure.Providers;
@@ -14,8 +15,11 @@ namespace TavernDesk.Infrastructure;
 
 public sealed class InfrastructureServices
 {
-    public InfrastructureServices(string? dataRoot = null)
+    public InfrastructureServices(
+        string? dataRoot = null,
+        ITavernDeskDiagnostics? diagnostics = null)
     {
+        Diagnostics = diagnostics ?? NullTavernDeskDiagnostics.Instance;
         DataConfiguration = new AppDataConfiguration();
         Paths = new AppDataPaths(dataRoot, DataConfiguration);
         Database = new SqliteDatabase(Paths);
@@ -64,7 +68,8 @@ public sealed class InfrastructureServices
         ProviderGateway = new ProviderGatewayRouter(
             Providers,
             openAiCompatibleGateway,
-            grokCliGateway);
+            grokCliGateway,
+            Diagnostics);
         EmbeddingProviderGateway = (IEmbeddingProviderGateway)ProviderGateway;
         CampaignMemory = new CampaignMemoryUpdateService(
             Campaigns,
@@ -123,6 +128,7 @@ public sealed class InfrastructureServices
     }
 
     public AppDataConfiguration DataConfiguration { get; }
+    public ITavernDeskDiagnostics Diagnostics { get; }
     public AppDataPaths Paths { get; }
     public AppDataLocationService DataLocation { get; }
     public SqliteDatabase Database { get; }

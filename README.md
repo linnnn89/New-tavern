@@ -145,6 +145,8 @@ The default workspace is `%USERPROFILE%\Documents\TavernDesk`. It contains the S
 
 API keys are stored as Windows DPAPI `CurrentUser`-protected files; SQLite stores only random references. TavernDesk has no built-in cloud sync. Local-first does not mean every generation is offline: prompts and conversation context are sent to the provider you select when you make a generation or embedding request.
 
+Privacy-safe rolling error logs are written to `%LOCALAPPDATA%\TavernDesk\logs`; they contain error categories, exception types, redacted call locations, and status, but never API request/reply bodies or API keys. The optional API test mode in Settings is off by default. When enabled, it writes request bodies, visible replies, timings, and token usage to `tests\output` under the application root for local analysis; the UI warns that those files contain conversation content and can open or clear the folder directly. API keys, authorization headers, cookies, hidden reasoning text, and full embedding vectors remain excluded. Installed test output is removed with the application during uninstall.
+
 ## Build from source
 
 Requirements: Windows 10/11 x64 and the .NET SDK version selected by [`global.json`](./global.json).

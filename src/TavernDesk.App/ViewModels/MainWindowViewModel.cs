@@ -85,7 +85,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             fileDialog,
             services.Settings,
             services.DataLocation,
-            personas);
+            personas,
+            diagnostics: services.Diagnostics);
         Worldbooks = new WorldbookViewModel(
             services.WorldbookService,
             services.Characters,

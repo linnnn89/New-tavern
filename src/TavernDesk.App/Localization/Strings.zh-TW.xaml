@@ -549,6 +549,29 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Data.Browse">瀏覽…</sys:String>
     <sys:String x:Key="Settings.Data.ConfigurationFile">設定檔：</sys:String>
     <sys:String x:Key="Settings.Data.SaveAndSwitch">儲存並切換個人資料目錄</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Title">診斷與測試記錄</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Description">錯誤日誌用於定位軟體故障；API 測試模式用於暫時分析模型請求的實際利用情況。兩類檔案都只儲存在本機。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">本機錯誤日誌（永遠啟用）</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogDescription">只記錄錯誤類別、例外類型、去識別化後的呼叫位置和狀態，不記錄 API 請求正文、回覆正文、思考內容或 API Key。單一檔案上限為 10 MiB，最多保留 10 個。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogPath">錯誤日誌目錄：</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeTitle">API 測試模式</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeDescription">開啟後，每次請求都會儲存邏輯請求正文、可見回覆、耗時、首字時間、Token 用量和錯誤狀態；關閉後停止新增記錄。設定會在重新啟動後保留，記錄總量超過 500 MiB 時會自動刪除最舊檔案。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.TestModeToggle">開啟或關閉 API 測試模式</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.PrivacyWarning">注意：測試記錄會包含聊天內容、系統提示詞和模型可見回覆。API Key、授權標頭、Cookie、隱藏思考內容和完整 Embedding 向量不會寫入。請只在需要分析時開啟。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputPath">測試輸出目錄（相對於軟體根目錄）：</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFormat">目前共有 {0} 個檔案，佔用 {1}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OutputSummaryFailedFormat">無法讀取測試輸出統計：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.OpenOutput">在檔案總管中開啟</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ClearOutput">清空測試輸出</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Disabled">API 測試模式已關閉。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.Enabled">API 測試模式已開啟，後續 API 請求將寫入測試輸出目錄。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.EnableFailedFormat">無法開啟 API 測試模式：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.DisableFailedFormat">無法關閉 API 測試模式：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.FolderOpened">已在新的檔案總管視窗中開啟測試輸出目錄。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.OpenFailedFormat">無法開啟測試輸出目錄：{0}</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearedFormat">已清空測試輸出，共刪除 {0} 個子項目。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearBusy">目前仍有 API 請求正在寫入，請等待請求結束後再清空。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.Status.ClearFailedFormat">無法清空測試輸出：{0}</sys:String>
     <!-- Runtime and dashboard text -->
     <sys:String x:Key="Runtime.Section.Dashboard">儀表盤</sys:String>
     <sys:String x:Key="Runtime.Section.Characters">角色書架</sys:String>
@@ -655,6 +678,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
 目前：{0}
 新目錄：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">切換個人資料目錄</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">將永久刪除以下目錄中的全部子檔案和子資料夾，但保留目錄本身：&#10;&#10;{0}&#10;&#10;是否繼續？</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.Title">清空 API 測試輸出</sys:String>
     <!-- Conversation and message runtime text -->
     <sys:String x:Key="Conversation.New">新對話</sys:String>
     <sys:String x:Key="Conversation.Yesterday">昨天</sys:String>

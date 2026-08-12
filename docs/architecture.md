@@ -160,6 +160,9 @@ sequenceDiagram
 - DPAPI 能降低数据库、备份或单独文件泄漏造成的明文暴露，但不能抵御同一 Windows 用户上下文中的恶意程序、管理员或被控制的运行进程。
 - “本地优先”不等于生成离线：聊天或 Embedding 请求会把必要上下文发送给用户所选服务。
 - 原始 reasoning、API Key、用户数据和私有跑团事件不得进入普通日志或公开诊断。
+- 普通错误日志写入 `%LOCALAPPDATA%\TavernDesk\logs`，只保留错误类别、异常类型、脱敏调用栈和有限状态；异常正文默认省略，单文件最多 10 MiB，最多保留 10 个。
+- API 测试模式默认关闭并通过应用设置持久化。开启后由 `ProviderGatewayRouter` 统一把模型目录、聊天和 Embedding 的逻辑请求与规范化回复写入软件根目录相对路径 `tests\output`；授权信息、隐藏 reasoning 原文和完整向量不得进入记录，总量超过 500 MiB 时删除最旧记录。
+- 测试输出属于可丢弃的安装目录诊断文件，清空只允许删除 `tests\output` 的直接子项并保留目录；安装版卸载会随程序根目录删除它，不影响独立个人资料目录。
 
 ## 6. UI 与状态原则
 
@@ -181,6 +184,7 @@ sequenceDiagram
 | 普通聊天 | `src/TavernDesk.App/ViewModels/ChatViewModel.cs` |
 | 普通上下文 | `src/TavernDesk.Infrastructure/Context/BasicContextAssembler.cs` |
 | Provider | `src/TavernDesk.Infrastructure/Providers/` |
+| 错误日志与 API 测试记录 | `src/TavernDesk.Infrastructure/Diagnostics/`、`ProviderGatewayRouter.cs` |
 | 会话与 schema | `src/TavernDesk.Infrastructure/Storage/SqliteConversationRepository.cs`、`SqliteDatabase.cs` |
 | 世界书与检索 | `src/TavernDesk.Infrastructure/Knowledge/`、`Retrieval/` |
 | 跑团界面 | `src/TavernDesk.App/ViewModels/CampaignsViewModel.cs` |

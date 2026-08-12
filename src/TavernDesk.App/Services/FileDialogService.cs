@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using Microsoft.Win32;
@@ -17,6 +18,9 @@ public interface IFileDialogService
     string? PickPromptProfileExportPath();
     string? PickWorldbookSource() => null;
     string? PickDataRoot() => null;
+    void OpenFolder(string path)
+    {
+    }
 }
 
 public sealed class FileDialogService : IFileDialogService
@@ -155,6 +159,21 @@ public sealed class FileDialogService : IFileDialogService
         };
 
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
+    }
+
+    public void OpenFolder(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var fullPath = Path.GetFullPath(path);
+        Directory.CreateDirectory(fullPath);
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            UseShellExecute = true
+        };
+        startInfo.ArgumentList.Add("/n,");
+        startInfo.ArgumentList.Add(fullPath);
+        Process.Start(startInfo);
     }
 
     private static string SanitizeFileName(string value)

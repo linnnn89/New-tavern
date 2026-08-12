@@ -13,26 +13,26 @@ $markerFileName = '.taverndesk-install.json'
 $textByCulture = @{
     'zh-CN' = @{
         Title = '卸载 TavernDesk'
-        Confirm = "是否删除 TavernDesk 程序文件和快捷方式？`r`n`r`n角色、聊天、设置和 API Key 等个人资料不会被删除。"
-        Success = 'TavernDesk 程序文件已删除，个人资料保持不变。'
+        Confirm = "是否删除 TavernDesk 程序文件、快捷方式和安装目录内的 API 测试输出？`r`n`r`n角色、聊天、设置和 API Key 等个人资料不会被删除。"
+        Success = 'TavernDesk 程序文件和 API 测试输出已删除，个人资料保持不变。'
         Failure = '卸载失败：{0}'
     }
     'zh-TW' = @{
         Title = '解除安裝 TavernDesk'
-        Confirm = "是否刪除 TavernDesk 程式檔案與捷徑？`r`n`r`n角色、對話、設定和 API Key 等個人資料不會被刪除。"
-        Success = 'TavernDesk 程式檔案已刪除，個人資料保持不變。'
+        Confirm = "是否刪除 TavernDesk 程式檔案、捷徑及安裝目錄內的 API 測試輸出？`r`n`r`n角色、對話、設定和 API Key 等個人資料不會被刪除。"
+        Success = 'TavernDesk 程式檔案和 API 測試輸出已刪除，個人資料保持不變。'
         Failure = '解除安裝失敗：{0}'
     }
     'en-US' = @{
         Title = 'Uninstall TavernDesk'
-        Confirm = "Remove TavernDesk program files and shortcuts?`r`n`r`nCharacters, chats, settings, API keys, and other personal data will not be deleted."
-        Success = 'TavernDesk program files were removed. Personal data was left unchanged.'
+        Confirm = "Remove TavernDesk program files, shortcuts, and API test output stored inside the install folder?`r`n`r`nCharacters, chats, settings, API keys, and other personal data will not be deleted."
+        Success = 'TavernDesk program files and API test output were removed. Personal data was left unchanged.'
         Failure = 'Uninstall failed: {0}'
     }
     'ja-JP' = @{
         Title = 'TavernDesk のアンインストール'
-        Confirm = "TavernDesk のプログラムファイルとショートカットを削除しますか？`r`n`r`nキャラクター、チャット、設定、API Key などの個人データは削除されません。"
-        Success = 'TavernDesk のプログラムファイルを削除しました。個人データは変更されていません。'
+        Confirm = "TavernDesk のプログラムファイル、ショートカット、インストールフォルダー内の API テスト出力を削除しますか？`r`n`r`nキャラクター、チャット、設定、API Key などの個人データは削除されません。"
+        Success = 'TavernDesk のプログラムファイルと API テスト出力を削除しました。個人データは変更されていません。'
         Failure = 'アンインストールに失敗しました：{0}'
     }
 }

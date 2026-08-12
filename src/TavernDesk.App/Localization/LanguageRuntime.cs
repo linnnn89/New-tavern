@@ -24,6 +24,8 @@ public static class LanguageRuntime
 
     public static IReadOnlyList<SupportedLanguage> SupportedLanguages => Languages;
 
+    public static Action<Exception>? ErrorReporter { get; set; }
+
     public static string CurrentCultureName { get; private set; } = DefaultCultureName;
 
     public static void Apply(string? cultureName)
@@ -73,6 +75,15 @@ public static class LanguageRuntime
     public static string ErrorMessage(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+
+        try
+        {
+            ErrorReporter?.Invoke(exception);
+        }
+        catch
+        {
+            // Diagnostics must never replace the original user-facing error.
+        }
 
         for (var candidate = exception;
              candidate is not null;

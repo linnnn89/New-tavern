@@ -113,6 +113,8 @@ cd New-tavern
 
 API Key 以 Windows DPAPI `CurrentUser` 保护文件保存，SQLite 只记录随机引用。TavernDesk 不提供内置云同步。“本地优先”不等于所有生成都离线：发起生成或 Embedding 请求时，提示词和必要的对话上下文会发送给你选择的服务。
 
+隐私安全的滚动错误日志默认写入 `%LOCALAPPDATA%\TavernDesk\logs`，只包含错误类别、异常类型、脱敏后的调用位置和状态，不包含 API 请求/回复正文或 API Key。设置中的 API 测试模式默认关闭；开启后会把请求正文、可见回复、耗时和 Token 用量写入软件根目录下的 `tests\output`，界面会明确提示其中含有对话内容，并可直接打开或清空目录。API Key、授权头、Cookie、隐藏思考文本和完整 Embedding 向量始终排除。安装版卸载时会一并删除测试输出。
+
 ## 从源码构建
 
 需要 Windows 10/11 x64，以及 [`global.json`](./global.json) 指定的 .NET SDK。
