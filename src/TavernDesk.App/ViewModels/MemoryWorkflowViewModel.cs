@@ -242,10 +242,9 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         OwnerLabel = ownerLabel;
         _userIdentity = NormalizeUserIdentity(userIdentity);
         var bank = bankTask.Result;
-        _loadedBankRevision = bank?.Revision ?? 0;
         if (!preserveUnsavedBody)
         {
-            ApplyLoadedBody(bank?.Body ?? string.Empty);
+            ApplyLoadedBank(bank);
         }
 
         TargetTokens = (bank?.TargetTokens ?? 5000).ToString();
@@ -284,6 +283,12 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     {
         try
         {
+            if (IsCurrentOwner(ownerId, conversationId) && IsBodyDirty)
+            {
+                Status = LanguageRuntime.GetString("Memory.AutoSavePausedUnsaved");
+                return;
+            }
+
             var settings = ResolveGlobalDefaults(
                 await _workflow.GetSettingsAsync(ownerId, cancellationToken));
             if (!settings.AutoGenerateEnabled)
@@ -383,6 +388,10 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         await Task.WhenAll(characterBankTask, groupBankTask);
         var characterBank = characterBankTask.Result;
         var groupBank = groupBankTask.Result;
+        var groupRevision = EnsureDisplayedBankRevision(
+            _ownerId,
+            _conversationId,
+            groupBank);
         var effectiveGroupSettings = ResolveGlobalDefaults(groupSettings);
         var plan = _prompts.BuildGroupMerge(
             character.Id,
@@ -395,7 +404,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             _userIdentity) with
         {
             TargetBankRevision = characterBank?.Revision ?? 0,
-            SourceBankRevision = groupBank?.Revision ?? 0
+            SourceBankRevision = groupRevision
         };
         await GeneratePlanAsync(
             plan,
@@ -415,9 +424,10 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
         var ownerId = _ownerId;
         var conversationId = _conversationId;
+        var bodySnapshot = Body;
         if (!await _memoryBanks.TrySaveBodyAsync(
                 ownerId,
-                Body,
+                bodySnapshot,
                 targetTokens,
                 _loadedBankRevision))
         {
@@ -425,13 +435,25 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             return;
         }
 
-        _loadedBankRevision++;
-        _bodyBaseline = Body;
-        IsBodyDirty = false;
-        BodySaved?.Invoke(
-            this,
-            new MemoryBodySavedEventArgs(ownerId, conversationId));
-        Status = LanguageRuntime.Format("Memory.DirectSavedFormat", OwnerLabel);
+        var savedBank = await _memoryBanks.GetAsync(ownerId);
+        if (IsCurrentOwner(ownerId, conversationId)
+            && !IsBodyDirty)
+        {
+            ApplyLoadedBank(savedBank);
+        }
+        var bodyUnchanged = string.Equals(
+            Body,
+            bodySnapshot,
+            StringComparison.Ordinal);
+        if (bodyUnchanged)
+        {
+            BodySaved?.Invoke(
+                this,
+                new MemoryBodySavedEventArgs(ownerId, conversationId));
+        }
+        Status = bodyUnchanged
+            ? LanguageRuntime.Format("Memory.DirectSavedFormat", OwnerLabel)
+            : LanguageRuntime.GetString("Memory.SaveConflict");
     }
 
     private async Task SaveSettingsAsync()
@@ -532,6 +554,10 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 _ownerId,
                 _conversationId);
             var bank = await _memoryBanks.GetAsync(_ownerId);
+            var bankRevision = EnsureDisplayedBankRevision(
+                _ownerId,
+                _conversationId,
+                bank);
             var plan = _prompts.BuildCompression(
                 _ownerId,
                 _conversationId,
@@ -542,7 +568,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 PromptMemorySubject(_ownerId),
                 _userIdentity) with
             {
-                TargetBankRevision = bank?.Revision ?? 0
+                TargetBankRevision = bankRevision
             };
             await GeneratePlanAsync(
                 plan,
@@ -573,6 +599,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         var namesTask = BuildSenderNamesAsync();
         var bankTask = _memoryBanks.GetAsync(_ownerId);
         await Task.WhenAll(checkpointTask, messagesTask, namesTask, bankTask);
+        var bank = bankTask.Result;
+        var bankRevision = EnsureDisplayedBankRevision(
+            _ownerId,
+            _conversationId,
+            bank);
         return _prompts.BuildUpdate(
             _ownerId,
             _conversationId,
@@ -585,7 +616,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             PromptMemorySubject(_ownerId),
             _userIdentity) with
         {
-            TargetBankRevision = bankTask.Result?.Revision ?? 0
+            TargetBankRevision = bankRevision
         };
     }
 
@@ -724,6 +755,13 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             await _workflow.SaveDraftAsync(draft, _generationCancellation.Token);
             if (autoCommit)
             {
+                if (IsCurrent(plan) && IsBodyDirty)
+                {
+                    ApplyDraft(draft);
+                    Status = LanguageRuntime.GetString("Memory.AutoSavePausedUnsaved");
+                    return;
+                }
+
                 await _workflow.CommitDraftAsync(
                     draft.Id,
                     draft.Body,
@@ -736,13 +774,21 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 if (autoCommit)
                 {
                     ApplyDraft(null);
-                    if (draft.TargetOwnerId == _ownerId)
-                    {
-                        ApplyLoadedBody(draft.Body);
-                        ApplyCheckpoint(await _workflow.GetCheckpointAsync(
+                    if (IsCurrentOwner(
                             draft.TargetOwnerId,
-                            draft.SourceConversationId,
-                            _generationCancellation.Token));
+                            draft.SourceConversationId))
+                    {
+                        var committedBank = await _memoryBanks.GetAsync(
+                            draft.TargetOwnerId,
+                            _generationCancellation.Token);
+                        if (!IsBodyDirty)
+                        {
+                            ApplyLoadedBank(committedBank);
+                            ApplyCheckpoint(await _workflow.GetCheckpointAsync(
+                                draft.TargetOwnerId,
+                                draft.SourceConversationId,
+                                _generationCancellation.Token));
+                        }
                     }
                 }
                 else
@@ -778,6 +824,12 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         }
 
         var draft = _pendingDraft;
+        if (IsCurrentOwner(draft.TargetOwnerId, draft.SourceConversationId)
+            && IsBodyDirty)
+        {
+            Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            return;
+        }
         var targetTokens = draft.Kind == MemoryDraftKind.GroupMerge
             ? draft.TargetTokens
             : TryReadTargetTokens(out var editedTargetTokens)
@@ -791,13 +843,19 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         var editedBody = PendingBody;
         await _workflow.CommitDraftAsync(draft.Id, editedBody, targetTokens);
         ApplyDraft(null);
-        if (draft.TargetOwnerId == _ownerId)
-        {
-            ApplyLoadedBody(editedBody);
-            var checkpoint = await _workflow.GetCheckpointAsync(
+        if (IsCurrentOwner(
                 draft.TargetOwnerId,
-                draft.SourceConversationId);
-            ApplyCheckpoint(checkpoint);
+                draft.SourceConversationId))
+        {
+            var committedBank = await _memoryBanks.GetAsync(draft.TargetOwnerId);
+            if (!IsBodyDirty)
+            {
+                ApplyLoadedBank(committedBank);
+                var checkpoint = await _workflow.GetCheckpointAsync(
+                    draft.TargetOwnerId,
+                    draft.SourceConversationId);
+                ApplyCheckpoint(checkpoint);
+            }
         }
 
         Status = draft.Kind switch
@@ -890,7 +948,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     }
 
     private bool IsCurrent(MemoryPromptPlan plan) =>
-        _conversationId == plan.SourceConversationId;
+        IsCurrentOwner(plan.TargetOwnerId, plan.SourceConversationId);
+
+    private bool IsCurrentOwner(string ownerId, string conversationId) =>
+        string.Equals(_ownerId, ownerId, StringComparison.Ordinal)
+        && string.Equals(_conversationId, conversationId, StringComparison.Ordinal);
 
     private void ApplySettings(MemoryWorkflowSettings settings)
     {
@@ -951,6 +1013,30 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         {
             _suppressBodyDirty = false;
         }
+    }
+
+    private void ApplyLoadedBank(MemoryBank? bank)
+    {
+        _loadedBankRevision = bank?.Revision ?? 0;
+        ApplyLoadedBody(bank?.Body ?? string.Empty);
+    }
+
+    private long EnsureDisplayedBankRevision(
+        string ownerId,
+        string conversationId,
+        MemoryBank? currentBank)
+    {
+        var currentRevision = currentBank?.Revision ?? 0;
+        if (IsCurrentOwner(ownerId, conversationId)
+            && currentRevision != _loadedBankRevision)
+        {
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("Memory.SaveConflict"));
+        }
+
+        return IsCurrentOwner(ownerId, conversationId)
+            ? _loadedBankRevision
+            : currentRevision;
     }
 
     private static string RenderPreview(

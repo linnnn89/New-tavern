@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 21;
+    public const int CurrentSchemaVersion = 22;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -1081,6 +1081,14 @@ public sealed class SqliteDatabase : IDatabaseInitializer
                 SELECT 'group:' || id
                 FROM conversations
                 WHERE mode = 1);
+            """),
+        new(
+            22,
+            """
+            -- PR #6 draft databases are not user data yet. Apply the confirmed
+            -- default-off policy to every existing group configuration.
+            UPDATE group_chat_settings
+            SET member_memory_enabled = 0;
             """)
     ];
 

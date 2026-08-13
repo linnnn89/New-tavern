@@ -176,6 +176,119 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
         }
     }
 
+    public async Task SaveConfigurationAsync(
+        GroupChatSettings settings,
+        IReadOnlyList<GroupChatMember> members,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSettings(settings);
+        if (members.Any(member => member.ConversationId != settings.ConversationId))
+        {
+            throw new ArgumentException(
+                "群聊设置与成员必须引用同一个群聊会话。",
+                nameof(members));
+        }
+
+        var normalized = NormalizeMembers(members);
+        settings.UpdatedAt = DateTimeOffset.Now;
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await EnsureGroupConversationAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                settings.ConversationId,
+                cancellationToken);
+
+            await using (var save = connection.CreateCommand())
+            {
+                save.Transaction = (SqliteTransaction)transaction;
+                save.CommandText = """
+                    INSERT INTO group_chat_settings(
+                        conversation_id, relay_mode, auto_continue_enabled,
+                        maximum_automatic_turns, pause_on_user_mention,
+                        member_memory_enabled, memory_pending_token_threshold,
+                        group_system_prompt, merge_system_prompt,
+                        merge_user_template, updated_at)
+                    VALUES(
+                        $conversationId, $relayMode, $autoContinueEnabled,
+                        $maximumAutomaticTurns, $pauseOnUserMention,
+                        $memberMemoryEnabled, $memoryPendingTokenThreshold,
+                        $groupSystemPrompt, $mergeSystemPrompt,
+                        $mergeUserTemplate, $updatedAt)
+                    ON CONFLICT(conversation_id) DO UPDATE SET
+                        relay_mode = excluded.relay_mode,
+                        auto_continue_enabled = excluded.auto_continue_enabled,
+                        maximum_automatic_turns = excluded.maximum_automatic_turns,
+                        pause_on_user_mention = excluded.pause_on_user_mention,
+                        member_memory_enabled = excluded.member_memory_enabled,
+                        memory_pending_token_threshold = excluded.memory_pending_token_threshold,
+                        group_system_prompt = excluded.group_system_prompt,
+                        merge_system_prompt = excluded.merge_system_prompt,
+                        merge_user_template = excluded.merge_user_template,
+                        updated_at = excluded.updated_at;
+                    """;
+                save.Parameters.AddWithValue("$conversationId", settings.ConversationId);
+                save.Parameters.AddWithValue("$relayMode", (int)settings.RelayMode);
+                save.Parameters.AddWithValue("$autoContinueEnabled", settings.AutoContinueEnabled);
+                save.Parameters.AddWithValue("$maximumAutomaticTurns", settings.MaximumAutomaticTurns);
+                save.Parameters.AddWithValue("$pauseOnUserMention", settings.PauseOnUserMention);
+                save.Parameters.AddWithValue("$memberMemoryEnabled", settings.MemberMemoryEnabled);
+                save.Parameters.AddWithValue("$memoryPendingTokenThreshold", settings.MemoryPendingTokenThreshold);
+                save.Parameters.AddWithValue("$groupSystemPrompt", settings.GroupSystemPrompt);
+                save.Parameters.AddWithValue("$mergeSystemPrompt", settings.MergeSystemPrompt);
+                save.Parameters.AddWithValue("$mergeUserTemplate", settings.MergeUserTemplate);
+                save.Parameters.AddWithValue("$updatedAt", settings.UpdatedAt.ToString("O"));
+                await save.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using (var delete = connection.CreateCommand())
+            {
+                delete.Transaction = (SqliteTransaction)transaction;
+                delete.CommandText =
+                    "DELETE FROM group_chat_members WHERE conversation_id = $conversationId;";
+                delete.Parameters.AddWithValue("$conversationId", settings.ConversationId);
+                await delete.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await InsertMembersAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                settings.ConversationId,
+                normalized,
+                cancellationToken);
+
+            // Any configuration/member change requires member scopes to be rebuilt
+            // before they can be injected again. This also covers re-enabling a
+            // member whose old bank is still retained for recovery.
+            await using (var invalidate = connection.CreateCommand())
+            {
+                invalidate.Transaction = (SqliteTransaction)transaction;
+                invalidate.CommandText = """
+                    UPDATE group_memory_checkpoints
+                    SET source_digest = '',
+                        revision = revision + 1,
+                        updated_at = $updatedAt
+                    WHERE conversation_id = $conversationId
+                      AND scope = $memberScope;
+                    """;
+                invalidate.Parameters.AddWithValue("$conversationId", settings.ConversationId);
+                invalidate.Parameters.AddWithValue("$memberScope", (int)GroupMemoryScope.Member);
+                invalidate.Parameters.AddWithValue("$updatedAt", settings.UpdatedAt.ToString("O"));
+                await invalidate.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     public async Task<IReadOnlyList<GroupChatMember>> ListMembersAsync(
         string conversationId,
         CancellationToken cancellationToken = default)

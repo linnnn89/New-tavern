@@ -68,20 +68,9 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
     public async Task<GroupMemoryUpdateResult> UpdateAsync(
         string conversationId,
         bool force = false,
-        GroupChatSettings? settingsOverride = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
-        if (settingsOverride is not null
-            && !string.Equals(
-                settingsOverride.ConversationId,
-                conversationId,
-                StringComparison.Ordinal))
-        {
-            throw new ArgumentException(
-                "群聊记忆设置与目标群聊不一致。",
-                nameof(settingsOverride));
-        }
 
         var state = _queues.GetOrAdd(
             conversationId,
@@ -91,11 +80,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
         {
             state.Pending = true;
             state.PendingForce |= force;
-            if (settingsOverride is not null)
-            {
-                state.PendingSettings = CloneSettings(settingsOverride);
-            }
-
             state.WaiterCount++;
 
             // Start after releasing Gate so an immediately completed async path cannot
@@ -161,7 +145,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 {
                     state.Pending = false;
                     state.PendingForce = false;
-                    state.PendingSettings = null;
                     state.Runner = null;
                     state.RunnerCancellation?.Dispose();
                     state.RunnerCancellation = null;
@@ -172,14 +155,11 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
 
             pass++;
             bool force;
-            GroupChatSettings? settingsOverride;
             lock (state.Gate)
             {
                 force = state.PendingForce;
-                settingsOverride = state.PendingSettings;
                 state.Pending = false;
                 state.PendingForce = false;
-                state.PendingSettings = null;
             }
 
             GroupMemoryUpdateResult result;
@@ -188,7 +168,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 result = await RunUpdateAsync(
                     conversationId,
                     force,
-                    settingsOverride,
                     cancellationToken);
             }
             catch (GroupMemorySupersededException)
@@ -204,7 +183,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                     lock (state.Gate)
                     {
                         state.PendingForce |= force;
-                        state.PendingSettings ??= settingsOverride;
                     }
 
                     continue;
@@ -248,7 +226,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                             ErrorCode: GroupMemoryErrorCode.ConcurrentChange));
                     state.Pending = false;
                     state.PendingForce = false;
-                    state.PendingSettings = null;
                 }
 
                 state.Runner = null;
@@ -262,7 +239,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
     private async Task<GroupMemoryUpdateResult> RunUpdateAsync(
         string conversationId,
         bool force,
-        GroupChatSettings? settingsOverride,
         CancellationToken cancellationToken)
     {
         try
@@ -275,14 +251,13 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 throw new InvalidOperationException("群聊记忆更新引用的群聊不存在。");
             }
 
-            var groupSettings = settingsOverride
-                                ?? await _groups.GetSettingsAsync(
-                                    conversationId,
-                                    cancellationToken)
-                                ?? new GroupChatSettings
-                                {
-                                    ConversationId = conversationId
-                                };
+            var groupSettings = await _groups.GetSettingsAsync(
+                conversationId,
+                cancellationToken)
+                ?? new GroupChatSettings
+                {
+                    ConversationId = conversationId
+                };
             var workflowSettings = await _workflow.GetSettingsAsync(
                 MemoryOwnerIds.ForGroup(conversationId),
                 cancellationToken);
@@ -1006,7 +981,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
         public object Gate { get; } = new();
         public bool Pending { get; set; }
         public bool PendingForce { get; set; }
-        public GroupChatSettings? PendingSettings { get; set; }
         public Task<GroupMemoryUpdateResult>? Runner { get; set; }
         public CancellationTokenSource? RunnerCancellation { get; set; }
         public int WaiterCount { get; set; }
@@ -1016,19 +990,4 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
     {
     }
 
-    private static GroupChatSettings CloneSettings(GroupChatSettings source) =>
-        new()
-        {
-            ConversationId = source.ConversationId,
-            RelayMode = source.RelayMode,
-            AutoContinueEnabled = source.AutoContinueEnabled,
-            MaximumAutomaticTurns = source.MaximumAutomaticTurns,
-            PauseOnUserMention = source.PauseOnUserMention,
-            MemberMemoryEnabled = source.MemberMemoryEnabled,
-            MemoryPendingTokenThreshold = source.MemoryPendingTokenThreshold,
-            GroupSystemPrompt = source.GroupSystemPrompt,
-            MergeSystemPrompt = source.MergeSystemPrompt,
-            MergeUserTemplate = source.MergeUserTemplate,
-            UpdatedAt = source.UpdatedAt
-        };
 }

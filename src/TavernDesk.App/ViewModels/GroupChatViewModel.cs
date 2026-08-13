@@ -377,8 +377,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         {
             var settings = SettingsSnapshot();
             var members = SnapshotMembers();
-            await _groups.SaveSettingsAsync(settings);
-            await _groups.ReplaceMembersAsync(conversationId, members);
+            await _groups.SaveConfigurationAsync(settings, members);
             if (_conversationId == conversationId)
             {
                 Status = LanguageRuntime.GetString("GroupChat.Saved");
@@ -449,8 +448,7 @@ public sealed class GroupChatViewModel : ViewModelBase
             var settings = SettingsSnapshot();
             var members = SnapshotMembers();
             MemoryStatus = LanguageRuntime.GetString("GroupChat.MemoryUpdating");
-            await _groups.SaveSettingsAsync(settings);
-            await _groups.ReplaceMembersAsync(conversationId, members);
+            await _groups.SaveConfigurationAsync(settings, members);
             if (_conversationId != conversationId)
             {
                 return;
