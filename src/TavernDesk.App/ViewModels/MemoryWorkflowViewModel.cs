@@ -40,6 +40,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private string _pendingTargetText = LanguageRuntime.GetString("Memory.NoPendingDraft");
     private MemoryUpdateDraft? _pendingDraft;
     private long _loadVersion;
+    private long _loadedBankRevision;
     private bool _isGenerating;
 
     public MemoryWorkflowViewModel(
@@ -231,17 +232,17 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             return;
         }
 
+        var previousOwnerId = _ownerId;
+        var previousConversationId = _conversationId;
+        var preserveUnsavedBody = IsBodyDirty
+                                  && string.Equals(previousOwnerId, ownerId, StringComparison.Ordinal)
+                                  && string.Equals(previousConversationId, conversationId, StringComparison.Ordinal);
         _ownerId = ownerId;
         _conversationId = conversationId;
         OwnerLabel = ownerLabel;
         _userIdentity = NormalizeUserIdentity(userIdentity);
         var bank = bankTask.Result;
-        var preserveUnsavedBody = IsBodyDirty
-                                  && string.Equals(_ownerId, ownerId, StringComparison.Ordinal)
-                                  && string.Equals(
-                                      _conversationId,
-                                      conversationId,
-                                      StringComparison.Ordinal);
+        _loadedBankRevision = bank?.Revision ?? 0;
         if (!preserveUnsavedBody)
         {
             ApplyLoadedBody(bank?.Body ?? string.Empty);
@@ -264,6 +265,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         Interlocked.Increment(ref _loadVersion);
         _ownerId = null;
         _conversationId = null;
+        _loadedBankRevision = 0;
         _userIdentity = "用户";
         OwnerLabel = LanguageRuntime.GetString("Memory.OwnerNone");
         ApplyLoadedBody(string.Empty);
@@ -413,7 +415,17 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
         var ownerId = _ownerId;
         var conversationId = _conversationId;
-        await _memoryBanks.SaveBodyAsync(ownerId, Body, targetTokens);
+        if (!await _memoryBanks.TrySaveBodyAsync(
+                ownerId,
+                Body,
+                targetTokens,
+                _loadedBankRevision))
+        {
+            Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            return;
+        }
+
+        _loadedBankRevision++;
         _bodyBaseline = Body;
         IsBodyDirty = false;
         BodySaved?.Invoke(

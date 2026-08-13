@@ -140,7 +140,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             StartGroupContinueAsync,
             GenerateGroupMergeAsync,
             UpdateGroupMemoryAsync);
-        Group.MemberMemorySettingChanged += OnMemberMemorySettingChanged;
         Retrieval = new RetrievalViewModel(retrieval, ScheduleContextRefresh);
         Presets = new PresetViewModel(
             presets,
@@ -1669,35 +1668,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         ScheduleContextRefresh();
     }
 
-    private void OnMemberMemorySettingChanged(
-        object? sender,
-        GroupMemberMemorySettingChangedEventArgs args)
-    {
-        MarkGroupMemoryInvalid(
-            args.ConversationId,
-            GroupMemoryScopeMask.Members);
-        ScheduleContextRefresh();
-        _ = InvalidateMemberMemoryAsync(args.ConversationId);
-    }
-
-    private async Task InvalidateMemberMemoryAsync(string conversationId)
-    {
-        try
-        {
-            await _groupMemory.InvalidateAsync(
-                conversationId,
-                GroupMemoryScopeMask.Members);
-        }
-        catch (Exception exception)
-        {
-            if (Group.ConversationId == conversationId)
-            {
-                Group.ApplyMemoryUpdateFailure(
-                    LanguageRuntime.ErrorMessage(exception));
-            }
-        }
-    }
-
     private void ForgetUnsavedGroupMemoryBody()
     {
         if (Memory.ConversationId is { } conversationId)
@@ -2688,7 +2658,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 GroupMemberMemoryEnabled:
                     !historicalRegeneration
                     && !invalidScopes.HasFlag(GroupMemoryScopeMask.Members)
-                    && (group?.Settings.MemberMemoryEnabled ?? true),
+                    && (group?.Settings.MemberMemoryEnabled ?? false),
                 GroupSystemPrompt: group?.Settings.GroupSystemPrompt,
                 GroupBatonInstruction: BuildGroupBatonInstruction(snapshot),
                 Retrieval: snapshot.Retrieval,
@@ -3154,7 +3124,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
         _generationSessions.SessionChanged -= OnGenerationSessionChanged;
         _personas.PropertyChanged -= OnPersonaManagerPropertyChanged;
-        Group.MemberMemorySettingChanged -= OnMemberMemorySettingChanged;
         Memory.BodyChanged -= OnMemoryBodyChanged;
         Memory.BodySaved -= OnMemoryBodySaved;
         _selectionCancellation?.Cancel();

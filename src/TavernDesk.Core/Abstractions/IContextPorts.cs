@@ -192,6 +192,12 @@ public interface IMemoryBankService
     Task<MemoryBank?> GetAsync(string ownerId, CancellationToken cancellationToken = default);
     Task<string?> GetBodyAsync(string ownerId, CancellationToken cancellationToken = default);
     Task SaveBodyAsync(string ownerId, string body, int targetTokens, CancellationToken cancellationToken = default);
+    Task<bool> TrySaveBodyAsync(
+        string ownerId,
+        string body,
+        int targetTokens,
+        long? expectedRevision,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IChatTool

@@ -938,7 +938,7 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             20,
             """
             ALTER TABLE group_chat_settings
-                ADD COLUMN member_memory_enabled INTEGER NOT NULL DEFAULT 1;
+                ADD COLUMN member_memory_enabled INTEGER NOT NULL DEFAULT 0;
 
             ALTER TABLE group_chat_settings
                 ADD COLUMN memory_pending_token_threshold

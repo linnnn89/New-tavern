@@ -299,8 +299,8 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">Incremental update and compression</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">Single-character chats count user turns with their character replies. Group chats count complete saved messages, including character-only automatic relays. The default threshold is 20; groups also trigger at the pending token threshold. Successful updates save the memory body and advance the checkpoint.</sys:String>
     <sys:String x:Key="Chat.Memory.AutoUpdate">Generate and save memory automatically at the threshold (on by default)</sys:String>
-    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">New turn / group-message threshold</sys:String>
-    <sys:String x:Key="Chat.Memory.MaximumTurns">Maximum turns / group messages per request</sys:String>
+    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">New turns (single chat) / messages (group chat) threshold</sys:String>
+    <sys:String x:Key="Chat.Memory.MaximumTurns">Maximum turns (single chat) / messages (group chat) per request</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalOnly">Send only conversation added since the last checkpoint (on by default)</sys:String>
     <sys:String x:Key="Chat.Memory.SaveWorkflow">Save workflow settings</sys:String>
     <sys:String x:Key="Chat.Memory.EditUpdatePrompt">Edit global memory update prompt</sys:String>
@@ -339,6 +339,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Chat.Group.MemoryReliability">Shared and per-character memories</sys:String>
     <sys:String x:Key="Chat.Group.MemoryReliabilityHelp">Shared memory is available to all members. Each character also has a group-only memory injected only while that character speaks. Personal character memories are never overwritten automatically.</sys:String>
     <sys:String x:Key="Chat.Group.MemberMemoryEnabled">Enable per-character group memories</sys:String>
+    <sys:String x:Key="Chat.Group.MemberMemoryEnabledHelp">Off by default to avoid extra API calls. Turn it on when you want a separate memory for each character; it never changes the character's personal memory.</sys:String>
     <sys:String x:Key="Chat.Group.MemoryTokenThreshold">Pending token threshold</sys:String>
     <sys:String x:Key="Chat.Group.UpdateMemoryNow">Check and update now</sys:String>
     <sys:String x:Key="Chat.CollapseRightPanel">Collapse right sidebar</sys:String>
@@ -919,6 +920,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">Could not save memory automatically; draft retained: {0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">Generated a merge draft for “{0}”; character memory has not been overwritten.</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">Saved {0} directly.</sys:String>
+    <sys:String x:Key="Memory.SaveConflict">The memory changed while you were editing. Reload it before saving to avoid overwriting newer content.</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">The automatic-generation threshold must be from 1 to 10000 user turns.</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">The per-request limit must be from 1 to 10000 user turns.</sys:String>
     <sys:String x:Key="Memory.SourceNewOnly">Send only new conversation after the checkpoint</sys:String>

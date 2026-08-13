@@ -1325,6 +1325,10 @@
                                                TextWrapping="Wrap" />
                                     <CheckBox Content="{StaticResource Chat.Group.MemberMemoryEnabled}"
                                               IsChecked="{Binding Group.MemberMemoryEnabled}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Text="{StaticResource Chat.Group.MemberMemoryEnabledHelp}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
+                                               TextWrapping="Wrap" />
                                     <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
                                         <TextBlock VerticalAlignment="Center"
                                                    Text="{StaticResource Chat.Group.MemoryTokenThreshold}" />
