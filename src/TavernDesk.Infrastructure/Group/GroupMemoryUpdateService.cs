@@ -391,7 +391,7 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                     bank,
                     checkpoint,
                     rebuild,
-                    bank?.PromptVersion == "legacy-memory-bank-v1",
+                    ShouldPreserveOldBodyOnRebuild(bank?.PromptVersion),
                     eligible));
             }
 
@@ -452,18 +452,6 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 }
             }
 
-            if (failures.Count > 0)
-            {
-                return new GroupMemoryUpdateResult(
-                    conversationId,
-                    GroupMemoryUpdateStatus.Failed,
-                    sourceThrough,
-                    rebuiltAny,
-                    "一个或多个群聊记忆范围更新失败，旧内容和检查点已保留。",
-                    ErrorCode: MostUsefulErrorCode(
-                        failures.Select(item => item.Code)));
-            }
-
             if (updatedAny)
             {
                 var saved = await _memories.TrySaveBatchAsync(
@@ -484,6 +472,25 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 {
                     throw new GroupMemorySupersededException();
                 }
+            }
+
+            if (failures.Count > 0)
+            {
+                return new GroupMemoryUpdateResult(
+                    conversationId,
+                    updatedAny
+                        ? GroupMemoryUpdateStatus.PartiallyUpdated
+                        : GroupMemoryUpdateStatus.Failed,
+                    sourceThrough,
+                    rebuiltAny,
+                    "一个或多个群聊记忆范围更新失败，已保留未成功范围的旧内容。",
+                    CompletedScopes: outcomes
+                        .Where(item => item.Updated)
+                        .Aggregate(
+                            GroupMemoryScopeMask.None,
+                            static (mask, item) => mask | ScopeMask(item.Scope)),
+                    ErrorCode: MostUsefulErrorCode(
+                        failures.Select(item => item.Code)));
             }
 
             return new GroupMemoryUpdateResult(
@@ -830,11 +837,12 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
             throw new InvalidOperationException("群聊记忆 JSON 缺少 body。");
         }
 
-        var body = bodyProperty.GetString()?.Trim() ?? string.Empty;
-        if (body.Length == 0)
+        if (bodyProperty.ValueKind != JsonValueKind.String)
         {
-            throw new InvalidOperationException("群聊记忆正文不能为空。");
+            throw new InvalidOperationException("群聊记忆 JSON 的 body 必须为字符串。");
         }
+
+        var body = bodyProperty.GetString()?.Trim() ?? string.Empty;
 
         if (ApproximateTokens(body) > Math.Max(256, targetTokens + 256))
         {
@@ -912,6 +920,13 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 : GroupMemoryErrorCode.None;
     }
 
+    private static bool ShouldPreserveOldBodyOnRebuild(string? promptVersion) =>
+        promptVersion is
+            "legacy-memory-bank-v1"
+            or "manual-group-memory-v1"
+            or "manual-group-memory-v2"
+            or "reviewed-group-memory-v1";
+
     private static GroupMemoryUpdateResult CombineResults(
         GroupMemoryUpdateResult? current,
         GroupMemoryUpdateResult next)
@@ -921,22 +936,24 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
             return next;
         }
 
-        var anyUpdated = current.Status is GroupMemoryUpdateStatus.Updated
-                or GroupMemoryUpdateStatus.PartiallyUpdated
-            || next.Status is GroupMemoryUpdateStatus.Updated
-                or GroupMemoryUpdateStatus.PartiallyUpdated;
-        var anyPartialOrFailure = current.Status is GroupMemoryUpdateStatus.PartiallyUpdated
-                or GroupMemoryUpdateStatus.Failed
-            || next.Status is GroupMemoryUpdateStatus.PartiallyUpdated
-                or GroupMemoryUpdateStatus.Failed;
+        var statuses = new[] { current.Status, next.Status };
+        var anyUpdated = statuses.Any(status =>
+            status is GroupMemoryUpdateStatus.Updated
+                or GroupMemoryUpdateStatus.PartiallyUpdated);
+        var anyFailure = statuses.Any(status =>
+            status is GroupMemoryUpdateStatus.Failed
+                or GroupMemoryUpdateStatus.PartiallyUpdated);
         var status = anyUpdated
-            ? anyPartialOrFailure
+            ? anyFailure
                 ? GroupMemoryUpdateStatus.PartiallyUpdated
                 : GroupMemoryUpdateStatus.Updated
-            : next.Status == GroupMemoryUpdateStatus.NoChanges
-              || current.Status == GroupMemoryUpdateStatus.NoChanges
-                ? GroupMemoryUpdateStatus.NoChanges
-                : next.Status;
+            : statuses.Contains(GroupMemoryUpdateStatus.Failed)
+                ? GroupMemoryUpdateStatus.Failed
+                : statuses.Contains(GroupMemoryUpdateStatus.SkippedNoAssignment)
+                    ? GroupMemoryUpdateStatus.SkippedNoAssignment
+                    : statuses.Contains(GroupMemoryUpdateStatus.SkippedDisabled)
+                        ? GroupMemoryUpdateStatus.SkippedDisabled
+                        : GroupMemoryUpdateStatus.NoChanges;
         var errorCode = next.ErrorCode != GroupMemoryErrorCode.None
             ? next.ErrorCode
             : current.ErrorCode;

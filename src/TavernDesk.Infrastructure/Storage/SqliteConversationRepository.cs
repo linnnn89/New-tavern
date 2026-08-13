@@ -569,6 +569,12 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 await conversation.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            await InvalidateGroupMemoryInTransactionAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                conversationId,
+                cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
         }
         catch
@@ -667,6 +673,12 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 await conversation.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            await InvalidateGroupMemoryInTransactionAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                conversationId,
+                cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
         }
         catch
@@ -738,6 +750,27 @@ public sealed class SqliteConversationRepository : IConversationRepository
             candidateUpdate.Parameters.AddWithValue("$content", normalized);
             candidateUpdate.Parameters.AddWithValue("$messageId", messageId);
             await candidateUpdate.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var conversationLookup = connection.CreateCommand())
+        {
+            conversationLookup.Transaction = (SqliteTransaction)transaction;
+            conversationLookup.CommandText = """
+                SELECT conversation_id
+                FROM messages
+                WHERE id = $messageId;
+                """;
+            conversationLookup.Parameters.AddWithValue("$messageId", messageId);
+            var conversationId = Convert.ToString(
+                await conversationLookup.ExecuteScalarAsync(cancellationToken));
+            if (!string.IsNullOrWhiteSpace(conversationId))
+            {
+                await InvalidateGroupMemoryInTransactionAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    conversationId,
+                    cancellationToken);
+            }
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -812,6 +845,11 @@ public sealed class SqliteConversationRepository : IConversationRepository
         }
 
         await RecalculateConversationActivityAsync(
+            connection,
+            (SqliteTransaction)transaction,
+            conversationId,
+            cancellationToken);
+        await InvalidateGroupMemoryInTransactionAsync(
             connection,
             (SqliteTransaction)transaction,
             conversationId,
@@ -996,6 +1034,32 @@ public sealed class SqliteConversationRepository : IConversationRepository
             WHERE id = $conversationId;
             """;
         command.Parameters.AddWithValue("$conversationId", conversationId);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task InvalidateGroupMemoryInTransactionAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string conversationId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            UPDATE group_memory_checkpoints
+            SET source_digest = '',
+                revision = revision + 1,
+                updated_at = $updatedAt
+            WHERE conversation_id = $conversationId
+              AND EXISTS (
+                  SELECT 1
+                  FROM conversations
+                  WHERE conversations.id = group_memory_checkpoints.conversation_id
+                    AND conversations.mode = $groupMode);
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$groupMode", (int)ConversationMode.Group);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

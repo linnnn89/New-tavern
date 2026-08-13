@@ -299,8 +299,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">增量更新與壓縮</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">單聊按使用者輪次（含對應角色回覆）計數；群聊按完整儲存的訊息計數，包含沒有新使用者訊息的角色自動接力。預設門檻值為 20；群聊也會在待處理內容達到 Token 門檻值時觸發。更新成功後會自動儲存內文並推進檢查點。</sys:String>
     <sys:String x:Key="Chat.Memory.AutoUpdate">達到門檻值後自動生成並儲存記憶內文（預設開啟）</sys:String>
-    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新增輪次／群聊訊息門檻值</sys:String>
-    <sys:String x:Key="Chat.Memory.MaximumTurns">單次最多發送輪次／群聊訊息</sys:String>
+    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新增輪次（單聊）／訊息數（群聊）門檻值</sys:String>
+    <sys:String x:Key="Chat.Memory.MaximumTurns">單次最多發送輪次（單聊）／訊息數（群聊）</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalOnly">僅發送自上次檢查點後的新增對話（預設開啟）</sys:String>
     <sys:String x:Key="Chat.Memory.SaveWorkflow">儲存工作流設定</sys:String>
     <sys:String x:Key="Chat.Memory.EditUpdatePrompt">編輯全域記憶更新提示詞</sys:String>
@@ -339,6 +339,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Group.MemoryReliability">共同記憶與角色獨立記憶</sys:String>
     <sys:String x:Key="Chat.Group.MemoryReliabilityHelp">共同記憶供所有成員使用；每個角色另有只在其發言時注入的群聊獨立記憶。不會自動改寫角色原有個人記憶。</sys:String>
     <sys:String x:Key="Chat.Group.MemberMemoryEnabled">啟用每個角色的群聊獨立記憶</sys:String>
+    <sys:String x:Key="Chat.Group.MemberMemoryEnabledHelp">預設關閉，以避免額外的 API 呼叫。需要為每個角色建立獨立記憶時可手動開啟；不會改寫角色的個人記憶。</sys:String>
     <sys:String x:Key="Chat.Group.MemoryTokenThreshold">待處理 Token 閾值</sys:String>
     <sys:String x:Key="Chat.Group.UpdateMemoryNow">立即檢查並更新</sys:String>
     <sys:String x:Key="Chat.CollapseRightPanel">折疊右側欄</sys:String>
@@ -919,6 +920,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自動儲存記憶失敗，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成「{0}」的合並草稿；角色記憶尚未覆蓋。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">已直接儲存{0}。</sys:String>
+    <sys:String x:Key="Memory.SaveConflict">記憶在編輯期間發生變化。為避免覆蓋較新的內容，請重新載入後再儲存。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自動生成門檻值必須是 1–10000 之間的使用者輪次數。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">單次發送上限必須是 1–10000 之間的使用者輪次數。</sys:String>
     <sys:String x:Key="Memory.SourceNewOnly">僅發送檢查點後的新增對話</sys:String>

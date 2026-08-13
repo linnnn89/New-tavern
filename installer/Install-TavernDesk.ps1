@@ -398,6 +398,10 @@ function Copy-UnmanagedInstallContent {
 
     foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -Force -File)) {
         $relativePath = $file.FullName.Substring($sourceRoot.Length + 1)
+        if ($relativePath.Equals('tests\output', [StringComparison]::OrdinalIgnoreCase) -or
+            $relativePath.StartsWith('tests\output\', [StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
         if ($managed.Contains($relativePath)) { continue }
         $destinationFile = Resolve-InstallChildPath $destinationRoot $relativePath
         if (Test-Path -LiteralPath $destinationFile) {

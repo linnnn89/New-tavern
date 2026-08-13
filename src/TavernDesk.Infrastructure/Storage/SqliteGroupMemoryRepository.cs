@@ -324,6 +324,18 @@ public sealed class SqliteGroupMemoryRepository : IGroupMemoryRepository
                 .ToArray();
             foreach (var memberId in memberIds)
             {
+                if (expectations is not null
+                    && !await IsMemberMemoryEnabledAsync(
+                        connection,
+                        (SqliteTransaction)transaction,
+                        conversationIds[0],
+                        memberId,
+                        cancellationToken))
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    return false;
+                }
+
                 await EnsureGroupMemberAsync(
                     connection,
                     (SqliteTransaction)transaction,
@@ -397,6 +409,30 @@ public sealed class SqliteGroupMemoryRepository : IGroupMemoryRepository
             await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
+    }
+
+    private static async Task<bool> IsMemberMemoryEnabledAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string conversationId,
+        string characterId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM group_chat_settings settings
+            INNER JOIN group_chat_members members
+                ON members.conversation_id = settings.conversation_id
+            WHERE settings.conversation_id = $conversationId
+              AND settings.member_memory_enabled = 1
+              AND members.character_id = $characterId
+              AND members.is_enabled = 1;
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$characterId", characterId);
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) > 0;
     }
 
     private static async Task<bool> MatchesExpectationAsync(

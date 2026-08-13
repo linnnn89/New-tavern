@@ -299,8 +299,8 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">増分更新と圧縮</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">個別チャットはキャラクター返信を含むユーザーターン単位、グループチャットはユーザーの新規発言がないキャラクター自動リレーも含む保存済みメッセージ単位で数えます。既定のしきい値は 20 で、グループは未処理内容が Token しきい値に達した場合も実行します。更新成功後は本文を自動保存し、チェックポイントを進めます。</sys:String>
     <sys:String x:Key="Chat.Memory.AutoUpdate">しきい値でメモリを自動生成して保存（既定でオン）</sys:String>
-    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新規ターン／グループメッセージしきい値</sys:String>
-    <sys:String x:Key="Chat.Memory.MaximumTurns">1回の最大ターン／グループメッセージ数</sys:String>
+    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新規ターン（個別チャット）／メッセージ数（グループチャット）のしきい値</sys:String>
+    <sys:String x:Key="Chat.Memory.MaximumTurns">1回の最大ターン（個別チャット）／メッセージ数（グループチャット）</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalOnly">前回チェックポイント以降の新規会話だけを送信（既定でオン）</sys:String>
     <sys:String x:Key="Chat.Memory.SaveWorkflow">ワークフロー設定を保存</sys:String>
     <sys:String x:Key="Chat.Memory.EditUpdatePrompt">グローバルメモリ更新プロンプトを編集</sys:String>
@@ -339,6 +339,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Chat.Group.MemoryReliability">共有記憶とキャラクター別記憶</sys:String>
     <sys:String x:Key="Chat.Group.MemoryReliabilityHelp">共有記憶は全メンバーが利用します。各キャラクターには、そのキャラクターの発言時だけ注入されるグループ専用記憶もあります。元の個人記憶は自動で書き換えません。</sys:String>
     <sys:String x:Key="Chat.Group.MemberMemoryEnabled">キャラクター別グループ記憶を有効にする</sys:String>
+    <sys:String x:Key="Chat.Group.MemberMemoryEnabledHelp">追加の API 呼び出しを避けるため、初期状態ではオフです。キャラクターごとの記憶を作成したい場合に手動でオンにできます。キャラクター個人の記憶は書き換えません。</sys:String>
     <sys:String x:Key="Chat.Group.MemoryTokenThreshold">保留 Token しきい値</sys:String>
     <sys:String x:Key="Chat.Group.UpdateMemoryNow">今すぐ確認して更新</sys:String>
     <sys:String x:Key="Chat.CollapseRightPanel">右サイドバーを折りたたむ</sys:String>
@@ -919,6 +920,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Memory.AutoSaveFailedFormat">メモリを自動保存できず、下書きを保持しました：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">「{0}」の統合下書きを生成しました。キャラクターメモリは未上書きです。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">{0}を直接保存しました。</sys:String>
+    <sys:String x:Key="Memory.SaveConflict">編集中に記憶が変更されました。新しい内容を上書きしないよう、再読み込みしてから保存してください。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自動生成しきい値はユーザーターン 1～10000 回です。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">1回の送信上限はユーザーターン 1～10000 回です。</sys:String>
     <sys:String x:Key="Memory.SourceNewOnly">チェックポイント以降の新規会話だけを送信</sys:String>

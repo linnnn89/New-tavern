@@ -22,7 +22,7 @@ public sealed class GroupChatViewModel : ViewModelBase
     private bool _autoContinueEnabled;
     private string _maximumAutomaticTurns = "8";
     private bool _pauseOnUserMention = true;
-    private bool _memberMemoryEnabled = true;
+    private bool _memberMemoryEnabled;
     private string _memoryPendingTokenThreshold = "4000";
     private string _groupSystemPrompt = GroupPromptDefaults.SystemPrompt;
     private GroupMemberItemViewModel? _selectedNextSpeaker;
@@ -87,9 +87,6 @@ public sealed class GroupChatViewModel : ViewModelBase
 
     public bool IsGroupConversation => _conversationId is not null;
     public string? ConversationId => _conversationId;
-    public event EventHandler<GroupMemberMemorySettingChangedEventArgs>?
-        MemberMemorySettingChanged;
-
     public GroupRelayMode RelayMode
     {
         get => _relayMode;
@@ -119,15 +116,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         get => _memberMemoryEnabled;
         set
         {
-            if (SetProperty(ref _memberMemoryEnabled, value)
-                && _conversationId is { } conversationId)
-            {
-                MemberMemorySettingChanged?.Invoke(
-                    this,
-                    new GroupMemberMemorySettingChangedEventArgs(
-                        conversationId,
-                        value));
-            }
+            SetProperty(ref _memberMemoryEnabled, value);
         }
     }
 
@@ -569,14 +558,6 @@ public sealed class GroupChatViewModel : ViewModelBase
         MergeMemoryCommand.RaiseCanExecuteChanged();
         UpdateMemoryCommand.RaiseCanExecuteChanged();
     }
-}
-
-public sealed class GroupMemberMemorySettingChangedEventArgs(
-    string conversationId,
-    bool isEnabled) : EventArgs
-{
-    public string ConversationId { get; } = conversationId;
-    public bool IsEnabled { get; } = isEnabled;
 }
 
 public sealed class GroupMemberItemViewModel : ViewModelBase

@@ -304,8 +304,8 @@
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">增量更新与压缩</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">单聊按用户轮次（含对应角色回复）计数；群聊按完整保存的消息计数，包含没有新用户消息的角色自动接力。默认阈值为 20；群聊还会在待处理内容达到 Token 阈值时触发。更新成功后自动保存正文并推进检查点。</sys:String>
     <sys:String x:Key="Chat.Memory.AutoUpdate">达到阈值后自动生成并保存记忆正文（默认开启）</sys:String>
-    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新增轮次／群聊消息阈值</sys:String>
-    <sys:String x:Key="Chat.Memory.MaximumTurns">单次最多发送轮次／群聊消息</sys:String>
+    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新增轮次（单聊）／消息数（群聊）阈值</sys:String>
+    <sys:String x:Key="Chat.Memory.MaximumTurns">单次最多发送轮次（单聊）／消息数（群聊）</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalOnly">仅发送自上次检查点后的新增对话（默认开启）</sys:String>
     <sys:String x:Key="Chat.Memory.SaveWorkflow">保存工作流设置</sys:String>
     <sys:String x:Key="Chat.Memory.EditUpdatePrompt">编辑全局记忆更新提示词</sys:String>
@@ -344,6 +344,7 @@
     <sys:String x:Key="Chat.Group.MemoryReliability">共同记忆与角色独立记忆</sys:String>
     <sys:String x:Key="Chat.Group.MemoryReliabilityHelp">共同记忆供所有成员使用；每个角色另有仅在其发言时注入的群聊独立记忆。不会自动改写角色原有个人记忆。</sys:String>
     <sys:String x:Key="Chat.Group.MemberMemoryEnabled">启用每个角色的群聊独立记忆</sys:String>
+    <sys:String x:Key="Chat.Group.MemberMemoryEnabledHelp">默认关闭，以避免额外的 API 调用。需要为每个角色建立独立记忆时可手动开启；它不会改写角色的个人记忆。</sys:String>
     <sys:String x:Key="Chat.Group.MemoryTokenThreshold">待处理 Token 阈值</sys:String>
     <sys:String x:Key="Chat.Group.UpdateMemoryNow">立即检查并更新</sys:String>
     <sys:String x:Key="Chat.CollapseRightPanel">折叠右侧栏</sys:String>
@@ -888,6 +889,7 @@
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自动保存记忆失败，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成“{0}”的合并草稿；角色记忆尚未覆盖。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">已直接保存{0}。</sys:String>
+    <sys:String x:Key="Memory.SaveConflict">记忆已在编辑期间发生变化。为避免覆盖较新的内容，请重新载入后再保存。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自动生成阈值必须是 1–10000 之间的用户轮次数。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">单次发送上限必须是 1–10000 之间的用户轮次数。</sys:String>
     <sys:String x:Key="Memory.SourceNewOnly">仅发送检查点后的新增对话</sys:String>
