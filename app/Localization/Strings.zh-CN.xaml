@@ -890,6 +890,7 @@
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自动保存记忆失败，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成“{0}”的合并草稿；角色记忆尚未覆盖。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">已直接保存{0}。</sys:String>
+    <sys:String x:Key="Memory.DirectSavedWhileEditing">上一版编辑已保存；你随后输入的内容仍保留为未保存编辑。</sys:String>
     <sys:String x:Key="Memory.SaveConflict">记忆已在编辑期间发生变化。为避免覆盖较新的内容，请重新载入后再保存。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自动生成阈值必须是 1–10000 之间的用户轮次数。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">单次发送上限必须是 1–10000 之间的用户轮次数。</sys:String>

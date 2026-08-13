@@ -74,6 +74,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private ModelFunctionAssignment? _chatAssignment;
     private ModelFunctionAssignment? _groupChatAssignment;
     private TokenEstimate _tokenEstimate;
+    private GroupContextBudgetResult? _groupContextBudgetResult;
     private bool _disposed;
 
     public ChatViewModel(
@@ -351,7 +352,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             / _tokenEstimate.ContextLimit,
             0,
             100);
-    public bool IsEstimatedOverLimit => _tokenEstimate.ExceedsLimit;
+    public bool IsEstimatedOverLimit =>
+        _tokenEstimate.ExceedsLimit
+        || _groupContextBudgetResult is { CanSend: false };
+
+    public GroupContextBudgetResult? ContextBudgetResult =>
+        _groupContextBudgetResult;
 
     public bool IsModelThinking =>
         SelectedConversation is not null
@@ -886,6 +892,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Retrieval.Clear();
         Presets.Clear();
         ApplyCharacterPrompts(null);
+        _groupContextBudgetResult = null;
+        OnPropertyChanged(nameof(ContextBudgetResult));
         RefreshTokenEstimate(new TokenEstimate(
             0,
             _contextBudget.GetCurrentBudget().ReservedOutputTokens,
@@ -911,6 +919,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Retrieval.Clear();
         Presets.Clear();
         ApplyCharacterPrompts(null);
+        _groupContextBudgetResult = null;
+        OnPropertyChanged(nameof(ContextBudgetResult));
         SendLocalCommand.RaiseCanExecuteChanged();
         RefreshContinueGenerationCommands();
         _selectionLoadTask = LoadSelectionAsync(
@@ -1178,7 +1188,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     SpeakerCharacterId = decision.NextSpeakerId
                 },
                 cancellationToken: operationCancellation);
-            if (context.Estimate.ExceedsLimit)
+            if (!CanSendContext(context))
             {
                 SetStatusForConversation(
                     selected.Id,
@@ -1282,7 +1292,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 historyBeforeSequenceNo: null,
                 snapshot: snapshot.Context with { SpeakerCharacterId = speakerId },
                 cancellationToken: operationCancellation);
-            if (context.Estimate.ExceedsLimit)
+            if (!CanSendContext(context))
             {
                 SetStatusForConversation(
                     conversationId,
@@ -1509,7 +1519,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     SpeakerCharacterId = decision.NextSpeakerId
                 },
                 cancellationToken: operationCancellation);
-            if (context.Estimate.ExceedsLimit)
+            if (!CanSendContext(context))
             {
                 var reason = LanguageRuntime.GetString("Chat.Group.NextContextOverLimit");
                 await SaveGroupStateAsync(
@@ -2055,7 +2065,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot: contextSnapshot,
                 continuationInstruction: continuationInstruction,
                 cancellationToken: operationCancellation);
-            if (context.Estimate.ExceedsLimit)
+            if (!CanSendContext(context))
             {
                 Status = LanguageRuntime.GetString("Chat.Regenerate.ContextOverLimit");
                 return;
@@ -2226,7 +2236,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot: snapshot.Context,
                 continuationInstruction: ContinueWithoutUserInstruction,
                 cancellationToken: operationCancellation);
-            if (context.Estimate.ExceedsLimit)
+            if (!CanSendContext(context))
             {
                 Status = LanguageRuntime.GetString("Chat.Continue.ContextOverLimit");
                 return;
@@ -2564,8 +2574,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 ContextSegments.Add(segment);
             }
 
+            _groupContextBudgetResult = result.GroupBudget;
+            OnPropertyChanged(nameof(ContextBudgetResult));
             ApiRequestPreview = RenderApiRequestPreview(result);
             RefreshTokenEstimate(result.Estimate);
+            SendLocalCommand.RaiseCanExecuteChanged();
             Retrieval.UpdateFromContext(result);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -2923,6 +2936,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(IsEstimatedOverLimit));
         SendLocalCommand.RaiseCanExecuteChanged();
     }
+
+    private static bool CanSendContext(ContextAssemblyResult context) =>
+        !context.Estimate.ExceedsLimit
+        && context.GroupBudget?.CanSend != false;
 
     private void OnGenerationStateChanged(object? sender, ConversationGenerationState state)
     {

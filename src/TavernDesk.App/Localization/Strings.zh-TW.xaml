@@ -921,6 +921,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自動儲存記憶失敗，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成「{0}」的合並草稿；角色記憶尚未覆蓋。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">已直接儲存{0}。</sys:String>
+    <sys:String x:Key="Memory.DirectSavedWhileEditing">上一版編輯已儲存；你隨後輸入的內容仍保留為未儲存編輯。</sys:String>
     <sys:String x:Key="Memory.SaveConflict">記憶在編輯期間發生變化。為避免覆蓋較新的內容，請重新載入後再儲存。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自動生成門檻值必須是 1–10000 之間的使用者輪次數。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">單次發送上限必須是 1–10000 之間的使用者輪次數。</sys:String>

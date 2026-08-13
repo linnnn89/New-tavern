@@ -425,27 +425,48 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         var ownerId = _ownerId;
         var conversationId = _conversationId;
         var bodySnapshot = Body;
+        var revisionSnapshot = _loadedBankRevision;
         if (!await _memoryBanks.TrySaveBodyAsync(
                 ownerId,
                 bodySnapshot,
                 targetTokens,
-                _loadedBankRevision))
+                revisionSnapshot))
         {
             Status = LanguageRuntime.GetString("Memory.SaveConflict");
             return;
         }
 
         var savedBank = await _memoryBanks.GetAsync(ownerId);
-        if (IsCurrentOwner(ownerId, conversationId)
-            && !IsBodyDirty)
+        if (savedBank is null)
         {
-            ApplyLoadedBank(savedBank);
+            Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            return;
         }
+
         var bodyUnchanged = string.Equals(
             Body,
             bodySnapshot,
             StringComparison.Ordinal);
-        if (bodyUnchanged)
+        if (IsCurrentOwner(ownerId, conversationId))
+        {
+            if (bodyUnchanged)
+            {
+                // The saved database row is the new editor snapshot. This
+                // updates body, baseline, revision and dirty state together.
+                ApplyLoadedBank(savedBank);
+            }
+            else
+            {
+                // The database contains bodySnapshot, while Body contains a
+                // later edit made during the await. Keep that later edit and
+                // advance only the saved baseline/revision.
+                _loadedBankRevision = savedBank.Revision;
+                _bodyBaseline = savedBank.Body;
+                IsBodyDirty = true;
+            }
+        }
+
+        if (bodyUnchanged && IsCurrentOwner(ownerId, conversationId))
         {
             BodySaved?.Invoke(
                 this,
@@ -453,7 +474,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         }
         Status = bodyUnchanged
             ? LanguageRuntime.Format("Memory.DirectSavedFormat", OwnerLabel)
-            : LanguageRuntime.GetString("Memory.SaveConflict");
+            : LanguageRuntime.GetString("Memory.DirectSavedWhileEditing");
     }
 
     private async Task SaveSettingsAsync()
