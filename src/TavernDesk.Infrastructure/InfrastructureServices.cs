@@ -42,6 +42,7 @@ public sealed class InfrastructureServices
         MemoryWorkflow = new SqliteMemoryWorkflowRepository(Database);
         MemoryPrompts = new MemoryPromptComposer();
         GroupChats = new SqliteGroupChatRepository(Database);
+        GroupMemoryRepository = new SqliteGroupMemoryRepository(Database);
         GroupRelay = new GroupRelayPlanner();
         Retrieval = new SqliteMessageRetrievalRepository(Database);
         Presets = new SqlitePresetRepository(Database);
@@ -71,6 +72,15 @@ public sealed class InfrastructureServices
             grokCliGateway,
             Diagnostics);
         EmbeddingProviderGateway = (IEmbeddingProviderGateway)ProviderGateway;
+        GroupMemory = new GroupMemoryUpdateService(
+            Conversations,
+            GroupChats,
+            GroupMemoryRepository,
+            MemoryWorkflow,
+            Characters,
+            ModelAssignments,
+            ProviderGateway,
+            GenerationCoordinator);
         CampaignMemory = new CampaignMemoryUpdateService(
             Campaigns,
             CampaignMemoryRepository,
@@ -111,6 +121,7 @@ public sealed class InfrastructureServices
             Conversations,
             Characters,
             MemoryBanks,
+            GroupMemoryRepository,
             TokenEstimator,
             WorldbookEngine,
             WorldbookService,
@@ -149,6 +160,8 @@ public sealed class InfrastructureServices
     public IMemoryWorkflowRepository MemoryWorkflow { get; }
     public IMemoryPromptComposer MemoryPrompts { get; }
     public IGroupChatRepository GroupChats { get; }
+    public IGroupMemoryRepository GroupMemoryRepository { get; }
+    public IGroupMemoryUpdateService GroupMemory { get; }
     public IGroupRelayPlanner GroupRelay { get; }
     public IMessageRetrievalRepository Retrieval { get; }
     public IWorldbookRepository Worldbooks { get; }

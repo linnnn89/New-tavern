@@ -32,8 +32,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private readonly IChatArchiveService _chatArchives;
     private readonly IFileDialogService _fileDialog;
     private readonly IGroupChatRepository _groupChats;
+    private readonly IGroupMemoryUpdateService _groupMemory;
     private readonly IGroupRelayPlanner _groupRelayPlanner;
     private readonly ConcurrentDictionary<string, string> _conversationStatuses = new();
+    private readonly ConcurrentDictionary<string, GroupMemoryScopeMask>
+        _invalidGroupMemoryScopes = new();
+    private readonly ConcurrentDictionary<string, byte> _unsavedGroupMemoryBodies = new();
     private readonly ConcurrentDictionary<string, byte> _pendingSessionRefreshes = new();
     private readonly SemaphoreSlim _groupReloadGate = new(1, 1);
     private readonly List<CharacterConversationGroupViewModel> _allGroups = [];
@@ -48,6 +52,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private Task _contextRefreshTask = Task.CompletedTask;
     private long _selectionVersion;
     private long _contextVersion;
+    private string? _loadedSelectionId;
+    private bool _isSelectionLoading;
     private string _conversationSearchText = string.Empty;
     private string _composerText = string.Empty;
     private string _status = LanguageRuntime.GetString("Chat.Status.Offline");
@@ -77,6 +83,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         IMemoryWorkflowRepository memoryWorkflow,
         IMemoryPromptComposer memoryPrompts,
         IGroupChatRepository groupChats,
+        IGroupMemoryUpdateService groupMemory,
         IGroupRelayPlanner groupRelayPlanner,
         IMessageRetrievalRepository retrieval,
         IPresetRepository presets,
@@ -98,6 +105,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _repository = repository;
         _characters = characters;
         _groupChats = groupChats;
+        _groupMemory = groupMemory;
         _groupRelayPlanner = groupRelayPlanner;
         _contextAssembler = contextAssembler;
         _contextBudget = contextBudget;
@@ -130,15 +138,17 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             interaction,
             OpenGroupConversationAsync,
             StartGroupContinueAsync,
-            (character, groupSettings) =>
-                Memory.GenerateGroupMergeAsync(character, groupSettings));
+            GenerateGroupMergeAsync,
+            UpdateGroupMemoryAsync);
+        Group.MemberMemorySettingChanged += OnMemberMemorySettingChanged;
         Retrieval = new RetrievalViewModel(retrieval, ScheduleContextRefresh);
         Presets = new PresetViewModel(
             presets,
             presetResolver,
             interaction,
             ScheduleContextRefresh);
-        Memory.BodyChanged += (_, _) => ScheduleContextRefresh();
+        Memory.BodyChanged += OnMemoryBodyChanged;
+        Memory.BodySaved += OnMemoryBodySaved;
         var budget = _contextBudget.GetCurrentBudget();
         _tokenEstimate = new TokenEstimate(
             0,
@@ -866,9 +876,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
 
         SelectedConversation = null;
+        _loadedSelectionId = null;
+        _isSelectionLoading = false;
         Messages.Clear();
         ContextSegments.Clear();
         ApiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.SafeSelect");
+        ForgetUnsavedGroupMemoryBody();
         Memory.Clear();
         Group.Clear();
         Retrieval.Clear();
@@ -888,6 +901,19 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _selectionCancellation?.Dispose();
         _selectionCancellation = new CancellationTokenSource();
         var version = ++_selectionVersion;
+        _loadedSelectionId = null;
+        _isSelectionLoading = true;
+        Messages.Clear();
+        ContextSegments.Clear();
+        ApiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.SafeSelect");
+        ForgetUnsavedGroupMemoryBody();
+        Memory.Clear();
+        Group.Clear();
+        Retrieval.Clear();
+        Presets.Clear();
+        ApplyCharacterPrompts(null);
+        SendLocalCommand.RaiseCanExecuteChanged();
+        RefreshContinueGenerationCommands();
         _selectionLoadTask = LoadSelectionAsync(
             conversation,
             version,
@@ -976,6 +1002,26 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 Group.LoadAsync(loadedConversation, cancellationToken),
                 Retrieval.LoadAsync(loadedConversation, cancellationToken),
                 Presets.LoadAsync(loadedConversation, cancellationToken));
+            if (cancellationToken.IsCancellationRequested
+                || version != _selectionVersion
+                || SelectedConversation?.Id != conversation.Id
+                || !string.Equals(
+                    Memory.ConversationId,
+                    conversation.Id,
+                    StringComparison.Ordinal)
+                || (loadedConversation.Mode == ConversationMode.Group
+                    && !string.Equals(
+                        Group.ConversationId,
+                        conversation.Id,
+                        StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            _loadedSelectionId = conversation.Id;
+            _isSelectionLoading = false;
+            SendLocalCommand.RaiseCanExecuteChanged();
+            RefreshContinueGenerationCommands();
             await RefreshContextEstimateAsync(
                 immediate: true,
                 cancellationToken: cancellationToken);
@@ -987,23 +1033,56 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             if (version == _selectionVersion)
             {
+                _loadedSelectionId = null;
+                _isSelectionLoading = false;
+                SendLocalCommand.RaiseCanExecuteChanged();
+                RefreshContinueGenerationCommands();
                 Status = LanguageRuntime.Format("Chat.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
             }
         }
     }
 
-    private bool CanSendLocal() =>
-        SelectedConversation is not null
-        && !string.IsNullOrWhiteSpace(ComposerText)
-        && !IsEstimatedOverLimit
-        && !IsCurrentConversationBusy
-        && (SendMode == ChatSendMode.SaveOnly
-            || AssignmentFor(SelectedConversation.Mode) is not null);
+    private bool IsSelectionReady(string? conversationId = null)
+    {
+        var selected = SelectedConversation;
+        return selected is not null
+               && !_isSelectionLoading
+               && string.Equals(
+                   _loadedSelectionId,
+                   conversationId ?? selected.Id,
+                   StringComparison.Ordinal)
+               && string.Equals(
+                   selected.Id,
+                   conversationId ?? selected.Id,
+                   StringComparison.Ordinal)
+               && string.Equals(
+                   Memory.ConversationId,
+                   selected.Id,
+                   StringComparison.Ordinal)
+               && (selected.Mode != ConversationMode.Group
+                   || string.Equals(
+                       Group.ConversationId,
+                       selected.Id,
+                       StringComparison.Ordinal));
+    }
+
+    private bool CanSendLocal()
+    {
+        var selected = SelectedConversation;
+        return selected is not null
+               && IsSelectionReady(selected.Id)
+               && !string.IsNullOrWhiteSpace(ComposerText)
+               && !IsEstimatedOverLimit
+               && !IsCurrentConversationBusy
+               && (SendMode == ChatSendMode.SaveOnly
+                   || AssignmentFor(selected.Mode) is not null);
+    }
 
     private void StartSend()
     {
         var selected = SelectedConversation;
         if (selected is null
+            || !IsSelectionReady(selected.Id)
             || !_generationSessions.TryBegin(
                 selected.Id,
                 out var operationId))
@@ -1029,7 +1108,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private async Task StartGroupContinueAsync(string? manualSpeakerId)
     {
         var selected = SelectedConversation;
-        if (selected?.Mode != ConversationMode.Group)
+        if (selected?.Mode != ConversationMode.Group
+            || !IsSelectionReady(selected.Id))
         {
             Status = LanguageRuntime.GetString("Chat.Group.NotCurrent");
             return;
@@ -1047,6 +1127,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var operationCancellation = _generationSessions.GetCancellationToken(
             selected.Id,
             operationId);
+        var groupMessagePersisted = false;
         try
         {
             var assignment = _groupChatAssignment;
@@ -1116,13 +1197,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
+            groupMessagePersisted = true;
+
             await ReloadGroupsPreservingSelectionAsync();
-            TriggerAutoMemory(snapshot);
             if (_generationCoordinator.GetState(selected.Id).Status
                 != ConversationGenerationStatus.Interrupted)
             {
                 await ContinueGroupRelayAsync(snapshot, assistant);
             }
+
         }
         catch (OperationCanceledException)
             when (operationCancellation.IsCancellationRequested)
@@ -1139,6 +1222,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
         finally
         {
+            if (groupMessagePersisted)
+            {
+                TriggerGroupAutoMemory(selected.Id);
+            }
+
             _generationSessions.End(selected.Id, operationId);
             RaiseCurrentConversationBusyChanged(selected.Id);
             SendLocalCommand.RaiseCanExecuteChanged();
@@ -1151,6 +1239,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var operationCancellation = _generationSessions.GetCancellationToken(
             conversationId,
             snapshot.OperationId);
+        var groupMessagePersisted = false;
         try
         {
             if (snapshot.Input.Length == 0
@@ -1210,6 +1299,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 Content = snapshot.Input
             };
             await _repository.AddMessageAsync(message, operationCancellation);
+            groupMessagePersisted = snapshot.Mode == ConversationMode.Group;
             if (SelectedConversation?.Id == conversationId
                 && string.Equals(
                     ComposerText.Trim(),
@@ -1240,12 +1330,18 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             }
 
             await ReloadGroupsPreservingSelectionAsync();
-            TriggerAutoMemory(snapshot);
-            if (snapshot.Mode == ConversationMode.Group
-                && _generationCoordinator.GetState(conversationId).Status
-                    != ConversationGenerationStatus.Interrupted)
+            if (snapshot.Mode == ConversationMode.Group)
             {
-                await ContinueGroupRelayAsync(snapshot, assistant);
+                if (_generationCoordinator.GetState(conversationId).Status
+                    != ConversationGenerationStatus.Interrupted)
+                {
+                    await ContinueGroupRelayAsync(snapshot, assistant);
+                }
+
+            }
+            else if (snapshot.Mode == ConversationMode.SingleCharacter)
+            {
+                TriggerSingleAutoMemory(snapshot);
             }
         }
         catch (OperationCanceledException)
@@ -1264,6 +1360,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
         finally
         {
+            if (groupMessagePersisted)
+            {
+                TriggerGroupAutoMemory(conversationId);
+            }
+
             _generationSessions.End(conversationId, snapshot.OperationId);
             RaiseCurrentConversationBusyChanged(conversationId);
             SendLocalCommand.RaiseCanExecuteChanged();
@@ -1438,7 +1539,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
             current = next;
             await ReloadGroupsPreservingSelectionAsync();
-            TriggerAutoMemory(snapshot);
         }
     }
 
@@ -1480,14 +1580,268 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Group.ApplyState(state);
     }
 
-    private void TriggerAutoMemory(SendSnapshot snapshot)
+    private void TriggerSingleAutoMemory(SendSnapshot snapshot)
     {
-        var ownerId = snapshot.Mode == ConversationMode.Group
-            ? MemoryOwnerIds.ForGroup(snapshot.ConversationId)
-            : snapshot.CharacterId;
+        var ownerId = snapshot.Mode == ConversationMode.SingleCharacter
+            ? snapshot.CharacterId
+            : null;
         if (ownerId is not null)
         {
             _ = Memory.TryAutoGenerateAsync(ownerId, snapshot.ConversationId);
+        }
+    }
+
+    private async Task GenerateGroupMergeAsync(
+        Character character,
+        GroupChatSettings groupSettings)
+    {
+        var selected = SelectedConversation;
+        if (selected?.Mode != ConversationMode.Group
+            || !IsSelectionReady(selected.Id)
+            || !string.Equals(
+                Group.ConversationId,
+                selected.Id,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                Memory.ConversationId,
+                selected.Id,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                groupSettings.ConversationId,
+                selected.Id,
+                StringComparison.Ordinal))
+        {
+            Status = LanguageRuntime.GetString(
+                "Memory.GroupMergeConversationMismatch");
+            return;
+        }
+
+        await Memory.GenerateGroupMergeAsync(character, groupSettings);
+    }
+
+    private void OnMemoryBodySaved(
+        object? sender,
+        MemoryBodySavedEventArgs args)
+    {
+        if (!MemoryOwnerIds.TryParseGroup(
+                args.OwnerId,
+                out var conversationId,
+                out var characterId)
+            || !string.Equals(
+                conversationId,
+                args.ConversationId,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _unsavedGroupMemoryBodies.TryRemove(conversationId, out _);
+        ClearGroupMemoryInvalid(
+            conversationId,
+            characterId is null
+                ? GroupMemoryScopeMask.Shared
+                : GroupMemoryScopeMask.Members);
+        ScheduleContextRefresh();
+    }
+
+    private void OnMemoryBodyChanged(object? sender, EventArgs args)
+    {
+        if (Memory.OwnerId is not { } ownerId
+            || !MemoryOwnerIds.TryParseGroup(
+                ownerId,
+                out var conversationId,
+                out var characterId)
+            || characterId is not null)
+        {
+            ScheduleContextRefresh();
+            return;
+        }
+
+        if (Memory.IsBodyDirty)
+        {
+            _unsavedGroupMemoryBodies[conversationId] = 0;
+        }
+        else
+        {
+            _unsavedGroupMemoryBodies.TryRemove(conversationId, out _);
+        }
+
+        ScheduleContextRefresh();
+    }
+
+    private void OnMemberMemorySettingChanged(
+        object? sender,
+        GroupMemberMemorySettingChangedEventArgs args)
+    {
+        MarkGroupMemoryInvalid(
+            args.ConversationId,
+            GroupMemoryScopeMask.Members);
+        ScheduleContextRefresh();
+        _ = InvalidateMemberMemoryAsync(args.ConversationId);
+    }
+
+    private async Task InvalidateMemberMemoryAsync(string conversationId)
+    {
+        try
+        {
+            await _groupMemory.InvalidateAsync(
+                conversationId,
+                GroupMemoryScopeMask.Members);
+        }
+        catch (Exception exception)
+        {
+            if (Group.ConversationId == conversationId)
+            {
+                Group.ApplyMemoryUpdateFailure(
+                    LanguageRuntime.ErrorMessage(exception));
+            }
+        }
+    }
+
+    private void ForgetUnsavedGroupMemoryBody()
+    {
+        if (Memory.ConversationId is { } conversationId)
+        {
+            _unsavedGroupMemoryBodies.TryRemove(conversationId, out _);
+        }
+    }
+
+    private void TriggerGroupAutoMemory(
+        string conversationId,
+        bool invalidateCurrentMemory = false)
+    {
+        if (invalidateCurrentMemory)
+        {
+            MarkGroupMemoryInvalid(
+                conversationId,
+                GroupMemoryScopeMask.All);
+            ScheduleContextRefresh();
+        }
+
+        _ = TriggerGroupAutoMemoryCoreAsync(
+            conversationId,
+            invalidateCurrentMemory
+                ? GroupMemoryScopeMask.All
+                : GroupMemoryScopeMask.None);
+    }
+
+    private async Task TriggerGroupAutoMemoryCoreAsync(
+        string conversationId,
+        GroupMemoryScopeMask invalidateScopes)
+    {
+        try
+        {
+            if (invalidateScopes != GroupMemoryScopeMask.None)
+            {
+                await _groupMemory.InvalidateAsync(
+                    conversationId,
+                    invalidateScopes);
+            }
+
+            await UpdateGroupMemoryAsync(conversationId, force: false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (Group.ConversationId == conversationId)
+            {
+                Group.ApplyMemoryUpdateFailure(LanguageRuntime.ErrorMessage(exception));
+            }
+        }
+    }
+
+    private async Task UpdateGroupMemoryAsync(
+        string conversationId,
+        bool force)
+    {
+        try
+        {
+            var settingsOverride = Group.ConversationId == conversationId
+                ? Group.SettingsSnapshot()
+                : null;
+            var result = await _groupMemory.UpdateAsync(
+                conversationId,
+                force,
+                settingsOverride);
+            if (Group.ConversationId == conversationId)
+            {
+                Group.ApplyMemoryUpdateResult(result);
+                if (result.Status is GroupMemoryUpdateStatus.Updated
+                        or GroupMemoryUpdateStatus.PartiallyUpdated
+                    && SelectedConversation?.Id == conversationId)
+                {
+                    await Memory.LoadAsync(
+                        MemoryOwnerIds.ForGroup(conversationId),
+                        conversationId,
+                        LanguageRuntime.Format(
+                            "Chat.Memory.GroupFormat",
+                            SelectedConversation.Title),
+                        userIdentity: PersonaName);
+                }
+            }
+
+            if (result.CompletedScopes != GroupMemoryScopeMask.None)
+            {
+                ClearGroupMemoryInvalid(
+                    conversationId,
+                    result.CompletedScopes);
+                ScheduleContextRefresh();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (Group.ConversationId == conversationId)
+            {
+                Group.ApplyMemoryUpdateFailure(LanguageRuntime.ErrorMessage(exception));
+            }
+        }
+    }
+
+    private GroupMemoryScopeMask GetInvalidGroupMemoryScopes(
+        string conversationId) =>
+        _invalidGroupMemoryScopes.GetValueOrDefault(
+            conversationId,
+            GroupMemoryScopeMask.None);
+
+    private void MarkGroupMemoryInvalid(
+        string conversationId,
+        GroupMemoryScopeMask scopes) =>
+        _invalidGroupMemoryScopes.AddOrUpdate(
+            conversationId,
+            scopes,
+            (_, current) => current | scopes);
+
+    private void ClearGroupMemoryInvalid(
+        string conversationId,
+        GroupMemoryScopeMask scopes)
+    {
+        while (_invalidGroupMemoryScopes.TryGetValue(
+                   conversationId,
+                   out var current))
+        {
+            var remaining = current & ~scopes;
+            if (remaining == GroupMemoryScopeMask.None)
+            {
+                if (_invalidGroupMemoryScopes.TryRemove(
+                        new KeyValuePair<string, GroupMemoryScopeMask>(
+                            conversationId,
+                            current)))
+                {
+                    return;
+                }
+            }
+            else if (_invalidGroupMemoryScopes.TryUpdate(
+                         conversationId,
+                         remaining,
+                         current))
+            {
+                return;
+            }
         }
     }
 
@@ -1528,6 +1882,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             candidate.CandidateIndex);
         item.ApplyCandidate(candidate);
         ScheduleContextRefresh();
+        if (SelectedConversation?.Mode == ConversationMode.Group)
+        {
+            TriggerGroupAutoMemory(
+                item.Message.ConversationId,
+                invalidateCurrentMemory: true);
+        }
+
         Status = LanguageRuntime.Format(
             "Chat.CandidateSwitchedFormat",
             item.CandidateNavigationLabel);
@@ -1576,6 +1937,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private bool CanContinueGeneration(ChatMessageItemViewModel item) =>
         SelectedConversation is not null
+        && IsSelectionReady(SelectedConversation.Id)
         && !IsCurrentConversationBusy
         && item.SenderKind == MessageSenderKind.Character
         && string.Equals(Messages.LastOrDefault()?.Id, item.Id, StringComparison.Ordinal);
@@ -1613,6 +1975,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         item.Message.UpdatedAt = DateTimeOffset.Now;
         item.RefreshContent();
         await ReloadGroupsAsync(SelectedConversation?.Id);
+        if (SelectedConversation?.Mode == ConversationMode.Group)
+        {
+            TriggerGroupAutoMemory(
+                item.Message.ConversationId,
+                invalidateCurrentMemory: true);
+        }
+
         Status = LanguageRuntime.GetString("Chat.Message.Edited");
     }
 
@@ -1630,6 +1999,14 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             item.Id,
             decision == DeleteMessageDecision.SelectedAndFollowing);
         await ReloadGroupsAsync(conversationId);
+        if (SelectedConversation?.Mode == ConversationMode.Group
+            && conversationId is not null)
+        {
+            TriggerGroupAutoMemory(
+                conversationId,
+                invalidateCurrentMemory: true);
+        }
+
         Status = decision == DeleteMessageDecision.SelectedAndFollowing
             ? LanguageRuntime.GetString("Chat.Message.DeletedTail")
             : LanguageRuntime.GetString("Chat.Message.DeletedOne");
@@ -1652,6 +2029,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         item.CloseTools();
         if (SelectedConversation is null
+            || !IsSelectionReady(SelectedConversation.Id)
             || item.SenderKind != MessageSenderKind.Character)
         {
             return;
@@ -1793,6 +2171,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             item.Message.ActiveCandidateIndex = nextIndex;
             item.RefreshContent();
             await ReloadGroupsPreservingSelectionAsync();
+            if (conversationMode == ConversationMode.Group)
+            {
+                TriggerGroupAutoMemory(
+                    conversationId,
+                    invalidateCurrentMemory: true);
+            }
+
             var generationInterrupted =
                 _generationCoordinator.GetState(conversationId).Status
                 == ConversationGenerationStatus.Interrupted;
@@ -1905,7 +2290,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             }
 
             await ReloadGroupsPreservingSelectionAsync();
-            TriggerAutoMemory(snapshot);
+            TriggerSingleAutoMemory(snapshot);
         }
         catch (OperationCanceledException)
             when (operationCancellation.IsCancellationRequested)
@@ -2267,26 +2652,44 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string? continuationInstruction = null,
         bool allowRemoteSemanticRetrieval = true)
     {
+        var group = string.Equals(
+            snapshot.Group?.Settings.ConversationId,
+            conversationId,
+            StringComparison.Ordinal)
+            ? snapshot.Group
+            : null;
+        var invalidScopes = GetInvalidGroupMemoryScopes(conversationId);
+        var historicalRegeneration = historyBeforeSequenceNo.HasValue;
         return _contextAssembler.AssembleAsync(
             new ContextAssemblyRequest(
                 conversationId,
                 userInput,
                 snapshot.ContextLimit,
                 snapshot.ReservedOutputTokens,
-                MemoryOverride: snapshot.MemoryBody,
+                MemoryOverride: historicalRegeneration
+                    ? string.Empty
+                    : snapshot.MemoryBody,
                 PersonaName: snapshot.PersonaName,
                 PersonaDescription: snapshot.PersonaDescription,
                 GlobalPreset: snapshot.GlobalPreset,
                 HistoryBeforeSequenceNo: historyBeforeSequenceNo,
                 SpeakerCharacterId: snapshot.SpeakerCharacterId,
-                GroupMemberIds: snapshot.Group?.Members
+                GroupMemberIds: group?.Members
                     .Where(member => member.IsEnabled)
                     .Select(member => member.CharacterId)
                     .ToArray(),
-                GroupMemoryOverride: snapshot.Group is null
+                GroupMemoryOverride: group is null
                     ? null
-                    : snapshot.MemoryBody,
-                GroupSystemPrompt: snapshot.Group?.Settings.GroupSystemPrompt,
+                    : historicalRegeneration
+                      || invalidScopes.HasFlag(GroupMemoryScopeMask.Shared)
+                      || _unsavedGroupMemoryBodies.ContainsKey(conversationId)
+                        ? string.Empty
+                        : snapshot.MemoryBody,
+                GroupMemberMemoryEnabled:
+                    !historicalRegeneration
+                    && !invalidScopes.HasFlag(GroupMemoryScopeMask.Members)
+                    && (group?.Settings.MemberMemoryEnabled ?? true),
+                GroupSystemPrompt: group?.Settings.GroupSystemPrompt,
                 GroupBatonInstruction: BuildGroupBatonInstruction(snapshot),
                 Retrieval: snapshot.Retrieval,
                 ModelId: snapshot.ModelId,
@@ -2300,8 +2703,18 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string? manualSpeakerId = null)
     {
         GroupContextSnapshot? group = null;
-        if (SelectedConversation?.Mode == ConversationMode.Group
-            && Group.IsGroupConversation)
+        var selected = SelectedConversation;
+        var ready = selected is not null && IsSelectionReady(selected.Id);
+        if (ready
+            && selected?.Mode == ConversationMode.Group
+            && string.Equals(
+                Group.ConversationId,
+                selected.Id,
+                StringComparison.Ordinal)
+            && string.Equals(
+                Memory.ConversationId,
+                selected.Id,
+                StringComparison.Ordinal))
         {
             var groupSettings = Group.SettingsSnapshot();
             if (string.Equals(
@@ -2325,7 +2738,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             budget.ContextLimit,
             budget.ReservedOutputTokens,
             budget.ModelId,
-            Memory.Body,
+            ready ? Memory.Body : string.Empty,
             PersonaName,
             PersonaDescription,
             Presets.EffectiveSystemPrompt(
@@ -2741,6 +3154,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
         _generationSessions.SessionChanged -= OnGenerationSessionChanged;
         _personas.PropertyChanged -= OnPersonaManagerPropertyChanged;
+        Group.MemberMemorySettingChanged -= OnMemberMemorySettingChanged;
+        Memory.BodyChanged -= OnMemoryBodyChanged;
+        Memory.BodySaved -= OnMemoryBodySaved;
         _selectionCancellation?.Cancel();
         _selectionCancellation?.Dispose();
         _contextCancellation?.Cancel();

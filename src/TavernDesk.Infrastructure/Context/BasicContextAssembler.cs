@@ -17,6 +17,7 @@ public sealed class BasicContextAssembler : IContextAssembler
     private readonly IConversationRepository _conversations;
     private readonly ICharacterRepository _characters;
     private readonly IMemoryBankService _memoryBanks;
+    private readonly IGroupMemoryRepository _groupMemories;
     private readonly ITokenEstimator _tokenEstimator;
     private readonly IWorldbookEngine _worldbooks;
     private readonly IWorldbookService _worldbookService;
@@ -27,6 +28,7 @@ public sealed class BasicContextAssembler : IContextAssembler
         IConversationRepository conversations,
         ICharacterRepository characters,
         IMemoryBankService memoryBanks,
+        IGroupMemoryRepository groupMemories,
         ITokenEstimator tokenEstimator,
         IWorldbookEngine worldbooks,
         IWorldbookService worldbookService,
@@ -36,6 +38,7 @@ public sealed class BasicContextAssembler : IContextAssembler
         _conversations = conversations;
         _characters = characters;
         _memoryBanks = memoryBanks;
+        _groupMemories = groupMemories;
         _tokenEstimator = tokenEstimator;
         _worldbooks = worldbooks;
         _worldbookService = worldbookService;
@@ -161,14 +164,50 @@ public sealed class BasicContextAssembler : IContextAssembler
                 roster,
                 true,
                 125);
+            var sharedCheckpoint = await _groupMemories.GetCheckpointAsync(
+                conversation.Id,
+                GroupMemoryScope.Shared,
+                cancellationToken: cancellationToken);
+            var sharedMemory = string.IsNullOrWhiteSpace(sharedCheckpoint?.SourceDigest)
+                ? null
+                : request.GroupMemoryOverride
+                  ?? (await _groupMemories.GetBankAsync(
+                      conversation.Id,
+                      GroupMemoryScope.Shared,
+                      cancellationToken: cancellationToken))?.Body;
             AddIfPresent(
                 segments,
                 $"memory:{MemoryOwnerIds.ForGroup(conversation.Id)}",
                 ContextSegmentKind.Memory,
-                "群聊独立记忆",
-                request.GroupMemoryOverride,
+                "群聊共同记忆",
+                sharedMemory,
                 true,
                 500);
+            if (characterId is { Length: > 0 }
+                && request.GroupMemberMemoryEnabled)
+            {
+                var memberCheckpoint = await _groupMemories.GetCheckpointAsync(
+                    conversation.Id,
+                    GroupMemoryScope.Member,
+                    characterId,
+                    cancellationToken);
+                var memberMemory = string.IsNullOrWhiteSpace(memberCheckpoint?.SourceDigest)
+                    ? null
+                    : request.GroupMemberMemoryOverride
+                      ?? (await _groupMemories.GetBankAsync(
+                          conversation.Id,
+                          GroupMemoryScope.Member,
+                          characterId,
+                          cancellationToken))?.Body;
+                AddIfPresent(
+                    segments,
+                    $"memory:{MemoryOwnerIds.ForGroupMember(conversation.Id, characterId)}",
+                    ContextSegmentKind.Memory,
+                    $"当前角色的群聊独立记忆 · {groupCharacters.GetValueOrDefault(characterId)?.Name ?? "未知角色"}",
+                    memberMemory,
+                    true,
+                    510);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(request.PersonaName)

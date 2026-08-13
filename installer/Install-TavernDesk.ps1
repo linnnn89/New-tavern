@@ -17,6 +17,7 @@ Add-Type -AssemblyName System.Drawing
 
 $script:ProductName = 'TavernDesk'
 $script:MarkerFileName = '.taverndesk-install.json'
+$script:ManagedManifestFileName = '.taverndesk-managed-files.json'
 $script:PayloadArchive = Join-Path $PSScriptRoot 'payload.zip'
 
 $script:TextByCulture = @{
@@ -334,6 +335,79 @@ function Test-ManagedInstall {
     }
 }
 
+function Resolve-InstallChildPath {
+    param([string]$RootPath, [string]$RelativePath)
+
+    if ([string]::IsNullOrWhiteSpace($RelativePath) -or [IO.Path]::IsPathRooted($RelativePath)) {
+        throw 'The managed-file manifest contains an unsafe path.'
+    }
+    $root = [IO.Path]::GetFullPath($RootPath).TrimEnd('\')
+    $normalizedRelative = $RelativePath.Replace('/', '\')
+    $candidate = [IO.Path]::GetFullPath((Join-Path $root $normalizedRelative))
+    if (-not $candidate.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'The managed-file manifest contains a path outside the installation directory.'
+    }
+    return $candidate
+}
+
+function Read-ManagedFileSet {
+    param(
+        [string]$RootPath,
+        [switch]$Legacy
+    )
+
+    $manifestPath = Join-Path $RootPath $script:ManagedManifestFileName
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { return $null }
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($manifest.product -ne $script:ProductName -or [int]$manifest.schemaVersion -ne 1) {
+        throw 'The managed-file manifest is invalid.'
+    }
+    $manifestFiles = if ($Legacy) {
+        @($manifest.legacyFiles)
+    }
+    else {
+        @($manifest.files)
+    }
+    if ($manifestFiles.Count -eq 0) { return $null }
+    $set = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($relativePath in $manifestFiles) {
+        $resolved = Resolve-InstallChildPath $RootPath ([string]$relativePath)
+        $normalized = $resolved.Substring([IO.Path]::GetFullPath($RootPath).TrimEnd('\').Length + 1)
+        [void]$set.Add($normalized)
+    }
+    return ,$set
+}
+
+function Copy-UnmanagedInstallContent {
+    param([string]$SourcePath, [string]$DestinationPath)
+
+    $sourceRoot = [IO.Path]::GetFullPath($SourcePath).TrimEnd('\')
+    $destinationRoot = [IO.Path]::GetFullPath($DestinationPath).TrimEnd('\')
+    $managed = Read-ManagedFileSet $sourceRoot
+    if ($null -eq $managed) {
+        # Legacy installers did not carry a manifest. The new package embeds
+        # the preceding release's exact file list so obsolete program files can
+        # be removed without treating unrelated additions as application files.
+        $managed = Read-ManagedFileSet $destinationRoot -Legacy
+    }
+    if ($null -eq $managed) {
+        throw 'No managed-file manifest is available for a safe upgrade.'
+    }
+    [void]$managed.Add($script:MarkerFileName)
+    [void]$managed.Add('Uninstall TavernDesk.cmd')
+
+    foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -Force -File)) {
+        $relativePath = $file.FullName.Substring($sourceRoot.Length + 1)
+        if ($managed.Contains($relativePath)) { continue }
+        $destinationFile = Resolve-InstallChildPath $destinationRoot $relativePath
+        if (Test-Path -LiteralPath $destinationFile) {
+            throw "An unmanaged file conflicts with the new application payload: $relativePath"
+        }
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destinationFile)) | Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $destinationFile
+    }
+}
+
 function Test-DevelopmentWorkspace {
     param([string]$TargetPath)
     return (Test-Path -LiteralPath (Join-Path $TargetPath '.git')) `
@@ -501,6 +575,10 @@ function Install-TavernDeskPayload {
                 Move-Item -LiteralPath $TargetPath -Destination $backupPath
                 $oldMoved = $true
             }
+        }
+
+        if ($oldMoved) {
+            Copy-UnmanagedInstallContent $backupPath $stagePath
         }
 
         Move-Item -LiteralPath $stagePath -Destination $TargetPath

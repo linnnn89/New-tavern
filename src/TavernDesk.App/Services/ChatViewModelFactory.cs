@@ -45,6 +45,7 @@ public sealed class ChatViewModelFactory
             _services.MemoryWorkflow,
             _services.MemoryPrompts,
             _services.GroupChats,
+            _services.GroupMemory,
             _services.GroupRelay,
             _services.Retrieval,
             _services.Presets,

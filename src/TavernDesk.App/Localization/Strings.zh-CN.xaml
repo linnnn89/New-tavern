@@ -302,10 +302,10 @@
     <sys:String x:Key="Chat.Memory.SaveBody">直接保存正文</sys:String>
     <sys:String x:Key="Chat.Memory.AdvancedWorkflowTab">高级工作流</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">增量更新与压缩</sys:String>
-    <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">默认每新增 20 个用户轮次触发一次；单次最多发送 20 个用户轮次（含对应角色回复）。达到阈值后自动保存更新后的记忆正文，并推进本会话检查点。</sys:String>
+    <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">单聊按用户轮次（含对应角色回复）计数；群聊按完整保存的消息计数，包含没有新用户消息的角色自动接力。默认阈值为 20；群聊还会在待处理内容达到 Token 阈值时触发。更新成功后自动保存正文并推进检查点。</sys:String>
     <sys:String x:Key="Chat.Memory.AutoUpdate">达到阈值后自动生成并保存记忆正文（默认开启）</sys:String>
-    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新增用户轮次阈值</sys:String>
-    <sys:String x:Key="Chat.Memory.MaximumTurns">单次最多发送用户轮次</sys:String>
+    <sys:String x:Key="Chat.Memory.NewTurnsThreshold">新增轮次／群聊消息阈值</sys:String>
+    <sys:String x:Key="Chat.Memory.MaximumTurns">单次最多发送轮次／群聊消息</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalOnly">仅发送自上次检查点后的新增对话（默认开启）</sys:String>
     <sys:String x:Key="Chat.Memory.SaveWorkflow">保存工作流设置</sys:String>
     <sys:String x:Key="Chat.Memory.EditUpdatePrompt">编辑全局记忆更新提示词</sys:String>
@@ -341,6 +341,11 @@
     <sys:String x:Key="Chat.Group.MergeMemoryHelp">角色本体记忆为主，群聊记忆为辅；先生成可编辑草稿，再到“记忆 → 草稿”保存。</sys:String>
     <sys:String x:Key="Chat.Group.GenerateMergeDraft">生成角色合并草稿</sys:String>
     <sys:String x:Key="Chat.Group.EditMergePrompt">编辑全局记忆合并提示词</sys:String>
+    <sys:String x:Key="Chat.Group.MemoryReliability">共同记忆与角色独立记忆</sys:String>
+    <sys:String x:Key="Chat.Group.MemoryReliabilityHelp">共同记忆供所有成员使用；每个角色另有仅在其发言时注入的群聊独立记忆。不会自动改写角色原有个人记忆。</sys:String>
+    <sys:String x:Key="Chat.Group.MemberMemoryEnabled">启用每个角色的群聊独立记忆</sys:String>
+    <sys:String x:Key="Chat.Group.MemoryTokenThreshold">待处理 Token 阈值</sys:String>
+    <sys:String x:Key="Chat.Group.UpdateMemoryNow">立即检查并更新</sys:String>
     <sys:String x:Key="Chat.CollapseRightPanel">折叠右侧栏</sys:String>
 
     <!-- Campaigns -->
@@ -559,12 +564,12 @@
     <sys:String x:Key="Settings.Diagnostics.Title">诊断与测试记录</sys:String>
     <sys:String x:Key="Settings.Diagnostics.Description">错误日志用于定位软件故障；API 测试模式用于临时分析模型请求的实际利用情况。两类文件都只保存在本机。</sys:String>
     <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">本地错误日志（始终启用）</sys:String>
-    <sys:String x:Key="Settings.Diagnostics.ErrorLogDescription">仅记录错误类别、异常类型、脱敏后的调用位置和状态，不记录 API 请求正文、回复正文、思考内容或 API Key。单个文件最大 10 MiB，最多保留 10 个。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.ErrorLogDescription">仅记录错误类别、异常类型、脱敏后的调用位置和状态，不主动采集 API 请求正文、回复正文、思考内容或授权头，并对已知敏感格式做脱敏。请勿把 Key 或个人信息写入接入商名称、地址或错误文本。单个文件最大 10 MiB，最多保留 10 个。</sys:String>
     <sys:String x:Key="Settings.Diagnostics.ErrorLogPath">错误日志目录：</sys:String>
     <sys:String x:Key="Settings.Diagnostics.TestModeTitle">API 测试模式</sys:String>
     <sys:String x:Key="Settings.Diagnostics.TestModeDescription">开启后，每次请求都会保存逻辑请求正文、可见回复、耗时、首字时间、Token 用量和错误状态；关闭后停止新增记录。设置会在重启后保留，记录总量超过 500 MiB 时自动删除最旧文件。</sys:String>
     <sys:String x:Key="Settings.Diagnostics.TestModeToggle">开启或关闭 API 测试模式</sys:String>
-    <sys:String x:Key="Settings.Diagnostics.PrivacyWarning">注意：测试记录会包含聊天内容、系统提示词和模型可见回复。API Key、授权头、Cookie、隐藏思考内容和完整 Embedding 向量不会写入。请只在需要分析时开启。</sys:String>
+    <sys:String x:Key="Settings.Diagnostics.PrivacyWarning">注意：测试记录会包含聊天内容、系统提示词和模型可见回复。软件不会主动记录授权头、Cookie、隐藏思考内容或完整 Embedding 向量，并会对已知 Key 格式脱敏，但无法识别正文中的任意秘密。请勿在提示词、名称或地址中填写 Key/个人信息，并只在需要分析时开启。</sys:String>
     <sys:String x:Key="Settings.Diagnostics.OutputPath">测试输出目录（相对于软件根目录）：</sys:String>
     <sys:String x:Key="Settings.Diagnostics.OutputSummaryFormat">当前共有 {0} 个文件，占用 {1}</sys:String>
     <sys:String x:Key="Settings.Diagnostics.OutputSummaryFailedFormat">无法读取测试输出统计：{0}</sys:String>
@@ -732,6 +737,22 @@
     <sys:String x:Key="GroupChat.MergeDraftFailedFormat">生成角色记忆合并草稿失败：{0}</sys:String>
     <sys:String x:Key="GroupChat.AutoRelayLimitRange">自动接力上限必须是 1–100 之间的整数。</sys:String>
     <sys:String x:Key="GroupChat.SingleConversation">当前是单角色会话；群聊设置未启用。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryStatusIdle">有新消息保存或接力结束后，会检查群聊记忆是否需要更新。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryUpdating">正在更新群聊记忆；聊天仍可继续使用。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryUpdated">群聊记忆已更新。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryPartiallyUpdated">已更新一部分积压的群聊记忆；仍有内容待处理，可稍后再次检查。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryRebuilt">检测到历史发生变化，群聊记忆已按当前消息重建。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryNoChanges">当前没有达到更新条件的新消息。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryDisabled">该群聊已关闭自动记忆更新。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryNoAssignment">尚未给“记忆更新”分配模型。</sys:String>
+    <sys:String x:Key="GroupChat.MemoryFailedFormat">群聊记忆更新失败，旧记忆和检查点均保留：{0}</sys:String>
+    <sys:String x:Key="GroupChat.MemoryUnknownError">未知错误</sys:String>
+    <sys:String x:Key="GroupChat.MemoryError.Cancelled">更新已取消</sys:String>
+    <sys:String x:Key="GroupChat.MemoryError.ConcurrentChange">更新期间聊天或记忆再次发生变化，请稍后重试</sys:String>
+    <sys:String x:Key="GroupChat.MemoryError.ContextLimit">待处理内容超过当前模型的上下文容量</sys:String>
+    <sys:String x:Key="GroupChat.MemoryError.InvalidResponse">模型回复格式无效，未写入记忆</sys:String>
+    <sys:String x:Key="GroupChat.MemoryError.ProviderFailure">模型服务调用失败，未写入记忆</sys:String>
+    <sys:String x:Key="GroupChat.MemoryThresholdRange">群聊记忆待处理 Token 阈值必须是 256–100000 之间的整数。</sys:String>
 
     <!-- Prompt management metadata; prompt bodies stay in the domain defaults -->
     <sys:String x:Key="PromptSettings.Status.Intro">这里保存全局默认；角色卡、剧本和仍开放的局部提示词可按各模块规则追加或覆盖。</sys:String>
@@ -861,10 +882,12 @@
     <sys:String x:Key="Memory.NoPendingDraft">没有待保存草稿。</sys:String>
     <sys:String x:Key="Memory.NotSavedFormat">{0}尚未保存记忆；默认目标 5000 tokens。</sys:String>
     <sys:String x:Key="Memory.LoadedFormat">已载入{0}；最后保存 {1:yyyy-MM-dd HH:mm}。</sys:String>
+    <sys:String x:Key="Memory.ReloadPreservedUnsaved">后台记忆已更新；你尚未保存的正文编辑已保留。</sys:String>
+    <sys:String x:Key="Memory.GroupMergeConversationMismatch">当前群聊、群聊设置和记忆正文不属于同一会话，已阻止生成以避免串用资料。</sys:String>
     <sys:String x:Key="Memory.AutoSaved">已按阈值自动保存记忆正文，并推进本会话处理检查点。</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自动保存记忆失败，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成“{0}”的合并草稿；角色记忆尚未覆盖。</sys:String>
-    <sys:String x:Key="Memory.DirectSavedFormat">已直接保存{0}；本操作不会推进聊天处理检查点。</sys:String>
+    <sys:String x:Key="Memory.DirectSavedFormat">已直接保存{0}。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自动生成阈值必须是 1–10000 之间的用户轮次数。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">单次发送上限必须是 1–10000 之间的用户轮次数。</sys:String>
     <sys:String x:Key="Memory.SourceNewOnly">仅发送检查点后的新增对话</sys:String>
@@ -1446,8 +1469,8 @@
     <sys:String x:Key="Common.NoFurtherDetails">暂无更多详情</sys:String>
     <sys:String x:Key="Chat.Model.DefaultBudgetSource">当前默认模型配置</sys:String>
     <sys:String x:Key="Worldbook.IndexRebuiltFormat">索引已重建：{0} 个文本块，向量维度 {1}。</sys:String>
-    <sys:String x:Key="Retrieval.DiagnosticsSummaryFormat">检索产生 {0} 条内部诊断；原始详情已写入诊断日志。</sys:String>
-    <sys:String x:Key="Preset.DiagnosticsSummaryFormat">预设解析产生 {0} 条内部诊断；原始详情已写入诊断日志。</sys:String>
+    <sys:String x:Key="Retrieval.DiagnosticsSummaryFormat">检索产生 {0} 条内部诊断；为保护隐私，界面和系统跟踪不输出原始详情。</sys:String>
+    <sys:String x:Key="Preset.DiagnosticsSummaryFormat">预设解析产生 {0} 条内部诊断；为保护隐私，界面和系统跟踪不输出原始详情。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.NoEnabledCharacters">群聊没有启用的角色。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.UserMentionFormat">检测到最后一句 @USER / @{0}，已等待用户回复。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.ManualSelected">使用手动选择的发言角色。</sys:String>

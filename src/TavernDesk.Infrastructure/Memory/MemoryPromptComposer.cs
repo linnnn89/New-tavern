@@ -1,6 +1,7 @@
 using System.Text;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Group;
 
 namespace TavernDesk.Infrastructure.Memory;
 
@@ -72,15 +73,24 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
                 ["current_memory"] = NormalizeEmpty(currentMemory),
                 ["new_messages"] = transcript.ToString().TrimEnd()
             });
+        var sourceThroughSequenceNo = source.Max(message => message.SequenceNo);
+        var fingerprintSource = messages
+            .Where(message => !message.IsDeleted
+                              && !string.IsNullOrWhiteSpace(message.Content)
+                              && message.SequenceNo <= sourceThroughSequenceNo)
+            .OrderBy(message => message.SequenceNo)
+            .ToArray();
         return new MemoryPromptPlan(
             MemoryDraftKind.Update,
             ownerId,
             conversationId,
             ComposeSystemPrompt(settings.UpdateSystemPrompt),
             inputPayload,
-            source.Max(message => message.SequenceNo),
+            sourceThroughSequenceNo,
             source.Count(message => message.SenderKind == MessageSenderKind.User),
-            targetTokens);
+            targetTokens,
+            fingerprintSource.Length,
+            GroupMemorySourceFingerprint.Compute(fingerprintSource));
     }
 
     private static ChatMessage[] LimitSource(

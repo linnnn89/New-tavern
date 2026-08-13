@@ -16,15 +16,19 @@ public sealed class GroupChatViewModel : ViewModelBase
     private readonly Func<string, Task> _openGroup;
     private readonly Func<string?, Task> _continueRelay;
     private readonly Func<Character, GroupChatSettings, Task> _mergeMemory;
+    private readonly Func<string, bool, Task> _updateMemory;
     private string? _conversationId;
     private GroupRelayMode _relayMode = GroupRelayMode.MentionDirected;
     private bool _autoContinueEnabled;
     private string _maximumAutomaticTurns = "8";
     private bool _pauseOnUserMention = true;
+    private bool _memberMemoryEnabled = true;
+    private string _memoryPendingTokenThreshold = "4000";
     private string _groupSystemPrompt = GroupPromptDefaults.SystemPrompt;
     private GroupMemberItemViewModel? _selectedNextSpeaker;
     private GroupMemberItemViewModel? _selectedMergeMember;
     private string _status = LanguageRuntime.GetString("GroupChat.ConfigureHint");
+    private string _memoryStatus = LanguageRuntime.GetString("GroupChat.MemoryStatusIdle");
     private GroupChatState? _state;
     private long _loadVersion;
 
@@ -35,7 +39,8 @@ public sealed class GroupChatViewModel : ViewModelBase
         IUserInteractionService interaction,
         Func<string, Task> openGroup,
         Func<string?, Task> continueRelay,
-        Func<Character, GroupChatSettings, Task> mergeMemory)
+        Func<Character, GroupChatSettings, Task> mergeMemory,
+        Func<string, bool, Task> updateMemory)
     {
         _groups = groups;
         _relayPlanner = relayPlanner;
@@ -44,6 +49,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         _openGroup = openGroup;
         _continueRelay = continueRelay;
         _mergeMemory = mergeMemory;
+        _updateMemory = updateMemory;
         RelayModes =
         [
             new(GroupRelayMode.Manual, LanguageRuntime.GetString("GroupChat.Relay.Manual")),
@@ -65,6 +71,9 @@ public sealed class GroupChatViewModel : ViewModelBase
         MergeMemoryCommand = new AsyncRelayCommand(
             MergeMemoryAsync,
             () => IsGroupConversation && SelectedMergeMember is not null);
+        UpdateMemoryCommand = new AsyncRelayCommand(
+            UpdateMemoryAsync,
+            () => IsGroupConversation);
     }
 
     public ObservableCollection<GroupMemberItemViewModel> Members { get; } = [];
@@ -74,9 +83,12 @@ public sealed class GroupChatViewModel : ViewModelBase
     public AsyncRelayCommand ContinueRelayCommand { get; }
     public AsyncRelayCommand PauseOrResumeCommand { get; }
     public AsyncRelayCommand MergeMemoryCommand { get; }
+    public AsyncRelayCommand UpdateMemoryCommand { get; }
 
     public bool IsGroupConversation => _conversationId is not null;
     public string? ConversationId => _conversationId;
+    public event EventHandler<GroupMemberMemorySettingChangedEventArgs>?
+        MemberMemorySettingChanged;
 
     public GroupRelayMode RelayMode
     {
@@ -100,6 +112,29 @@ public sealed class GroupChatViewModel : ViewModelBase
     {
         get => _pauseOnUserMention;
         set => SetProperty(ref _pauseOnUserMention, value);
+    }
+
+    public bool MemberMemoryEnabled
+    {
+        get => _memberMemoryEnabled;
+        set
+        {
+            if (SetProperty(ref _memberMemoryEnabled, value)
+                && _conversationId is { } conversationId)
+            {
+                MemberMemorySettingChanged?.Invoke(
+                    this,
+                    new GroupMemberMemorySettingChangedEventArgs(
+                        conversationId,
+                        value));
+            }
+        }
+    }
+
+    public string MemoryPendingTokenThreshold
+    {
+        get => _memoryPendingTokenThreshold;
+        set => SetProperty(ref _memoryPendingTokenThreshold, value);
     }
 
     public string GroupSystemPrompt
@@ -130,6 +165,12 @@ public sealed class GroupChatViewModel : ViewModelBase
     {
         get => _status;
         private set => SetProperty(ref _status, value);
+    }
+
+    public string MemoryStatus
+    {
+        get => _memoryStatus;
+        private set => SetProperty(ref _memoryStatus, value);
     }
 
     public string PauseButtonText => _state?.IsPaused == true
@@ -179,6 +220,8 @@ public sealed class GroupChatViewModel : ViewModelBase
             AutoContinueEnabled = AutoContinueEnabled,
             MaximumAutomaticTurns = ParseMaximumTurns(),
             PauseOnUserMention = PauseOnUserMention,
+            MemberMemoryEnabled = MemberMemoryEnabled,
+            MemoryPendingTokenThreshold = ParseMemoryTokenThreshold(),
             GroupSystemPrompt = GroupSystemPrompt,
             MergeSystemPrompt = MemoryPromptDefaults.GroupMergeSystem,
             MergeUserTemplate = MemoryPromptDefaults.GroupMergeInput
@@ -266,6 +309,12 @@ public sealed class GroupChatViewModel : ViewModelBase
         AutoContinueEnabled = settings.AutoContinueEnabled;
         MaximumAutomaticTurns = settings.MaximumAutomaticTurns.ToString();
         PauseOnUserMention = settings.PauseOnUserMention;
+        if (_memberMemoryEnabled != settings.MemberMemoryEnabled)
+        {
+            _memberMemoryEnabled = settings.MemberMemoryEnabled;
+            OnPropertyChanged(nameof(MemberMemoryEnabled));
+        }
+        MemoryPendingTokenThreshold = settings.MemoryPendingTokenThreshold.ToString();
         GroupSystemPrompt = settings.GroupSystemPrompt;
         _state = stateTask.Result;
 
@@ -286,6 +335,7 @@ public sealed class GroupChatViewModel : ViewModelBase
                               ?? Members.FirstOrDefault(member => member.IsEnabled);
         SelectedMergeMember = Members.FirstOrDefault(member => member.IsEnabled);
         Status = LanguageRuntime.Format("GroupChat.LoadedFormat", Members.Count);
+        MemoryStatus = LanguageRuntime.GetString("GroupChat.MemoryStatusIdle");
         RaiseStates();
     }
 
@@ -328,7 +378,8 @@ public sealed class GroupChatViewModel : ViewModelBase
 
     private async Task SaveSettingsAsync()
     {
-        if (_conversationId is null)
+        var conversationId = _conversationId;
+        if (conversationId is null)
         {
             return;
         }
@@ -336,9 +387,13 @@ public sealed class GroupChatViewModel : ViewModelBase
         try
         {
             var settings = SettingsSnapshot();
+            var members = SnapshotMembers();
             await _groups.SaveSettingsAsync(settings);
-            await _groups.ReplaceMembersAsync(_conversationId, SnapshotMembers());
-            Status = LanguageRuntime.GetString("GroupChat.Saved");
+            await _groups.ReplaceMembersAsync(conversationId, members);
+            if (_conversationId == conversationId)
+            {
+                Status = LanguageRuntime.GetString("GroupChat.Saved");
+            }
         }
         catch (Exception exception)
         {
@@ -392,6 +447,81 @@ public sealed class GroupChatViewModel : ViewModelBase
         }
     }
 
+    private async Task UpdateMemoryAsync()
+    {
+        var conversationId = _conversationId;
+        if (conversationId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var settings = SettingsSnapshot();
+            var members = SnapshotMembers();
+            MemoryStatus = LanguageRuntime.GetString("GroupChat.MemoryUpdating");
+            await _groups.SaveSettingsAsync(settings);
+            await _groups.ReplaceMembersAsync(conversationId, members);
+            if (_conversationId != conversationId)
+            {
+                return;
+            }
+
+            await _updateMemory(conversationId, true);
+        }
+        catch (Exception exception)
+        {
+            ApplyMemoryUpdateFailure(LanguageRuntime.ErrorMessage(exception));
+        }
+    }
+
+    public void ApplyMemoryUpdateResult(GroupMemoryUpdateResult result)
+    {
+        if (_conversationId != result.ConversationId)
+        {
+            return;
+        }
+
+        MemoryStatus = result.Status switch
+        {
+            GroupMemoryUpdateStatus.Updated => result.Rebuilt
+                ? LanguageRuntime.GetString("GroupChat.MemoryRebuilt")
+                : LanguageRuntime.GetString("GroupChat.MemoryUpdated"),
+            GroupMemoryUpdateStatus.PartiallyUpdated =>
+                LanguageRuntime.GetString("GroupChat.MemoryPartiallyUpdated"),
+            GroupMemoryUpdateStatus.NoChanges =>
+                LanguageRuntime.GetString("GroupChat.MemoryNoChanges"),
+            GroupMemoryUpdateStatus.SkippedDisabled =>
+                LanguageRuntime.GetString("GroupChat.MemoryDisabled"),
+            GroupMemoryUpdateStatus.SkippedNoAssignment =>
+                LanguageRuntime.GetString("GroupChat.MemoryNoAssignment"),
+            _ => LanguageRuntime.Format(
+                "GroupChat.MemoryFailedFormat",
+                MemoryErrorMessage(result.ErrorCode))
+        };
+    }
+
+    private static string MemoryErrorMessage(GroupMemoryErrorCode errorCode) =>
+        LanguageRuntime.GetString(errorCode switch
+        {
+            GroupMemoryErrorCode.Cancelled => "GroupChat.MemoryError.Cancelled",
+            GroupMemoryErrorCode.ConcurrentChange =>
+                "GroupChat.MemoryError.ConcurrentChange",
+            GroupMemoryErrorCode.ContextLimit => "GroupChat.MemoryError.ContextLimit",
+            GroupMemoryErrorCode.InvalidResponse =>
+                "GroupChat.MemoryError.InvalidResponse",
+            GroupMemoryErrorCode.ProviderFailure =>
+                "GroupChat.MemoryError.ProviderFailure",
+            _ => "GroupChat.MemoryUnknownError"
+        });
+
+    public void ApplyMemoryUpdateFailure(string errorMessage)
+    {
+        MemoryStatus = LanguageRuntime.Format(
+            "GroupChat.MemoryFailedFormat",
+            errorMessage);
+    }
+
     private int ParseMaximumTurns()
     {
         if (!int.TryParse(MaximumAutomaticTurns, out var maximum)
@@ -404,6 +534,18 @@ public sealed class GroupChatViewModel : ViewModelBase
         return maximum;
     }
 
+    private int ParseMemoryTokenThreshold()
+    {
+        if (!int.TryParse(MemoryPendingTokenThreshold, out var threshold)
+            || threshold is < 256 or > 100000)
+        {
+            throw new InvalidOperationException(
+                LanguageRuntime.GetString("GroupChat.MemoryThresholdRange"));
+        }
+
+        return threshold;
+    }
+
     public void Clear()
     {
         _conversationId = null;
@@ -412,6 +554,7 @@ public sealed class GroupChatViewModel : ViewModelBase
         SelectedMergeMember = null;
         _state = null;
         Status = LanguageRuntime.GetString("GroupChat.SingleConversation");
+        MemoryStatus = LanguageRuntime.GetString("GroupChat.MemoryStatusIdle");
         RaiseStates();
     }
 
@@ -424,7 +567,16 @@ public sealed class GroupChatViewModel : ViewModelBase
         ContinueRelayCommand.RaiseCanExecuteChanged();
         PauseOrResumeCommand.RaiseCanExecuteChanged();
         MergeMemoryCommand.RaiseCanExecuteChanged();
+        UpdateMemoryCommand.RaiseCanExecuteChanged();
     }
+}
+
+public sealed class GroupMemberMemorySettingChangedEventArgs(
+    string conversationId,
+    bool isEnabled) : EventArgs
+{
+    public string ConversationId { get; } = conversationId;
+    public bool IsEnabled { get; } = isEnabled;
 }
 
 public sealed class GroupMemberItemViewModel : ViewModelBase
