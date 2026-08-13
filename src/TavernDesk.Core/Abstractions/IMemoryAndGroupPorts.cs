@@ -83,6 +83,10 @@ public interface IGroupChatRepository
     Task SaveSettingsAsync(
         GroupChatSettings settings,
         CancellationToken cancellationToken = default);
+    Task SaveConfigurationAsync(
+        GroupChatSettings settings,
+        IReadOnlyList<GroupChatMember> members,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GroupChatMember>> ListMembersAsync(
         string conversationId,
         CancellationToken cancellationToken = default);
@@ -139,7 +143,6 @@ public interface IGroupMemoryUpdateService
     Task<GroupMemoryUpdateResult> UpdateAsync(
         string conversationId,
         bool force = false,
-        GroupChatSettings? settingsOverride = null,
         CancellationToken cancellationToken = default);
     Task InvalidateAsync(
         string conversationId,

@@ -917,6 +917,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Memory.ReloadPreservedUnsaved">背景記憶已更新；你尚未儲存的正文編輯已保留。</sys:String>
     <sys:String x:Key="Memory.GroupMergeConversationMismatch">目前群聊、群聊設定與記憶正文不屬於同一會話，已阻止生成以避免串用資料。</sys:String>
     <sys:String x:Key="Memory.AutoSaved">已按門檻值自動儲存記憶內文，並推進本會話處理檢查點。</sys:String>
+    <sys:String x:Key="Memory.AutoSavePausedUnsaved">由於記憶內文有未儲存編輯，自動更新已暫停。請先儲存或放棄編輯，自動更新才會繼續。</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自動儲存記憶失敗，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成「{0}」的合並草稿；角色記憶尚未覆蓋。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">已直接儲存{0}。</sys:String>

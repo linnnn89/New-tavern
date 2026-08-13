@@ -917,6 +917,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Memory.ReloadPreservedUnsaved">Background memory was updated; your unsaved body edits were preserved.</sys:String>
     <sys:String x:Key="Memory.GroupMergeConversationMismatch">The selected group chat, settings, and memory body do not belong to the same conversation. Generation was blocked to prevent data mixing.</sys:String>
     <sys:String x:Key="Memory.AutoSaved">Memory body saved automatically at the threshold and this conversation's checkpoint advanced.</sys:String>
+    <sys:String x:Key="Memory.AutoSavePausedUnsaved">Automatic memory update paused because the memory body has unsaved edits. Save or discard them before automatic updating resumes.</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">Could not save memory automatically; draft retained: {0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">Generated a merge draft for “{0}”; character memory has not been overwritten.</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">Saved {0} directly.</sys:String>

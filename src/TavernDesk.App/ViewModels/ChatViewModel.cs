@@ -1688,26 +1688,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             ScheduleContextRefresh();
         }
 
-        _ = TriggerGroupAutoMemoryCoreAsync(
-            conversationId,
-            invalidateCurrentMemory
-                ? GroupMemoryScopeMask.All
-                : GroupMemoryScopeMask.None);
+        _ = TriggerGroupAutoMemoryCoreAsync(conversationId);
     }
 
-    private async Task TriggerGroupAutoMemoryCoreAsync(
-        string conversationId,
-        GroupMemoryScopeMask invalidateScopes)
+    private async Task TriggerGroupAutoMemoryCoreAsync(string conversationId)
     {
         try
         {
-            if (invalidateScopes != GroupMemoryScopeMask.None)
-            {
-                await _groupMemory.InvalidateAsync(
-                    conversationId,
-                    invalidateScopes);
-            }
-
             await UpdateGroupMemoryAsync(conversationId, force: false);
         }
         catch (OperationCanceledException)
@@ -1728,13 +1715,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         try
         {
-            var settingsOverride = Group.ConversationId == conversationId
-                ? Group.SettingsSnapshot()
-                : null;
             var result = await _groupMemory.UpdateAsync(
                 conversationId,
-                force,
-                settingsOverride);
+                force);
             if (Group.ConversationId == conversationId)
             {
                 Group.ApplyMemoryUpdateResult(result);

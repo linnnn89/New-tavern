@@ -917,6 +917,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Memory.ReloadPreservedUnsaved">バックグラウンドで記憶が更新されました。未保存の本文編集は保持されています。</sys:String>
     <sys:String x:Key="Memory.GroupMergeConversationMismatch">選択中のグループチャット、設定、記憶本文が同じ会話に属していません。データ混在を防ぐため生成を中止しました。</sys:String>
     <sys:String x:Key="Memory.AutoSaved">しきい値に従ってメモリ本文を自動保存し、この会話のチェックポイントを進めました。</sys:String>
+    <sys:String x:Key="Memory.AutoSavePausedUnsaved">未保存の本文編集があるため、自動更新を一時停止しました。保存または編集の破棄後に再開します。</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">メモリを自動保存できず、下書きを保持しました：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">「{0}」の統合下書きを生成しました。キャラクターメモリは未上書きです。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">{0}を直接保存しました。</sys:String>

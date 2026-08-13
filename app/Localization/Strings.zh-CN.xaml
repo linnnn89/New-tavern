@@ -886,6 +886,7 @@
     <sys:String x:Key="Memory.ReloadPreservedUnsaved">后台记忆已更新；你尚未保存的正文编辑已保留。</sys:String>
     <sys:String x:Key="Memory.GroupMergeConversationMismatch">当前群聊、群聊设置和记忆正文不属于同一会话，已阻止生成以避免串用资料。</sys:String>
     <sys:String x:Key="Memory.AutoSaved">已按阈值自动保存记忆正文，并推进本会话处理检查点。</sys:String>
+    <sys:String x:Key="Memory.AutoSavePausedUnsaved">由于记忆正文有未保存编辑，自动更新已暂停。请先保存或放弃编辑，自动更新才会继续。</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">自动保存记忆失败，已保留草稿：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">已生成“{0}”的合并草稿；角色记忆尚未覆盖。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">已直接保存{0}。</sys:String>
