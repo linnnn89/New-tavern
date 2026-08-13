@@ -62,7 +62,8 @@ public sealed record ContextAssemblyRequest(
 public sealed record ContextAssemblyResult(
     IReadOnlyList<ContextSegment> Segments,
     TokenEstimate Estimate,
-    IReadOnlyList<string>? Diagnostics = null);
+    IReadOnlyList<string>? Diagnostics = null,
+    GroupContextBudgetResult? GroupBudget = null);
 
 public interface ITokenEstimator
 {

@@ -48,6 +48,7 @@ public sealed class InfrastructureServices
         Presets = new SqlitePresetRepository(Database);
         PresetResolver = new PresetResolver(Presets);
         TokenEstimator = new ModelAwareTokenEstimator();
+        GroupContextBudgetPlanner = new GroupContextBudgetPlanner(TokenEstimator);
         CampaignFlowEngine = CampaignFlowEngineFactory.CreateDefault();
         CampaignContextPlanner = new CampaignContextPlanner(
             TokenEstimator,
@@ -123,6 +124,7 @@ public sealed class InfrastructureServices
             MemoryBanks,
             GroupMemoryRepository,
             TokenEstimator,
+            GroupContextBudgetPlanner,
             WorldbookEngine,
             WorldbookService,
             MacroEngine,
@@ -169,6 +171,7 @@ public sealed class InfrastructureServices
     public IPresetRepository Presets { get; }
     public IPresetResolver PresetResolver { get; }
     public ITokenEstimator TokenEstimator { get; }
+    public IGroupContextBudgetPlanner GroupContextBudgetPlanner { get; }
     public ICampaignContextPlanner CampaignContextPlanner { get; }
     public ICampaignFlowEngine CampaignFlowEngine { get; }
     public IContextBudgetProvider ContextBudget { get; }

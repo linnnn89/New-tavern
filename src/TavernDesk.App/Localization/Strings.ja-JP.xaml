@@ -921,6 +921,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Memory.AutoSaveFailedFormat">メモリを自動保存できず、下書きを保持しました：{0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">「{0}」の統合下書きを生成しました。キャラクターメモリは未上書きです。</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">{0}を直接保存しました。</sys:String>
+    <sys:String x:Key="Memory.DirectSavedWhileEditing">先に行った編集を保存しました。保存中に入力した内容は未保存の編集として残っています。</sys:String>
     <sys:String x:Key="Memory.SaveConflict">編集中に記憶が変更されました。新しい内容を上書きしないよう、再読み込みしてから保存してください。</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">自動生成しきい値はユーザーターン 1～10000 回です。</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">1回の送信上限はユーザーターン 1～10000 回です。</sys:String>

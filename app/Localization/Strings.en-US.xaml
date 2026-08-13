@@ -921,6 +921,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Memory.AutoSaveFailedFormat">Could not save memory automatically; draft retained: {0}</sys:String>
     <sys:String x:Key="Memory.MergeDraftGeneratedFormat">Generated a merge draft for “{0}”; character memory has not been overwritten.</sys:String>
     <sys:String x:Key="Memory.DirectSavedFormat">Saved {0} directly.</sys:String>
+    <sys:String x:Key="Memory.DirectSavedWhileEditing">Saved the previous edit; your later unsaved changes remain in the editor.</sys:String>
     <sys:String x:Key="Memory.SaveConflict">The memory changed while you were editing. Reload it before saving to avoid overwriting newer content.</sys:String>
     <sys:String x:Key="Memory.AutoIntervalRange">The automatic-generation threshold must be from 1 to 10000 user turns.</sys:String>
     <sys:String x:Key="Memory.SourceLimitRange">The per-request limit must be from 1 to 10000 user turns.</sys:String>

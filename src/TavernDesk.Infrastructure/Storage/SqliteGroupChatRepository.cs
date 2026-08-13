@@ -260,26 +260,6 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 normalized,
                 cancellationToken);
 
-            // Any configuration/member change requires member scopes to be rebuilt
-            // before they can be injected again. This also covers re-enabling a
-            // member whose old bank is still retained for recovery.
-            await using (var invalidate = connection.CreateCommand())
-            {
-                invalidate.Transaction = (SqliteTransaction)transaction;
-                invalidate.CommandText = """
-                    UPDATE group_memory_checkpoints
-                    SET source_digest = '',
-                        revision = revision + 1,
-                        updated_at = $updatedAt
-                    WHERE conversation_id = $conversationId
-                      AND scope = $memberScope;
-                    """;
-                invalidate.Parameters.AddWithValue("$conversationId", settings.ConversationId);
-                invalidate.Parameters.AddWithValue("$memberScope", (int)GroupMemoryScope.Member);
-                invalidate.Parameters.AddWithValue("$updatedAt", settings.UpdatedAt.ToString("O"));
-                await invalidate.ExecuteNonQueryAsync(cancellationToken);
-            }
-
             await transaction.CommitAsync(cancellationToken);
         }
         catch
@@ -353,38 +333,6 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 conversationId,
                 normalized,
                 cancellationToken);
-
-            // Keep removed/disabled member banks recoverable, but invalidate
-            // their checkpoints. Re-enabling a member must rebuild before the
-            // old member memory can be injected again.
-            await using (var invalidate = connection.CreateCommand())
-            {
-                invalidate.Transaction = (SqliteTransaction)transaction;
-                invalidate.CommandText = """
-                    UPDATE group_memory_checkpoints
-                    SET source_digest = '',
-                        revision = revision + 1,
-                        updated_at = $updatedAt
-                    WHERE conversation_id = $conversationId
-                      AND scope = $memberScope
-                      AND NOT EXISTS (
-                          SELECT 1
-                          FROM group_chat_members
-                          WHERE group_chat_members.conversation_id =
-                                group_memory_checkpoints.conversation_id
-                            AND group_chat_members.character_id =
-                                group_memory_checkpoints.character_id
-                            AND group_chat_members.is_enabled = 1);
-                    """;
-                invalidate.Parameters.AddWithValue("$conversationId", conversationId);
-                invalidate.Parameters.AddWithValue(
-                    "$memberScope",
-                    (int)GroupMemoryScope.Member);
-                invalidate.Parameters.AddWithValue(
-                    "$updatedAt",
-                    DateTimeOffset.Now.ToString("O"));
-                await invalidate.ExecuteNonQueryAsync(cancellationToken);
-            }
 
             await transaction.CommitAsync(cancellationToken);
         }
