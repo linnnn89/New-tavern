@@ -19,4 +19,24 @@
     <Resource Include="Assets\Icons\TavernDesk.ico" />
   </ItemGroup>
 
+  <Target Name="CopyLocalizationSourcesToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <LocalizationSource Include="$(MSBuildProjectDirectory)\Localization\Strings.*.xaml" />
+    </ItemGroup>
+    <MakeDir Directories="$(TargetDir)Localization" />
+    <Copy SourceFiles="@(LocalizationSource)"
+          DestinationFolder="$(TargetDir)Localization"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyLocalizationSourcesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <LocalizationPublishSource Include="$(MSBuildProjectDirectory)\Localization\Strings.*.xaml" />
+    </ItemGroup>
+    <MakeDir Directories="$(PublishDir)Localization" />
+    <Copy SourceFiles="@(LocalizationPublishSource)"
+          DestinationFolder="$(PublishDir)Localization"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

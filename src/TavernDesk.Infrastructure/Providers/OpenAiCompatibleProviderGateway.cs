@@ -706,8 +706,8 @@ public sealed class OpenAiCompatibleProviderGateway :
         var error = TryReadProviderError(bytes);
         var summary = FriendlyHttpStatus(response.StatusCode);
         var detail = error is null
-            ? CleanProviderText(Encoding.UTF8.GetString(bytes))
-            : FormatProviderError(summary, error);
+            ? string.Empty
+            : FriendlyErrorType(error.Type);
         var retryAfter = ReadRetryAfter(response);
         throw new HttpRequestException(
             $"接入商请求失败：{summary}（HTTP {(int)response.StatusCode}）"
@@ -750,23 +750,20 @@ public sealed class OpenAiCompatibleProviderGateway :
                   && timeout.IsCancellationRequested)
         {
             throw new TimeoutException(
-                $"等待接入商“{profile.Name}”超过 "
-                + $"{profile.RequestTimeoutSeconds:0.###} 秒。",
+                $"等待接入商响应超过 {profile.RequestTimeoutSeconds:0.###} 秒。",
                 exception);
         }
         catch (HttpRequestException exception)
         {
             throw new HttpRequestException(
-                $"无法连接接入商“{profile.Name}”："
-                + CleanProviderText(exception.Message),
+                "无法连接接入商。请检查网络、API 地址和证书设置。",
                 exception,
                 exception.StatusCode);
         }
         catch (IOException exception)
         {
             throw new IOException(
-                $"读取接入商“{profile.Name}”响应失败："
-                + CleanProviderText(exception.Message),
+                "读取接入商响应失败。",
                 exception);
         }
     }
@@ -833,30 +830,7 @@ public sealed class OpenAiCompatibleProviderGateway :
         ProviderErrorDetail error)
     {
         var category = FriendlyErrorType(error.Type);
-        var result = string.Empty;
-        if (category.Length > 0
-            && !string.Equals(
-                category,
-                summary,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            result = category;
-        }
-
-        if (error.Message.Length > 0
-            && !string.Equals(error.Message, category, StringComparison.OrdinalIgnoreCase))
-        {
-            result += (result.Length == 0 ? string.Empty : "；")
-                      + $"服务返回：{error.Message}";
-        }
-
-        if (error.Type.Length > 0)
-        {
-            result += (result.Length == 0 ? string.Empty : " ")
-                      + $"〔{error.Type}〕";
-        }
-
-        return result;
+        return category.Length == 0 ? summary : category;
     }
 
     private static string FriendlyHttpStatus(HttpStatusCode statusCode) =>

@@ -142,7 +142,9 @@ public partial class App : Application
 
         _lastReportedUnhandledExceptionSignature = signature;
         _lastReportedUnhandledExceptionAt = reportedAt;
-        Trace.TraceError(e.Exception.ToString());
+        Trace.TraceError(
+            "Unhandled application exception ({0}). Details were sent to the privacy-safe local logger.",
+            rootException.GetType().FullName);
         _diagnostics.LogError("application.dispatcher-unhandled", e.Exception);
         _isShowingUnhandledException = true;
         try

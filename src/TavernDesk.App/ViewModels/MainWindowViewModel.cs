@@ -45,6 +45,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.MemoryWorkflow,
             services.MemoryPrompts,
             services.GroupChats,
+            services.GroupMemory,
             services.GroupRelay,
             services.Retrieval,
             services.Presets,

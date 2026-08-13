@@ -50,6 +50,8 @@ public sealed record ContextAssemblyRequest(
     string? SpeakerCharacterId = null,
     IReadOnlyList<string>? GroupMemberIds = null,
     string? GroupMemoryOverride = null,
+    string? GroupMemberMemoryOverride = null,
+    bool GroupMemberMemoryEnabled = true,
     string? GroupSystemPrompt = null,
     string? GroupBatonInstruction = null,
     RetrievalContextOptions? Retrieval = null,
