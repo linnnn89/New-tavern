@@ -322,7 +322,6 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Group.RelayAndMemory">群聊接力與記憶合並</sys:String>
     <sys:String x:Key="Chat.Group.RelayMode">接力模式</sys:String>
     <sys:String x:Key="Chat.Group.AutoRelay">自動繼續角色間接力</sys:String>
-    <sys:String x:Key="Chat.Group.PauseAtUser">識別到 @USER / Persona 時自動暫停</sys:String>
     <sys:String x:Key="Chat.Group.MaximumRelay">每輪自動接力上限</sys:String>
     <sys:String x:Key="Chat.Group.EnabledMembers">啟用成員</sys:String>
     <sys:String x:Key="Chat.Group.ManualSpeaker">點擊上方成員頭像選單中的「立即接話」，即可指定下一位發言角色。</sys:String>
@@ -739,10 +738,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Validation.Json.ObjectRequiredFormat">{0}必須是 JSON 物件。</sys:String>
     <!-- Group chat -->
     <sys:String x:Key="GroupChat.ConfigureHint">新增或選擇群聊後設定成員與接力模式。</sys:String>
-    <sys:String x:Key="GroupChat.Relay.Manual">手動指定</sys:String>
     <sys:String x:Key="GroupChat.Relay.FixedOrder">固定順序</sys:String>
-    <sys:String x:Key="GroupChat.Relay.MentionDirected">@ 提及接力</sys:String>
-    <sys:String x:Key="GroupChat.Relay.Random">隨機接力</sys:String>
     <sys:String x:Key="GroupChat.Pause">暫停接力</sys:String>
     <sys:String x:Key="GroupChat.Resume">繼續接力</sys:String>
     <sys:String x:Key="GroupChat.StateNotLoaded">未載入接力狀態。</sys:String>
@@ -1513,16 +1509,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Retrieval.DiagnosticsSummaryFormat">檢索產生 {0} 條內部診斷；為保護隱私，介面與系統追蹤不輸出原始詳情。</sys:String>
     <sys:String x:Key="Preset.DiagnosticsSummaryFormat">預設解析產生 {0} 條內部診斷；為保護隱私，介面與系統追蹤不輸出原始詳情。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.NoEnabledCharacters">群聊沒有啟用的角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserMentionFormat">偵測到最後一句 @USER / @{0}，已等待使用者回覆。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.ManualSelected">使用手動選擇的發言角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.ManualRequired">手動模式需要先選擇下一位發言角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MemberMentionFormat">最後一句指定 @{0}。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MentionRequired">接力模式要求上一位角色在最後一句 @下一位角色，但未辨識到有效成員。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MentionFallbackFixed">未辨識到有效的下一位角色 @提及，已自動按固定成員順序接力。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserManualFirst">使用者訊息後使用手動選擇的第一位發言角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserFirstEnabled">使用者訊息後從群聊第一位已啟用角色開始。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.FixedOrder">依固定成員順序接力。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.Random">從已啟用成員中隨機選擇下一位。</sys:String>
+    <sys:String x:Key="GroupRelay.Reason.ForceSelected">使用者點擊頭像指定的角色。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.Unknown">群聊接力狀態已更新。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.WarningSummaryFormat">場景卡包含 {0} 條相容性提示。</sys:String>
     <sys:String x:Key="Campaigns.ContextPlan.BlockedWithReasonFormat">{0}：{1}</sys:String>

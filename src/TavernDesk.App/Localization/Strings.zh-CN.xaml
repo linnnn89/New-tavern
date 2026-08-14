@@ -327,7 +327,6 @@
     <sys:String x:Key="Chat.Group.RelayAndMemory">群聊接力与记忆合并</sys:String>
     <sys:String x:Key="Chat.Group.RelayMode">接力模式</sys:String>
     <sys:String x:Key="Chat.Group.AutoRelay">自动继续角色间接力</sys:String>
-    <sys:String x:Key="Chat.Group.PauseAtUser">识别到 @USER / Persona 时自动暂停</sys:String>
     <sys:String x:Key="Chat.Group.MaximumRelay">每轮自动接力上限</sys:String>
     <sys:String x:Key="Chat.Group.EnabledMembers">启用成员</sys:String>
     <sys:String x:Key="Chat.Group.ManualSpeaker">点击上方角色头像菜单中的“立即接话”，即可指定下一位发言角色。</sys:String>
@@ -717,10 +716,7 @@
 
     <!-- Group chat -->
     <sys:String x:Key="GroupChat.ConfigureHint">新建或选择群聊后配置成员与接力模式。</sys:String>
-    <sys:String x:Key="GroupChat.Relay.Manual">手动指定</sys:String>
     <sys:String x:Key="GroupChat.Relay.FixedOrder">固定顺序</sys:String>
-    <sys:String x:Key="GroupChat.Relay.MentionDirected">@ 提及接力</sys:String>
-    <sys:String x:Key="GroupChat.Relay.Random">随机接力</sys:String>
     <sys:String x:Key="GroupChat.Pause">暂停接力</sys:String>
     <sys:String x:Key="GroupChat.Resume">恢复接力</sys:String>
     <sys:String x:Key="GroupChat.StateNotLoaded">未载入接力状态。</sys:String>
@@ -1487,16 +1483,8 @@
     <sys:String x:Key="Retrieval.DiagnosticsSummaryFormat">检索产生 {0} 条内部诊断；为保护隐私，界面和系统跟踪不输出原始详情。</sys:String>
     <sys:String x:Key="Preset.DiagnosticsSummaryFormat">预设解析产生 {0} 条内部诊断；为保护隐私，界面和系统跟踪不输出原始详情。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.NoEnabledCharacters">群聊没有启用的角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserMentionFormat">检测到最后一句 @USER / @{0}，已等待用户回复。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.ManualSelected">使用手动选择的发言角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.ManualRequired">手动模式需要先选择下一位发言角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MemberMentionFormat">最后一句指定 @{0}。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MentionRequired">接力模式要求上一位角色在最后一句 @下一位角色，但没有识别到有效成员。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MentionFallbackFixed">未识别到有效的下一位角色 @提及，已自动按固定成员顺序接力。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserManualFirst">用户消息后使用手动选择的首位发言角色。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserFirstEnabled">用户消息后从群聊首位启用角色开始。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.FixedOrder">按固定成员顺序接力。</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.Random">从启用成员中随机选择下一位。</sys:String>
+    <sys:String x:Key="GroupRelay.Reason.ForceSelected">使用用户点击头像指定的角色。</sys:String>
     <sys:String x:Key="GroupRelay.Reason.Unknown">群聊接力状态已更新。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.WarningSummaryFormat">场景卡包含 {0} 条兼容性提示。</sys:String>
     <sys:String x:Key="Campaigns.ContextPlan.BlockedWithReasonFormat">{0}：{1}</sys:String>

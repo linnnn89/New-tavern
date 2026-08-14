@@ -1228,7 +1228,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 ? new GroupRelayDecision(
                     manualSpeakerId,
                     false,
-                    "group-manual-selected")
+                    "group-force-selected")
                 : DecideGroupNext(snapshot.Context, messages);
             if (decision.NextSpeakerId is null)
             {
@@ -1832,8 +1832,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             group.Members,
             group.MemberNames,
             messages,
-            context.PersonaName,
-            group.ManualSpeakerId);
+            context.PersonaName);
     }
 
     private async Task SaveGroupStateAsync(

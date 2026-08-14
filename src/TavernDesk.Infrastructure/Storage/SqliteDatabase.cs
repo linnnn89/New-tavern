@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 22;
+    public const int CurrentSchemaVersion = 23;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -75,7 +75,13 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             {
                 await using var command = connection.CreateCommand();
                 command.Transaction = (SqliteTransaction)transaction;
-                command.CommandText = migration.Sql;
+                command.CommandText = migration.Version == 23
+                                      && !await HasGroupPauseColumnAsync(
+                                          connection,
+                                          (SqliteTransaction)transaction,
+                                          cancellationToken)
+                    ? "UPDATE group_chat_settings SET relay_mode = 1;"
+                    : migration.Sql;
                 await command.ExecuteNonQueryAsync(cancellationToken);
 
                 await using var versionCommand = connection.CreateCommand();
@@ -1089,8 +1095,39 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             -- default-off policy to every existing group configuration.
             UPDATE group_chat_settings
             SET member_memory_enabled = 0;
+            """),
+        new(
+            23,
+            """
+            -- Group relay is now always fixed member order. Normalize any
+            -- obsolete persisted mode before removing the @-pause setting.
+            UPDATE group_chat_settings
+            SET relay_mode = 1;
+
+            ALTER TABLE group_chat_settings
+                DROP COLUMN pause_on_user_mention;
             """)
     ];
+
+    private static async Task<bool> HasGroupPauseColumnAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "PRAGMA table_info(group_chat_settings);";
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), "pause_on_user_mention", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static async Task<List<int>> ReadAppliedVersionsAsync(
         SqliteConnection connection,
