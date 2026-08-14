@@ -214,26 +214,57 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         string? errorMessage = null,
         int receivedTokens = 0)
     {
-        var state = new ConversationGenerationState(
-            operationId,
-            generationId,
-            status,
-            errorMessage,
-            DateTimeOffset.Now,
-            receivedTokens);
-        _states[operationId] = state;
+        ConversationGenerationState state;
+        lock (_registrationGate)
+        {
+            if (_states.TryGetValue(operationId, out var current)
+                && !ShouldReplace(current.Status, status))
+            {
+                return;
+            }
+
+            state = new ConversationGenerationState(
+                operationId,
+                generationId,
+                status,
+                errorMessage,
+                DateTimeOffset.Now,
+                receivedTokens);
+            _states[operationId] = state;
+            if (status is ConversationGenerationStatus.Completed
+                or ConversationGenerationStatus.Interrupted
+                or ConversationGenerationStatus.Failed)
+            {
+                _terminalStateOrder.Enqueue(new CompletedStateKey(
+                    operationId,
+                    generationId));
+                Interlocked.Increment(ref _retainedTerminalStates);
+            }
+        }
+
         if (status is ConversationGenerationStatus.Completed
             or ConversationGenerationStatus.Interrupted
             or ConversationGenerationStatus.Failed)
         {
-            _terminalStateOrder.Enqueue(new CompletedStateKey(
-                operationId,
-                generationId));
-            Interlocked.Increment(ref _retainedTerminalStates);
             TrimTerminalStates();
         }
 
         StateChanged?.Invoke(this, state);
+    }
+
+    private static bool ShouldReplace(
+        ConversationGenerationStatus current,
+        ConversationGenerationStatus next)
+    {
+        if (current is ConversationGenerationStatus.Completed
+            or ConversationGenerationStatus.Interrupted
+            or ConversationGenerationStatus.Failed)
+        {
+            return false;
+        }
+
+        return current != ConversationGenerationStatus.Stopping
+               || next != ConversationGenerationStatus.Streaming;
     }
 
     private void TrimTerminalStates()
