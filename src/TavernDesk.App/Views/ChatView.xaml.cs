@@ -18,6 +18,7 @@ public partial class ChatView : UserControl
     private const double RightPanelMinimumWidth = 260;
     private const double WindowChromeAllowance = 16;
     private readonly TimedPressFeedback _pressFeedback = new();
+    private readonly DispatcherTimer _groupMemberMenuTimer;
     private readonly HashSet<ChatMessageItemViewModel> _observedMessages = [];
     private ChatViewModel? _observedViewModel;
     private bool _isOpeningMessageTools;
@@ -26,10 +27,16 @@ public partial class ChatView : UserControl
     private bool _isRightPanelAutoCollapsed;
     private double _rightPanelWidth = 406;
     private Window? _layoutHostWindow;
+    private ContextMenu? _openGroupMemberMenu;
 
     public ChatView()
     {
         InitializeComponent();
+        _groupMemberMenuTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(5)
+        };
+        _groupMemberMenuTimer.Tick += GroupMemberMenuTimer_OnTick;
         Loaded += ChatView_OnLoaded;
         Unloaded += ChatView_OnUnloaded;
         DataContextChanged += ChatView_OnDataContextChanged;
@@ -242,6 +249,7 @@ public partial class ChatView : UserControl
 
     private void ChatView_OnUnloaded(object sender, RoutedEventArgs e)
     {
+        CloseGroupMemberMenu();
         InterfaceSettingsRuntime.Changed -= InterfaceSettingsRuntime_OnChanged;
         DetachLayoutHostWindow();
         ObserveViewModel(null);
@@ -451,5 +459,68 @@ public partial class ChatView : UserControl
     private void MessagePlus_OnMouseLeave(object sender, MouseEventArgs e)
     {
         _pressFeedback.Cancel(sender, TimeSpan.FromMilliseconds(150));
+    }
+
+    private void GroupMember_OnPreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (sender is not Button button
+            || button.ContextMenu is not ContextMenu menu)
+        {
+            return;
+        }
+
+        CloseGroupMemberMenu();
+        menu.PlacementTarget = button;
+        _openGroupMemberMenu = menu;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private void GroupMemberContextMenu_OnOpened(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu)
+        {
+            return;
+        }
+
+        _openGroupMemberMenu = menu;
+        _groupMemberMenuTimer.Stop();
+        _groupMemberMenuTimer.Start();
+    }
+
+    private void GroupMemberContextMenu_OnClosed(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (ReferenceEquals(_openGroupMemberMenu, sender))
+        {
+            _openGroupMemberMenu = null;
+        }
+
+        _groupMemberMenuTimer.Stop();
+    }
+
+    private void GroupMemberMenuClose_OnClick(object sender, RoutedEventArgs e)
+    {
+        CloseGroupMemberMenu();
+        e.Handled = true;
+    }
+
+    private void GroupMemberMenuTimer_OnTick(object? sender, EventArgs e) =>
+        CloseGroupMemberMenu();
+
+    private void CloseGroupMemberMenu()
+    {
+        _groupMemberMenuTimer.Stop();
+        if (_openGroupMemberMenu is not null)
+        {
+            var menu = _openGroupMemberMenu;
+            _openGroupMemberMenu = null;
+            menu.IsOpen = false;
+        }
     }
 }

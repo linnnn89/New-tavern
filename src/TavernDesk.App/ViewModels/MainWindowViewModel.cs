@@ -61,7 +61,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             interaction,
             services.ChatArchives,
             fileDialog,
-            personas: personas);
+            personas: personas,
+            groupAutoRelayDelay: TimeSpan.FromSeconds(5));
         Characters = new CharactersViewModel(
             services.Characters,
             services.CharacterShelves,
@@ -74,6 +75,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             CreateNewCharacterChatAsync,
             OpenRecentConversationAsync,
             Chat.DeleteConversationAsync);
+        Chat.OpenCharacterCard = OpenCharacterCardAsync;
         Settings = new ProviderSettingsViewModel(
             services.Providers,
             services.Models,
@@ -399,6 +401,15 @@ public sealed class MainWindowViewModel : ViewModelBase
         CurrentPage = Chat;
         CurrentSection = LanguageRuntime.Format(
             "Runtime.Section.CharacterChatFormat",
+            character.Name);
+    }
+
+    public async Task OpenCharacterCardAsync(Character character)
+    {
+        await Characters.OpenCharacterCardAsync(character);
+        CurrentPage = Characters;
+        CurrentSection = LanguageRuntime.Format(
+            "Runtime.Section.CharacterCardFormat",
             character.Name);
     }
 
