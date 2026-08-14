@@ -162,6 +162,18 @@ public static class LanguageRuntime
             return GetString("GroupRelay.Reason.Unknown");
         }
 
+        var currentKey = normalized switch
+        {
+            "group-force-selected" => "GroupRelay.Reason.ForceSelected",
+            "group-no-enabled" => "GroupRelay.Reason.NoEnabledCharacters",
+            "group-fixed-order" => "GroupRelay.Reason.FixedOrder",
+            _ => null
+        };
+        if (currentKey is not null)
+        {
+            return GetString(currentKey);
+        }
+
         if (normalized == GetString("GroupChat.PauseReasonManual")
             || normalized == GetString("Chat.Group.AutoRelayLimit")
             || normalized == GetString("Chat.Group.InvalidReply"))
@@ -169,47 +181,7 @@ public static class LanguageRuntime
             return normalized;
         }
 
-        const string userMentionPrefix = "检测到最后一句 @USER / @";
-        const string userMentionSuffix = "，已等待用户回复。";
-        if (normalized.StartsWith(userMentionPrefix, StringComparison.Ordinal)
-            && normalized.EndsWith(userMentionSuffix, StringComparison.Ordinal))
-        {
-            var personaName = normalized[
-                userMentionPrefix.Length..^userMentionSuffix.Length];
-            return Format("GroupRelay.Reason.UserMentionFormat", personaName);
-        }
-
-        const string memberMentionPrefix = "最后一句指定 @";
-        const string memberMentionSuffix = "。";
-        if (normalized.StartsWith(memberMentionPrefix, StringComparison.Ordinal)
-            && normalized.EndsWith(memberMentionSuffix, StringComparison.Ordinal))
-        {
-            var memberName = normalized[
-                memberMentionPrefix.Length..^memberMentionSuffix.Length];
-            return Format("GroupRelay.Reason.MemberMentionFormat", memberName);
-        }
-
-        var key = normalized switch
-        {
-            "group-manual-selected" => "GroupRelay.Reason.ManualSelected",
-            "群聊没有启用的角色。" => "GroupRelay.Reason.NoEnabledCharacters",
-            "使用手动选择的发言角色。" => "GroupRelay.Reason.ManualSelected",
-            "手动模式需要先选择下一位发言角色。" => "GroupRelay.Reason.ManualRequired",
-            "接力模式要求上一位角色在最后一句 @下一位角色，但没有识别到有效成员。" =>
-                "GroupRelay.Reason.MentionRequired",
-            "未识别到有效的下一位角色 @提及，自动按固定成员顺序接力。" =>
-                "GroupRelay.Reason.MentionFallbackFixed",
-            "用户消息后使用手动选择的首位发言角色。" =>
-                "GroupRelay.Reason.UserManualFirst",
-            "用户消息后从群聊首位启用角色开始。" =>
-                "GroupRelay.Reason.UserFirstEnabled",
-            "按固定成员顺序接力。" => "GroupRelay.Reason.FixedOrder",
-            "从启用成员中随机选择下一位。" => "GroupRelay.Reason.Random",
-            _ => null
-        };
-        return key is not null
-            ? GetString(key)
-            : BackendMessage(normalized, "GroupRelay.Reason.Unknown");
+        return BackendMessage(normalized, "GroupRelay.Reason.Unknown");
     }
 
     public static string NormalizeCultureName(string? cultureName)

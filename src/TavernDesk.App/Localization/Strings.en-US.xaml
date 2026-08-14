@@ -322,7 +322,6 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Chat.Group.RelayAndMemory">Group relay and memory merge</sys:String>
     <sys:String x:Key="Chat.Group.RelayMode">Relay mode</sys:String>
     <sys:String x:Key="Chat.Group.AutoRelay">Continue character-to-character relay automatically</sys:String>
-    <sys:String x:Key="Chat.Group.PauseAtUser">Pause automatically when @USER / Persona is detected</sys:String>
     <sys:String x:Key="Chat.Group.MaximumRelay">Maximum automatic relays per round</sys:String>
     <sys:String x:Key="Chat.Group.EnabledMembers">Enabled members</sys:String>
     <sys:String x:Key="Chat.Group.ManualSpeaker">Click a member avatar above and choose “Take turn now” to select the next speaker.</sys:String>
@@ -739,10 +738,7 @@ New directory: {1}</sys:String>
     <sys:String x:Key="Validation.Json.ObjectRequiredFormat">{0} must be a JSON object.</sys:String>
     <!-- Group chat -->
     <sys:String x:Key="GroupChat.ConfigureHint">Create or select a group chat, then configure members and relay mode.</sys:String>
-    <sys:String x:Key="GroupChat.Relay.Manual">Manual</sys:String>
     <sys:String x:Key="GroupChat.Relay.FixedOrder">Fixed order</sys:String>
-    <sys:String x:Key="GroupChat.Relay.MentionDirected">@ mention-directed</sys:String>
-    <sys:String x:Key="GroupChat.Relay.Random">Random relay</sys:String>
     <sys:String x:Key="GroupChat.Pause">Pause relay</sys:String>
     <sys:String x:Key="GroupChat.Resume">Resume relay</sys:String>
     <sys:String x:Key="GroupChat.StateNotLoaded">Relay state is not loaded.</sys:String>
@@ -1513,16 +1509,8 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Retrieval.DiagnosticsSummaryFormat">Retrieval produced {0} internal diagnostics; raw details are withheld from the UI and system trace for privacy.</sys:String>
     <sys:String x:Key="Preset.DiagnosticsSummaryFormat">Preset resolution produced {0} internal diagnostics; raw details are withheld from the UI and system trace for privacy.</sys:String>
     <sys:String x:Key="GroupRelay.Reason.NoEnabledCharacters">No characters are enabled in this group chat.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserMentionFormat">The last sentence mentioned @USER / @{0}; waiting for the user.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.ManualSelected">Using the manually selected speaker.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.ManualRequired">Manual mode requires selecting the next speaker first.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MemberMentionFormat">The last sentence selected @{0}.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MentionRequired">Mention-directed relay requires the previous character to @mention the next character in the final sentence, but no valid member was recognized.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.MentionFallbackFixed">No valid next-character mention was found; relay fell back to fixed member order.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserManualFirst">Using the manually selected first speaker after the user message.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.UserFirstEnabled">Starting with the first enabled character after the user message.</sys:String>
     <sys:String x:Key="GroupRelay.Reason.FixedOrder">Continuing in fixed member order.</sys:String>
-    <sys:String x:Key="GroupRelay.Reason.Random">Choosing the next speaker randomly from enabled members.</sys:String>
+    <sys:String x:Key="GroupRelay.Reason.ForceSelected">Using the character selected by the user.</sys:String>
     <sys:String x:Key="GroupRelay.Reason.Unknown">Group-chat relay state updated.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.WarningSummaryFormat">The scenario card contains {0} compatibility notices.</sys:String>
     <sys:String x:Key="Campaigns.ContextPlan.BlockedWithReasonFormat">{0}: {1}</sys:String>

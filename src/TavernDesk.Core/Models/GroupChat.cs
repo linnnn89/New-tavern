@@ -2,10 +2,7 @@ namespace TavernDesk.Core.Models;
 
 public enum GroupRelayMode
 {
-    Manual,
-    FixedOrder,
-    MentionDirected,
-    Random
+    FixedOrder
 }
 
 public sealed class GroupChatSettings
@@ -14,8 +11,6 @@ public sealed class GroupChatSettings
     public GroupRelayMode RelayMode { get; set; } = GroupRelayMode.FixedOrder;
     public bool AutoContinueEnabled { get; set; }
     public int MaximumAutomaticTurns { get; set; } = 8;
-    // Legacy persistence slot; the current relay never interprets @ text.
-    public bool PauseOnUserMention { get; set; }
     public bool MemberMemoryEnabled { get; set; }
     public int MemoryPendingTokenThreshold { get; set; } = 4000;
     public string GroupSystemPrompt { get; set; } = GroupPromptDefaults.SystemPrompt;

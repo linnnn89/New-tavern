@@ -157,6 +157,5 @@ public interface IGroupRelayPlanner
         IReadOnlyList<GroupChatMember> members,
         IReadOnlyDictionary<string, string> memberNames,
         IReadOnlyList<ChatMessage> messages,
-        string personaName,
-        string? manuallySelectedSpeakerId = null);
+        string personaName);
 }

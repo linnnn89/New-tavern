@@ -1196,13 +1196,13 @@ public sealed class SqliteConversationRepository : IConversationRepository
             settings.CommandText = """
                 INSERT INTO group_chat_settings(
                     conversation_id, relay_mode, auto_continue_enabled,
-                    maximum_automatic_turns, pause_on_user_mention,
+                    maximum_automatic_turns,
                     member_memory_enabled, memory_pending_token_threshold,
                     group_system_prompt, merge_system_prompt,
                     merge_user_template, updated_at)
                 SELECT
                     $targetConversationId, relay_mode, auto_continue_enabled,
-                    maximum_automatic_turns, pause_on_user_mention,
+                    maximum_automatic_turns,
                     member_memory_enabled, memory_pending_token_threshold,
                     group_system_prompt, merge_system_prompt,
                     merge_user_template, $updatedAt
