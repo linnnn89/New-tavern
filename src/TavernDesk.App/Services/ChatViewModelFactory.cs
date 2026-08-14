@@ -1,5 +1,6 @@
 using TavernDesk.App.ViewModels;
 using TavernDesk.Infrastructure;
+using TavernDesk.Infrastructure.Context;
 
 namespace TavernDesk.App.Services;
 
@@ -52,7 +53,7 @@ public sealed class ChatViewModelFactory
             _services.Presets,
             _services.PresetResolver,
             _services.ContextAssembler,
-            _services.ContextBudget,
+            new DefaultContextBudgetProvider(),
             _services.GenerationCoordinator,
             _services.GenerationSessions,
             _services.ModelAssignments,

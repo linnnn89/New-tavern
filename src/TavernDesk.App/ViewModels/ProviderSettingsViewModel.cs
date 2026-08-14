@@ -1912,15 +1912,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             UpdatedAt = DateTimeOffset.Now
         };
         await _assignments.UpsertAsync(assignment);
-        if (assignment.FunctionKind == ModelFunctionKind.Chat)
-        {
-            _contextBudget.UpdateBudget(new ContextBudget(
-                assignment.ContextLimit,
-                assignment.MaxOutputTokens,
-                $"{AssignmentProvider.Name} / {assignment.ModelId}",
-                assignment.ModelId));
-        }
-
         await RefreshAssignmentOverviewAsync();
         Status = LanguageRuntime.Format(
             "Settings.Assignments.SavedFormat",

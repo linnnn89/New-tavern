@@ -5,6 +5,7 @@ using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
+using TavernDesk.Infrastructure.Context;
 
 namespace TavernDesk.App.ViewModels;
 
@@ -51,7 +52,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.Presets,
             services.PresetResolver,
             services.ContextAssembler,
-            services.ContextBudget,
+            new DefaultContextBudgetProvider(),
             services.GenerationCoordinator,
             services.GenerationSessions,
             services.ModelAssignments,
