@@ -60,11 +60,26 @@
                                 </Border>
                                 <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Character.Name}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding Character.Description}"
+                                               FontWeight="SemiBold"
+                                               MaxWidth="420"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding DescriptionPreview}"
                                                MaxWidth="420"
                                                Foreground="{DynamicResource MutedTextBrush}"
-                                               TextTrimming="CharacterEllipsis" />
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DescriptionPreview}"
+                                                                 Value="">
+                                                        <Setter Property="Visibility"
+                                                                Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                             </StackPanel>
                         </CheckBox>
