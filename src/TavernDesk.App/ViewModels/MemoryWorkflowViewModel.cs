@@ -432,14 +432,20 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 targetTokens,
                 revisionSnapshot))
         {
-            Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            if (IsCurrentOwner(ownerId, conversationId))
+            {
+                Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            }
             return;
         }
 
         var savedBank = await _memoryBanks.GetAsync(ownerId);
         if (savedBank is null)
         {
-            Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            if (IsCurrentOwner(ownerId, conversationId))
+            {
+                Status = LanguageRuntime.GetString("Memory.SaveConflict");
+            }
             return;
         }
 
@@ -466,15 +472,19 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             }
         }
 
-        if (bodyUnchanged && IsCurrentOwner(ownerId, conversationId))
+        var stillCurrent = IsCurrentOwner(ownerId, conversationId);
+        if (bodyUnchanged && stillCurrent)
         {
             BodySaved?.Invoke(
                 this,
                 new MemoryBodySavedEventArgs(ownerId, conversationId));
         }
-        Status = bodyUnchanged
-            ? LanguageRuntime.Format("Memory.DirectSavedFormat", OwnerLabel)
-            : LanguageRuntime.GetString("Memory.DirectSavedWhileEditing");
+        if (stillCurrent)
+        {
+            Status = bodyUnchanged
+                ? LanguageRuntime.Format("Memory.DirectSavedFormat", OwnerLabel)
+                : LanguageRuntime.GetString("Memory.DirectSavedWhileEditing");
+        }
     }
 
     private async Task SaveSettingsAsync()

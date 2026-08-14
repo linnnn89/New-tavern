@@ -25,7 +25,8 @@ public sealed record ContextSegment(
     bool IsPinned,
     int Order,
     string ProviderRole = "system",
-    string? ProviderContent = null);
+    string? ProviderContent = null,
+    string? HistoryBlockId = null);
 
 public sealed record TokenEstimate(
     int InputTokens,

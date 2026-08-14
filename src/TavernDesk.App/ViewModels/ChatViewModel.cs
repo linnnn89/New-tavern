@@ -56,6 +56,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private bool _isSelectionLoading;
     private string _conversationSearchText = string.Empty;
     private string _composerText = string.Empty;
+    private string? _actualBudgetConversationId;
+    private bool _isProgrammaticComposerChange;
     private string _status = LanguageRuntime.GetString("Chat.Status.Offline");
     private string _personaName = "USER";
     private string _personaDescription = string.Empty;
@@ -309,7 +311,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
-            ScheduleContextRefresh();
+            if (!_isProgrammaticComposerChange)
+            {
+                _actualBudgetConversationId = null;
+                ScheduleContextRefresh();
+            }
             SendLocalCommand.RaiseCanExecuteChanged();
         }
     }
@@ -893,6 +899,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Presets.Clear();
         ApplyCharacterPrompts(null);
         _groupContextBudgetResult = null;
+        _actualBudgetConversationId = null;
         OnPropertyChanged(nameof(ContextBudgetResult));
         RefreshTokenEstimate(new TokenEstimate(
             0,
@@ -919,8 +926,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Retrieval.Clear();
         Presets.Clear();
         ApplyCharacterPrompts(null);
-        _groupContextBudgetResult = null;
-        OnPropertyChanged(nameof(ContextBudgetResult));
+        if (!string.Equals(
+                _actualBudgetConversationId,
+                conversation.Id,
+                StringComparison.Ordinal))
+        {
+            _groupContextBudgetResult = null;
+            _actualBudgetConversationId = null;
+            OnPropertyChanged(nameof(ContextBudgetResult));
+        }
         SendLocalCommand.RaiseCanExecuteChanged();
         RefreshContinueGenerationCommands();
         _selectionLoadTask = LoadSelectionAsync(
@@ -1188,6 +1202,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     SpeakerCharacterId = decision.NextSpeakerId
                 },
                 cancellationToken: operationCancellation);
+            PublishActualContextBudget(selected.Id, context);
             if (!CanSendContext(context))
             {
                 SetStatusForConversation(
@@ -1292,6 +1307,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 historyBeforeSequenceNo: null,
                 snapshot: snapshot.Context with { SpeakerCharacterId = speakerId },
                 cancellationToken: operationCancellation);
+            PublishActualContextBudget(conversationId, context);
             if (!CanSendContext(context))
             {
                 SetStatusForConversation(
@@ -1315,7 +1331,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     snapshot.Input,
                     StringComparison.Ordinal))
             {
-                ComposerText = string.Empty;
+                SetComposerTextProgrammatically(string.Empty);
             }
 
             await ReloadGroupsPreservingSelectionAsync();
@@ -1519,6 +1535,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     SpeakerCharacterId = decision.NextSpeakerId
                 },
                 cancellationToken: operationCancellation);
+            PublishActualContextBudget(snapshot.ConversationId, context);
             if (!CanSendContext(context))
             {
                 var reason = LanguageRuntime.GetString("Chat.Group.NextContextOverLimit");
@@ -2065,6 +2082,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot: contextSnapshot,
                 continuationInstruction: continuationInstruction,
                 cancellationToken: operationCancellation);
+            PublishActualContextBudget(conversationId, context);
             if (!CanSendContext(context))
             {
                 Status = LanguageRuntime.GetString("Chat.Regenerate.ContextOverLimit");
@@ -2236,6 +2254,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot: snapshot.Context,
                 continuationInstruction: ContinueWithoutUserInstruction,
                 cancellationToken: operationCancellation);
+            PublishActualContextBudget(selected.Id, context);
             if (!CanSendContext(context))
             {
                 Status = LanguageRuntime.GetString("Chat.Continue.ContextOverLimit");
@@ -2574,10 +2593,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 ContextSegments.Add(segment);
             }
 
-            _groupContextBudgetResult = result.GroupBudget;
-            OnPropertyChanged(nameof(ContextBudgetResult));
+            PublishPreviewContextBudget(selected.Id, result);
             ApiRequestPreview = RenderApiRequestPreview(result);
-            RefreshTokenEstimate(result.Estimate);
             SendLocalCommand.RaiseCanExecuteChanged();
             Retrieval.UpdateFromContext(result);
         }
@@ -2935,6 +2952,57 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(EstimatedTokenUsagePercent));
         OnPropertyChanged(nameof(IsEstimatedOverLimit));
         SendLocalCommand.RaiseCanExecuteChanged();
+    }
+
+    private void PublishActualContextBudget(
+        string conversationId,
+        ContextAssemblyResult result)
+    {
+        if (SelectedConversation?.Id != conversationId)
+        {
+            return;
+        }
+
+        _actualBudgetConversationId = conversationId;
+        _contextCancellation?.Cancel();
+        _contextVersion++;
+        ApplyContextBudget(result);
+    }
+
+    private void PublishPreviewContextBudget(
+        string conversationId,
+        ContextAssemblyResult result)
+    {
+        if (SelectedConversation?.Id != conversationId
+            || string.Equals(
+                _actualBudgetConversationId,
+                conversationId,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        ApplyContextBudget(result);
+    }
+
+    private void ApplyContextBudget(ContextAssemblyResult result)
+    {
+        _groupContextBudgetResult = result.GroupBudget;
+        OnPropertyChanged(nameof(ContextBudgetResult));
+        RefreshTokenEstimate(result.Estimate);
+    }
+
+    private void SetComposerTextProgrammatically(string value)
+    {
+        _isProgrammaticComposerChange = true;
+        try
+        {
+            ComposerText = value;
+        }
+        finally
+        {
+            _isProgrammaticComposerChange = false;
+        }
     }
 
     private static bool CanSendContext(ContextAssemblyResult context) =>
