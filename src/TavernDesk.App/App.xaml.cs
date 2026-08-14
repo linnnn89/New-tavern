@@ -91,6 +91,7 @@ public partial class App : Application
                 fileDialog,
                 interaction,
                 chatViewModels.Create());
+            chatViewModels.OpenCharacterCard = viewModel.OpenCharacterCardAsync;
             chatViewModels.OpenPromptSettings = viewModel.OpenPromptSettingsAsync;
             await viewModel.InitializeAsync();
 

@@ -11,10 +11,11 @@ public enum GroupRelayMode
 public sealed class GroupChatSettings
 {
     public required string ConversationId { get; init; }
-    public GroupRelayMode RelayMode { get; set; } = GroupRelayMode.MentionDirected;
+    public GroupRelayMode RelayMode { get; set; } = GroupRelayMode.FixedOrder;
     public bool AutoContinueEnabled { get; set; }
     public int MaximumAutomaticTurns { get; set; } = 8;
-    public bool PauseOnUserMention { get; set; } = true;
+    // Legacy persistence slot; the current relay never interprets @ text.
+    public bool PauseOnUserMention { get; set; }
     public bool MemberMemoryEnabled { get; set; }
     public int MemoryPendingTokenThreshold { get; set; } = 4000;
     public string GroupSystemPrompt { get; set; } = GroupPromptDefaults.SystemPrompt;
@@ -50,8 +51,13 @@ public sealed record GroupRelayDecision(
 
 public static class GroupPromptDefaults
 {
-    public const string SystemPrompt =
+    public const string LegacySystemPrompt =
         """
         多角色群聊中只扮演本轮指定角色，保持其人设、知识边界和关系，不代替 USER 或其他角色发言。启用自动接力时，最后一句写 @下一位角色名；需要 USER 时写 @USER 或 @其 Persona 名。
+        """;
+
+    public const string SystemPrompt =
+        """
+        多角色群聊中只扮演本轮指定角色，保持其人设、知识边界和关系，不代替 USER 或其他角色发言。接力顺序由程序控制；不要输出 JSON、speaker 字段、@ 路由指令或其他角色的正文。
         """;
 }

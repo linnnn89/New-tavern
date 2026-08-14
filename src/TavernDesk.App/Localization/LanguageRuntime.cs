@@ -163,7 +163,8 @@ public static class LanguageRuntime
         }
 
         if (normalized == GetString("GroupChat.PauseReasonManual")
-            || normalized == GetString("Chat.Group.AutoRelayLimit"))
+            || normalized == GetString("Chat.Group.AutoRelayLimit")
+            || normalized == GetString("Chat.Group.InvalidReply"))
         {
             return normalized;
         }
@@ -190,11 +191,14 @@ public static class LanguageRuntime
 
         var key = normalized switch
         {
+            "group-manual-selected" => "GroupRelay.Reason.ManualSelected",
             "群聊没有启用的角色。" => "GroupRelay.Reason.NoEnabledCharacters",
             "使用手动选择的发言角色。" => "GroupRelay.Reason.ManualSelected",
             "手动模式需要先选择下一位发言角色。" => "GroupRelay.Reason.ManualRequired",
             "接力模式要求上一位角色在最后一句 @下一位角色，但没有识别到有效成员。" =>
                 "GroupRelay.Reason.MentionRequired",
+            "未识别到有效的下一位角色 @提及，自动按固定成员顺序接力。" =>
+                "GroupRelay.Reason.MentionFallbackFixed",
             "用户消息后使用手动选择的首位发言角色。" =>
                 "GroupRelay.Reason.UserManualFirst",
             "用户消息后从群聊首位启用角色开始。" =>

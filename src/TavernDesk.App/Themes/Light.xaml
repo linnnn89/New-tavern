@@ -18,6 +18,7 @@
     <Color x:Key="MutedTextColor">#667085</Color>
     <Color x:Key="AccentColor">#2563EB</Color>
     <Color x:Key="AccentSoftColor">#EAF2FF</Color>
+    <Color x:Key="ComposerHintColor">#142563EB</Color>
     <Color x:Key="ControlHoverColor">#F2F6FC</Color>
     <Color x:Key="ControlPressedColor">#E5ECF6</Color>
     <Color x:Key="ControlDisabledColor">#F2F4F7</Color>
@@ -38,6 +39,7 @@
     <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="{StaticResource AccentSoftColor}" />
+    <SolidColorBrush x:Key="ComposerHintBrush" Color="{StaticResource ComposerHintColor}" />
     <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHoverColor}" />
     <SolidColorBrush x:Key="ControlPressedBrush" Color="{StaticResource ControlPressedColor}" />
     <SolidColorBrush x:Key="ControlDisabledBrush" Color="{StaticResource ControlDisabledColor}" />

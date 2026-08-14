@@ -283,8 +283,12 @@ try
     if (!opening.Content.Contains("AI_A", StringComparison.Ordinal)
         || !opening.Content.Contains("AI_B", StringComparison.Ordinal)
         || !opening.Content.Contains("TOOL_RESULT", StringComparison.Ordinal)
-        || !opening.Content.Contains("\"kind\":\"tool\"", StringComparison.Ordinal)
-        || opening.Content.Contains("\"kind\":\"unknown\"", StringComparison.Ordinal))
+        || !opening.Content.Contains(
+            "（历史发言者：Tool）",
+            StringComparison.Ordinal)
+        || opening.Content.Contains(
+            "（历史发言者：未知）",
+            StringComparison.Ordinal))
     {
         throw new InvalidOperationException("开场 AI/工具消息没有作为完整阶段召回。");
     }

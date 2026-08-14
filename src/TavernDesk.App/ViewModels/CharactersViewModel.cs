@@ -561,6 +561,9 @@ public sealed class CharactersViewModel : ViewModelBase
     private Task OpenCharacterOverviewAsync(object? parameter) =>
         OpenCharacterAsync(parameter, editImmediately: false);
 
+    public Task OpenCharacterCardAsync(Character character) =>
+        OpenCharacterAsync(character, editImmediately: false);
+
     private Task OpenCharacterEditorAsync(object? parameter) =>
         OpenCharacterAsync(parameter, editImmediately: true);
 

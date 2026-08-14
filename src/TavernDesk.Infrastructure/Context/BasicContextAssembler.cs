@@ -1,9 +1,9 @@
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Group;
 
 namespace TavernDesk.Infrastructure.Context;
 
@@ -12,11 +12,6 @@ public sealed class BasicContextAssembler : IContextAssembler
     private const int MaximumSemanticQueryCharacters = 12_000;
     private const int MaximumSemanticInputCharacters = 4_000;
     private const int MaximumSemanticContinuationCharacters = 1_500;
-
-    private static readonly JsonSerializerOptions HistoryJsonOptions = new()
-    {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
 
     private readonly IConversationRepository _conversations;
     private readonly ICharacterRepository _characters;
@@ -948,7 +943,8 @@ public sealed class BasicContextAssembler : IContextAssembler
             "本轮群聊发言与接力命令",
             groupBatonInstruction,
             true,
-            960_000);
+            1_010_000,
+            providerRole: "user");
         if (!string.IsNullOrWhiteSpace(continuationInstruction))
         {
             segments.Add(new ContextSegment(
@@ -1124,14 +1120,6 @@ public sealed class BasicContextAssembler : IContextAssembler
         string? personaName,
         string content)
     {
-        var speakerKind = message.SenderKind switch
-        {
-            MessageSenderKind.User => "user",
-            MessageSenderKind.Character => "character",
-            MessageSenderKind.System => "system",
-            MessageSenderKind.Tool => "tool",
-            _ => "unknown"
-        };
         var speakerName = message.SenderKind switch
         {
             MessageSenderKind.User =>
@@ -1145,18 +1133,17 @@ public sealed class BasicContextAssembler : IContextAssembler
             MessageSenderKind.Tool => "Tool",
             _ => "未知"
         };
-        var json = JsonSerializer.Serialize(
-            new
-            {
-                speaker = new
-                {
-                    kind = speakerKind,
-                    name = speakerName
-                },
-                content
-            },
-            HistoryJsonOptions);
-        return json;
+        var safeSpeakerName = speakerName
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Replace('】', '］')
+            .Trim();
+        var cleanContent = message.SenderKind == MessageSenderKind.Character
+            ? GroupRelayResponseNormalizer.StripSyntheticHistoryPrefix(
+                content,
+                safeSpeakerName)
+            : content;
+        return $"（历史发言者：{safeSpeakerName}）\n{cleanContent}";
     }
 
     private static string RenderGroupRoster(
@@ -1274,7 +1261,8 @@ public sealed class BasicContextAssembler : IContextAssembler
         string title,
         string? content,
         bool isPinned,
-        int order)
+        int order,
+        string providerRole = "system")
     {
         if (!string.IsNullOrWhiteSpace(content))
         {
@@ -1284,7 +1272,8 @@ public sealed class BasicContextAssembler : IContextAssembler
                 title,
                 content.Trim(),
                 isPinned,
-                order));
+                order,
+                ProviderRole: providerRole));
         }
     }
 

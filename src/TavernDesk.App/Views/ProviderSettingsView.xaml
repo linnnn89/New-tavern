@@ -1091,7 +1091,7 @@
                                            Text="{StaticResource Settings.Diagnostics.ErrorLogPath}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBox Margin="0,4,0,0"
-                                         Text="{Binding ErrorLogDirectory}"
+                                         Text="{Binding ErrorLogDirectory, Mode=OneWay}"
                                          IsReadOnly="True" />
 
                                 <Border Margin="0,18,0,0"
@@ -1130,7 +1130,7 @@
                                                    Text="{StaticResource Settings.Diagnostics.OutputPath}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <TextBox Margin="0,4,0,0"
-                                                 Text="{Binding ApiTestOutputDirectory}"
+                                                 Text="{Binding ApiTestOutputDirectory, Mode=OneWay}"
                                                  IsReadOnly="True" />
                                         <TextBlock Margin="0,7,0,0"
                                                    Text="{Binding ApiTestOutputSummary}"

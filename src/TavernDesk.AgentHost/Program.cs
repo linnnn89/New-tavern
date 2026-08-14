@@ -1038,7 +1038,7 @@ static async Task RunStorageSmokeAsync(string dataRoot)
         new GroupChatSettings
         {
             ConversationId = group.Id,
-            RelayMode = GroupRelayMode.MentionDirected,
+            RelayMode = GroupRelayMode.FixedOrder,
             AutoContinueEnabled = false
         },
         [
@@ -1162,7 +1162,7 @@ static async Task RunStorageSmokeAsync(string dataRoot)
     Assert(reopenedMemory?.Body == "记忆银行自检正文", "记忆银行重启重读失败。");
     Assert(reopenedMemory?.TargetTokens == 5000, "记忆目标 tokens 重启重读失败。");
     Assert(
-        reopenedGroupSettings?.RelayMode == GroupRelayMode.MentionDirected,
+        reopenedGroupSettings?.RelayMode == GroupRelayMode.FixedOrder,
         "群聊设置重启重读失败。");
     Assert(reopenedGroupMembers.Count == 2, "群聊成员重启重读失败。");
     Assert(

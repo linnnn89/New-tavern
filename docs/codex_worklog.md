@@ -1770,3 +1770,162 @@
 - 发布目录无 PDB、数据库、日志或预置配置/测试文件。
 - 安装包大小 `67,379,200` 字节，SHA-256 `AF2DA220CC99C1B1348769B21FD55AE78E02F4FE18AB9C7AF2C5EB7356A06AC7`。
 - 未启动 GUI，未读取 API Key，未调用真实 Provider；本轮尚未提交或推送。
+
+## 2026-08-14 — 群聊接力回复清洗、提及回退与顶部成员操作栏
+
+### 实现
+
+- 新增 `GroupRelayResponseNormalizer`：群聊模型返回标准 `speaker/content` JSON 时只保存 `content`，代码围栏也会解包；`}`、`}}` 等结构残片、空回复、发言角色不匹配的 JSON 不会写入聊天。
+- 群聊历史规划会读取已保存的 JSON 包络内部正文；提及模式没有识别到有效 `@下一位` 时，按当前成员排序自动回退到固定顺序，不改变用户选择的模式设置。
+- 新建回复和重新生成均使用同一清洗规则；无法形成有效群聊正文时暂停接力并提示重试当前角色。
+- 群聊工作区新增固定在消息滚动区上方的圆形头像栏，显示 AI 总数；点击或右键点击头像均打开角色菜单，提供立即接话、剔除群聊、跳转角色卡和关闭菜单。菜单角色名固定宽度并省略过长文本，5 秒无操作或点击外部自动关闭。
+
+### 验证与边界
+
+- `GroupRelayResponseNormalizerTests`、提及模式固定顺序回退、用户提及暂停和自动接力回归：`12/12` 通过。
+- `dotnet build TavernDesk.sln -c Release --no-restore`：`0` 警告、`0` 错误。
+- 未读取 API Key，未调用真实 Provider；旧数据库中已经保存的 `}` / `}}` 消息不会自动删除，需要用户手动删除或重新生成。
+
+### 发布同步补充
+
+- 首次只执行解决方案 Release 编译时，根目录 `app/` 仍是旧发布内容，用户运行根目录启动器因此看不到本轮头像栏；已使用 `Build-WindowsInstaller.ps1 -Force` 重新发布并同步 `app/`，同时重建 `TavernDesk-Setup-x64.exe`。
+- 当前 `src/TavernDesk.App/bin/Release/net10.0-windows/win-x64/TavernDesk.App.dll` 与 `app/TavernDesk.App.dll` SHA-256 均为 `E0845DEDE507CFA3FA4F1DBC3894198918C3591CA52F3BBDB841F0A4DF5402F7`；根启动器 `--probe` 退出码为 `0`。
+
+## 2026-08-14 — 群聊接力收敛为固定顺序与头像强制接话
+
+### 决定与实现
+
+- 根据用户决定并参考 SillyTavern 群聊的 “List Order + Force Talk” 交互，彻底停止使用模型输出的 `@` 选择下一位或暂停用户；`MentionDirected`、`Random` 等旧枚举仍保留用于读取旧数据库，但运行时统一按成员排序固定接力。
+- 新建群聊默认固定顺序；设置界面不再展示旧的提及/随机/手动策略，也不再提供 `@USER` 自动暂停开关或手动发言下拉框。自动接力关闭时，用户通过顶部成员头像菜单的“立即接话”指定角色；头像强制接话绕过固定顺序。
+- 群聊系统提示和本轮接力提示改为要求只输出当前角色的可显示正文，不再要求输出 `@` 路由、JSON 或其他角色正文。
+- 修复 Provider 在 JSON 包络前拼接请求 GUID 的情况：先识别并剥离明确的 GUID 前缀，再校验 `speaker.name` 是否等于实际目标角色；错误归属的响应会被拒绝，不会再保存成另一名角色的消息。
+
+### 验证与边界
+
+- 定向群聊/响应清洗测试：`14/14` 通过，包含旧模式固定顺序兼容、`@` 文本不触发路由、GUID 前缀解包及错误 speaker 拒绝、固定顺序自动接力上限。
+- 尚未调用真实 Provider、未读取或发送 API Key、未启动 GUI；当前截图中已经保存的错误历史消息不会自动改写，需用户删除或重新生成。
+- 最终已执行 `scripts/Build-WindowsInstaller.ps1 -Force` 同步根目录 `app/` 与 `TavernDesk-Setup-x64.exe`；发布 `TavernDesk.App.dll` 与 RID 输出 SHA-256 均为 `8627779D48932DA1A5D585B104F76953DF6026BF3DE490E34C3B0CB327528B12`，安装包 `67,391,488` 字节，SHA-256 为 `8A8F75A0A63C8D63DC0D3A9552D54DA150E7C82F114968A681B149D1D9ABB06E`，根启动器 `--probe` 退出码为 `0`。
+
+## 2026-08-14 — 群聊强制接话、旧提示词迁移与自动接力倒计时
+
+### 修复
+
+- 头像菜单的“立即接话”现在直接指定被点击角色，即使该角色暂时未启用也不会回退到另一名角色；组装上下文时会补载被强制指定角色的角色卡。
+- 生成期间禁用群成员编辑、保存群聊成员设置和成员记忆更新，避免旧成员快照继续接力；剔除成员后，在同一事务中删除该群聊对应的成员独立记忆银行与检查点，重新加入不会复活旧正文。
+- 旧群聊中与内置版本完全一致的 `@下一位/@USER` 提示词会迁移到固定顺序提示词；用户自定义提示词不改写。全局内置群聊提示词增加一次性 V14 精确迁移。
+- 完整自动接力在前一条 AI 回复已保存后等待 5 秒再请求下一位；倒计时以四语半透明闪动文字显示在消息区底部，旁边提供小型“紧急停止”按钮。用户开始输入会立即关闭自动接力并取消倒计时；重新勾选自动接力即可恢复。
+
+### 验证
+
+- `dotnet test tests/TavernDesk.Tests/TavernDesk.Tests.csproj -c Release --no-restore`：`268/268` 通过。
+- `scripts/Test-Localization.ps1`：四语 `1467` 键检查通过。
+- `scripts/Test-GroupContextHistory.ps1`：`PASS stages=8 actual=5960 available=5976 retrieval=complete api=disabled`。
+- `dotnet build TavernDesk.sln -c Release --no-restore`：`0` 警告、`0` 错误。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 发布 DLL 与 `app/TavernDesk.App.dll` SHA-256 均为 `A70B8E9CB5B0E5C131A27758FD99E44FD6798D3579C8BC12F1EFB85787E5ED65`，安装包 SHA-256 为 `B6AF365956DDF93A6AFDB0F6CC7F3E48C891F6B7D503A6DDFD2472DFED7E6BEE`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录无 PDB、数据库、`config.json` 或日志文件。
+- 未启动 GUI、未读取或发送 API Key、未调用真实 Provider；倒计时视觉效果尚未通过可见窗口人工确认。
+
+## 2026-08-14 — 设置诊断路径绑定与群聊末轮请求修复
+
+### 修复
+
+- 设置页的错误日志路径与 API 测试输出路径均为只读属性；对应只读文本框改为显式 `OneWay` 绑定，避免进入设置时触发 WPF “无法对只读属性进行 TwoWay 绑定”异常。
+- 群聊本轮发言任务改为请求中的最后一条 `user` 消息。无论用户刚发送消息、点击头像强制接话，还是完全自动接力，Provider 都会收到明确的“现在轮到指定角色、承接最新对话并直接回复”请求，不再以末尾 `system` 指令结束自动接力请求。
+- 四语本轮任务同时明确禁止复述任务、角色名标签、JSON、`speaker` 字段、`@` 路由及其他角色正文；未增加基于短文本或关键词的语义拦截，避免误删角色的正常短回复。
+
+### 验证与边界
+
+- 四语资源检查：`1467` 键通过；群聊上下文/记忆定向测试：`40/40` 通过；完整私有测试：`268/268` 通过。
+- 离线长历史脚本：`PASS stages=8 actual=5960 available=5976 retrieval=complete api=disabled`。
+- 测试替身已断言群聊请求的最后一条消息为 `user` 角色的本轮发言任务，并据此完成固定顺序连续接力。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 发布 DLL 与 `app/TavernDesk.App.dll` SHA-256 均为 `4B5AE9F0D140FF4EA5DF09B6691CE5965B717CD3A897786BF61CEBCFE47F05F6`，安装包大小 `67,391,488` 字节，SHA-256 为 `4F2ED88C0935C21E3D16F1814BBBBFEBBCFB8745CB3426D996DDDCE68D205B0E`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json`、日志或测试输出。
+- 未读取用户资料或 API Key，未调用真实 Provider，未启动 GUI；截图中已经保存的 `Luna` 和复述指令消息不会自动改写，需用户删除后重新生成。
+
+## 2026-08-14 — 聊天输入区未聚焦范围提示
+
+### 实现
+
+- 修复聊天输入框未聚焦时背景和边框完全透明的问题：输入区域现在显示非常浅的半透明淡蓝色底和细蓝边，用户可以直接看出可点击范围。
+- 输入框获得键盘焦点后恢复透明底和现有蓝色焦点环，保持原有文本编辑、发送按钮、输入高度和命中区域不变。
+- 仅调整 Light 主题资源与 `AppicaComposerTextBoxStyle`，未修改消息、群聊、记忆或发送逻辑。
+
+### 验证与发布
+
+- `scripts/Test-Localization.ps1`：四语 `1467` 键通过；XAML 资源声明检查 `1622` 项通过。
+- `dotnet build TavernDesk.sln -c Release --no-restore`：`0` 警告、`0` 错误。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 发布 DLL 与 `app/TavernDesk.App.dll` SHA-256 均为 `84A1FC8376E96B29EFECEE94E421BF49DE2AFECC4A4FEB73914778778A37EBF0`，安装包大小 `67,391,488` 字节，SHA-256 为 `398C16AC552AE79897A90EE9DC417DB793B24DDF485E18CD62D4F88AFA60EA32`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json`、日志或测试输出。
+- 未启动 GUI，未读取或发送 API Key，未调用真实 Provider；浅蓝色实际观感仍需用户在新版本窗口中确认。
+
+## 2026-08-14 — 聊天消息区滚轮改为像素滚动
+
+### 修复
+
+- 原因：全局 `ScrollViewerWheelRouter` 对滚轮直接调用 `LineUp/LineDown`；聊天消息区是虚拟化列表，因此一次滚轮会按消息项跳跃。
+- 仅为聊天消息列表启用像素滚动，并让滚轮路由器在该列表中按约 `64` 像素/标准滚轮刻度移动；滚轮到达聊天区顶部或底部时仍可继续交给外层滚动容器。
+- 其他列表和设置面板继续使用原有滚轮行为，未改变聊天数据、消息加载、虚拟化或发送逻辑。
+
+### 验证与发布
+
+- `scripts/Test-Localization.ps1`：四语 `1467` 键通过；XAML 资源声明检查 `1622` 项通过。
+- `dotnet build TavernDesk.sln -c Release --no-restore`：`0` 警告、`0` 错误。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 发布 DLL 与 `app/TavernDesk.App.dll` SHA-256 均为 `8485C3AA200699880EA083F07E547A1DC3E57D63E95563C86F5517E5677703DE`，安装包大小 `67,391,488` 字节，SHA-256 为 `2C8BE78D1DD7AE0B53AF7C56E721860317F02E7B46A0DC143555B64B35464AF9`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json`、日志或测试输出。未启动 GUI、未读取或发送 API Key、未调用真实 Provider。
+
+## 2026-08-14 — 群聊历史归属抬头模仿修复
+
+### 修复
+
+- 群聊聊天上下文不再反复发送醒目的 `【群聊历史发言｜角色：名称】` 抬头，改为较短的 `（历史发言者：名称）` 内部归属说明；群聊记忆 JSONL 保持不变。
+- `GroupRelayResponseNormalizer` 在保存新回复前，仅按当前目标角色精确剥离旧抬头、短归属说明和角色名前缀；错误角色抬头不会被当作当前角色回复静默接受。
+- 组装旧历史时也会剥离已经保存的旧抬头，避免污染继续作为模型示例；没有批量改写数据库中的原始消息。
+- 重新打开群聊时，界面也会对已有角色消息应用同一条精确清洗规则，因此旧抬头不会继续显示；数据库原文仍保留。
+- 全局聊天提示和四语接力提示明确说明归属说明不是正文，并加入 V16 一次性默认提示迁移；用户自定义提示不替换。
+
+### 验证
+
+- `GroupRelayResponseNormalizerTests`、群聊上下文与旧污染历史、V15→V16 提示迁移：`48/48` 通过。
+- `scripts/Test-GroupContextHistory.ps1`：`PASS stages=8 actual=5925 available=5976 retrieval=complete api=disabled`。
+- 未调用真实 Provider，未读取或发送 API Key。
+- `dotnet build TavernDesk.sln -c Release --no-restore`：`0` 警告、`0` 错误；Release 私有测试：`280/280` 通过；四语资源检查：`1467` 键通过。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建 `TavernDesk-Setup-x64.exe`；RID 与 `app/TavernDesk.App.dll` SHA-256 均为 `14DF522C4D637A8730D8B2187CFDDFDF7AA5F162BC9BB0E9524908D243F32BB2`，安装包大小 `67,395,584` 字节，SHA-256 为 `00A1D1CFF9E9883C9D2AB5F7CE1B5EBC026DB59488B432517EDFDB575F0A5081`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json` 或日志。
+
+## 2026-08-14 — 群聊正文字面量换行修复
+
+### 修复
+
+- 群聊响应清洗器现在会在安全边界内把普通正文或 JSON `content` 中残留的字面量 `\\n`、`\\r\\n` 转为真实换行；标准 JSON 已经解码出的真实换行不会重复处理。
+- 成对的反斜杠仍保持字面量，避免把需要显示的 `\\\\n` 错误改成换行；空白/空正文仍按无效回复处理。
+- 修复只作用于新生成或重新生成经过群聊清洗的正文；数据库中已经保存的旧消息不会被自动改写。
+
+### 验证与发布
+
+- `GroupRelayResponseNormalizerTests`：`16/16` 通过。
+- 完整私有测试：`272/272` 通过。
+- `scripts/Test-GroupContextHistory.ps1`：`PASS stages=8 actual=5960 available=5976 retrieval=complete api=disabled`。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 发布 DLL 与 `app/TavernDesk.App.dll` SHA-256 均为 `8485C3AA200699880EA083F07E547A1DC3E57D63E95563C86F5517E5677703DE`，安装包大小 `67,395,584` 字节，SHA-256 为 `0829A033D2E40F10361446775E18EEA202679C9A60D4098D61E81B5BCDEA32C3`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json`、日志或测试输出。未读取或发送 API Key，未调用真实 Provider。
+
+## 2026-08-14 — 固定顺序与点名接力历史格式精简
+
+### 实现
+
+- 聊天模型收到的群聊历史不再使用 `speaker/content` JSON 包络，改为 `【群聊历史发言｜类型：名称】` 加原始正文；发言顺序和当前角色仍由程序中的 `SenderId`、固定顺序或头像点名决定。
+- 全局聊天内置提示同步说明新的历史标签；V15 一次性迁移只替换与上一版内置文本完全一致的提示，用户自定义提示不改写。
+- 群聊记忆更新器、消息数据库字段、共同/成员记忆 JSONL 与记忆检查点未修改；旧模型偶尔返回的有效 JSON 回复仍由现有清洗器兼容解包。
+
+### 验证与发布
+
+- 群聊标签组装、工具消息召回、内置提示迁移、群聊记忆链路反证：`4/4` 通过。
+- `GroupContextBudgetTests` 与 `GroupRelayResponseNormalizerTests`：`39/39` 通过。
+- `scripts/Test-GroupContextHistory.ps1`：`PASS stages=8 actual=5941 available=5976 retrieval=complete api=disabled`。
+- `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 与 `app/` 的 App/Core/Infrastructure DLL 哈希逐一一致。安装包大小 `67,395,584` 字节，SHA-256 为 `BB58D6372FD15EE46AAB5EA763F561B34E90E7717FCA3A8B37D709286E8EEFFA`。
+- 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json`、日志或测试输出。未启动 GUI、未读取或发送 API Key、未调用真实 Provider。
+
+## 2026-08-14 — 发布前文档口径复核
+
+- 根目录四语 README 已补充当前群聊接力规则：固定成员顺序、完全自动接力、头像“立即接话”；模型输出的 `@` 不再选人或暂停。
+- `docs/architecture.md` 已更新到 schema v22，并记录旧 `@` 枚举/提示只作为数据库兼容项保留；`docs/README.md` 的状态日期与阅读口径同步更新。
+- 更早工作日志中的 `@` 模式描述属于历史记录，不代表当前运行行为，未改写历史条目。
