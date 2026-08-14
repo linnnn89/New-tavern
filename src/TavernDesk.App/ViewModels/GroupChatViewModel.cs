@@ -20,10 +20,8 @@ public sealed class GroupChatViewModel : ViewModelBase
     private readonly Func<Character, Task>? _openCharacterCard;
     private readonly Func<bool>? _isGenerationBusy;
     private string? _conversationId;
-    private GroupRelayMode _relayMode = GroupRelayMode.FixedOrder;
     private bool _autoContinueEnabled;
     private string _maximumAutomaticTurns = "8";
-    private bool _pauseOnUserMention;
     private bool _memberMemoryEnabled;
     private string _memoryPendingTokenThreshold = "4000";
     private string _groupSystemPrompt = GroupPromptDefaults.SystemPrompt;
@@ -57,11 +55,6 @@ public sealed class GroupChatViewModel : ViewModelBase
         _updateMemory = updateMemory;
         _openCharacterCard = openCharacterCard;
         _isGenerationBusy = isGenerationBusy;
-        RelayModes =
-        [
-            new(GroupRelayMode.FixedOrder, LanguageRuntime.GetString("GroupChat.Relay.FixedOrder"))
-        ];
-
         CreateGroupCommand = new AsyncRelayCommand(CreateGroupAsync);
         SaveSettingsCommand = new AsyncRelayCommand(
             SaveSettingsAsync,
@@ -81,7 +74,6 @@ public sealed class GroupChatViewModel : ViewModelBase
     }
 
     public ObservableCollection<GroupMemberItemViewModel> Members { get; } = [];
-    public IReadOnlyList<GroupRelayModeOption> RelayModes { get; }
     public AsyncRelayCommand CreateGroupCommand { get; }
     public AsyncRelayCommand SaveSettingsCommand { get; }
     public AsyncRelayCommand ContinueRelayCommand { get; }
@@ -96,12 +88,6 @@ public sealed class GroupChatViewModel : ViewModelBase
     public bool IsGenerationBusy => _isGenerationBusy?.Invoke() == true;
     public bool CanEditMembers => IsGroupConversation && !IsGenerationBusy;
     public string? ConversationId => _conversationId;
-    public GroupRelayMode RelayMode
-    {
-        get => _relayMode;
-        set => SetProperty(ref _relayMode, value);
-    }
-
     public bool AutoContinueEnabled
     {
         get => _autoContinueEnabled;
@@ -119,12 +105,6 @@ public sealed class GroupChatViewModel : ViewModelBase
     {
         get => _maximumAutomaticTurns;
         set => SetProperty(ref _maximumAutomaticTurns, value);
-    }
-
-    public bool PauseOnUserMention
-    {
-        get => _pauseOnUserMention;
-        set => SetProperty(ref _pauseOnUserMention, value);
     }
 
     public bool MemberMemoryEnabled
@@ -224,9 +204,6 @@ public sealed class GroupChatViewModel : ViewModelBase
             RelayMode = GroupRelayMode.FixedOrder,
             AutoContinueEnabled = AutoContinueEnabled,
             MaximumAutomaticTurns = ParseMaximumTurns(),
-            // Kept in the persistence contract for old databases, but @USER
-            // pauses are no longer part of the group-chat product behavior.
-            PauseOnUserMention = false,
             MemberMemoryEnabled = MemberMemoryEnabled,
             MemoryPendingTokenThreshold = ParseMemoryTokenThreshold(),
             GroupSystemPrompt = GroupSystemPrompt,
@@ -237,15 +214,13 @@ public sealed class GroupChatViewModel : ViewModelBase
 
     public GroupRelayDecision DecideNext(
         IReadOnlyList<ChatMessage> messages,
-        string personaName,
-        string? manuallySelectedSpeakerId = null) =>
+        string personaName) =>
         _relayPlanner.DecideNext(
             SettingsSnapshot(),
             SnapshotMembers(),
             MemberNames,
             messages,
-            personaName,
-            manuallySelectedSpeakerId ?? SelectedNextSpeaker?.Character.Id);
+            personaName);
 
     public async Task SaveRelayStateAsync(
         string currentSpeakerId,
@@ -327,9 +302,6 @@ public sealed class GroupChatViewModel : ViewModelBase
         _conversationId = conversation.Id;
         var settings = settingsTask.Result
                        ?? new GroupChatSettings { ConversationId = conversation.Id };
-        // Existing MentionDirected/Random/Manual values are legacy data;
-        // the current UI exposes only fixed member order plus avatar force-talk.
-        RelayMode = GroupRelayMode.FixedOrder;
         if (preserveAutoRelaySuppression)
         {
             AutoContinueEnabled = false;
@@ -340,7 +312,6 @@ public sealed class GroupChatViewModel : ViewModelBase
             AutoContinueEnabled = settings.AutoContinueEnabled;
         }
         MaximumAutomaticTurns = settings.MaximumAutomaticTurns.ToString();
-        PauseOnUserMention = settings.PauseOnUserMention;
         if (_memberMemoryEnabled != settings.MemberMemoryEnabled)
         {
             _memberMemoryEnabled = settings.MemberMemoryEnabled;
@@ -723,7 +694,3 @@ public sealed class GroupMemberItemViewModel : ViewModelBase
         set => SetProperty(ref _isEnabled, value);
     }
 }
-
-public sealed record GroupRelayModeOption(
-    GroupRelayMode Value,
-    string Label);
