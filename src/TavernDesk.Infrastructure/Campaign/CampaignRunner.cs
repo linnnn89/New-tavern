@@ -95,13 +95,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
         CancellationToken cancellationToken = default)
     {
         var aggregate = await _campaigns.StartAsync(campaignId, cancellationToken);
-        var scenario = await _scenarios.GetAsync(
-            aggregate.Campaign.StoryId,
-            cancellationToken);
         var openingText = EnsureGmEvaluationTail(
-            FirstNonEmpty(
-                scenario?.OpeningNarration,
-                aggregate.Campaign.OpeningPrompt),
+            FirstNonEmpty(aggregate.Campaign.OpeningPrompt),
             OpeningEvaluationReference);
         var opening = await _campaigns.AppendEventAsync(
             new CampaignEvent

@@ -160,7 +160,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             ScheduleContextRefresh);
         Memory.BodyChanged += OnMemoryBodyChanged;
         Memory.BodySaved += OnMemoryBodySaved;
-        var budget = _contextBudget.GetCurrentBudget();
+        var budget = BudgetFor(ConversationMode.SingleCharacter);
         _tokenEstimate = new TokenEstimate(
             0,
             budget.ReservedOutputTokens,
@@ -357,7 +357,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         get
         {
-            var budget = _contextBudget.GetCurrentBudget();
+            var budget = CurrentUiBudget;
             var sourceLabel = LanguageRuntime.BackendMessage(
                 budget.SourceLabel,
                 "Chat.Model.DefaultBudgetSource");
@@ -936,10 +936,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _groupContextBudgetResult = null;
         _actualBudgetConversationId = null;
         OnPropertyChanged(nameof(ContextBudgetResult));
+        var budget = CurrentUiBudget;
         RefreshTokenEstimate(new TokenEstimate(
             0,
-            _contextBudget.GetCurrentBudget().ReservedOutputTokens,
-            _contextBudget.GetCurrentBudget().ContextLimit,
+            budget.ReservedOutputTokens,
+            budget.ContextLimit,
             IsExact: false));
         SendLocalCommand.RaiseCanExecuteChanged();
     }
@@ -1160,7 +1161,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return;
         }
 
-        var budget = _contextBudget.GetCurrentBudget();
+        var budget = BudgetFor(selected.Mode);
         var snapshot = new SendSnapshot(
             selected.Id,
             selected.Mode,
@@ -1215,7 +1216,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 ChatSendMode.SendAndGenerate,
                 assignment,
                 CreateContextSnapshot(
-                    _contextBudget.GetCurrentBudget(),
+                    BudgetFor(ConversationMode.Group),
                     manualSpeakerId),
                 operationId);
             var messages = await _repository.ListMessagesAsync(
@@ -1273,12 +1274,16 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 decision.NextSpeakerId);
             if (assistant is null)
             {
-                await PauseGroupRelayForInvalidReplyAsync(
-                    selected.Id,
-                    decision.NextSpeakerId,
-                    decision.NextSpeakerId,
-                    0,
-                    operationCancellation);
+                if (!IsGenerationInterrupted(selected.Id))
+                {
+                    await PauseGroupRelayForInvalidReplyAsync(
+                        selected.Id,
+                        decision.NextSpeakerId,
+                        decision.NextSpeakerId,
+                        0,
+                        operationCancellation);
+                }
+
                 return;
             }
 
@@ -1413,7 +1418,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             if (assistant is null)
             {
                 if (snapshot.Mode == ConversationMode.Group
-                    && speakerId is { Length: > 0 })
+                    && speakerId is { Length: > 0 }
+                    && !IsGenerationInterrupted(conversationId))
                 {
                     await PauseGroupRelayForInvalidReplyAsync(
                         conversationId,
@@ -1509,6 +1515,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 snapshot.ConversationId,
                 snapshot.OperationId));
         var telemetry = _generationSessions.Get(snapshot.ConversationId);
+        if (IsGenerationInterrupted(snapshot.ConversationId))
+        {
+            SetStatusForConversation(
+                snapshot.ConversationId,
+                buffer.Length == 0
+                    ? EmptyReplyStatus(snapshot.ConversationId, telemetry)
+                    : LanguageRuntime.GetString("Chat.Generation.InterruptedPartial"));
+            return null;
+        }
 
         if (buffer.Length == 0)
         {
@@ -1676,6 +1691,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     decision.NextSpeakerId!);
                 if (next is null)
                 {
+                    if (IsGenerationInterrupted(snapshot.ConversationId))
+                    {
+                        return;
+                    }
+
                     await PauseGroupRelayForInvalidReplyAsync(
                         snapshot.ConversationId,
                         current.SenderId,
@@ -2305,7 +2325,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
         var original = item.Message.Content;
         var originalCandidateIndex = item.Message.ActiveCandidateIndex;
-        var contextSnapshot = CreateContextSnapshot(_contextBudget.GetCurrentBudget())
+        var contextSnapshot = CreateContextSnapshot(BudgetFor(conversationMode))
             with { SpeakerCharacterId = item.Message.SenderId };
         try
         {
@@ -2367,6 +2387,17 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 },
                 operationCancellation);
             var telemetry = _generationSessions.Get(conversationId);
+            if (IsGenerationInterrupted(conversationId))
+            {
+                item.Message.Content = original;
+                item.RefreshContent();
+                SetStatusForConversation(
+                    conversationId,
+                    buffer.Length == 0
+                        ? EmptyReplyStatus(conversationId, telemetry, isCandidate: true)
+                        : LanguageRuntime.GetString("Chat.Regenerate.Stopped"));
+                return;
+            }
 
             if (buffer.Length == 0)
             {
@@ -2511,7 +2542,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             Input: string.Empty,
             ChatSendMode.SendAndGenerate,
             assignment,
-            CreateContextSnapshot(_contextBudget.GetCurrentBudget()),
+            CreateContextSnapshot(BudgetFor(ConversationMode.SingleCharacter)),
             operationId);
         RaiseCurrentConversationBusyChanged(selected.Id);
         var operationCancellation = _generationSessions.GetCancellationToken(
@@ -2779,7 +2810,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private ModelFunctionAssignment? AssignmentFor(ConversationMode mode) =>
         mode == ConversationMode.Group ? _groupChatAssignment : _chatAssignment;
 
-    private void ApplyActiveAssignmentBudget(ConversationMode mode)
+    private ContextBudget CurrentUiBudget =>
+        BudgetFor(SelectedConversation?.Mode ?? ConversationMode.SingleCharacter);
+
+    private ContextBudget BudgetFor(ConversationMode mode)
     {
         var assignment = AssignmentFor(mode);
         var functionName = mode == ConversationMode.Group
@@ -2787,10 +2821,32 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             : LanguageRuntime.GetString("Chat.Function.Character");
         if (assignment is null)
         {
-            _contextBudget.UpdateBudget(new ContextBudget(
+            return new ContextBudget(
                 32768,
                 4096,
-                LanguageRuntime.Format("Chat.Model.FunctionUnassignedFormat", functionName)));
+                LanguageRuntime.Format("Chat.Model.FunctionUnassignedFormat", functionName));
+        }
+
+        return new ContextBudget(
+            assignment.ContextLimit,
+            assignment.MaxOutputTokens,
+            $"{assignment.ProviderId} / {assignment.ModelId}",
+            assignment.ModelId);
+    }
+
+    private bool IsGenerationInterrupted(string conversationId) =>
+        _generationCoordinator.GetState(conversationId).Status
+        == ConversationGenerationStatus.Interrupted;
+
+    private void ApplyActiveAssignmentBudget(ConversationMode mode)
+    {
+        var assignment = AssignmentFor(mode);
+        var functionName = mode == ConversationMode.Group
+            ? LanguageRuntime.GetString("Chat.Function.Group")
+            : LanguageRuntime.GetString("Chat.Function.Character");
+        _contextBudget.UpdateBudget(BudgetFor(mode));
+        if (assignment is null)
+        {
             ActiveModelText =
                 LanguageRuntime.Format(
                     "Chat.Model.FunctionUnassignedSaveOnlyFormat",
@@ -2798,11 +2854,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
         else
         {
-            _contextBudget.UpdateBudget(new ContextBudget(
-                assignment.ContextLimit,
-                assignment.MaxOutputTokens,
-                $"{assignment.ProviderId} / {assignment.ModelId}",
-                assignment.ModelId));
             ActiveModelText =
                 LanguageRuntime.Format(
                     "Chat.Model.ActiveFormat",
@@ -2893,7 +2944,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             conversationId,
             userInput,
             historyBeforeSequenceNo,
-            CreateContextSnapshot(_contextBudget.GetCurrentBudget()),
+            CreateContextSnapshot(CurrentUiBudget),
             cancellationToken,
             allowRemoteSemanticRetrieval: allowRemoteSemanticRetrieval);
     }
