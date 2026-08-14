@@ -9,6 +9,10 @@ namespace TavernDesk.Infrastructure.Context;
 
 public sealed class BasicContextAssembler : IContextAssembler
 {
+    private const int MaximumSemanticQueryCharacters = 12_000;
+    private const int MaximumSemanticInputCharacters = 4_000;
+    private const int MaximumSemanticContinuationCharacters = 1_500;
+
     private static readonly JsonSerializerOptions HistoryJsonOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -69,10 +73,15 @@ public sealed class BasicContextAssembler : IContextAssembler
 
         var sourceMessages = messages;
         var historyMessages = request.Retrieval is { IsEnabled: true } retrievalOptions
-            ? sourceMessages
-                .TakeLast(Math.Clamp(retrievalOptions.RecentMessageCount, 2, 500))
-                .ToArray()
+            ? conversation.Mode == ConversationMode.Group
+                ? SelectRecentHistoryByStages(
+                    sourceMessages,
+                    Math.Clamp(retrievalOptions.RecentMessageCount, 2, 500))
+                : sourceMessages
+                    .TakeLast(Math.Clamp(retrievalOptions.RecentMessageCount, 2, 500))
+                    .ToArray()
             : sourceMessages;
+        var historyBlockIds = BuildHistoryBlockIds(historyMessages);
         var diagnostics = new List<string>();
         if (historyMessages.Count < sourceMessages.Count)
         {
@@ -303,11 +312,64 @@ public sealed class BasicContextAssembler : IContextAssembler
                 ProviderRole: match.ProviderRole));
         }
 
+        var allowRemoteSemanticRetrieval = request.AllowRemoteSemanticRetrieval;
+        if (conversation.Mode == ConversationMode.Group
+            && allowRemoteSemanticRetrieval)
+        {
+            var preflightSegments = new List<ContextSegment>(segments);
+            for (var messageIndex = 0; messageIndex < historyMessages.Count; messageIndex++)
+            {
+                var message = historyMessages[messageIndex];
+                var expandedMessageContent = _macros.Expand(
+                    message.Content,
+                    macroVariables);
+                preflightSegments.Add(new ContextSegment(
+                    $"preflight-message:{message.Id}",
+                    ContextSegmentKind.History,
+                    $"历史 #{message.SequenceNo} · {RoleLabel(message.SenderKind)}",
+                    RenderGroupHistoryTurn(
+                        message,
+                        groupCharacters,
+                        request.PersonaName,
+                        expandedMessageContent),
+                    IsPinned: false,
+                    Order: 600 + messageIndex,
+                    ProviderRole: ProviderRole(message.SenderKind),
+                    HistoryBlockId: historyBlockIds[message.Id]));
+            }
+
+            AddTrailingRequestSegments(
+                preflightSegments,
+                conversation.Id,
+                character?.Id,
+                ReadString(cardData, "post_history_instructions"),
+                request.GroupBatonInstruction,
+                request.ContinuationInstruction,
+                request.UserInput);
+
+            var normalizedPreflightSegments = NormalizeForProvider(
+                preflightSegments,
+                macroVariables);
+            var preflightBudget = _groupContextBudgetPlanner.Plan(
+                normalizedPreflightSegments,
+                request.ContextLimit,
+                request.ReservedOutputTokens,
+                request.ModelId);
+            if (!preflightBudget.CanSend)
+            {
+                allowRemoteSemanticRetrieval = false;
+                diagnostics.Add(
+                    "群聊最低可靠上下文已超过可用容量；未发送远程语义召回请求。"
+                    + "最终预算仍会返回具体容量原因。");
+            }
+        }
+
         var semanticWorldbookResult = new WorldbookRetrievalResult([], []);
         var semanticQuery = BuildSemanticQuery(
             request.UserInput,
             historyMessages,
-            request.ContinuationInstruction);
+            request.ContinuationInstruction,
+            conversation.Mode == ConversationMode.Group);
         if (!string.IsNullOrWhiteSpace(semanticQuery))
         {
             try
@@ -320,7 +382,7 @@ public sealed class BasicContextAssembler : IContextAssembler
                         macroVariables,
                         MaximumResults: 6,
                         TokenBudget: worldbookTokenBudget,
-                        AllowRemoteEmbedding: request.AllowRemoteSemanticRetrieval),
+                        AllowRemoteEmbedding: allowRemoteSemanticRetrieval),
                     cancellationToken);
             }
             catch (OperationCanceledException)
@@ -387,35 +449,73 @@ public sealed class BasicContextAssembler : IContextAssembler
         if (request.Retrieval is { IsEnabled: true } options
             && !string.IsNullOrWhiteSpace(request.UserInput))
         {
-            var retrieved = await _retrieval.SearchAsync(
-                new MessageRetrievalQuery(
-                    conversation.Id,
-                    conversation.CharacterId,
-                    conversation.Mode == ConversationMode.Group
-                        ? RetrievalScope.CurrentConversation
-                        : options.Scope,
-                    request.UserInput,
-                    historyMessages.FirstOrDefault()?.SequenceNo,
-                    Math.Clamp(options.MaximumResults, 1, 50),
-                    options.ExcludedMessageIds),
-                cancellationToken);
+            var maximumInjectedResults = Math.Clamp(
+                options.MaximumResults,
+                1,
+                50);
+            var retrievalCandidateLimit = conversation.Mode == ConversationMode.Group
+                ? Math.Min(50, maximumInjectedResults * 4)
+                : maximumInjectedResults;
             var retrievalOrder = 920_000;
             var usedTokens = 0;
-            foreach (var item in retrieved)
+            IReadOnlyList<ContextSegment> retrievalSegments;
+            if (conversation.Mode == ConversationMode.Group)
             {
-                var role = RoleLabel(item.SenderKind);
-                var segment = new ContextSegment(
-                    $"retrieval:{item.MessageId}",
-                    ContextSegmentKind.Search,
-                    $"召回 · {item.ConversationTitle} · #{item.SequenceNo}",
-                    $"[{role}] {item.Content}",
-                    IsPinned: false,
-                    Order: retrievalOrder++,
-                    ProviderRole: "system");
-                var estimatedSegment = segment with
+                retrievalSegments = await RetrieveGroupHistorySegmentsAsync(
+                    conversation,
+                    request,
+                    options,
+                    historyMessages.FirstOrDefault()?.SequenceNo,
+                    retrievalCandidateLimit,
+                    sourceMessages,
+                    groupCharacters,
+                    request.PersonaName,
+                    macroVariables,
+                    maximumInjectedResults,
+                    retrievalOrder,
+                    cancellationToken);
+            }
+            else
+            {
+                var retrieved = await _retrieval.SearchAsync(
+                    new MessageRetrievalQuery(
+                        conversation.Id,
+                        conversation.CharacterId,
+                        options.Scope,
+                        request.UserInput,
+                        historyMessages.FirstOrDefault()?.SequenceNo,
+                        retrievalCandidateLimit,
+                        options.ExcludedMessageIds),
+                    cancellationToken);
+                retrievalSegments = retrieved.Select((item, index) =>
                 {
-                    ProviderContent = RenderProviderContent(segment)
-                };
+                    var role = RoleLabel(item.SenderKind);
+                    return new ContextSegment(
+                        $"retrieval:{item.MessageId}",
+                        ContextSegmentKind.Search,
+                        $"召回 · {item.ConversationTitle} · #{item.SequenceNo}",
+                        $"[{role}] {item.Content}",
+                        IsPinned: false,
+                        Order: retrievalOrder + index,
+                        ProviderRole: "system");
+                }).ToArray();
+            }
+
+            foreach (var segment in retrievalSegments)
+            {
+                var estimatedSegment = segment.ProviderContent is not null
+                    ? segment
+                    : segment with
+                    {
+                        Content = _macros.Expand(segment.Content, macroVariables)
+                    };
+                if (estimatedSegment.ProviderContent is null)
+                {
+                    estimatedSegment = estimatedSegment with
+                    {
+                        ProviderContent = RenderProviderContent(estimatedSegment)
+                    };
+                }
                 var estimatedTokens = _tokenEstimator.Estimate(
                     [estimatedSegment],
                     int.MaxValue,
@@ -424,7 +524,7 @@ public sealed class BasicContextAssembler : IContextAssembler
                 if (usedTokens + estimatedTokens > options.TokenBudget)
                 {
                     diagnostics.Add(
-                        $"召回消息 {item.MessageId} 因本轮召回 Token 预算不足而未注入。");
+                        $"召回历史单元 {segment.Id} 因本轮召回 Token 预算不足而未注入。");
                     continue;
                 }
 
@@ -433,7 +533,7 @@ public sealed class BasicContextAssembler : IContextAssembler
             }
 
             diagnostics.Add(
-                $"本轮检索命中 {retrieved.Count} 条，实际注入 "
+                $"本轮检索形成 {retrievalSegments.Count} 个完整历史单元，实际注入 "
                 + $"{segments.Count(segment => segment.Kind == ContextSegmentKind.Search)} 条。");
         }
 
@@ -470,7 +570,10 @@ public sealed class BasicContextAssembler : IContextAssembler
                     injection.Content,
                     IsPinned: false,
                     Order: historyOrder++,
-                    ProviderRole: injection.ProviderRole));
+                    ProviderRole: injection.ProviderRole,
+                    HistoryBlockId: conversation.Mode == ConversationMode.Group
+                        ? historyBlockIds[historyMessages[messageIndex].Id]
+                        : null));
             }
 
             var message = historyMessages[messageIndex];
@@ -491,7 +594,10 @@ public sealed class BasicContextAssembler : IContextAssembler
                 content,
                 IsPinned: false,
                 Order: historyOrder++,
-                ProviderRole: ProviderRole(message.SenderKind)));
+                ProviderRole: ProviderRole(message.SenderKind),
+                HistoryBlockId: conversation.Mode == ConversationMode.Group
+                    ? historyBlockIds[message.Id]
+                    : null));
         }
         if (historyMessages.Count == 0)
         {
@@ -508,64 +614,16 @@ public sealed class BasicContextAssembler : IContextAssembler
                     ProviderRole: injection.ProviderRole));
             }
         }
-        AddIfPresent(
+        AddTrailingRequestSegments(
             segments,
-            $"post-history:{character?.Id ?? conversation.Id}",
-            ContextSegmentKind.PostHistory,
-            "角色后置历史指令",
+            conversation.Id,
+            character?.Id,
             ReadString(cardData, "post_history_instructions"),
-            true,
-            950_000);
-        AddIfPresent(
-            segments,
-            $"group-baton:{conversation.Id}",
-            ContextSegmentKind.PostHistory,
-            "本轮群聊发言与接力命令",
             request.GroupBatonInstruction,
-            true,
-            960_000);
-        if (!string.IsNullOrWhiteSpace(request.ContinuationInstruction))
-        {
-            segments.Add(new ContextSegment(
-                $"continuation:{conversation.Id}",
-                ContextSegmentKind.UserInput,
-                "继续生成控制指令",
-                request.ContinuationInstruction.Trim(),
-                IsPinned: true,
-                Order: 999_000,
-                ProviderRole: "user"));
-        }
+            request.ContinuationInstruction,
+            request.UserInput);
 
-        if (!string.IsNullOrWhiteSpace(request.UserInput))
-        {
-            segments.Add(new ContextSegment(
-                $"input:{request.ConversationId}",
-                ContextSegmentKind.UserInput,
-                "当前用户输入",
-                request.UserInput.Trim(),
-                IsPinned: true,
-                Order: 1_000_000,
-                ProviderRole: "user"));
-        }
-
-        var ordered = segments
-            .OrderBy(segment => segment.Order)
-            .Select(segment =>
-            {
-                var expanded = segment with
-                {
-                    Content = segment.Kind == ContextSegmentKind.History
-                        ? segment.Content
-                        : _macros.Expand(
-                            segment.Content,
-                            macroVariables)
-                };
-                return expanded with
-                {
-                    ProviderContent = RenderProviderContent(expanded)
-                };
-            })
-            .ToArray();
+        var ordered = NormalizeForProvider(segments, macroVariables);
         diagnostics.AddRange(worldbookResult.Diagnostics);
         diagnostics.AddRange(semanticWorldbookResult.Diagnostics);
         if (conversation.Mode != ConversationMode.Group)
@@ -605,18 +663,341 @@ public sealed class BasicContextAssembler : IContextAssembler
     private static string BuildSemanticQuery(
         string userInput,
         IReadOnlyList<ChatMessage> historyMessages,
-        string? continuationInstruction)
+        string? continuationInstruction,
+        bool keepCompleteHistoryStages)
     {
+        if (keepCompleteHistoryStages)
+        {
+            return BuildGroupSemanticQuery(
+                userInput,
+                historyMessages,
+                continuationInstruction);
+        }
+
         var parts = new List<string>(10);
-        AddQueryPart(parts, userInput, 4000);
+        AddQueryPart(parts, userInput, MaximumSemanticInputCharacters);
         foreach (var message in historyMessages.TakeLast(8))
         {
             AddQueryPart(parts, message.Content, 1000);
         }
 
-        AddQueryPart(parts, continuationInstruction, 1500);
+        AddQueryPart(
+            parts,
+            continuationInstruction,
+            MaximumSemanticContinuationCharacters);
         return string.Join("\n", parts);
     }
+
+    private static string BuildGroupSemanticQuery(
+        string userInput,
+        IReadOnlyList<ChatMessage> historyMessages,
+        string? continuationInstruction)
+    {
+        var input = LimitQueryPart(
+            userInput,
+            MaximumSemanticInputCharacters);
+        var continuation = LimitQueryPart(
+            continuationInstruction,
+            MaximumSemanticContinuationCharacters);
+        var fixedParts = new[] { input, continuation }
+            .Where(part => part.Length > 0)
+            .ToArray();
+        var fixedLength = fixedParts.Sum(part => part.Length)
+                          + Math.Max(0, fixedParts.Length - 1);
+        var remaining = Math.Max(
+            0,
+            MaximumSemanticQueryCharacters - fixedLength);
+        var blocks = BuildHistoryBlocks(historyMessages);
+        var accepted = new List<string>();
+        foreach (var block in blocks.Reverse())
+        {
+            var blockText = string.Join(
+                "\n",
+                block.Select(message => message.Content.Trim())
+                    .Where(content => content.Length > 0));
+            if (blockText.Length == 0)
+            {
+                continue;
+            }
+
+            var separatorCost = fixedParts.Length + accepted.Count > 0 ? 1 : 0;
+            if (blockText.Length + separatorCost > remaining)
+            {
+                // Semantic retrieval is optional. Never send half a stage;
+                // once the next complete recent stage does not fit, older
+                // stages are not allowed to leapfrog it.
+                break;
+            }
+
+            accepted.Add(blockText);
+            remaining -= blockText.Length + separatorCost;
+        }
+
+        var result = new List<string>();
+        if (input.Length > 0)
+        {
+            result.Add(input);
+        }
+
+        result.AddRange(accepted.AsEnumerable().Reverse());
+        if (continuation.Length > 0)
+        {
+            result.Add(continuation);
+        }
+
+        return string.Join("\n", result);
+    }
+
+    private static IReadOnlyList<ChatMessage> SelectRecentHistoryByStages(
+        IReadOnlyList<ChatMessage> sourceMessages,
+        int maximumMessages)
+    {
+        if (sourceMessages.Count <= maximumMessages)
+        {
+            return sourceMessages;
+        }
+
+        var startIndex = sourceMessages.Count - maximumMessages;
+        while (startIndex > 0
+               && sourceMessages[startIndex].SenderKind != MessageSenderKind.User)
+        {
+            startIndex--;
+        }
+
+        return sourceMessages.Skip(startIndex).ToArray();
+    }
+
+    private static IReadOnlyList<IReadOnlyList<ChatMessage>> BuildHistoryBlocks(
+        IReadOnlyList<ChatMessage> messages)
+    {
+        var blocks = new List<IReadOnlyList<ChatMessage>>();
+        List<ChatMessage>? current = null;
+        foreach (var message in messages)
+        {
+            if (current is null || message.SenderKind == MessageSenderKind.User)
+            {
+                current = [];
+                blocks.Add(current);
+            }
+
+            current.Add(message);
+        }
+
+        return blocks;
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildHistoryBlockIds(
+        IReadOnlyList<ChatMessage> historyMessages)
+    {
+        var result = new Dictionary<string, string>(
+            StringComparer.Ordinal);
+        var blockIndex = -1;
+        foreach (var message in historyMessages)
+        {
+            if (blockIndex < 0 || message.SenderKind == MessageSenderKind.User)
+            {
+                blockIndex++;
+            }
+
+            result[message.Id] = $"history-block:{blockIndex}";
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<ContextSegment>> RetrieveGroupHistorySegmentsAsync(
+        Conversation conversation,
+        ContextAssemblyRequest request,
+        RetrievalContextOptions options,
+        long? beforeSequenceNo,
+        int candidateLimit,
+        IReadOnlyList<ChatMessage> sourceMessages,
+        IReadOnlyDictionary<string, Character> groupCharacters,
+        string? personaName,
+        IReadOnlyDictionary<string, string> macroVariables,
+        int maximumStages,
+        int orderBase,
+        CancellationToken cancellationToken)
+    {
+        var blockIds = BuildHistoryBlockIds(sourceMessages);
+        var messagesByBlock = sourceMessages
+            .Where(message => blockIds.ContainsKey(message.Id))
+            .GroupBy(message => blockIds[message.Id], StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderBy(message => message.SequenceNo).ToArray(),
+                StringComparer.Ordinal);
+        var sourceById = sourceMessages.ToDictionary(
+            message => message.Id,
+            StringComparer.Ordinal);
+        var originalExclusions = options.ExcludedMessageIds;
+        var queryExclusions = new HashSet<string>(
+            originalExclusions,
+            StringComparer.Ordinal);
+        var selectedBlocks = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<ContextSegment>();
+        while (result.Count < maximumStages)
+        {
+            var retrieved = await _retrieval.SearchAsync(
+                new MessageRetrievalQuery(
+                    conversation.Id,
+                    conversation.CharacterId,
+                    RetrievalScope.CurrentConversation,
+                    request.UserInput,
+                    beforeSequenceNo,
+                    candidateLimit,
+                    queryExclusions),
+                cancellationToken);
+            if (retrieved.Count == 0)
+            {
+                break;
+            }
+
+            var exclusionCountBefore = queryExclusions.Count;
+            foreach (var item in retrieved)
+            {
+                if (result.Count >= maximumStages)
+                {
+                    break;
+                }
+
+                if (!sourceById.TryGetValue(item.MessageId, out var source)
+                    || !blockIds.TryGetValue(source.Id, out var blockId)
+                    || !messagesByBlock.TryGetValue(blockId, out var stage))
+                {
+                    queryExclusions.Add(item.MessageId);
+                    continue;
+                }
+
+                foreach (var message in stage)
+                {
+                    queryExclusions.Add(message.Id);
+                }
+
+                if (stage.Any(message => originalExclusions.Contains(message.Id))
+                    || !selectedBlocks.Add(blockId))
+                {
+                    continue;
+                }
+
+                var content = string.Join(
+                    "\n",
+                    stage.Select(message => RenderGroupHistoryTurn(
+                        message,
+                        groupCharacters,
+                        personaName,
+                        _macros.Expand(message.Content, macroVariables))));
+                var segment = new ContextSegment(
+                    $"retrieval:{stage[0].Id}",
+                    ContextSegmentKind.Search,
+                    $"召回 · {item.ConversationTitle} · #{stage[0].SequenceNo}-#{stage[^1].SequenceNo}",
+                    content,
+                    IsPinned: false,
+                    Order: orderBase + result.Count,
+                    ProviderRole: "system");
+                result.Add(segment with
+                {
+                    ProviderContent = RenderProviderContent(segment)
+                });
+            }
+
+            if (retrieved.Count < candidateLimit
+                || queryExclusions.Count == exclusionCountBefore)
+            {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private static string LimitQueryPart(string? value, int maximumCharacters)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maximumCharacters
+            ? trimmed
+            : trimmed[..maximumCharacters];
+    }
+
+    private static void AddTrailingRequestSegments(
+        ICollection<ContextSegment> segments,
+        string conversationId,
+        string? characterId,
+        string? postHistoryInstructions,
+        string? groupBatonInstruction,
+        string? continuationInstruction,
+        string? userInput)
+    {
+        AddIfPresent(
+            segments,
+            $"post-history:{characterId ?? conversationId}",
+            ContextSegmentKind.PostHistory,
+            "角色后置历史指令",
+            postHistoryInstructions,
+            true,
+            950_000);
+        AddIfPresent(
+            segments,
+            $"group-baton:{conversationId}",
+            ContextSegmentKind.PostHistory,
+            "本轮群聊发言与接力命令",
+            groupBatonInstruction,
+            true,
+            960_000);
+        if (!string.IsNullOrWhiteSpace(continuationInstruction))
+        {
+            segments.Add(new ContextSegment(
+                $"continuation:{conversationId}",
+                ContextSegmentKind.UserInput,
+                "继续生成控制指令",
+                continuationInstruction.Trim(),
+                IsPinned: true,
+                Order: 999_000,
+                ProviderRole: "user"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(userInput))
+        {
+            segments.Add(new ContextSegment(
+                $"input:{conversationId}",
+                ContextSegmentKind.UserInput,
+                "当前用户输入",
+                userInput.Trim(),
+                IsPinned: true,
+                Order: 1_000_000,
+                ProviderRole: "user"));
+        }
+    }
+
+    private ContextSegment[] NormalizeForProvider(
+        IEnumerable<ContextSegment> source,
+        IReadOnlyDictionary<string, string> macroVariables) =>
+        source
+            .OrderBy(segment => segment.Order)
+            .Select(segment =>
+            {
+                if (segment.ProviderContent is not null)
+                {
+                    return segment;
+                }
+
+                var expanded = segment with
+                {
+                    Content = segment.Kind == ContextSegmentKind.History
+                        ? segment.Content
+                        : _macros.Expand(segment.Content, macroVariables)
+                };
+                return expanded with
+                {
+                    ProviderContent = RenderProviderContent(expanded)
+                };
+            })
+            .ToArray();
 
     private static void AddQueryPart(
         ICollection<string> parts,
@@ -748,6 +1129,7 @@ public sealed class BasicContextAssembler : IContextAssembler
             MessageSenderKind.User => "user",
             MessageSenderKind.Character => "character",
             MessageSenderKind.System => "system",
+            MessageSenderKind.Tool => "tool",
             _ => "unknown"
         };
         var speakerName = message.SenderKind switch
@@ -760,6 +1142,7 @@ public sealed class BasicContextAssembler : IContextAssembler
                 characters.GetValueOrDefault(message.SenderId)?.Name
                 ?? "未知角色",
             MessageSenderKind.System => "TavernDesk",
+            MessageSenderKind.Tool => "Tool",
             _ => "未知"
         };
         var json = JsonSerializer.Serialize(
