@@ -31,81 +31,153 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
         var availableInput = Math.Max(
             0,
             contextLimit - reservedOutputTokens - safetyMargin);
-
+        var envelopeTokens = EstimateEnvelope(contextLimit, modelId);
         var candidates = segments
             .Select((segment, index) => new Candidate(
                 index,
                 segment,
                 Classify(segment),
-                EstimateSegment(segment, contextLimit, modelId)))
+                EstimateSegmentContribution(
+                    segment,
+                    contextLimit,
+                    modelId,
+                    envelopeTokens)))
             .ToArray();
-        var latestHistoryIndex = candidates
-            .Where(candidate => candidate.Tier == GroupContextBudgetTier.History)
-            .Select(candidate => (int?)candidate.Index)
-            .LastOrDefault();
+        var historyBlocks = BuildHistoryBlocks(candidates);
+        var latestHistoryBlock = historyBlocks.LastOrDefault();
+        var stageAttachments = candidates
+            .Where(candidate =>
+                candidate.Tier == GroupContextBudgetTier.Dynamic
+                && !string.IsNullOrWhiteSpace(candidate.Segment.HistoryBlockId))
+            .GroupBy(
+                candidate => candidate.Segment.HistoryBlockId!,
+                StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderBy(candidate => candidate.Index).ToArray(),
+                StringComparer.Ordinal);
         var required = candidates
             .Where(candidate => candidate.Tier is GroupContextBudgetTier.Required
-                or GroupContextBudgetTier.Strong
-                || candidate.Index == latestHistoryIndex)
-            .ToArray();
-        var selected = new List<Candidate>(required);
-        var minimumRequired = EstimateSelection(
-            selected,
+                or GroupContextBudgetTier.Strong)
+            .ToList();
+        if (latestHistoryBlock is not null)
+        {
+            required.AddRange(latestHistoryBlock.Segments);
+        }
+
+        var minimumRequired = EstimateExactSelection(
+            required,
             contextLimit,
-            reservedOutputTokens,
             modelId);
         if (minimumRequired > availableInput)
         {
             return BuildResult(
                 candidates,
-                selected,
+                required,
+                latestHistoryBlock,
                 contextLimit,
                 reservedOutputTokens,
                 safetyMargin,
                 availableInput,
                 minimumRequired,
+                envelopeTokens,
                 canSend: false,
                 GroupContextBudgetStatus.ContextCapacityInsufficient,
                 "当前请求的最低可靠上下文超过模型可用输入容量；未静默裁剪核心提示词、当前角色卡或当前用户输入。",
-                modelId);
+                minimumRequired);
         }
 
-        foreach (var candidate in candidates.Where(candidate =>
-                     candidate.Tier == GroupContextBudgetTier.Dynamic))
-        {
-            TryAdd(candidate, selected, availableInput, contextLimit, reservedOutputTokens, modelId);
-        }
-
-        foreach (var candidate in candidates
-                     .Where(candidate => candidate.Tier == GroupContextBudgetTier.History)
-                     .OrderByDescending(candidate => candidate.Index))
-        {
-            TryAdd(candidate, selected, availableInput, contextLimit, reservedOutputTokens, modelId);
-        }
-
-        var actualInput = EstimateSelection(
-            selected,
-            contextLimit,
-            reservedOutputTokens,
-            modelId);
-        var selectedIndices = selected
+        var selected = new List<Candidate>(required);
+        var selectedIndices = required
             .Select(candidate => candidate.Index)
             .ToHashSet();
+        var usedTokens = minimumRequired;
+        foreach (var candidate in candidates.Where(candidate =>
+                     candidate.Tier == GroupContextBudgetTier.Dynamic
+                     && string.IsNullOrWhiteSpace(
+                         candidate.Segment.HistoryBlockId)))
+        {
+            if (!TryAddCandidate(
+                    candidate,
+                    selected,
+                    selectedIndices,
+                    availableInput,
+                    contextLimit,
+                    modelId,
+                    out usedTokens))
+            {
+                continue;
+            }
+        }
+
+        AddStageAttachments(
+            latestHistoryBlock,
+            stageAttachments,
+            selected,
+            selectedIndices,
+            availableInput,
+            contextLimit,
+            modelId,
+            ref usedTokens);
+
+        foreach (var block in historyBlocks.AsEnumerable().Reverse())
+        {
+            if (ReferenceEquals(block, latestHistoryBlock))
+            {
+                continue;
+            }
+
+            var proposed = selected.Concat(block.Segments).ToArray();
+            var proposedTokens = EstimateExactSelection(
+                proposed,
+                contextLimit,
+                modelId);
+            if (proposedTokens > availableInput)
+            {
+                // History is a continuous suffix of complete conversation
+                // stages. Once the next older stage does not fit, do not skip
+                // it and add an even older stage.
+                break;
+            }
+
+            selected.AddRange(block.Segments);
+            foreach (var candidate in block.Segments)
+            {
+                selectedIndices.Add(candidate.Index);
+            }
+            usedTokens = proposedTokens;
+            AddStageAttachments(
+                block,
+                stageAttachments,
+                selected,
+                selectedIndices,
+                availableInput,
+                contextLimit,
+                modelId,
+                ref usedTokens);
+        }
+
+        var actualInput = EstimateExactSelection(
+            selected,
+            contextLimit,
+            modelId);
         var status = selectedIndices.Count == candidates.Length
             ? GroupContextBudgetStatus.Safe
             : GroupContextBudgetStatus.Reduced;
         return BuildResult(
             candidates,
             selected,
+            latestHistoryBlock,
             contextLimit,
             reservedOutputTokens,
             safetyMargin,
             availableInput,
             actualInput,
+            envelopeTokens,
             canSend: true,
             status,
-            FailureReason: null,
-            modelId);
+            failureReason: null,
+            minimumRequired);
     }
 
     public static int CalculateSafetyMargin(int contextLimit) =>
@@ -114,50 +186,29 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
             MinimumSafetyMarginTokens,
             MaximumSafetyMarginTokens);
 
-    private void TryAdd(
-        Candidate candidate,
-        ICollection<Candidate> selected,
-        int availableInput,
-        int contextLimit,
-        int reservedOutputTokens,
-        string? modelId)
-    {
-        if (selected.Any(item => item.Index == candidate.Index))
-        {
-            return;
-        }
-
-        var proposed = selected.Append(candidate).ToArray();
-        if (EstimateSelection(
-                proposed,
-                contextLimit,
-                reservedOutputTokens,
-                modelId) <= availableInput)
-        {
-            selected.Add(candidate);
-        }
-    }
-
     private GroupContextBudgetResult BuildResult(
         IReadOnlyList<Candidate> candidates,
         IReadOnlyCollection<Candidate> selected,
+        HistoryBlock? latestHistoryBlock,
         int contextLimit,
         int reservedOutputTokens,
         int safetyMargin,
         int availableInput,
         int actualInput,
+        int envelopeTokens,
         bool canSend,
         GroupContextBudgetStatus status,
-        string? FailureReason,
-        string? modelId)
+        string? failureReason,
+        int minimumRequired)
     {
         var selectedIndices = selected
             .Select(candidate => candidate.Index)
             .ToHashSet();
-        var latestHistoryIndex = candidates
-            .Where(candidate => candidate.Tier == GroupContextBudgetTier.History)
-            .Select(candidate => (int?)candidate.Index)
-            .LastOrDefault();
+        var latestHistoryIndices = latestHistoryBlock is null
+            ? []
+            : latestHistoryBlock.Segments
+                .Select(candidate => candidate.Index)
+                .ToHashSet();
         var breakdown = candidates
             .Select(candidate =>
             {
@@ -165,26 +216,26 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
                 var minimumTokens = candidate.Tier switch
                 {
                     GroupContextBudgetTier.Required
-                        or GroupContextBudgetTier.Strong => candidate.OriginalTokens,
+                        or GroupContextBudgetTier.Strong => candidate.TokenCost,
                     GroupContextBudgetTier.History
-                        when candidate.Index == latestHistoryIndex => candidate.OriginalTokens,
+                        when latestHistoryIndices.Contains(candidate.Index) => candidate.TokenCost,
                     _ => 0
                 };
                 var reductionReason = isSelected
                     ? null
                     : candidate.Tier == GroupContextBudgetTier.History
-                        ? "近期历史按完整消息边界从旧到新缩减。"
+                        ? "该完整发言阶段放不下；更旧阶段不会越过它单独加入。"
                         : "为最低可靠上下文和剩余预算让出空间。";
                 return new GroupContextBudgetSegment(
                     candidate.Segment.Id,
                     candidate.Segment.Title,
                     candidate.Segment.Kind,
                     candidate.Tier,
-                    candidate.OriginalTokens,
-                    isSelected ? candidate.OriginalTokens : 0,
+                    candidate.TokenCost,
+                    isSelected ? candidate.TokenCost : 0,
                     minimumTokens,
-                    candidate.OriginalTokens,
-                    candidate.OriginalTokens,
+                    candidate.TokenCost,
+                    candidate.TokenCost,
                     WasReduced: !isSelected,
                     reductionReason);
             })
@@ -200,58 +251,124 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
             availableInput,
             actualInput,
             Math.Max(0, availableInput - actualInput),
-            MinimumRequiredTokens(candidates, contextLimit, reservedOutputTokens, modelId),
+            minimumRequired,
             canSend,
             status,
             breakdown,
             selectedSegments,
-            FailureReason);
+            failureReason,
+            envelopeTokens);
     }
 
-    private int MinimumRequiredTokens(
-        IReadOnlyList<Candidate> candidates,
+    private int EstimateEnvelope(int contextLimit, string? modelId) =>
+        _tokenEstimator.Estimate(
+                Array.Empty<ContextSegment>(),
+                contextLimit,
+                0,
+                modelId)
+            .InputTokens;
+
+    private int EstimateSegmentContribution(
+        ContextSegment segment,
         int contextLimit,
-        int reservedOutputTokens,
-        string? modelId)
+        string? modelId,
+        int envelopeTokens)
     {
-        var latestHistoryIndex = candidates
-            .Where(candidate => candidate.Tier == GroupContextBudgetTier.History)
-            .Select(candidate => (int?)candidate.Index)
-            .LastOrDefault();
-        return EstimateSelection(
-            candidates
-                .Where(candidate => candidate.Tier is GroupContextBudgetTier.Required
-                    or GroupContextBudgetTier.Strong
-                    || candidate.Index == latestHistoryIndex),
-            contextLimit,
-            reservedOutputTokens,
-            modelId);
+        var single = _tokenEstimator.Estimate(
+                [segment],
+                contextLimit,
+                0,
+                modelId)
+            .InputTokens;
+        return Math.Max(0, single - envelopeTokens);
     }
 
-    private int EstimateSelection(
+    private int EstimateExactSelection(
         IEnumerable<Candidate> candidates,
         int contextLimit,
-        int reservedOutputTokens,
         string? modelId) =>
         _tokenEstimator.Estimate(
                 candidates
                     .OrderBy(candidate => candidate.Index)
                     .Select(candidate => candidate.Segment),
                 contextLimit,
-                reservedOutputTokens,
-                modelId)
-            .InputTokens;
-
-    private int EstimateSegment(
-        ContextSegment segment,
-        int contextLimit,
-        string? modelId) =>
-        _tokenEstimator.Estimate(
-                [segment],
-                contextLimit,
                 0,
                 modelId)
             .InputTokens;
+
+    private bool TryAddCandidate(
+        Candidate candidate,
+        ICollection<Candidate> selected,
+        ISet<int> selectedIndices,
+        int availableInput,
+        int contextLimit,
+        string? modelId,
+        out int usedTokens)
+    {
+        var proposed = selected.Append(candidate).ToArray();
+        usedTokens = EstimateExactSelection(proposed, contextLimit, modelId);
+        if (usedTokens > availableInput)
+        {
+            usedTokens = EstimateExactSelection(selected, contextLimit, modelId);
+            return false;
+        }
+
+        selected.Add(candidate);
+        selectedIndices.Add(candidate.Index);
+        return true;
+    }
+
+    private void AddStageAttachments(
+        HistoryBlock? block,
+        IReadOnlyDictionary<string, Candidate[]> stageAttachments,
+        ICollection<Candidate> selected,
+        ISet<int> selectedIndices,
+        int availableInput,
+        int contextLimit,
+        string? modelId,
+        ref int usedTokens)
+    {
+        if (block is null
+            || !stageAttachments.TryGetValue(block.Id, out var attachments))
+        {
+            return;
+        }
+
+        foreach (var attachment in attachments)
+        {
+            TryAddCandidate(
+                attachment,
+                selected,
+                selectedIndices,
+                availableInput,
+                contextLimit,
+                modelId,
+                out usedTokens);
+        }
+    }
+
+    private static IReadOnlyList<HistoryBlock> BuildHistoryBlocks(
+        IReadOnlyList<Candidate> candidates)
+    {
+        return candidates
+            .Where(candidate => candidate.Tier == GroupContextBudgetTier.History)
+            .GroupBy(
+                candidate => candidate.Segment.HistoryBlockId
+                    ?? $"history-segment:{candidate.Index}",
+                StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var blockSegments = group.OrderBy(item => item.Index).ToArray();
+                return new HistoryBlock(
+                    group.Key,
+                    blockSegments,
+                    blockSegments[0].Index,
+                    blockSegments[^1].Index,
+                    blockSegments.Sum(item => item.TokenCost));
+            })
+            .OrderBy(block => block.FirstIndex)
+            .ToArray();
+    }
 
     private static GroupContextBudgetTier Classify(ContextSegment segment)
     {
@@ -280,5 +397,12 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
         int Index,
         ContextSegment Segment,
         GroupContextBudgetTier Tier,
-        int OriginalTokens);
+        int TokenCost);
+
+    private sealed record HistoryBlock(
+        string Id,
+        IReadOnlyList<Candidate> Segments,
+        int FirstIndex,
+        int LastIndex,
+        int TokenCost);
 }

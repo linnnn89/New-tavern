@@ -40,7 +40,8 @@ public sealed record GroupContextBudgetResult(
     GroupContextBudgetStatus Status,
     IReadOnlyList<GroupContextBudgetSegment> Segments,
     IReadOnlyList<ContextSegment> SelectedSegments,
-    string? FailureReason = null);
+    string? FailureReason = null,
+    int RequestEnvelopeTokens = 0);
 
 public interface IGroupContextBudgetPlanner
 {
