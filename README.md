@@ -67,6 +67,7 @@ It is built for long-running character interactions rather than one-off prompts:
 
 - Character shelves, search, sorting, cover sizes, batch organization, and editable character profiles.
 - One-to-one chat, group chat, multiple conversations, independent chat windows, streaming, cancellation, and continuation.
+- Group chat relay uses fixed member order by default. Fully automatic relay continues after a completed reply, while clicking a member avatar's “Take turn now” forces that character; model `@` text does not select the next speaker or pause relay.
 - In-place message editing, alternate replies, regeneration, branch-from-message, and JSONL chat import/export.
 - Bubble and novel display modes. In bubble mode, user messages stay on the right and character messages stay on the left, including group chats.
 - Persona selection, alternate greetings, system prompts, post-history instructions, and per-character model assignments.

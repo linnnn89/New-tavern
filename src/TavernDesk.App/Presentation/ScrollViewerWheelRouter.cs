@@ -13,7 +13,25 @@ namespace TavernDesk.App.Presentation;
 /// </summary>
 public static class ScrollViewerWheelRouter
 {
+    private const double PixelWheelStep = 64;
     private static bool _registered;
+
+    public static readonly DependencyProperty UsePixelWheelScrollingProperty =
+        DependencyProperty.RegisterAttached(
+            "UsePixelWheelScrolling",
+            typeof(bool),
+            typeof(ScrollViewerWheelRouter),
+            new FrameworkPropertyMetadata(
+                false,
+                FrameworkPropertyMetadataOptions.Inherits));
+
+    public static bool GetUsePixelWheelScrolling(DependencyObject element) =>
+        (bool)element.GetValue(UsePixelWheelScrollingProperty);
+
+    public static void SetUsePixelWheelScrolling(
+        DependencyObject element,
+        bool value) =>
+        element.SetValue(UsePixelWheelScrollingProperty, value);
 
     public static void Register()
     {
@@ -67,7 +85,16 @@ public static class ScrollViewerWheelRouter
         }
 
         var before = viewer.VerticalOffset;
-        if (delta > 0)
+        if (GetUsePixelWheelScrolling(viewer))
+        {
+            var movement = delta / 120d * PixelWheelStep;
+            var target = Math.Clamp(
+                before - movement,
+                0,
+                viewer.ScrollableHeight);
+            viewer.ScrollToVerticalOffset(target);
+        }
+        else if (delta > 0)
         {
             viewer.LineUp();
         }

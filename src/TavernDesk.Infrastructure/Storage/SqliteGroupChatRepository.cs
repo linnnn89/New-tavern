@@ -259,6 +259,11 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 settings.ConversationId,
                 normalized,
                 cancellationToken);
+            await DeleteOrphanedMemberMemoriesAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                settings.ConversationId,
+                cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         }
@@ -332,6 +337,11 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 (SqliteTransaction)transaction,
                 conversationId,
                 normalized,
+                cancellationToken);
+            await DeleteOrphanedMemberMemoriesAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                conversationId,
                 cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
@@ -515,6 +525,35 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
             insert.Parameters.AddWithValue("$isEnabled", member.IsEnabled);
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
+    }
+
+    private static async Task DeleteOrphanedMemberMemoriesAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string conversationId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            DELETE FROM group_memory_checkpoints
+            WHERE conversation_id = $conversationId
+              AND scope = $memberScope
+              AND character_id NOT IN (
+                  SELECT character_id
+                  FROM group_chat_members
+                  WHERE conversation_id = $conversationId);
+            DELETE FROM group_memory_banks
+            WHERE conversation_id = $conversationId
+              AND scope = $memberScope
+              AND character_id NOT IN (
+                  SELECT character_id
+                  FROM group_chat_members
+                  WHERE conversation_id = $conversationId);
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$memberScope", (int)GroupMemoryScope.Member);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task EnsureGroupConversationAsync(

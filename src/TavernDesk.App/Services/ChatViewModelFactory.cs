@@ -30,6 +30,7 @@ public sealed class ChatViewModelFactory
     public PlayerPersonaManagerViewModel Personas => _personas;
 
     public Func<string, Task>? OpenConversationWindow { get; set; }
+    public Func<TavernDesk.Core.Models.Character, Task>? OpenCharacterCard { get; set; }
     public Func<TavernDesk.Core.Models.GlobalPromptKey, Task>? OpenPromptSettings
     {
         get;
@@ -62,7 +63,9 @@ public sealed class ChatViewModelFactory
             _services.ChatArchives,
             _fileDialog,
             OpenConversationWindow,
-            _personas);
+            _personas,
+            TimeSpan.FromSeconds(5));
+        viewModel.OpenCharacterCard = OpenCharacterCard;
         viewModel.OpenPromptSettings = OpenPromptSettings;
         return viewModel;
     }

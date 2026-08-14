@@ -10,6 +10,7 @@ using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Group;
 
 namespace TavernDesk.App.ViewModels;
 
@@ -40,6 +41,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private readonly ConcurrentDictionary<string, byte> _unsavedGroupMemoryBodies = new();
     private readonly ConcurrentDictionary<string, byte> _pendingSessionRefreshes = new();
     private readonly SemaphoreSlim _groupReloadGate = new(1, 1);
+    private readonly TimeSpan _groupAutoRelayDelay;
     private readonly List<CharacterConversationGroupViewModel> _allGroups = [];
     private readonly Dictionary<string, Character> _characterLookup =
         new(StringComparer.Ordinal);
@@ -77,6 +79,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private ModelFunctionAssignment? _groupChatAssignment;
     private TokenEstimate _tokenEstimate;
     private GroupContextBudgetResult? _groupContextBudgetResult;
+    private string _groupAutoRelayCountdownText = string.Empty;
+    private bool _isGroupAutoRelayCountdownVisible;
+    private CancellationTokenSource? _groupAutoRelayCountdownCancellation;
     private bool _disposed;
 
     public ChatViewModel(
@@ -103,7 +108,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         IChatArchiveService chatArchives,
         IFileDialogService fileDialog,
         Func<string, Task>? openConversationWindow = null,
-        PlayerPersonaManagerViewModel? personas = null)
+        PlayerPersonaManagerViewModel? personas = null,
+        TimeSpan? groupAutoRelayDelay = null)
     {
         _repository = repository;
         _characters = characters;
@@ -122,6 +128,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _chatArchives = chatArchives;
         _fileDialog = fileDialog;
         _openConversationWindow = openConversationWindow;
+        _groupAutoRelayDelay = groupAutoRelayDelay ?? TimeSpan.Zero;
         _personas = personas ?? new PlayerPersonaManagerViewModel(settings, interaction);
         _personas.PropertyChanged += OnPersonaManagerPropertyChanged;
         Memory = new MemoryWorkflowViewModel(
@@ -142,7 +149,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             OpenGroupConversationAsync,
             StartGroupContinueAsync,
             GenerateGroupMergeAsync,
-            UpdateGroupMemoryAsync);
+            UpdateGroupMemoryAsync,
+            character => OpenCharacterCard?.Invoke(character) ?? Task.CompletedTask,
+            () => IsCurrentConversationBusy);
         Retrieval = new RetrievalViewModel(retrieval, ScheduleContextRefresh);
         Presets = new PresetViewModel(
             presets,
@@ -171,6 +180,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         StopGenerationCommand = new RelayCommand(
             StopCurrentGeneration,
             () => IsCurrentConversationGenerating);
+        StopGroupAutoRelayCommand = new RelayCommand(
+            StopGroupAutoRelay,
+            () => IsGroupAutoRelayCountdownVisible);
         SavePersonaCommand = new AsyncRelayCommand(SavePersonaAsync);
         CancelPersonaCommand = new RelayCommand(CancelPersonaEdits);
         EditCharacterSystemPromptCommand = new AsyncRelayCommand(
@@ -199,6 +211,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public RelayCommand SelectConversationCommand { get; }
     public RelayCommand SendLocalCommand { get; }
     public RelayCommand StopGenerationCommand { get; }
+    public RelayCommand StopGroupAutoRelayCommand { get; }
     public AsyncRelayCommand SavePersonaCommand { get; }
     public RelayCommand CancelPersonaCommand { get; }
     public AsyncRelayCommand EditCharacterSystemPromptCommand { get; }
@@ -206,7 +219,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public AsyncRelayCommand OpenGlobalPromptCommand { get; }
     public AsyncRelayCommand ImportChatArchiveCommand { get; }
     public AsyncRelayCommand ExportChatArchiveCommand { get; }
+    public Func<Character, Task>? OpenCharacterCard { get; set; }
     public Func<GlobalPromptKey, Task>? OpenPromptSettings { get; set; }
+
+    public string GroupAutoRelayCountdownText => _groupAutoRelayCountdownText;
+    public bool IsGroupAutoRelayCountdownVisible =>
+        _isGroupAutoRelayCountdownVisible;
     public IReadOnlyList<ChatSendModeOption> SendModes { get; } =
     [
         new(ChatSendMode.SendAndGenerate, LanguageRuntime.GetString("Chat.SendMode.SendAndGenerate")),
@@ -246,6 +264,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                         : LanguageRuntime.GetString("Chat.ConversationLoaded");
                 OnPropertyChanged(nameof(IsCurrentConversationGenerating));
                 OnPropertyChanged(nameof(IsCurrentConversationBusy));
+                OnPropertyChanged(nameof(CanEditGroupMembers));
+                Group.RefreshGenerationState();
                 OnPropertyChanged(nameof(IsModelThinking));
                 OnPropertyChanged(nameof(LastGenerationUsageText));
                 OnPropertyChanged(nameof(IsSingleCharacterConversation));
@@ -314,6 +334,19 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             if (!_isProgrammaticComposerChange)
             {
                 _actualBudgetConversationId = null;
+                if (SelectedConversation?.Mode == ConversationMode.Group
+                    && string.Equals(
+                        Group.ConversationId,
+                        SelectedConversation.Id,
+                        StringComparison.Ordinal))
+                {
+                    // Typing is the user's explicit interruption of automatic
+                    // relay.  The setting remains local until the user saves
+                    // group settings, so a transient pause is reversible.
+                    Group.SuppressAutoContinue();
+                    _groupAutoRelayCountdownCancellation?.Cancel();
+                    ClearGroupAutoRelayCountdown();
+                }
                 ScheduleContextRefresh();
             }
             SendLocalCommand.RaiseCanExecuteChanged();
@@ -534,6 +567,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public bool IsCurrentConversationBusy =>
         SelectedConversation is not null
         && IsConversationBusy(SelectedConversation.Id);
+
+    public bool CanEditGroupMembers => !IsCurrentConversationBusy;
 
     public bool IsConversationBusy(string conversationId) =>
         _generationSessions.Get(conversationId).IsBusy
@@ -980,6 +1015,18 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             for (var index = 0; index < loadedMessages.Count; index++)
             {
                 var message = loadedMessages[index];
+                if (loadedConversation.Mode == ConversationMode.Group
+                    && message.SenderKind == MessageSenderKind.Character
+                    && _characterLookup.TryGetValue(
+                        message.SenderId,
+                        out var historyCharacter))
+                {
+                    message.Content = GroupRelayResponseNormalizer
+                        .StripSyntheticHistoryPrefix(
+                            message.Content,
+                            historyCharacter.Name);
+                }
+
                 Messages.Add(CreateMessageItem(
                     message,
                     candidatesByMessage.GetValueOrDefault(message.Id) ?? []));
@@ -1174,7 +1221,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             var messages = await _repository.ListMessagesAsync(
                 selected.Id,
                 operationCancellation);
-            var decision = DecideGroupNext(snapshot.Context, messages);
+            var manualSpeakerIsMember = manualSpeakerId is { Length: > 0 }
+                && snapshot.Context.Group?.Members.Any(member =>
+                    member.CharacterId == manualSpeakerId) == true;
+            var decision = manualSpeakerIsMember
+                ? new GroupRelayDecision(
+                    manualSpeakerId,
+                    false,
+                    "group-manual-selected")
+                : DecideGroupNext(snapshot.Context, messages);
             if (decision.NextSpeakerId is null)
             {
                 await SaveGroupStateAsync(
@@ -1218,6 +1273,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 decision.NextSpeakerId);
             if (assistant is null)
             {
+                await PauseGroupRelayForInvalidReplyAsync(
+                    selected.Id,
+                    decision.NextSpeakerId,
+                    decision.NextSpeakerId,
+                    0,
+                    operationCancellation);
                 return;
             }
 
@@ -1351,6 +1412,16 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 speakerId ?? string.Empty);
             if (assistant is null)
             {
+                if (snapshot.Mode == ConversationMode.Group
+                    && speakerId is { Length: > 0 })
+                {
+                    await PauseGroupRelayForInvalidReplyAsync(
+                        conversationId,
+                        speakerId,
+                        speakerId,
+                        0,
+                        operationCancellation);
+                }
                 return;
             }
 
@@ -1447,7 +1518,28 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return null;
         }
 
-        assistant.Content = buffer.ToString();
+        if (snapshot.Mode == ConversationMode.Group)
+        {
+            var expectedSpeakerName = snapshot.Context.Group?.MemberNames
+                .GetValueOrDefault(speakerId);
+            var normalized = GroupRelayResponseNormalizer.Normalize(
+                buffer.ToString(),
+                expectedSpeakerName);
+            if (!normalized.IsValid)
+            {
+                SetStatusForConversation(
+                    snapshot.ConversationId,
+                    LanguageRuntime.GetString("Chat.Group.InvalidReply"));
+                return null;
+            }
+
+            assistant.Content = normalized.Content;
+        }
+        else
+        {
+            assistant.Content = buffer.ToString();
+        }
+
         await _repository.AddMessageWithCandidateAsync(
             assistant,
             new MessageCandidate
@@ -1472,100 +1564,260 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var operationCancellation = _generationSessions.GetCancellationToken(
             snapshot.ConversationId,
             snapshot.OperationId);
+        using var countdownCancellation = new CancellationTokenSource();
+        using var relayDelayCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                operationCancellation,
+                countdownCancellation.Token);
+        _groupAutoRelayCountdownCancellation = countdownCancellation;
         var group = snapshot.Context.Group
                     ?? throw new InvalidOperationException(
                         LanguageRuntime.GetString("Chat.Group.ContextMissing"));
         var automaticTurns = 0;
         var current = currentSpeakerMessage;
-        while (true)
+        try
         {
-            var messages = await _repository.ListMessagesAsync(
-                snapshot.ConversationId,
-                operationCancellation);
-            var decision = DecideGroupNext(snapshot.Context, messages);
-            var shouldPause = decision.PauseForUser || decision.NextSpeakerId is null;
-            await SaveGroupStateAsync(
-                snapshot.ConversationId,
-                current.SenderId,
-                decision.NextSpeakerId ?? string.Empty,
-                automaticTurns,
-                shouldPause,
-                decision.Reason,
-                operationCancellation);
-            if (shouldPause)
+            while (true)
             {
-                SetStatusForConversation(
+                var messages = await _repository.ListMessagesAsync(
                     snapshot.ConversationId,
-                    LanguageRuntime.GroupRelayReason(decision.Reason));
-                return;
-            }
-
-            if (!group.Settings.AutoContinueEnabled)
-            {
-                SetStatusForConversation(
-                    snapshot.ConversationId,
-                    LanguageRuntime.Format(
-                        "Chat.Group.AutoRelayOffFormat",
-                        LanguageRuntime.GroupRelayReason(decision.Reason)));
-                return;
-            }
-
-            if (automaticTurns >= group.Settings.MaximumAutomaticTurns)
-            {
-                var reason = LanguageRuntime.GetString("Chat.Group.AutoRelayLimit");
+                    operationCancellation);
+                var decision = DecideGroupNext(snapshot.Context, messages);
+                var shouldPause = decision.PauseForUser || decision.NextSpeakerId is null;
                 await SaveGroupStateAsync(
                     snapshot.ConversationId,
                     current.SenderId,
-                    decision.NextSpeakerId!,
+                    decision.NextSpeakerId ?? string.Empty,
                     automaticTurns,
-                    isPaused: true,
-                    reason,
+                    shouldPause,
+                    decision.Reason,
                     operationCancellation);
-                SetStatusForConversation(snapshot.ConversationId, reason);
-                return;
-            }
-
-            automaticTurns++;
-            var context = await AssembleContextAsync(
-                snapshot.ConversationId,
-                userInput: string.Empty,
-                historyBeforeSequenceNo: null,
-                snapshot: snapshot.Context with
+                if (shouldPause)
                 {
-                    SpeakerCharacterId = decision.NextSpeakerId
-                },
-                cancellationToken: operationCancellation);
-            PublishActualContextBudget(snapshot.ConversationId, context);
-            if (!CanSendContext(context))
-            {
-                var reason = LanguageRuntime.GetString("Chat.Group.NextContextOverLimit");
-                await SaveGroupStateAsync(
+                    SetStatusForConversation(
+                        snapshot.ConversationId,
+                        LanguageRuntime.GroupRelayReason(decision.Reason));
+                    return;
+                }
+
+                if (!IsGroupAutoContinueEnabled(snapshot.ConversationId))
+                {
+                    SetStatusForConversation(
+                        snapshot.ConversationId,
+                        LanguageRuntime.Format(
+                            "Chat.Group.AutoRelayOffFormat",
+                            LanguageRuntime.GroupRelayReason(decision.Reason)));
+                    return;
+                }
+
+                if (automaticTurns >= group.Settings.MaximumAutomaticTurns)
+                {
+                    var reason = LanguageRuntime.GetString("Chat.Group.AutoRelayLimit");
+                    await SaveGroupStateAsync(
+                        snapshot.ConversationId,
+                        current.SenderId,
+                        decision.NextSpeakerId!,
+                        automaticTurns,
+                        isPaused: true,
+                        reason,
+                        operationCancellation);
+                    SetStatusForConversation(snapshot.ConversationId, reason);
+                    return;
+                }
+
+                if (!await WaitForGroupAutoRelayAsync(
+                        snapshot.ConversationId,
+                        operationCancellation,
+                        relayDelayCancellation.Token))
+                {
+                    if (operationCancellation.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException(operationCancellation);
+                    }
+
+                    SetStatusForConversation(
+                        snapshot.ConversationId,
+                        LanguageRuntime.Format(
+                            "Chat.Group.AutoRelayOffFormat",
+                            LanguageRuntime.GroupRelayReason(decision.Reason)));
+                    return;
+                }
+
+                automaticTurns++;
+                var context = await AssembleContextAsync(
                     snapshot.ConversationId,
-                    current.SenderId,
-                    decision.NextSpeakerId!,
-                    automaticTurns,
-                    isPaused: true,
-                    reason,
-                    operationCancellation);
-                SetStatusForConversation(snapshot.ConversationId, reason);
-                return;
-            }
+                    userInput: string.Empty,
+                    historyBeforeSequenceNo: null,
+                    snapshot: snapshot.Context with
+                    {
+                        SpeakerCharacterId = decision.NextSpeakerId
+                    },
+                    cancellationToken: operationCancellation);
+                PublishActualContextBudget(snapshot.ConversationId, context);
+                if (!CanSendContext(context))
+                {
+                    var reason = LanguageRuntime.GetString("Chat.Group.NextContextOverLimit");
+                    await SaveGroupStateAsync(
+                        snapshot.ConversationId,
+                        current.SenderId,
+                        decision.NextSpeakerId!,
+                        automaticTurns,
+                        isPaused: true,
+                        reason,
+                        operationCancellation);
+                    SetStatusForConversation(snapshot.ConversationId, reason);
+                    return;
+                }
 
-            var next = await GenerateReplyAsync(
-                snapshot,
-                snapshot.Assignment!,
-                context,
-                decision.NextSpeakerId!);
-            if (next is null
-                || _generationCoordinator.GetState(snapshot.ConversationId).Status
+                var next = await GenerateReplyAsync(
+                    snapshot,
+                    snapshot.Assignment!,
+                    context,
+                    decision.NextSpeakerId!);
+                if (next is null)
+                {
+                    await PauseGroupRelayForInvalidReplyAsync(
+                        snapshot.ConversationId,
+                        current.SenderId,
+                        decision.NextSpeakerId!,
+                        automaticTurns,
+                        operationCancellation);
+                    return;
+                }
+
+                if (_generationCoordinator.GetState(snapshot.ConversationId).Status
                     == ConversationGenerationStatus.Interrupted)
+                {
+                    return;
+                }
+
+                current = next;
+                await ReloadGroupsPreservingSelectionAsync();
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(
+                    _groupAutoRelayCountdownCancellation,
+                    countdownCancellation))
             {
-                return;
+                _groupAutoRelayCountdownCancellation = null;
             }
 
-            current = next;
-            await ReloadGroupsPreservingSelectionAsync();
+            ClearGroupAutoRelayCountdown();
         }
+    }
+
+    private bool IsGroupAutoContinueEnabled(string conversationId) =>
+        string.Equals(
+            Group.ConversationId,
+            conversationId,
+            StringComparison.Ordinal)
+        && Group.AutoContinueEnabled;
+
+    private async Task<bool> WaitForGroupAutoRelayAsync(
+        string conversationId,
+        CancellationToken operationCancellation,
+        CancellationToken delayCancellation)
+    {
+        if (_groupAutoRelayDelay <= TimeSpan.Zero)
+        {
+            return IsGroupAutoContinueEnabled(conversationId);
+        }
+
+        var remainingSeconds = Math.Max(
+            1,
+            (int)Math.Ceiling(_groupAutoRelayDelay.TotalSeconds));
+        for (var remaining = remainingSeconds; remaining > 0; remaining--)
+        {
+            if (!IsGroupAutoContinueEnabled(conversationId))
+            {
+                ClearGroupAutoRelayCountdown();
+                return false;
+            }
+
+            SetGroupAutoRelayCountdown(
+                LanguageRuntime.Format(
+                    "Chat.Group.AutoRelayCountdownFormat",
+                    remaining));
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), delayCancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                ClearGroupAutoRelayCountdown();
+                if (operationCancellation.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                return false;
+            }
+        }
+
+        ClearGroupAutoRelayCountdown();
+        return IsGroupAutoContinueEnabled(conversationId);
+    }
+
+    private void SetGroupAutoRelayCountdown(string text)
+    {
+        if (_groupAutoRelayCountdownText != text)
+        {
+            _groupAutoRelayCountdownText = text;
+            OnPropertyChanged(nameof(GroupAutoRelayCountdownText));
+        }
+
+        if (!_isGroupAutoRelayCountdownVisible)
+        {
+            _isGroupAutoRelayCountdownVisible = true;
+            OnPropertyChanged(nameof(IsGroupAutoRelayCountdownVisible));
+            StopGroupAutoRelayCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void ClearGroupAutoRelayCountdown()
+    {
+        var changed = _isGroupAutoRelayCountdownVisible;
+        _isGroupAutoRelayCountdownVisible = false;
+        if (_groupAutoRelayCountdownText.Length > 0)
+        {
+            _groupAutoRelayCountdownText = string.Empty;
+            OnPropertyChanged(nameof(GroupAutoRelayCountdownText));
+        }
+
+        if (changed)
+        {
+            OnPropertyChanged(nameof(IsGroupAutoRelayCountdownVisible));
+            StopGroupAutoRelayCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void StopGroupAutoRelay()
+    {
+        Group.SuppressAutoContinue();
+        _groupAutoRelayCountdownCancellation?.Cancel();
+        ClearGroupAutoRelayCountdown();
+        StopCurrentGeneration();
+    }
+
+    private async Task PauseGroupRelayForInvalidReplyAsync(
+        string conversationId,
+        string currentSpeakerId,
+        string nextSpeakerId,
+        int automaticTurns,
+        CancellationToken cancellationToken)
+    {
+        var reason = LanguageRuntime.GetString("Chat.Group.InvalidReply");
+        await SaveGroupStateAsync(
+            conversationId,
+            currentSpeakerId,
+            nextSpeakerId,
+            automaticTurns,
+            isPaused: true,
+            reason,
+            cancellationToken);
+        SetStatusForConversation(conversationId, reason);
     }
 
     private GroupRelayDecision DecideGroupNext(
@@ -2127,6 +2379,27 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
+            var generatedContent = buffer.ToString();
+            if (conversationMode == ConversationMode.Group)
+            {
+                var expectedSpeakerName = contextSnapshot.Group?.MemberNames
+                    .GetValueOrDefault(item.Message.SenderId);
+                var normalized = GroupRelayResponseNormalizer.Normalize(
+                    generatedContent,
+                    expectedSpeakerName);
+                if (!normalized.IsValid)
+                {
+                    item.Message.Content = original;
+                    item.RefreshContent();
+                    SetStatusForConversation(
+                        conversationId,
+                        LanguageRuntime.GetString("Chat.Group.InvalidReply"));
+                    return;
+                }
+
+                generatedContent = normalized.Content;
+            }
+
             var candidates = await _repository.ListCandidatesAsync(item.Id);
             if (candidates.Count == 0)
             {
@@ -2146,9 +2419,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 MessageId = item.Id,
                 CandidateIndex = nextIndex,
-                Content = buffer.ToString()
+                Content = generatedContent
             });
-            item.Message.Content = buffer.ToString();
+            item.Message.Content = generatedContent;
             item.Message.ActiveCandidateIndex = nextIndex;
             item.RefreshContent();
             await ReloadGroupsPreservingSelectionAsync();
@@ -2658,7 +2931,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 HistoryBeforeSequenceNo: historyBeforeSequenceNo,
                 SpeakerCharacterId: snapshot.SpeakerCharacterId,
                 GroupMemberIds: group?.Members
-                    .Where(member => member.IsEnabled)
+                    .Where(member => member.IsEnabled
+                                     || member.CharacterId == snapshot.SpeakerCharacterId)
                     .Select(member => member.CharacterId)
                     .ToArray(),
                 GroupMemoryOverride: group is null
@@ -2748,10 +3022,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 .Select(member => snapshot.Group.MemberNames.GetValueOrDefault(
                     member.CharacterId,
                     member.CharacterId)));
-        return
-            $"本轮只以“{speaker}”身份回复。可接力成员：{enabledNames}。"
-            + $"需要用户时在最后一句 @{snapshot.PersonaName} 或 @USER；"
-            + "需要角色接力时在最后一句 @下一位角色名。";
+        return LanguageRuntime.Format(
+            "Chat.Group.BatonInstructionFormat",
+            speaker,
+            enabledNames);
     }
 
     private async Task ReloadGroupsPreservingSelectionAsync()
@@ -3045,6 +3319,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(IsModelThinking));
         OnPropertyChanged(nameof(LastGenerationUsageText));
         OnPropertyChanged(nameof(IsCurrentConversationBusy));
+        OnPropertyChanged(nameof(CanEditGroupMembers));
+        Group.RefreshGenerationState();
         SendLocalCommand.RaiseCanExecuteChanged();
         ApplyLiveSession(session);
         if (session.IsThinking)
@@ -3157,6 +3433,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             OnPropertyChanged(nameof(IsCurrentConversationGenerating));
             OnPropertyChanged(nameof(IsCurrentConversationBusy));
+            OnPropertyChanged(nameof(CanEditGroupMembers));
+            Group.RefreshGenerationState();
             StopGenerationCommand.RaiseCanExecuteChanged();
             SendLocalCommand.RaiseCanExecuteChanged();
         }
@@ -3168,6 +3446,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         {
             OnPropertyChanged(nameof(IsCurrentConversationBusy));
             OnPropertyChanged(nameof(IsCurrentConversationGenerating));
+            OnPropertyChanged(nameof(CanEditGroupMembers));
+            Group.RefreshGenerationState();
             StopGenerationCommand.RaiseCanExecuteChanged();
             RefreshContinueGenerationCommands();
         }
