@@ -1754,3 +1754,19 @@
 
 - 本轮只调整默认英文首页；简体中文、繁体中文和日语说明页继续通过页首语言入口访问，没有重复嵌入同一组大图。
 - 临时截图目录的递归清理命令在执行前被自动策略阻止，没有关闭进程或删除文件；用户随后明确选择保留该临时实例和目录并继续，因此未再尝试清理或规避策略。
+
+## 2026-08-14 — 群聊角色选择预览发布重建
+
+### 实现与发布
+
+- 新建群聊角色选择项改为头像、名字和最多两行介绍预览；原始 `Character.Description`、角色卡导入导出、群聊创建与上下文组装保持不变。
+- 以当前源码重新生成 `win-x64` 自包含 `app/`，并重建根目录 `TavernDesk-Setup-x64.exe`；根目录薄启动器源码未改动。
+
+### 验证
+
+- `GroupChatDialogPreviewTests`：`6/6` 通过；Release 构建 `0` 警告、`0` 错误。
+- 根目录 `TavernDesk.exe --probe`：退出码 `0`。
+- `app/TavernDesk.App.dll`、`TavernDesk.Infrastructure.dll`、`TavernDesk.Core.dll` 与当前 RID 发布输出 SHA-256 一致。
+- 发布目录无 PDB、数据库、日志或预置配置/测试文件。
+- 安装包大小 `67,379,200` 字节，SHA-256 `AF2DA220CC99C1B1348769B21FD55AE78E02F4FE18AB9C7AF2C5EB7356A06AC7`。
+- 未启动 GUI，未读取 API Key，未调用真实 Provider；本轮尚未提交或推送。
