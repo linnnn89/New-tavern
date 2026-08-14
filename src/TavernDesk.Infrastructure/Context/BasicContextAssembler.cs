@@ -17,7 +17,9 @@ public sealed class BasicContextAssembler : IContextAssembler
     private readonly IConversationRepository _conversations;
     private readonly ICharacterRepository _characters;
     private readonly IMemoryBankService _memoryBanks;
+    private readonly IGroupMemoryRepository _groupMemories;
     private readonly ITokenEstimator _tokenEstimator;
+    private readonly IGroupContextBudgetPlanner _groupContextBudgetPlanner;
     private readonly IWorldbookEngine _worldbooks;
     private readonly IWorldbookService _worldbookService;
     private readonly IMacroEngine _macros;
@@ -27,7 +29,9 @@ public sealed class BasicContextAssembler : IContextAssembler
         IConversationRepository conversations,
         ICharacterRepository characters,
         IMemoryBankService memoryBanks,
+        IGroupMemoryRepository groupMemories,
         ITokenEstimator tokenEstimator,
+        IGroupContextBudgetPlanner groupContextBudgetPlanner,
         IWorldbookEngine worldbooks,
         IWorldbookService worldbookService,
         IMacroEngine macros,
@@ -36,7 +40,9 @@ public sealed class BasicContextAssembler : IContextAssembler
         _conversations = conversations;
         _characters = characters;
         _memoryBanks = memoryBanks;
+        _groupMemories = groupMemories;
         _tokenEstimator = tokenEstimator;
+        _groupContextBudgetPlanner = groupContextBudgetPlanner;
         _worldbooks = worldbooks;
         _worldbookService = worldbookService;
         _macros = macros;
@@ -161,14 +167,50 @@ public sealed class BasicContextAssembler : IContextAssembler
                 roster,
                 true,
                 125);
+            var sharedCheckpoint = await _groupMemories.GetCheckpointAsync(
+                conversation.Id,
+                GroupMemoryScope.Shared,
+                cancellationToken: cancellationToken);
+            var sharedMemory = string.IsNullOrWhiteSpace(sharedCheckpoint?.SourceDigest)
+                ? null
+                : request.GroupMemoryOverride
+                  ?? (await _groupMemories.GetBankAsync(
+                      conversation.Id,
+                      GroupMemoryScope.Shared,
+                      cancellationToken: cancellationToken))?.Body;
             AddIfPresent(
                 segments,
                 $"memory:{MemoryOwnerIds.ForGroup(conversation.Id)}",
                 ContextSegmentKind.Memory,
-                "群聊独立记忆",
-                request.GroupMemoryOverride,
+                "群聊共同记忆",
+                sharedMemory,
                 true,
                 500);
+            if (characterId is { Length: > 0 }
+                && request.GroupMemberMemoryEnabled)
+            {
+                var memberCheckpoint = await _groupMemories.GetCheckpointAsync(
+                    conversation.Id,
+                    GroupMemoryScope.Member,
+                    characterId,
+                    cancellationToken);
+                var memberMemory = string.IsNullOrWhiteSpace(memberCheckpoint?.SourceDigest)
+                    ? null
+                    : request.GroupMemberMemoryOverride
+                      ?? (await _groupMemories.GetBankAsync(
+                          conversation.Id,
+                          GroupMemoryScope.Member,
+                          characterId,
+                          cancellationToken))?.Body;
+                AddIfPresent(
+                    segments,
+                    $"memory:{MemoryOwnerIds.ForGroupMember(conversation.Id, characterId)}",
+                    ContextSegmentKind.Memory,
+                    $"当前角色的群聊独立记忆 · {groupCharacters.GetValueOrDefault(characterId)?.Name ?? "未知角色"}",
+                    memberMemory,
+                    true,
+                    510);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(request.PersonaName)
@@ -526,14 +568,38 @@ public sealed class BasicContextAssembler : IContextAssembler
             .ToArray();
         diagnostics.AddRange(worldbookResult.Diagnostics);
         diagnostics.AddRange(semanticWorldbookResult.Diagnostics);
-        return new ContextAssemblyResult(
-            ordered,
-            _tokenEstimator.Estimate(
+        if (conversation.Mode != ConversationMode.Group)
+        {
+            return new ContextAssemblyResult(
                 ordered,
+                _tokenEstimator.Estimate(
+                    ordered,
+                    request.ContextLimit,
+                    request.ReservedOutputTokens,
+                    request.ModelId),
+                diagnostics);
+        }
+
+        var groupBudget = _groupContextBudgetPlanner.Plan(
+            ordered,
+            request.ContextLimit,
+            request.ReservedOutputTokens,
+            request.ModelId);
+        if (!groupBudget.CanSend && groupBudget.FailureReason is { } failureReason)
+        {
+            diagnostics.Add(failureReason);
+        }
+
+        var selected = groupBudget.SelectedSegments;
+        return new ContextAssemblyResult(
+            selected,
+            _tokenEstimator.Estimate(
+                selected,
                 request.ContextLimit,
                 request.ReservedOutputTokens,
                 request.ModelId),
-            diagnostics);
+            diagnostics,
+            groupBudget);
     }
 
     private static string BuildSemanticQuery(
@@ -724,15 +790,40 @@ public sealed class BasicContextAssembler : IContextAssembler
                      character => character.Name,
                      StringComparer.OrdinalIgnoreCase))
         {
-            builder
-                .Append(member.Id == speakerCharacterId ? "【本轮发言者】" : "【群聊成员】")
-                .AppendLine(member.Name);
-            AppendIfPresent(builder, "描述", member.Description);
-            AppendIfPresent(builder, "性格", member.Personality);
-            builder.AppendLine();
+            if (string.Equals(member.Id, speakerCharacterId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            builder.Append("【群聊成员】").AppendLine(member.Name);
+            var summary = CompactRosterSummary(member);
+            if (summary.Length > 0)
+            {
+                builder.Append("摘要：").AppendLine(summary);
+            }
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static string CompactRosterSummary(Character character)
+    {
+        var source = string.IsNullOrWhiteSpace(character.Description)
+            ? character.Personality
+            : character.Description;
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return string.Empty;
+        }
+
+        var compact = string.Join(
+            ' ',
+            source.Split(
+                (char[]?)null,
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        return compact.Length <= 160
+            ? compact
+            : compact[..160].TrimEnd() + "…";
     }
 
     private static WorldbookMatch? ReadDepthPrompt(JsonObject? cardData)

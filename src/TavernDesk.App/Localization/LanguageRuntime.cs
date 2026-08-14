@@ -1,6 +1,9 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Globalization;
+using System.IO;
 using System.Windows;
+using System.Xml.Linq;
 
 namespace TavernDesk.App.Localization;
 
@@ -20,9 +23,14 @@ public static class LanguageRuntime
     ];
 
     private static ResourceDictionary? _currentDictionary;
-    private static ResourceDictionary? _fallbackDictionary;
+    private static readonly ConcurrentDictionary<
+        string,
+        IReadOnlyDictionary<string, string>> PlainDictionaries = new(
+            StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlyList<SupportedLanguage> SupportedLanguages => Languages;
+
+    public static Action<Exception>? ErrorReporter { get; set; }
 
     public static string CurrentCultureName { get; private set; } = DefaultCultureName;
 
@@ -30,11 +38,10 @@ public static class LanguageRuntime
     {
         var normalized = NormalizeCultureName(cultureName);
         var culture = CultureInfo.GetCultureInfo(normalized);
-        var dictionary = LoadDictionary(normalized);
-
         var application = Application.Current;
         if (application is not null)
         {
+            var dictionary = LoadDictionary(normalized);
             var merged = application.Resources.MergedDictionaries;
             var existingIndex = FindLanguageDictionaryIndex(merged);
             if (existingIndex >= 0)
@@ -45,9 +52,14 @@ public static class LanguageRuntime
             {
                 merged.Insert(0, dictionary);
             }
+
+            _currentDictionary = dictionary;
+        }
+        else
+        {
+            _currentDictionary = null;
         }
 
-        _currentDictionary = dictionary;
         CurrentCultureName = normalized;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         CultureInfo.CurrentUICulture = culture;
@@ -59,7 +71,8 @@ public static class LanguageRuntime
 
         if (TryGetString(_currentDictionary, key, out var localized)
             || TryGetString(Application.Current?.Resources, key, out localized)
-            || TryGetString(GetFallbackDictionary(), key, out localized))
+            || TryGetPlainString(CurrentCultureName, key, out localized)
+            || TryGetPlainString(DefaultCultureName, key, out localized))
         {
             return localized;
         }
@@ -73,6 +86,15 @@ public static class LanguageRuntime
     public static string ErrorMessage(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+
+        try
+        {
+            ErrorReporter?.Invoke(exception);
+        }
+        catch
+        {
+            // Diagnostics must never replace the original user-facing error.
+        }
 
         for (var candidate = exception;
              candidate is not null;
@@ -123,10 +145,9 @@ public static class LanguageRuntime
             return [];
         }
 
-        foreach (var diagnostic in normalized)
-        {
-            Trace.TraceInformation("TavernDesk diagnostic: {0}", diagnostic);
-        }
+        Trace.TraceInformation(
+            "TavernDesk produced {0} backend diagnostic item(s).",
+            normalized.Length);
 
         return normalized.All(IsCompatibleWithCurrentLanguage)
             ? normalized
@@ -229,12 +250,49 @@ public static class LanguageRuntime
         new()
         {
             Source = new Uri(
-                $"{DictionaryPathPrefix}{cultureName}.xaml",
-                UriKind.Relative)
+                $"pack://application:,,,/TavernDesk.App;component/{DictionaryPathPrefix}{cultureName}.xaml",
+                UriKind.Absolute)
         };
 
-    private static ResourceDictionary GetFallbackDictionary() =>
-        _fallbackDictionary ??= LoadDictionary(DefaultCultureName);
+    private static bool TryGetPlainString(
+        string cultureName,
+        string key,
+        out string value)
+    {
+        var dictionary = PlainDictionaries.GetOrAdd(
+            cultureName,
+            LoadPlainDictionary);
+        return dictionary.TryGetValue(key, out value!);
+    }
+
+    private static IReadOnlyDictionary<string, string> LoadPlainDictionary(
+        string cultureName)
+    {
+        var path = Path.Combine(
+            AppContext.BaseDirectory,
+            "Localization",
+            $"Strings.{cultureName}.xaml");
+        if (!File.Exists(path))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        var keyNamespace = XNamespace.Get(
+            "http://schemas.microsoft.com/winfx/2006/xaml");
+        return XDocument.Load(path, LoadOptions.PreserveWhitespace)
+            .Descendants()
+            .Where(element => element.Name.LocalName == "String")
+            .Select(element => new
+            {
+                Key = (string?)element.Attribute(keyNamespace + "Key"),
+                Value = element.Value
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Key))
+            .ToDictionary(
+                item => item.Key!,
+                item => item.Value,
+                StringComparer.Ordinal);
+    }
 
     private static int FindLanguageDictionaryIndex(
         ICollection<ResourceDictionary> dictionaries)

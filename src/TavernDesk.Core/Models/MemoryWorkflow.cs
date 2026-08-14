@@ -50,6 +50,10 @@ public sealed class MemoryUpdateDraft
     public int TargetTokens { get; init; } = 5000;
     public long SourceThroughSequenceNo { get; init; }
     public int SourceUserTurns { get; init; }
+    public int SourceMessageCount { get; init; }
+    public string SourceDigest { get; init; } = string.Empty;
+    public long? TargetBankRevision { get; init; }
+    public long? SourceBankRevision { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 }
@@ -62,14 +66,58 @@ public sealed record MemoryPromptPlan(
     string InputPayload,
     long SourceThroughSequenceNo,
     int SourceUserTurns,
-    int TargetTokens);
+    int TargetTokens,
+    int SourceMessageCount = 0,
+    string SourceDigest = "",
+    long? TargetBankRevision = null,
+    long? SourceBankRevision = null);
 
 public static class MemoryOwnerIds
 {
+    private const string GroupPrefix = "group:";
+    private const string MemberSeparator = ":member:";
+
     public static string ForGroup(string conversationId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
-        return $"group:{conversationId}";
+        return $"{GroupPrefix}{conversationId}";
+    }
+
+    public static string ForGroupMember(
+        string conversationId,
+        string characterId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(characterId);
+        return $"{GroupPrefix}{conversationId}{MemberSeparator}{characterId}";
+    }
+
+    public static bool TryParseGroup(
+        string ownerId,
+        out string conversationId,
+        out string? characterId)
+    {
+        conversationId = string.Empty;
+        characterId = null;
+        if (string.IsNullOrWhiteSpace(ownerId)
+            || !ownerId.StartsWith(GroupPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var remainder = ownerId[GroupPrefix.Length..];
+        var separatorIndex = remainder.IndexOf(
+            MemberSeparator,
+            StringComparison.Ordinal);
+        if (separatorIndex < 0)
+        {
+            conversationId = remainder;
+            return conversationId.Length > 0;
+        }
+
+        conversationId = remainder[..separatorIndex];
+        characterId = remainder[(separatorIndex + MemberSeparator.Length)..];
+        return conversationId.Length > 0 && characterId.Length > 0;
     }
 }
 

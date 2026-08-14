@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 19;
+    public const int CurrentSchemaVersion = 22;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -933,6 +933,162 @@ public sealed class SqliteDatabase : IDatabaseInitializer
                     WHERE provider_models.provider_id = campaigns.gm_provider_id
                       AND provider_models.model_id = campaigns.gm_model_id
                       AND provider_models.max_output_tokens > 4096);
+            """),
+        new(
+            20,
+            """
+            ALTER TABLE group_chat_settings
+                ADD COLUMN member_memory_enabled INTEGER NOT NULL DEFAULT 0;
+
+            ALTER TABLE group_chat_settings
+                ADD COLUMN memory_pending_token_threshold
+                    INTEGER NOT NULL DEFAULT 4000;
+
+            -- Early preview databases could be marked as v1 without this table.
+            -- Recreate the canonical legacy shape before importing group-owned rows.
+            CREATE TABLE IF NOT EXISTS memory_banks (
+                id TEXT PRIMARY KEY,
+                owner_id TEXT NOT NULL UNIQUE,
+                body TEXT NOT NULL,
+                target_tokens INTEGER NOT NULL DEFAULT 5000,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE group_memory_banks (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                scope INTEGER NOT NULL,
+                character_id TEXT NOT NULL DEFAULT '',
+                body TEXT NOT NULL,
+                target_tokens INTEGER NOT NULL,
+                source_through_message_sequence INTEGER NOT NULL,
+                prompt_version TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(conversation_id, scope, character_id),
+                FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE group_memory_checkpoints (
+                conversation_id TEXT NOT NULL,
+                scope INTEGER NOT NULL,
+                character_id TEXT NOT NULL DEFAULT '',
+                last_message_sequence INTEGER NOT NULL,
+                processed_messages INTEGER NOT NULL,
+                source_digest TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(conversation_id, scope, character_id),
+                FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX ix_group_memory_banks_conversation
+                ON group_memory_banks(conversation_id, scope, character_id);
+
+            CREATE INDEX ix_group_memory_checkpoints_conversation
+                ON group_memory_checkpoints(conversation_id, scope, character_id);
+
+            INSERT INTO group_memory_banks(
+                id, conversation_id, scope, character_id, body, target_tokens,
+                source_through_message_sequence, prompt_version, updated_at)
+            SELECT
+                memory_banks.id,
+                conversations.id,
+                0,
+                '',
+                memory_banks.body,
+                memory_banks.target_tokens,
+                COALESCE(memory_checkpoints.last_sequence_no, 0),
+                'legacy-memory-bank-v1',
+                memory_banks.updated_at
+            FROM conversations
+            INNER JOIN memory_banks
+                ON memory_banks.owner_id = 'group:' || conversations.id
+            LEFT JOIN memory_checkpoints
+                ON memory_checkpoints.owner_id = memory_banks.owner_id
+               AND memory_checkpoints.conversation_id = conversations.id
+            WHERE conversations.mode = 1;
+
+            INSERT INTO group_memory_checkpoints(
+                conversation_id, scope, character_id, last_message_sequence,
+                processed_messages, source_digest, updated_at)
+            SELECT
+                conversations.id,
+                0,
+                '',
+                memory_checkpoints.last_sequence_no,
+                (SELECT COUNT(*)
+                 FROM messages
+                 WHERE messages.conversation_id = conversations.id
+                   AND messages.is_deleted = 0
+                   AND messages.sequence_no <= memory_checkpoints.last_sequence_no),
+                '',
+                memory_checkpoints.updated_at
+            FROM conversations
+            INNER JOIN memory_checkpoints
+                ON memory_checkpoints.owner_id = 'group:' || conversations.id
+               AND memory_checkpoints.conversation_id = conversations.id
+            WHERE conversations.mode = 1;
+            """),
+        new(
+            21,
+            """
+            ALTER TABLE memory_banks
+                ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+
+            ALTER TABLE group_memory_banks
+                ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+
+            ALTER TABLE group_memory_checkpoints
+                ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+
+            ALTER TABLE memory_update_drafts
+                ADD COLUMN source_message_count INTEGER NOT NULL DEFAULT 0;
+
+            ALTER TABLE memory_update_drafts
+                ADD COLUMN source_digest TEXT NOT NULL DEFAULT '';
+
+            ALTER TABLE memory_update_drafts
+                ADD COLUMN target_bank_revision INTEGER NULL;
+
+            ALTER TABLE memory_update_drafts
+                ADD COLUMN source_bank_revision INTEGER NULL;
+
+            -- A manual edit made between v20 migration and its first rebuild must
+            -- remain available as the rebuild baseline instead of being discarded.
+            UPDATE group_memory_banks
+            SET prompt_version = 'legacy-memory-bank-v1'
+            WHERE prompt_version = 'manual-group-memory-v1'
+              AND EXISTS (
+                    SELECT 1
+                    FROM group_memory_checkpoints
+                    WHERE group_memory_checkpoints.conversation_id =
+                              group_memory_banks.conversation_id
+                      AND group_memory_checkpoints.scope = group_memory_banks.scope
+                      AND group_memory_checkpoints.character_id =
+                              group_memory_banks.character_id
+                      AND LENGTH(TRIM(group_memory_checkpoints.source_digest)) = 0);
+
+            -- v20 copied the legacy shared row into the dedicated group tables.
+            -- Remove only the successfully migrated legacy duplicate; character
+            -- memory banks remain untouched.
+            DELETE FROM memory_checkpoints
+            WHERE owner_id IN (
+                SELECT 'group:' || id
+                FROM conversations
+                WHERE mode = 1);
+
+            DELETE FROM memory_banks
+            WHERE owner_id IN (
+                SELECT 'group:' || id
+                FROM conversations
+                WHERE mode = 1);
+            """),
+        new(
+            22,
+            """
+            -- PR #6 draft databases are not user data yet. Apply the confirmed
+            -- default-off policy to every existing group configuration.
+            UPDATE group_chat_settings
+            SET member_memory_enabled = 0;
             """)
     ];
 

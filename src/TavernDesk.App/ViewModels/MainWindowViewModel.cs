@@ -45,6 +45,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.MemoryWorkflow,
             services.MemoryPrompts,
             services.GroupChats,
+            services.GroupMemory,
             services.GroupRelay,
             services.Retrieval,
             services.Presets,
@@ -85,7 +86,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             fileDialog,
             services.Settings,
             services.DataLocation,
-            personas);
+            personas,
+            diagnostics: services.Diagnostics);
         Worldbooks = new WorldbookViewModel(
             services.WorldbookService,
             services.Characters,

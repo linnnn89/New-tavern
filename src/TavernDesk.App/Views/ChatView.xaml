@@ -1285,10 +1285,6 @@
                                         Content="{StaticResource Chat.Group.Continue}"
                                         Command="{Binding Group.ContinueRelayCommand}"
                                         Style="{StaticResource PrimaryButtonStyle}" />
-                                <Button Margin="0,0,0,7"
-                                        Content="{StaticResource Chat.Group.SaveSettings}"
-                                        Command="{Binding Group.SaveSettingsCommand}"
-                                        Style="{StaticResource SecondaryButtonStyle}" />
                                 <Button Margin="7,0,0,7"
                                         Content="{StaticResource Chat.Group.EditGlobalPrompt}"
                                         Command="{Binding OpenGlobalPromptCommand}"
@@ -1313,6 +1309,48 @@
                                                  TextWrapping="Wrap"
                                                  Text="{Binding Group.GroupSystemPrompt, UpdateSourceTrigger=PropertyChanged}" />
                                     </Expander>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,14,0,0"
+                                    Padding="10"
+                                    Background="{DynamicResource SurfaceAltBrush}"
+                                    CornerRadius="10">
+                                <StackPanel>
+                                    <TextBlock Text="{StaticResource Chat.Group.MemoryReliability}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,4,0,8"
+                                               Text="{StaticResource Chat.Group.MemoryReliabilityHelp}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
+                                               TextWrapping="Wrap" />
+                                    <CheckBox Content="{StaticResource Chat.Group.MemberMemoryEnabled}"
+                                              IsChecked="{Binding Group.MemberMemoryEnabled}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Text="{StaticResource Chat.Group.MemberMemoryEnabledHelp}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
+                                               TextWrapping="Wrap" />
+                                    <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Text="{StaticResource Chat.Group.MemoryTokenThreshold}" />
+                                         <TextBox Width="88"
+                                                  Margin="8,0,0,0"
+                                                  AutomationProperties.Name="{StaticResource Chat.Group.MemoryTokenThreshold}"
+                                                  Text="{Binding Group.MemoryPendingTokenThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                     <TextBlock Margin="0,8,0,0"
+                                                Text="{Binding Group.MemoryStatus}"
+                                                AutomationProperties.LiveSetting="Polite"
+                                                Foreground="{DynamicResource MutedTextBrush}"
+                                                TextWrapping="Wrap" />
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <Button Margin="0,0,7,0"
+                                                Content="{StaticResource Chat.Group.SaveSettings}"
+                                                Command="{Binding Group.SaveSettingsCommand}"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                        <Button Content="{StaticResource Chat.Group.UpdateMemoryNow}"
+                                                Command="{Binding Group.UpdateMemoryCommand}"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                    </WrapPanel>
                                 </StackPanel>
                             </Border>
 

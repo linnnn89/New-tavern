@@ -3,6 +3,7 @@ using TavernDesk.Core.Flow;
 using TavernDesk.Infrastructure.Campaigns;
 using TavernDesk.Infrastructure.Compatibility;
 using TavernDesk.Infrastructure.Context;
+using TavernDesk.Infrastructure.Diagnostics;
 using TavernDesk.Infrastructure.Group;
 using TavernDesk.Infrastructure.Memory;
 using TavernDesk.Infrastructure.Providers;
@@ -14,8 +15,11 @@ namespace TavernDesk.Infrastructure;
 
 public sealed class InfrastructureServices
 {
-    public InfrastructureServices(string? dataRoot = null)
+    public InfrastructureServices(
+        string? dataRoot = null,
+        ITavernDeskDiagnostics? diagnostics = null)
     {
+        Diagnostics = diagnostics ?? NullTavernDeskDiagnostics.Instance;
         DataConfiguration = new AppDataConfiguration();
         Paths = new AppDataPaths(dataRoot, DataConfiguration);
         Database = new SqliteDatabase(Paths);
@@ -38,11 +42,13 @@ public sealed class InfrastructureServices
         MemoryWorkflow = new SqliteMemoryWorkflowRepository(Database);
         MemoryPrompts = new MemoryPromptComposer();
         GroupChats = new SqliteGroupChatRepository(Database);
+        GroupMemoryRepository = new SqliteGroupMemoryRepository(Database);
         GroupRelay = new GroupRelayPlanner();
         Retrieval = new SqliteMessageRetrievalRepository(Database);
         Presets = new SqlitePresetRepository(Database);
         PresetResolver = new PresetResolver(Presets);
         TokenEstimator = new ModelAwareTokenEstimator();
+        GroupContextBudgetPlanner = new GroupContextBudgetPlanner(TokenEstimator);
         CampaignFlowEngine = CampaignFlowEngineFactory.CreateDefault();
         CampaignContextPlanner = new CampaignContextPlanner(
             TokenEstimator,
@@ -64,8 +70,18 @@ public sealed class InfrastructureServices
         ProviderGateway = new ProviderGatewayRouter(
             Providers,
             openAiCompatibleGateway,
-            grokCliGateway);
+            grokCliGateway,
+            Diagnostics);
         EmbeddingProviderGateway = (IEmbeddingProviderGateway)ProviderGateway;
+        GroupMemory = new GroupMemoryUpdateService(
+            Conversations,
+            GroupChats,
+            GroupMemoryRepository,
+            MemoryWorkflow,
+            Characters,
+            ModelAssignments,
+            ProviderGateway,
+            GenerationCoordinator);
         CampaignMemory = new CampaignMemoryUpdateService(
             Campaigns,
             CampaignMemoryRepository,
@@ -106,7 +122,9 @@ public sealed class InfrastructureServices
             Conversations,
             Characters,
             MemoryBanks,
+            GroupMemoryRepository,
             TokenEstimator,
+            GroupContextBudgetPlanner,
             WorldbookEngine,
             WorldbookService,
             MacroEngine,
@@ -123,6 +141,7 @@ public sealed class InfrastructureServices
     }
 
     public AppDataConfiguration DataConfiguration { get; }
+    public ITavernDeskDiagnostics Diagnostics { get; }
     public AppDataPaths Paths { get; }
     public AppDataLocationService DataLocation { get; }
     public SqliteDatabase Database { get; }
@@ -143,6 +162,8 @@ public sealed class InfrastructureServices
     public IMemoryWorkflowRepository MemoryWorkflow { get; }
     public IMemoryPromptComposer MemoryPrompts { get; }
     public IGroupChatRepository GroupChats { get; }
+    public IGroupMemoryRepository GroupMemoryRepository { get; }
+    public IGroupMemoryUpdateService GroupMemory { get; }
     public IGroupRelayPlanner GroupRelay { get; }
     public IMessageRetrievalRepository Retrieval { get; }
     public IWorldbookRepository Worldbooks { get; }
@@ -150,6 +171,7 @@ public sealed class InfrastructureServices
     public IPresetRepository Presets { get; }
     public IPresetResolver PresetResolver { get; }
     public ITokenEstimator TokenEstimator { get; }
+    public IGroupContextBudgetPlanner GroupContextBudgetPlanner { get; }
     public ICampaignContextPlanner CampaignContextPlanner { get; }
     public ICampaignFlowEngine CampaignFlowEngine { get; }
     public IContextBudgetProvider ContextBudget { get; }

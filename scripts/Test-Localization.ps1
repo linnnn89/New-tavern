@@ -134,7 +134,10 @@ if ($unexpectedTaiwanTerms.Count -gt 0) {
 }
 
 $hardcodedXaml = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
-    Where-Object { $_.FullName -notlike "$localizationRoot*" } |
+    Where-Object {
+        $_.FullName -notlike "$localizationRoot*" -and
+        $_.FullName -notmatch '\\(bin|obj)\\'
+    } |
     Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]' -Encoding UTF8
 if ($hardcodedXaml) {
     throw "Display CJK remains outside language dictionaries:`n$($hardcodedXaml -join "`n")"

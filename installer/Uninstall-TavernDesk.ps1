@@ -10,29 +10,30 @@ Add-Type -AssemblyName System.Windows.Forms
 
 $productName = 'TavernDesk'
 $markerFileName = '.taverndesk-install.json'
+$managedManifestFileName = '.taverndesk-managed-files.json'
 $textByCulture = @{
     'zh-CN' = @{
         Title = '卸载 TavernDesk'
-        Confirm = "是否删除 TavernDesk 程序文件和快捷方式？`r`n`r`n角色、聊天、设置和 API Key 等个人资料不会被删除。"
-        Success = 'TavernDesk 程序文件已删除，个人资料保持不变。'
+        Confirm = "是否删除 TavernDesk 程序文件、快捷方式和安装目录内的 API 测试输出？`r`n`r`n角色、聊天、设置和 API Key 等个人资料不会被删除。"
+        Success = 'TavernDesk 程序文件和 API 测试输出已删除；安装目录中的其他文件以及个人资料保持不变。'
         Failure = '卸载失败：{0}'
     }
     'zh-TW' = @{
         Title = '解除安裝 TavernDesk'
-        Confirm = "是否刪除 TavernDesk 程式檔案與捷徑？`r`n`r`n角色、對話、設定和 API Key 等個人資料不會被刪除。"
-        Success = 'TavernDesk 程式檔案已刪除，個人資料保持不變。'
+        Confirm = "是否刪除 TavernDesk 程式檔案、捷徑及安裝目錄內的 API 測試輸出？`r`n`r`n角色、對話、設定和 API Key 等個人資料不會被刪除。"
+        Success = 'TavernDesk 程式檔案和 API 測試輸出已刪除；安裝目錄中的其他檔案與個人資料保持不變。'
         Failure = '解除安裝失敗：{0}'
     }
     'en-US' = @{
         Title = 'Uninstall TavernDesk'
-        Confirm = "Remove TavernDesk program files and shortcuts?`r`n`r`nCharacters, chats, settings, API keys, and other personal data will not be deleted."
-        Success = 'TavernDesk program files were removed. Personal data was left unchanged.'
+        Confirm = "Remove TavernDesk program files, shortcuts, and API test output stored inside the install folder?`r`n`r`nCharacters, chats, settings, API keys, and other personal data will not be deleted."
+        Success = 'TavernDesk program files and API test output were removed. Other files in the install folder and personal data were left unchanged.'
         Failure = 'Uninstall failed: {0}'
     }
     'ja-JP' = @{
         Title = 'TavernDesk のアンインストール'
-        Confirm = "TavernDesk のプログラムファイルとショートカットを削除しますか？`r`n`r`nキャラクター、チャット、設定、API Key などの個人データは削除されません。"
-        Success = 'TavernDesk のプログラムファイルを削除しました。個人データは変更されていません。'
+        Confirm = "TavernDesk のプログラムファイル、ショートカット、インストールフォルダー内の API テスト出力を削除しますか？`r`n`r`nキャラクター、チャット、設定、API Key などの個人データは削除されません。"
+        Success = 'TavernDesk のプログラムファイルと API テスト出力を削除しました。インストール先のその他のファイルと個人データは変更されていません。'
         Failure = 'アンインストールに失敗しました：{0}'
     }
 }
@@ -99,6 +100,81 @@ function Remove-Shortcuts {
     }
 }
 
+function Resolve-InstallChildPath {
+    param([string]$RootPath, [string]$RelativePath)
+
+    if ([string]::IsNullOrWhiteSpace($RelativePath) -or [IO.Path]::IsPathRooted($RelativePath)) {
+        throw 'The managed-file manifest contains an unsafe path.'
+    }
+    $root = [IO.Path]::GetFullPath($RootPath).TrimEnd('\')
+    $candidate = [IO.Path]::GetFullPath((Join-Path $root $RelativePath.Replace('/', '\')))
+    if (-not $candidate.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'The managed-file manifest contains a path outside the installation directory.'
+    }
+    return $candidate
+}
+
+function Read-ManagedFiles {
+    param([string]$RootPath)
+
+    $manifestPath = Join-Path $RootPath $managedManifestFileName
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw 'The managed-file manifest is missing; the uninstaller will not delete the installation directory blindly.'
+    }
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($manifest.product -ne $productName -or [int]$manifest.schemaVersion -ne 1) {
+        throw 'The managed-file manifest is invalid.'
+    }
+    return @($manifest.files | ForEach-Object {
+        Resolve-InstallChildPath $RootPath ([string]$_)
+    })
+}
+
+function Remove-EmptyInstallDirectories {
+    param([string]$RootPath)
+
+    $directories = @(Get-ChildItem -LiteralPath $RootPath -Recurse -Force -Directory `
+        | Sort-Object { $_.FullName.Length } -Descending)
+    foreach ($directory in $directories) {
+        if (@(Get-ChildItem -LiteralPath $directory.FullName -Force).Count -eq 0) {
+            [IO.Directory]::Delete($directory.FullName)
+        }
+    }
+}
+
+function Remove-ManagedInstallContent {
+    param([string]$TargetPath)
+
+    $root = [IO.Path]::GetFullPath($TargetPath).TrimEnd('\')
+    $manifestPath = Join-Path $root $managedManifestFileName
+    $markerPath = Join-Path $root $markerFileName
+    $managedFiles = Read-ManagedFiles $root
+
+    foreach ($filePath in @($managedFiles | Sort-Object { $_.Length } -Descending)) {
+        if ([string]::Equals($filePath, $manifestPath, [StringComparison]::OrdinalIgnoreCase)) { continue }
+        if (Test-Path -LiteralPath $filePath -PathType Leaf) {
+            Remove-Item -LiteralPath $filePath -Force
+        }
+    }
+
+    $testOutputPath = Resolve-InstallChildPath $root 'tests\output'
+    if (Test-Path -LiteralPath $testOutputPath -PathType Container) {
+        Remove-Item -LiteralPath $testOutputPath -Recurse -Force
+    }
+    $uninstallCommand = Resolve-InstallChildPath $root 'Uninstall TavernDesk.cmd'
+    if (Test-Path -LiteralPath $uninstallCommand -PathType Leaf) {
+        Remove-Item -LiteralPath $uninstallCommand -Force
+    }
+
+    Remove-EmptyInstallDirectories $root
+    Remove-Item -LiteralPath $manifestPath -Force
+    Remove-Item -LiteralPath $markerPath -Force
+    Remove-EmptyInstallDirectories $root
+    if (@(Get-ChildItem -LiteralPath $root -Force).Count -eq 0) {
+        [IO.Directory]::Delete($root)
+    }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($CleanupTarget)) {
     $targetPath = [IO.Path]::GetFullPath($CleanupTarget).TrimEnd('\')
     $marker = Read-Marker $targetPath
@@ -110,7 +186,7 @@ if (-not [string]::IsNullOrWhiteSpace($CleanupTarget)) {
         }
     }
     Set-Location ([IO.Path]::GetTempPath())
-    Remove-Item -LiteralPath $targetPath -Recurse -Force
+    Remove-ManagedInstallContent $targetPath
     if (-not $Quiet) {
         [System.Windows.Forms.MessageBox]::Show(
             $textByCulture[$culture].Success,

@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
+using TavernDesk.Infrastructure.Group;
 
 namespace TavernDesk.Infrastructure.Storage;
 
@@ -93,6 +94,26 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         string conversationId,
         CancellationToken cancellationToken = default)
     {
+        if (MemoryOwnerIds.TryParseGroup(
+                ownerId,
+                out var groupConversationId,
+                out var characterId))
+        {
+            if (!string.Equals(
+                    groupConversationId,
+                    conversationId,
+                    StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return await GetGroupCheckpointAsync(
+                ownerId,
+                conversationId,
+                characterId,
+                cancellationToken);
+        }
+
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -122,7 +143,8 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         command.CommandText = """
             SELECT id, target_owner_id, source_conversation_id, draft_kind,
                    body, request_preview, target_tokens, source_through_sequence_no,
-                   source_user_turns, created_at, updated_at
+                   source_user_turns, source_message_count, source_digest,
+                   target_bank_revision, source_bank_revision, created_at, updated_at
             FROM memory_update_drafts
             WHERE target_owner_id = $targetOwnerId
               AND source_conversation_id = $sourceConversationId
@@ -148,7 +170,8 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         command.CommandText = """
             SELECT id, target_owner_id, source_conversation_id, draft_kind,
                    body, request_preview, target_tokens, source_through_sequence_no,
-                   source_user_turns, created_at, updated_at
+                   source_user_turns, source_message_count, source_digest,
+                   target_bank_revision, source_bank_revision, created_at, updated_at
             FROM memory_update_drafts
             WHERE source_conversation_id = $sourceConversationId
             ORDER BY updated_at DESC;
@@ -180,11 +203,13 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             INSERT INTO memory_update_drafts(
                 id, target_owner_id, source_conversation_id, draft_kind,
                 body, request_preview, target_tokens, source_through_sequence_no,
-                source_user_turns, created_at, updated_at)
+                source_user_turns, source_message_count, source_digest,
+                target_bank_revision, source_bank_revision, created_at, updated_at)
             VALUES(
                 $id, $targetOwnerId, $sourceConversationId, $kind,
                 $body, $requestPreview, $targetTokens, $sourceThroughSequenceNo,
-                $sourceUserTurns, $createdAt, $updatedAt)
+                $sourceUserTurns, $sourceMessageCount, $sourceDigest,
+                $targetBankRevision, $sourceBankRevision, $createdAt, $updatedAt)
             ON CONFLICT(target_owner_id, source_conversation_id, draft_kind)
             DO UPDATE SET
                 id = excluded.id,
@@ -193,6 +218,10 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                 target_tokens = excluded.target_tokens,
                 source_through_sequence_no = excluded.source_through_sequence_no,
                 source_user_turns = excluded.source_user_turns,
+                source_message_count = excluded.source_message_count,
+                source_digest = excluded.source_digest,
+                target_bank_revision = excluded.target_bank_revision,
+                source_bank_revision = excluded.source_bank_revision,
                 created_at = excluded.created_at,
                 updated_at = excluded.updated_at;
             """;
@@ -207,6 +236,14 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             "$sourceThroughSequenceNo",
             draft.SourceThroughSequenceNo);
         command.Parameters.AddWithValue("$sourceUserTurns", draft.SourceUserTurns);
+        command.Parameters.AddWithValue("$sourceMessageCount", draft.SourceMessageCount);
+        command.Parameters.AddWithValue("$sourceDigest", draft.SourceDigest);
+        command.Parameters.AddWithValue(
+            "$targetBankRevision",
+            (object?)draft.TargetBankRevision ?? DBNull.Value);
+        command.Parameters.AddWithValue(
+            "$sourceBankRevision",
+            (object?)draft.SourceBankRevision ?? DBNull.Value);
         command.Parameters.AddWithValue("$createdAt", draft.CreatedAt.ToString("O"));
         command.Parameters.AddWithValue("$updatedAt", draft.UpdatedAt.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -243,7 +280,8 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                 query.CommandText = """
                     SELECT id, target_owner_id, source_conversation_id, draft_kind,
                            body, request_preview, target_tokens, source_through_sequence_no,
-                           source_user_turns, created_at, updated_at
+                           source_user_turns, source_message_count, source_digest,
+                           target_bank_revision, source_bank_revision, created_at, updated_at
                     FROM memory_update_drafts
                     WHERE id = $id;
                     """;
@@ -258,19 +296,106 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             }
 
             var updatedAt = DateTimeOffset.Now.ToString("O");
+            var isGroupMemory = MemoryOwnerIds.TryParseGroup(
+                draft.TargetOwnerId,
+                out var groupConversationId,
+                out var groupCharacterId);
+            if (isGroupMemory
+                && !string.Equals(
+                    groupConversationId,
+                    draft.SourceConversationId,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "群聊记忆草稿的目标和来源群聊不一致。");
+            }
+
+            if (isGroupMemory)
+            {
+                await EnsureGroupDraftIsCurrentAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    draft,
+                    groupConversationId,
+                    groupCharacterId,
+                    cancellationToken);
+            }
+            else
+            {
+                await EnsurePersonalTargetIsCurrentAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    draft,
+                    cancellationToken);
+            }
+
+            if (draft.Kind == MemoryDraftKind.GroupMerge)
+            {
+                await EnsureGroupMergeSourceIsCurrentAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    draft,
+                    cancellationToken);
+            }
+
             await using (var saveBank = connection.CreateCommand())
             {
                 saveBank.Transaction = (SqliteTransaction)transaction;
-                saveBank.CommandText = """
-                    INSERT INTO memory_banks(id, owner_id, body, target_tokens, updated_at)
-                    VALUES($id, $ownerId, $body, $targetTokens, $updatedAt)
-                    ON CONFLICT(owner_id) DO UPDATE SET
-                        body = excluded.body,
-                        target_tokens = excluded.target_tokens,
-                        updated_at = excluded.updated_at;
-                    """;
+                saveBank.CommandText = isGroupMemory
+                    ? """
+                      INSERT INTO group_memory_banks(
+                          id, conversation_id, scope, character_id, body,
+                          target_tokens, source_through_message_sequence,
+                          prompt_version, revision, updated_at)
+                      VALUES(
+                          $id, $conversationId, $scope, $characterId, $body,
+                          $targetTokens, $sourceThroughSequenceNo,
+                          $promptVersion, 1, $updatedAt)
+                      ON CONFLICT(conversation_id, scope, character_id) DO UPDATE SET
+                          body = excluded.body,
+                          target_tokens = excluded.target_tokens,
+                          source_through_message_sequence =
+                              excluded.source_through_message_sequence,
+                          prompt_version = excluded.prompt_version,
+                          revision = group_memory_banks.revision + 1,
+                          updated_at = excluded.updated_at;
+                      """
+                    : """
+                      INSERT INTO memory_banks(
+                          id, owner_id, body, target_tokens, revision, updated_at)
+                      VALUES($id, $ownerId, $body, $targetTokens, 1, $updatedAt)
+                      ON CONFLICT(owner_id) DO UPDATE SET
+                          body = excluded.body,
+                          target_tokens = excluded.target_tokens,
+                          revision = memory_banks.revision + 1,
+                          updated_at = excluded.updated_at;
+                      """;
                 saveBank.Parameters.AddWithValue("$id", Guid.NewGuid().ToString("N"));
-                saveBank.Parameters.AddWithValue("$ownerId", draft.TargetOwnerId);
+                if (isGroupMemory)
+                {
+                    saveBank.Parameters.AddWithValue(
+                        "$conversationId",
+                        groupConversationId);
+                    saveBank.Parameters.AddWithValue(
+                        "$scope",
+                        (int)(groupCharacterId is null
+                            ? GroupMemoryScope.Shared
+                            : GroupMemoryScope.Member));
+                    saveBank.Parameters.AddWithValue(
+                        "$characterId",
+                        groupCharacterId ?? string.Empty);
+                    saveBank.Parameters.AddWithValue(
+                        "$sourceThroughSequenceNo",
+                        Math.Max(0, draft.SourceThroughSequenceNo));
+                    saveBank.Parameters.AddWithValue(
+                        "$promptVersion",
+                        "reviewed-group-memory-v1");
+                }
+                else
+                {
+                    saveBank.Parameters.AddWithValue("$ownerId", draft.TargetOwnerId);
+                }
+
                 saveBank.Parameters.AddWithValue("$body", normalized);
                 saveBank.Parameters.AddWithValue("$targetTokens", targetTokens);
                 saveBank.Parameters.AddWithValue("$updatedAt", updatedAt);
@@ -281,32 +406,74 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             {
                 await using var checkpoint = connection.CreateCommand();
                 checkpoint.Transaction = (SqliteTransaction)transaction;
-                checkpoint.CommandText = """
-                    INSERT INTO memory_checkpoints(
-                        owner_id, conversation_id, last_sequence_no,
-                        processed_user_turns, updated_at)
-                    VALUES(
-                        $ownerId, $conversationId, $lastSequenceNo,
-                        $processedUserTurns, $updatedAt)
-                    ON CONFLICT(owner_id, conversation_id) DO UPDATE SET
-                        last_sequence_no = MAX(
-                            memory_checkpoints.last_sequence_no,
-                            excluded.last_sequence_no),
-                        processed_user_turns =
-                            memory_checkpoints.processed_user_turns
-                            + excluded.processed_user_turns,
-                        updated_at = excluded.updated_at;
-                    """;
-                checkpoint.Parameters.AddWithValue("$ownerId", draft.TargetOwnerId);
+                checkpoint.CommandText = isGroupMemory
+                    ? """
+                      INSERT INTO group_memory_checkpoints(
+                          conversation_id, scope, character_id,
+                          last_message_sequence, processed_messages,
+                          source_digest, revision, updated_at)
+                      VALUES(
+                          $conversationId, $scope, $characterId,
+                          $lastSequenceNo,
+                          $processedMessages,
+                          $sourceDigest,
+                          1, $updatedAt)
+                      ON CONFLICT(conversation_id, scope, character_id) DO UPDATE SET
+                          last_message_sequence = excluded.last_message_sequence,
+                          processed_messages = excluded.processed_messages,
+                          source_digest = excluded.source_digest,
+                          revision = group_memory_checkpoints.revision + 1,
+                          updated_at = excluded.updated_at;
+                      """
+                    : """
+                      INSERT INTO memory_checkpoints(
+                          owner_id, conversation_id, last_sequence_no,
+                          processed_user_turns, updated_at)
+                      VALUES(
+                          $ownerId, $conversationId, $lastSequenceNo,
+                          $processedUserTurns, $updatedAt)
+                      ON CONFLICT(owner_id, conversation_id) DO UPDATE SET
+                          last_sequence_no = MAX(
+                              memory_checkpoints.last_sequence_no,
+                              excluded.last_sequence_no),
+                          processed_user_turns =
+                              memory_checkpoints.processed_user_turns
+                              + excluded.processed_user_turns,
+                          updated_at = excluded.updated_at;
+                      """;
+                if (isGroupMemory)
+                {
+                    checkpoint.Parameters.AddWithValue(
+                        "$scope",
+                        (int)(groupCharacterId is null
+                            ? GroupMemoryScope.Shared
+                            : GroupMemoryScope.Member));
+                    checkpoint.Parameters.AddWithValue(
+                        "$characterId",
+                        groupCharacterId ?? string.Empty);
+                    checkpoint.Parameters.AddWithValue(
+                        "$processedMessages",
+                        draft.SourceMessageCount);
+                    checkpoint.Parameters.AddWithValue(
+                        "$sourceDigest",
+                        draft.SourceDigest);
+                }
+                else
+                {
+                    checkpoint.Parameters.AddWithValue(
+                        "$ownerId",
+                        draft.TargetOwnerId);
+                    checkpoint.Parameters.AddWithValue(
+                        "$processedUserTurns",
+                        draft.SourceUserTurns);
+                }
+
                 checkpoint.Parameters.AddWithValue(
                     "$conversationId",
                     draft.SourceConversationId);
                 checkpoint.Parameters.AddWithValue(
                     "$lastSequenceNo",
                     draft.SourceThroughSequenceNo);
-                checkpoint.Parameters.AddWithValue(
-                    "$processedUserTurns",
-                    draft.SourceUserTurns);
                 checkpoint.Parameters.AddWithValue("$updatedAt", updatedAt);
                 await checkpoint.ExecuteNonQueryAsync(cancellationToken);
             }
@@ -338,6 +505,215 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         command.CommandText = "DELETE FROM memory_update_drafts WHERE id = $id;";
         command.Parameters.AddWithValue("$id", draftId);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<(int ProcessedMessages, string SourceDigest)>
+        ReadGroupCheckpointSourceAsync(
+            SqliteConnection connection,
+            SqliteTransaction transaction,
+            string conversationId,
+            long throughSequence,
+            CancellationToken cancellationToken)
+    {
+        var messages = new List<ChatMessage>();
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT sequence_no, sender_kind, sender_id, content
+            FROM messages
+            WHERE conversation_id = $conversationId
+              AND is_deleted = 0
+              AND LENGTH(TRIM(content)) > 0
+              AND sequence_no <= $throughSequence
+            ORDER BY sequence_no;
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$throughSequence", throughSequence);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            messages.Add(new ChatMessage
+            {
+                ConversationId = conversationId,
+                SequenceNo = reader.GetInt64(0),
+                SenderKind = (MessageSenderKind)reader.GetInt32(1),
+                SenderId = reader.GetString(2),
+                Content = reader.GetString(3)
+            });
+        }
+
+        return (
+            messages.Count,
+            GroupMemorySourceFingerprint.Compute(messages));
+    }
+
+    private static async Task EnsureGroupDraftIsCurrentAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        MemoryUpdateDraft draft,
+        string conversationId,
+        string? characterId,
+        CancellationToken cancellationToken)
+    {
+        var scope = characterId is null
+            ? GroupMemoryScope.Shared
+            : GroupMemoryScope.Member;
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT
+                (SELECT revision
+                 FROM group_memory_banks
+                 WHERE conversation_id = $conversationId
+                   AND scope = $scope
+                   AND character_id = $characterId),
+                (SELECT updated_at
+                 FROM group_memory_banks
+                 WHERE conversation_id = $conversationId
+                   AND scope = $scope
+                   AND character_id = $characterId),
+                (SELECT last_message_sequence
+                 FROM group_memory_checkpoints
+                 WHERE conversation_id = $conversationId
+                   AND scope = $scope
+                   AND character_id = $characterId);
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$scope", (int)scope);
+        command.Parameters.AddWithValue("$characterId", characterId ?? string.Empty);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
+        var currentRevision = reader.IsDBNull(0) ? 0 : reader.GetInt64(0);
+        var bankChanged = draft.TargetBankRevision.HasValue
+            ? currentRevision != draft.TargetBankRevision.Value
+            : !reader.IsDBNull(1)
+              && DateTimeOffset.Parse(reader.GetString(1)) > draft.CreatedAt;
+        var checkpointAhead = draft.Kind == MemoryDraftKind.Update
+                              && string.IsNullOrWhiteSpace(draft.SourceDigest)
+                              && !reader.IsDBNull(2)
+                              && reader.GetInt64(2) > draft.SourceThroughSequenceNo;
+        await reader.DisposeAsync();
+
+        var sourceChanged = false;
+        if (draft.Kind == MemoryDraftKind.Update
+            && !string.IsNullOrWhiteSpace(draft.SourceDigest))
+        {
+            var currentSource = await ReadGroupCheckpointSourceAsync(
+                connection,
+                transaction,
+                draft.SourceConversationId,
+                draft.SourceThroughSequenceNo,
+                cancellationToken);
+            sourceChanged = currentSource.ProcessedMessages != draft.SourceMessageCount
+                            || !string.Equals(
+                                currentSource.SourceDigest,
+                                draft.SourceDigest,
+                                StringComparison.Ordinal);
+        }
+
+        if (bankChanged || checkpointAhead || sourceChanged)
+        {
+            throw new InvalidOperationException(
+                "群聊记忆已在草稿生成后发生变化，请重新生成草稿后再保存。");
+        }
+    }
+
+    private static async Task EnsurePersonalTargetIsCurrentAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        MemoryUpdateDraft draft,
+        CancellationToken cancellationToken)
+    {
+        if (!draft.TargetBankRevision.HasValue)
+        {
+            return;
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT revision FROM memory_banks WHERE owner_id = $ownerId;";
+        command.Parameters.AddWithValue("$ownerId", draft.TargetOwnerId);
+        var value = await command.ExecuteScalarAsync(cancellationToken);
+        var currentRevision = value is null or DBNull ? 0 : Convert.ToInt64(value);
+        if (currentRevision != draft.TargetBankRevision.Value)
+        {
+            throw new InvalidOperationException(
+                "目标记忆已在草稿生成后发生变化，请重新生成草稿后再保存。");
+        }
+    }
+
+    private static async Task EnsureGroupMergeSourceIsCurrentAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        MemoryUpdateDraft draft,
+        CancellationToken cancellationToken)
+    {
+        if (!draft.SourceBankRevision.HasValue)
+        {
+            return;
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT revision
+            FROM group_memory_banks
+            WHERE conversation_id = $conversationId
+              AND scope = $scope
+              AND character_id = '';
+            """;
+        command.Parameters.AddWithValue("$conversationId", draft.SourceConversationId);
+        command.Parameters.AddWithValue("$scope", (int)GroupMemoryScope.Shared);
+        var value = await command.ExecuteScalarAsync(cancellationToken);
+        var currentRevision = value is null or DBNull ? 0 : Convert.ToInt64(value);
+        if (currentRevision != draft.SourceBankRevision.Value)
+        {
+            throw new InvalidOperationException(
+                "群聊记忆已在合并草稿生成后发生变化，请重新生成草稿后再保存。");
+        }
+    }
+
+    private async Task<MemoryCheckpoint?> GetGroupCheckpointAsync(
+        string ownerId,
+        string conversationId,
+        string? characterId,
+        CancellationToken cancellationToken)
+    {
+        var scope = characterId is null
+            ? GroupMemoryScope.Shared
+            : GroupMemoryScope.Member;
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT last_message_sequence, processed_messages, source_digest, updated_at
+            FROM group_memory_checkpoints
+            WHERE conversation_id = $conversationId
+              AND scope = $scope
+              AND character_id = $characterId;
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$scope", (int)scope);
+        command.Parameters.AddWithValue("$characterId", characterId ?? string.Empty);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(reader.GetString(2)))
+        {
+            return null;
+        }
+
+        return new MemoryCheckpoint
+        {
+            OwnerId = ownerId,
+            ConversationId = conversationId,
+            LastSequenceNo = reader.GetInt64(0),
+            ProcessedUserTurns = reader.GetInt32(1),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(3))
+        };
     }
 
     private static void ValidateSettings(MemoryWorkflowSettings settings)
@@ -403,7 +779,11 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             TargetTokens = reader.GetInt32(6),
             SourceThroughSequenceNo = reader.GetInt64(7),
             SourceUserTurns = reader.GetInt32(8),
-            CreatedAt = DateTimeOffset.Parse(reader.GetString(9)),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(10))
+            SourceMessageCount = reader.GetInt32(9),
+            SourceDigest = reader.GetString(10),
+            TargetBankRevision = reader.IsDBNull(11) ? null : reader.GetInt64(11),
+            SourceBankRevision = reader.IsDBNull(12) ? null : reader.GetInt64(12),
+            CreatedAt = DateTimeOffset.Parse(reader.GetString(13)),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(14))
         };
 }

@@ -50,6 +50,8 @@ public sealed record ContextAssemblyRequest(
     string? SpeakerCharacterId = null,
     IReadOnlyList<string>? GroupMemberIds = null,
     string? GroupMemoryOverride = null,
+    string? GroupMemberMemoryOverride = null,
+    bool GroupMemberMemoryEnabled = true,
     string? GroupSystemPrompt = null,
     string? GroupBatonInstruction = null,
     RetrievalContextOptions? Retrieval = null,
@@ -60,7 +62,8 @@ public sealed record ContextAssemblyRequest(
 public sealed record ContextAssemblyResult(
     IReadOnlyList<ContextSegment> Segments,
     TokenEstimate Estimate,
-    IReadOnlyList<string>? Diagnostics = null);
+    IReadOnlyList<string>? Diagnostics = null,
+    GroupContextBudgetResult? GroupBudget = null);
 
 public interface ITokenEstimator
 {
@@ -190,6 +193,12 @@ public interface IMemoryBankService
     Task<MemoryBank?> GetAsync(string ownerId, CancellationToken cancellationToken = default);
     Task<string?> GetBodyAsync(string ownerId, CancellationToken cancellationToken = default);
     Task SaveBodyAsync(string ownerId, string body, int targetTokens, CancellationToken cancellationToken = default);
+    Task<bool> TrySaveBodyAsync(
+        string ownerId,
+        string body,
+        int targetTokens,
+        long? expectedRevision,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IChatTool

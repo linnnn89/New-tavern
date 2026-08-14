@@ -7,6 +7,7 @@ using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 using TavernDesk.Infrastructure;
+using TavernDesk.Infrastructure.Diagnostics;
 
 namespace TavernDesk.App;
 
@@ -22,6 +23,8 @@ public partial class App : Application
     private static DateTimeOffset _lastReportedUnhandledExceptionAt;
     private static bool _isShowingUnhandledException;
     private SingleInstanceGate? _singleInstanceGate;
+    private readonly ITavernDeskDiagnostics _diagnostics =
+        new TavernDeskDiagnostics();
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -30,6 +33,10 @@ public partial class App : Application
         ScrollViewerWheelRouter.Register();
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnNonUiUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+        LanguageRuntime.ErrorReporter = exception =>
+            _diagnostics.LogError("ui.operation", exception);
 
         try
         {
@@ -48,7 +55,9 @@ public partial class App : Application
                 return;
             }
 
-            var services = new InfrastructureServices(ParseDataRoot(e.Args));
+            var services = new InfrastructureServices(
+                ParseDataRoot(e.Args),
+                _diagnostics);
             var databaseExistedAtStartup = File.Exists(services.Paths.DatabasePath);
             var pendingLanguagePath = Path.Combine(
                 services.Paths.RootDirectory,
@@ -105,10 +114,14 @@ public partial class App : Application
     {
         _singleInstanceGate?.Dispose();
         _singleInstanceGate = null;
+        DispatcherUnhandledException -= OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException -= OnNonUiUnhandledException;
+        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+        LanguageRuntime.ErrorReporter = null;
         base.OnExit(e);
     }
 
-    private static void OnDispatcherUnhandledException(
+    private void OnDispatcherUnhandledException(
         object sender,
         DispatcherUnhandledExceptionEventArgs e)
     {
@@ -129,7 +142,10 @@ public partial class App : Application
 
         _lastReportedUnhandledExceptionSignature = signature;
         _lastReportedUnhandledExceptionAt = reportedAt;
-        Trace.TraceError(e.Exception.ToString());
+        Trace.TraceError(
+            "Unhandled application exception ({0}). Details were sent to the privacy-safe local logger.",
+            rootException.GetType().FullName);
+        _diagnostics.LogError("application.dispatcher-unhandled", e.Exception);
         _isShowingUnhandledException = true;
         try
         {
@@ -146,6 +162,29 @@ public partial class App : Application
         {
             _isShowingUnhandledException = false;
         }
+    }
+
+    private void OnNonUiUnhandledException(
+        object sender,
+        UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception exception)
+        {
+            _diagnostics.LogError(
+                "application.non-ui-unhandled",
+                exception,
+                new Dictionary<string, object?>
+                {
+                    ["is_terminating"] = e.IsTerminating
+                });
+        }
+    }
+
+    private void OnUnobservedTaskException(
+        object? sender,
+        UnobservedTaskExceptionEventArgs e)
+    {
+        _diagnostics.LogError("application.unobserved-task", e.Exception);
     }
 
     private static string? ParseDataRoot(IReadOnlyList<string> args)

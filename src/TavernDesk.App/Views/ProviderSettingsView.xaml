@@ -1069,6 +1069,92 @@
                                     Command="{Binding ChangeDataRootCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                         </StackPanel>
+
+                        <Border Margin="0,18,0,0"
+                                Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="{StaticResource Settings.Diagnostics.Title}"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Margin="0,7,0,0"
+                                           Text="{StaticResource Settings.Diagnostics.Description}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Margin="0,16,0,0"
+                                           Text="{StaticResource Settings.Diagnostics.ErrorLogTitle}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Text="{StaticResource Settings.Diagnostics.ErrorLogDescription}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <TextBlock Margin="0,9,0,0"
+                                           Text="{StaticResource Settings.Diagnostics.ErrorLogPath}"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <TextBox Margin="0,4,0,0"
+                                         Text="{Binding ErrorLogDirectory}"
+                                         IsReadOnly="True" />
+
+                                <Border Margin="0,18,0,0"
+                                        Padding="0,18,0,0"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="0,1,0,0">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,18,0">
+                                                <TextBlock Text="{StaticResource Settings.Diagnostics.TestModeTitle}"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Margin="0,5,0,0"
+                                                           Text="{StaticResource Settings.Diagnostics.TestModeDescription}"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                            </StackPanel>
+                                            <ToggleButton Grid.Column="1"
+                                                          VerticalAlignment="Center"
+                                                          IsChecked="{Binding IsApiTestModeEnabled, Mode=OneWay}"
+                                                          Command="{Binding SetApiTestModeCommand}"
+                                                          CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}"
+                                                          ToolTip="{StaticResource Settings.Diagnostics.TestModeToggle}"
+                                                          AutomationProperties.Name="{StaticResource Settings.Diagnostics.TestModeToggle}"
+                                                          Style="{StaticResource ReasoningToggleStyle}" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,12,0,0"
+                                                   Text="{StaticResource Settings.Diagnostics.PrivacyWarning}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource DangerBrush}" />
+                                        <TextBlock Margin="0,12,0,0"
+                                                   Text="{StaticResource Settings.Diagnostics.OutputPath}"
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
+                                        <TextBox Margin="0,4,0,0"
+                                                 Text="{Binding ApiTestOutputDirectory}"
+                                                 IsReadOnly="True" />
+                                        <TextBlock Margin="0,7,0,0"
+                                                   Text="{Binding ApiTestOutputSummary}"
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
+                                        <StackPanel Margin="0,12,0,0"
+                                                    HorizontalAlignment="Right"
+                                                    Orientation="Horizontal">
+                                            <Button Margin="0,0,8,0"
+                                                    Content="{StaticResource Settings.Diagnostics.OpenOutput}"
+                                                    Command="{Binding OpenApiTestOutputCommand}"
+                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                            <Button Content="{StaticResource Settings.Diagnostics.ClearOutput}"
+                                                    Command="{Binding ClearApiTestOutputCommand}"
+                                                    Foreground="{DynamicResource DangerBrush}"
+                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                        </StackPanel>
+                                        <TextBlock Margin="0,10,0,0"
+                                                   Text="{Binding DiagnosticsStatus}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

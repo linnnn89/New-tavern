@@ -157,6 +157,42 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 await search.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            // Group memory workflow owners use string identifiers instead of
+            // a conversation foreign key. Remove only this conversation's
+            // synthetic owners so deleted chat content cannot remain orphaned.
+            await using (var memory = connection.CreateCommand())
+            {
+                memory.Transaction = (SqliteTransaction)transaction;
+                memory.CommandText = """
+                    DELETE FROM memory_update_drafts
+                    WHERE source_conversation_id = $conversationId
+                       OR target_owner_id = $groupOwner
+                       OR substr(target_owner_id, 1, length($memberOwnerPrefix))
+                          = $memberOwnerPrefix;
+
+                    DELETE FROM memory_checkpoints
+                    WHERE owner_id = $groupOwner
+                       OR substr(owner_id, 1, length($memberOwnerPrefix))
+                          = $memberOwnerPrefix;
+
+                    DELETE FROM memory_banks
+                    WHERE owner_id = $groupOwner
+                       OR substr(owner_id, 1, length($memberOwnerPrefix))
+                          = $memberOwnerPrefix;
+
+                    DELETE FROM memory_workflow_settings
+                    WHERE owner_id = $groupOwner
+                       OR substr(owner_id, 1, length($memberOwnerPrefix))
+                          = $memberOwnerPrefix;
+                    """;
+                memory.Parameters.AddWithValue("$conversationId", conversationId);
+                memory.Parameters.AddWithValue("$groupOwner", $"group:{conversationId}");
+                memory.Parameters.AddWithValue(
+                    "$memberOwnerPrefix",
+                    $"group:{conversationId}:member:");
+                await memory.ExecuteNonQueryAsync(cancellationToken);
+            }
+
             await using var delete = connection.CreateCommand();
             delete.Transaction = (SqliteTransaction)transaction;
             delete.CommandText = """
@@ -533,6 +569,12 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 await conversation.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            await InvalidateGroupMemoryInTransactionAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                conversationId,
+                cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
         }
         catch
@@ -631,6 +673,12 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 await conversation.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            await InvalidateGroupMemoryInTransactionAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                conversationId,
+                cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
         }
         catch
@@ -702,6 +750,27 @@ public sealed class SqliteConversationRepository : IConversationRepository
             candidateUpdate.Parameters.AddWithValue("$content", normalized);
             candidateUpdate.Parameters.AddWithValue("$messageId", messageId);
             await candidateUpdate.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var conversationLookup = connection.CreateCommand())
+        {
+            conversationLookup.Transaction = (SqliteTransaction)transaction;
+            conversationLookup.CommandText = """
+                SELECT conversation_id
+                FROM messages
+                WHERE id = $messageId;
+                """;
+            conversationLookup.Parameters.AddWithValue("$messageId", messageId);
+            var conversationId = Convert.ToString(
+                await conversationLookup.ExecuteScalarAsync(cancellationToken));
+            if (!string.IsNullOrWhiteSpace(conversationId))
+            {
+                await InvalidateGroupMemoryInTransactionAsync(
+                    connection,
+                    (SqliteTransaction)transaction,
+                    conversationId,
+                    cancellationToken);
+            }
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -776,6 +845,11 @@ public sealed class SqliteConversationRepository : IConversationRepository
         }
 
         await RecalculateConversationActivityAsync(
+            connection,
+            (SqliteTransaction)transaction,
+            conversationId,
+            cancellationToken);
+        await InvalidateGroupMemoryInTransactionAsync(
             connection,
             (SqliteTransaction)transaction,
             conversationId,
@@ -963,6 +1037,32 @@ public sealed class SqliteConversationRepository : IConversationRepository
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private static async Task InvalidateGroupMemoryInTransactionAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string conversationId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            UPDATE group_memory_checkpoints
+            SET source_digest = '',
+                revision = revision + 1,
+                updated_at = $updatedAt
+            WHERE conversation_id = $conversationId
+              AND EXISTS (
+                  SELECT 1
+                  FROM conversations
+                  WHERE conversations.id = group_memory_checkpoints.conversation_id
+                    AND conversations.mode = $groupMode);
+            """;
+        command.Parameters.AddWithValue("$conversationId", conversationId);
+        command.Parameters.AddWithValue("$groupMode", (int)ConversationMode.Group);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private static async Task<Conversation> ReadConversationAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
@@ -1097,11 +1197,13 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 INSERT INTO group_chat_settings(
                     conversation_id, relay_mode, auto_continue_enabled,
                     maximum_automatic_turns, pause_on_user_mention,
+                    member_memory_enabled, memory_pending_token_threshold,
                     group_system_prompt, merge_system_prompt,
                     merge_user_template, updated_at)
                 SELECT
                     $targetConversationId, relay_mode, auto_continue_enabled,
                     maximum_automatic_turns, pause_on_user_mention,
+                    member_memory_enabled, memory_pending_token_threshold,
                     group_system_prompt, merge_system_prompt,
                     merge_user_template, $updatedAt
                 FROM group_chat_settings
@@ -1135,6 +1237,38 @@ public sealed class SqliteConversationRepository : IConversationRepository
                 "$targetConversationId",
                 targetConversationId);
             await members.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var memoryWorkflow = connection.CreateCommand())
+        {
+            memoryWorkflow.Transaction = transaction;
+            memoryWorkflow.CommandText = """
+                INSERT INTO memory_workflow_settings(
+                    owner_id, auto_generate_enabled, update_interval_turns,
+                    maximum_source_user_turns, send_only_new_messages,
+                    update_system_prompt, update_user_template,
+                    compression_system_prompt, compression_user_template,
+                    updated_at)
+                SELECT
+                    'group:' || $targetConversationId,
+                    auto_generate_enabled, update_interval_turns,
+                    maximum_source_user_turns, send_only_new_messages,
+                    update_system_prompt, update_user_template,
+                    compression_system_prompt, compression_user_template,
+                    $updatedAt
+                FROM memory_workflow_settings
+                WHERE owner_id = 'group:' || $sourceConversationId;
+                """;
+            memoryWorkflow.Parameters.AddWithValue(
+                "$sourceConversationId",
+                sourceConversationId);
+            memoryWorkflow.Parameters.AddWithValue(
+                "$targetConversationId",
+                targetConversationId);
+            memoryWorkflow.Parameters.AddWithValue(
+                "$updatedAt",
+                DateTimeOffset.Now.ToString("O"));
+            await memoryWorkflow.ExecuteNonQueryAsync(cancellationToken);
         }
 
         await using var state = connection.CreateCommand();

@@ -83,6 +83,10 @@ public interface IGroupChatRepository
     Task SaveSettingsAsync(
         GroupChatSettings settings,
         CancellationToken cancellationToken = default);
+    Task SaveConfigurationAsync(
+        GroupChatSettings settings,
+        IReadOnlyList<GroupChatMember> members,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GroupChatMember>> ListMembersAsync(
         string conversationId,
         CancellationToken cancellationToken = default);
@@ -95,6 +99,54 @@ public interface IGroupChatRepository
         CancellationToken cancellationToken = default);
     Task SaveStateAsync(
         GroupChatState state,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IGroupMemoryRepository
+{
+    Task<GroupMemoryBank?> GetBankAsync(
+        string conversationId,
+        GroupMemoryScope scope,
+        string? characterId = null,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<GroupMemoryBank>> ListBanksAsync(
+        string conversationId,
+        CancellationToken cancellationToken = default);
+    Task<GroupMemoryCheckpoint?> GetCheckpointAsync(
+        string conversationId,
+        GroupMemoryScope scope,
+        string? characterId = null,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<GroupMemoryCheckpoint>> ListCheckpointsAsync(
+        string conversationId,
+        CancellationToken cancellationToken = default);
+    Task SaveBatchAsync(
+        IReadOnlyList<GroupMemoryBank> banks,
+        IReadOnlyList<GroupMemoryCheckpoint> checkpoints,
+        CancellationToken cancellationToken = default);
+    Task<bool> TrySaveBatchAsync(
+        IReadOnlyList<GroupMemoryBank> banks,
+        IReadOnlyList<GroupMemoryCheckpoint> checkpoints,
+        IReadOnlyList<GroupMemoryWriteExpectation> expectations,
+        CancellationToken cancellationToken = default);
+    Task<bool> ClearIfConversationHasNoMessagesAsync(
+        string conversationId,
+        CancellationToken cancellationToken = default);
+    Task InvalidateAsync(
+        string conversationId,
+        GroupMemoryScopeMask scopes = GroupMemoryScopeMask.All,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IGroupMemoryUpdateService
+{
+    Task<GroupMemoryUpdateResult> UpdateAsync(
+        string conversationId,
+        bool force = false,
+        CancellationToken cancellationToken = default);
+    Task InvalidateAsync(
+        string conversationId,
+        GroupMemoryScopeMask scopes = GroupMemoryScopeMask.All,
         CancellationToken cancellationToken = default);
 }
 

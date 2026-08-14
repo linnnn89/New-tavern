@@ -109,7 +109,7 @@ For players, the recommended option is the `TavernDesk-Setup-x64.exe` installer 
 2. Choose an installation folder and whether to create Desktop and Start menu shortcuts.
 3. Launch TavernDesk, choose the application language on first run, then open **Settings → AI & Models** to configure a provider and assign models.
 
-The installer includes a private .NET 10 runtime and all required dependencies. It does not create registry entries and therefore does not appear in Windows Installed apps. Use the Start menu uninstall shortcut, or `Uninstall TavernDesk.cmd` in the installation folder.
+The installer includes a private .NET 10 runtime and all required dependencies. It does not create registry entries and therefore does not appear in Windows Installed apps. Use the Start menu uninstall shortcut, or `Uninstall TavernDesk.cmd` in the installation folder. Upgrade and uninstall remove setup-managed program files and `tests\output`; unrelated files later placed in the install folder are left intact.
 
 The repository also includes a portable self-contained `win-x64` build. .NET does not need to be installed to run it:
 
@@ -144,6 +144,8 @@ Custom endpoints should end at the service root, `/v1`, or `/api/v1`; do not app
 The default workspace is `%USERPROFILE%\Documents\TavernDesk`. It contains the SQLite database, character and scenario cards, exports, attachments, and protected provider secrets. The selected workspace path is recorded in `%LOCALAPPDATA%\TavernDesk\config.json` and can be migrated from Settings.
 
 API keys are stored as Windows DPAPI `CurrentUser`-protected files; SQLite stores only random references. TavernDesk has no built-in cloud sync. Local-first does not mean every generation is offline: prompts and conversation context are sent to the provider you select when you make a generation or embedding request.
+
+Privacy-safe rolling error logs are written to `%LOCALAPPDATA%\TavernDesk\logs`; they contain error categories, exception types, redacted call locations, and status, and do not intentionally collect API request/reply bodies or authorization headers. The optional API test mode in Settings is off by default. When enabled, it writes request bodies, visible replies, timings, and token usage to `tests\output` under the application root for local analysis; the UI warns that those files contain conversation content and can open or clear the folder directly. Authorization headers, cookies, hidden reasoning text, and full embedding vectors are not intentionally recorded, and known key formats are redacted, but arbitrary secrets embedded in ordinary text cannot always be recognized. Do not put keys or personal data in prompts, names, addresses, or error text. Installed test output is removed during both upgrade and uninstall.
 
 ## Build from source
 

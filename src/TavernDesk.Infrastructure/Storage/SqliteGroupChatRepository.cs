@@ -99,6 +99,7 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
         command.CommandText = """
             SELECT conversation_id, relay_mode, auto_continue_enabled,
                    maximum_automatic_turns, pause_on_user_mention,
+                   member_memory_enabled, memory_pending_token_threshold,
                    group_system_prompt, merge_system_prompt,
                    merge_user_template, updated_at
             FROM group_chat_settings
@@ -124,11 +125,13 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
             INSERT INTO group_chat_settings(
                 conversation_id, relay_mode, auto_continue_enabled,
                 maximum_automatic_turns, pause_on_user_mention,
+                member_memory_enabled, memory_pending_token_threshold,
                 group_system_prompt, merge_system_prompt,
                 merge_user_template, updated_at)
             SELECT
                 id, $relayMode, $autoContinueEnabled,
                 $maximumAutomaticTurns, $pauseOnUserMention,
+                $memberMemoryEnabled, $memoryPendingTokenThreshold,
                 $groupSystemPrompt, $mergeSystemPrompt,
                 $mergeUserTemplate, $updatedAt
             FROM conversations
@@ -138,6 +141,8 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 auto_continue_enabled = excluded.auto_continue_enabled,
                 maximum_automatic_turns = excluded.maximum_automatic_turns,
                 pause_on_user_mention = excluded.pause_on_user_mention,
+                member_memory_enabled = excluded.member_memory_enabled,
+                memory_pending_token_threshold = excluded.memory_pending_token_threshold,
                 group_system_prompt = excluded.group_system_prompt,
                 merge_system_prompt = excluded.merge_system_prompt,
                 merge_user_template = excluded.merge_user_template,
@@ -155,6 +160,12 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
         command.Parameters.AddWithValue(
             "$pauseOnUserMention",
             settings.PauseOnUserMention);
+        command.Parameters.AddWithValue(
+            "$memberMemoryEnabled",
+            settings.MemberMemoryEnabled);
+        command.Parameters.AddWithValue(
+            "$memoryPendingTokenThreshold",
+            settings.MemoryPendingTokenThreshold);
         command.Parameters.AddWithValue("$groupSystemPrompt", settings.GroupSystemPrompt);
         command.Parameters.AddWithValue("$mergeSystemPrompt", settings.MergeSystemPrompt);
         command.Parameters.AddWithValue("$mergeUserTemplate", settings.MergeUserTemplate);
@@ -162,6 +173,99 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
         if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
         {
             throw new InvalidOperationException("群聊设置引用的会话不存在或不是群聊。");
+        }
+    }
+
+    public async Task SaveConfigurationAsync(
+        GroupChatSettings settings,
+        IReadOnlyList<GroupChatMember> members,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSettings(settings);
+        if (members.Any(member => member.ConversationId != settings.ConversationId))
+        {
+            throw new ArgumentException(
+                "群聊设置与成员必须引用同一个群聊会话。",
+                nameof(members));
+        }
+
+        var normalized = NormalizeMembers(members);
+        settings.UpdatedAt = DateTimeOffset.Now;
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await EnsureGroupConversationAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                settings.ConversationId,
+                cancellationToken);
+
+            await using (var save = connection.CreateCommand())
+            {
+                save.Transaction = (SqliteTransaction)transaction;
+                save.CommandText = """
+                    INSERT INTO group_chat_settings(
+                        conversation_id, relay_mode, auto_continue_enabled,
+                        maximum_automatic_turns, pause_on_user_mention,
+                        member_memory_enabled, memory_pending_token_threshold,
+                        group_system_prompt, merge_system_prompt,
+                        merge_user_template, updated_at)
+                    VALUES(
+                        $conversationId, $relayMode, $autoContinueEnabled,
+                        $maximumAutomaticTurns, $pauseOnUserMention,
+                        $memberMemoryEnabled, $memoryPendingTokenThreshold,
+                        $groupSystemPrompt, $mergeSystemPrompt,
+                        $mergeUserTemplate, $updatedAt)
+                    ON CONFLICT(conversation_id) DO UPDATE SET
+                        relay_mode = excluded.relay_mode,
+                        auto_continue_enabled = excluded.auto_continue_enabled,
+                        maximum_automatic_turns = excluded.maximum_automatic_turns,
+                        pause_on_user_mention = excluded.pause_on_user_mention,
+                        member_memory_enabled = excluded.member_memory_enabled,
+                        memory_pending_token_threshold = excluded.memory_pending_token_threshold,
+                        group_system_prompt = excluded.group_system_prompt,
+                        merge_system_prompt = excluded.merge_system_prompt,
+                        merge_user_template = excluded.merge_user_template,
+                        updated_at = excluded.updated_at;
+                    """;
+                save.Parameters.AddWithValue("$conversationId", settings.ConversationId);
+                save.Parameters.AddWithValue("$relayMode", (int)settings.RelayMode);
+                save.Parameters.AddWithValue("$autoContinueEnabled", settings.AutoContinueEnabled);
+                save.Parameters.AddWithValue("$maximumAutomaticTurns", settings.MaximumAutomaticTurns);
+                save.Parameters.AddWithValue("$pauseOnUserMention", settings.PauseOnUserMention);
+                save.Parameters.AddWithValue("$memberMemoryEnabled", settings.MemberMemoryEnabled);
+                save.Parameters.AddWithValue("$memoryPendingTokenThreshold", settings.MemoryPendingTokenThreshold);
+                save.Parameters.AddWithValue("$groupSystemPrompt", settings.GroupSystemPrompt);
+                save.Parameters.AddWithValue("$mergeSystemPrompt", settings.MergeSystemPrompt);
+                save.Parameters.AddWithValue("$mergeUserTemplate", settings.MergeUserTemplate);
+                save.Parameters.AddWithValue("$updatedAt", settings.UpdatedAt.ToString("O"));
+                await save.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using (var delete = connection.CreateCommand())
+            {
+                delete.Transaction = (SqliteTransaction)transaction;
+                delete.CommandText =
+                    "DELETE FROM group_chat_members WHERE conversation_id = $conversationId;";
+                delete.Parameters.AddWithValue("$conversationId", settings.ConversationId);
+                await delete.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await InsertMembersAsync(
+                connection,
+                (SqliteTransaction)transaction,
+                settings.ConversationId,
+                normalized,
+                cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
         }
     }
 
@@ -311,6 +415,13 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 "自动接力上限必须在 1–100 次之间。");
         }
 
+        if (settings.MemoryPendingTokenThreshold is < 256 or > 100000)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings.MemoryPendingTokenThreshold),
+                "群聊记忆待处理 Token 阈值必须在 256–100000 之间。");
+        }
+
         if (string.IsNullOrWhiteSpace(settings.GroupSystemPrompt)
             || string.IsNullOrWhiteSpace(settings.MergeSystemPrompt)
             || string.IsNullOrWhiteSpace(settings.MergeUserTemplate))
@@ -347,11 +458,13 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
             INSERT INTO group_chat_settings(
                 conversation_id, relay_mode, auto_continue_enabled,
                 maximum_automatic_turns, pause_on_user_mention,
+                member_memory_enabled, memory_pending_token_threshold,
                 group_system_prompt, merge_system_prompt,
                 merge_user_template, updated_at)
             VALUES(
                 $conversationId, $relayMode, $autoContinueEnabled,
                 $maximumAutomaticTurns, $pauseOnUserMention,
+                $memberMemoryEnabled, $memoryPendingTokenThreshold,
                 $groupSystemPrompt, $mergeSystemPrompt,
                 $mergeUserTemplate, $updatedAt);
             """;
@@ -366,6 +479,12 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
         command.Parameters.AddWithValue(
             "$pauseOnUserMention",
             settings.PauseOnUserMention);
+        command.Parameters.AddWithValue(
+            "$memberMemoryEnabled",
+            settings.MemberMemoryEnabled);
+        command.Parameters.AddWithValue(
+            "$memoryPendingTokenThreshold",
+            settings.MemoryPendingTokenThreshold);
         command.Parameters.AddWithValue("$groupSystemPrompt", settings.GroupSystemPrompt);
         command.Parameters.AddWithValue("$mergeSystemPrompt", settings.MergeSystemPrompt);
         command.Parameters.AddWithValue("$mergeUserTemplate", settings.MergeUserTemplate);
@@ -427,9 +546,11 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
             AutoContinueEnabled = reader.GetBoolean(2),
             MaximumAutomaticTurns = reader.GetInt32(3),
             PauseOnUserMention = reader.GetBoolean(4),
-            GroupSystemPrompt = reader.GetString(5),
-            MergeSystemPrompt = reader.GetString(6),
-            MergeUserTemplate = reader.GetString(7),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(8))
+            MemberMemoryEnabled = reader.GetBoolean(5),
+            MemoryPendingTokenThreshold = reader.GetInt32(6),
+            GroupSystemPrompt = reader.GetString(7),
+            MergeSystemPrompt = reader.GetString(8),
+            MergeUserTemplate = reader.GetString(9),
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(10))
         };
 }

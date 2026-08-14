@@ -15,6 +15,8 @@ public sealed class GroupChatSettings
     public bool AutoContinueEnabled { get; set; }
     public int MaximumAutomaticTurns { get; set; } = 8;
     public bool PauseOnUserMention { get; set; } = true;
+    public bool MemberMemoryEnabled { get; set; }
+    public int MemoryPendingTokenThreshold { get; set; } = 4000;
     public string GroupSystemPrompt { get; set; } = GroupPromptDefaults.SystemPrompt;
     public string MergeSystemPrompt { get; set; } = MemoryPromptDefaults.GroupMergeSystem;
     // Legacy persistence slot. Runtime composition always uses GroupMergeInput.
