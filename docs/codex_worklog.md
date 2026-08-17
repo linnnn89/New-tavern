@@ -1,5 +1,19 @@
 # Codex 工作记录
 
+## 2026-08-17 — 移除 Git 历史中的生成安装包
+
+### 本轮修改
+
+- 根目录 `TavernDesk-Setup-x64.exe` 是发布产物，不再纳入 Git 当前版本或历史；本地生成的安装包仍可保留并由 `.gitignore` 忽略。
+- 四种语言 README 的安装器入口改为 GitHub Releases；安装器源码和便携 `app/` 目录保持不变。
+- 重写默认分支历史并清理本地不可达对象，保留仓库外 bundle 备份 `I:\New-tarven-history-backup-20260817.bundle`。
+
+### 验证
+
+- `.git` 从约 `435 MB` 降至约 `88 MB`；安装包历史路径在所有可达引用中已不存在。
+- 本地默认分支与远端强推后的 `ba46203` 一致，工作区干净；GitHub Releases 仍保留 `TavernDesk-Setup-x64.exe` 下载资产。
+- `git diff --check`：通过。本轮未改动应用业务逻辑，未运行完整构建或 UI 验收。
+
 ## 2026-08-13 — 群聊阶段历史预算与离线长上下文 TDD
 
 ### 本轮修改
