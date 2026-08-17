@@ -72,7 +72,7 @@ TavernDesk 希望把角色扮演所依赖的数据留在用户手中，并让它
 
 ## 快速开始
 
-普通玩家建议直接使用根目录的 `TavernDesk-Setup-x64.exe` 安装程序：
+普通玩家建议从 [Releases 页面](https://github.com/linnnn89/New-tavern/releases/latest) 下载最新的 `TavernDesk-Setup-x64.exe` 安装程序：
 
 1. 运行安装程序并选择安装界面语言。
 2. 自定义安装目录，并选择是否创建桌面和开始菜单快捷方式。

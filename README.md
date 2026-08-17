@@ -104,7 +104,7 @@ Campaign mode is a separate runtime, not group chat with an extra GM prompt.
 
 ## Quick start
 
-For players, the recommended option is the `TavernDesk-Setup-x64.exe` installer in the repository root:
+For players, the recommended option is the latest `TavernDesk-Setup-x64.exe` installer from the [Releases page](https://github.com/linnnn89/New-tavern/releases/latest):
 
 1. Run the installer and choose the setup language.
 2. Choose an installation folder and whether to create Desktop and Start menu shortcuts.
