@@ -24,3 +24,4 @@ user-data/
 /app/runtimes/*
 !/app/runtimes/win-x64/
 !/app/runtimes/win-x64/**
+TavernDesk-Setup-x64.exe
