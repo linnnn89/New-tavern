@@ -36,7 +36,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private static readonly IReadOnlyList<InterfaceThemeOption> InterfaceThemeOptions =
     [
         new(InterfaceSettingsRuntime.LightThemeName, LanguageRuntime.GetString("Settings.Theme.Light")),
-        new(InterfaceSettingsRuntime.DarkThemeName, LanguageRuntime.GetString("Settings.Theme.Dark"))
+        new(InterfaceSettingsRuntime.DarkThemeName, LanguageRuntime.GetString("Settings.Theme.Dark")),
+        new(InterfaceSettingsRuntime.CupertinoThemeName, LanguageRuntime.GetString("Settings.Theme.Cupertino")),
+        new(InterfaceSettingsRuntime.MaterialThemeName, LanguageRuntime.GetString("Settings.Theme.Material"))
     ];
 
     private readonly IProviderProfileRepository _repository;

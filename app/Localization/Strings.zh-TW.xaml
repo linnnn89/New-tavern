@@ -1038,6 +1038,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Scale.Large">150%（放大）</sys:String>
     <sys:String x:Key="Settings.Theme.Light">預設淺色</sys:String>
     <sys:String x:Key="Settings.Theme.Dark">深炭黑</sys:String>
+    <sys:String x:Key="Settings.Theme.Cupertino">macOS 冰霜銀白</sys:String>
+    <sys:String x:Key="Settings.Theme.Material">Material 莫奈暖灰</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">未儲存 API Key。</sys:String>
     <sys:String x:Key="Settings.Status.Intro">儲存供應商不會聯網；只有主動按一下「重新整理模型目錄」才會請求對應 API。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Pending">暫時無法計算縮放建議。</sys:String>
