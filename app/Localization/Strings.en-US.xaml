@@ -1038,6 +1038,8 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Settings.Scale.Large">150% (large)</sys:String>
     <sys:String x:Key="Settings.Theme.Light">Default light</sys:String>
     <sys:String x:Key="Settings.Theme.Dark">Charcoal dark</sys:String>
+    <sys:String x:Key="Settings.Theme.Cupertino">macOS Cupertino Frost</sys:String>
+    <sys:String x:Key="Settings.Theme.Material">Material Monet Warm</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">No API key saved.</sys:String>
     <sys:String x:Key="Settings.Status.Intro">Saving a provider does not connect to the network. Its API is requested only when you explicitly select Refresh Model Catalog.</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Pending">No scale recommendation is available yet.</sys:String>

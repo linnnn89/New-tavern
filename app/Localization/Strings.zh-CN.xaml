@@ -1009,6 +1009,8 @@
     <sys:String x:Key="Settings.Scale.Large">150%（放大）</sys:String>
     <sys:String x:Key="Settings.Theme.Light">默认浅色</sys:String>
     <sys:String x:Key="Settings.Theme.Dark">深炭黑</sys:String>
+    <sys:String x:Key="Settings.Theme.Cupertino">macOS 冰霜银白</sys:String>
+    <sys:String x:Key="Settings.Theme.Material">Material 莫奈暖灰</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">未保存 API Key。</sys:String>
     <sys:String x:Key="Settings.Status.Intro">保存接入商不会联网；只有主动点击“刷新模型目录”才会请求对应 API。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Pending">暂时无法计算缩放建议。</sys:String>

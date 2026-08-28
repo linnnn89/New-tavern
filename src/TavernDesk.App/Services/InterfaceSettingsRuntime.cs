@@ -7,6 +7,8 @@ public static class InterfaceSettingsRuntime
 {
     public const string LightThemeName = "light";
     public const string DarkThemeName = "dark";
+    public const string CupertinoThemeName = "cupertino";
+    public const string MaterialThemeName = "material";
     public const string DefaultThemeName = LightThemeName;
     public const string DefaultFontFamily = "Microsoft YaHei UI";
     public const double DefaultFontSize = 14;
@@ -129,6 +131,110 @@ public static class InterfaceSettingsRuntime
             ["AppicaDashboardGreenBrush"] = "#57D695"
         };
 
+    private static readonly IReadOnlyDictionary<string, string> CupertinoThemeBrushes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["WindowBackgroundBrush"] = "#F5F5F7",
+            ["SurfaceBrush"] = "#FFFFFFFF",
+            ["SurfaceSolidBrush"] = "#FFFFFFFF",
+            ["SurfaceAltBrush"] = "#EBEBF0",
+            ["BorderBrush"] = "#E5E5EA",
+            ["TextBrush"] = "#1D1D1F",
+            ["MutedTextBrush"] = "#86868B",
+            ["AccentBrush"] = "#0071E3",
+            ["AccentSoftBrush"] = "#E8F2FF",
+            ["ControlHoverBrush"] = "#F0F0F2",
+            ["ControlPressedBrush"] = "#E2E2E6",
+            ["ControlDisabledBrush"] = "#F5F5F7",
+            ["FocusRingBrush"] = "#0071E3",
+            ["ScrollThumbBrush"] = "#C7C7CC",
+            ["ScrollThumbHoverBrush"] = "#8E8E93",
+            ["SuccessBrush"] = "#34C759",
+            ["WarningBrush"] = "#FF9500",
+            ["DangerBrush"] = "#FF3B30",
+            ["MessagePlusBrush"] = "#6E6E73",
+            ["InteractionOverlayBrush"] = "#1D1D1F",
+            ["AppicaSelectedBorderBrush"] = "#99C8FF",
+            ["AppicaPanelBorderBrush"] = "#E5E5EA",
+            ["AppicaShellCanvasBrush"] = "#F5F5F7",
+            ["AppicaShellSurfaceBrush"] = "#FFFFFFFF",
+            ["AppicaShellDividerBrush"] = "#E5E5EA",
+            ["AppicaShellTextBrush"] = "#1D1D1F",
+            ["AppicaShellMutedBrush"] = "#86868B",
+            ["AppicaShellSubtleBrush"] = "#AEAEC2",
+            ["AppicaShellAccentBrush"] = "#0071E3",
+            ["AppicaShellAccentHoverBrush"] = "#0077ED",
+            ["AppicaShellAccentSoftBrush"] = "#E8F2FF",
+            ["AppicaShellAccentBorderBrush"] = "#CCE2FF",
+            ["AppicaShellHoverBrush"] = "#EDEDF0",
+            ["AppicaShellPressedBrush"] = "#E2E2E6",
+            ["AppicaShellStatusSurfaceBrush"] = "#F5F5F7",
+            ["AppicaShellSuccessBrush"] = "#34C759",
+            ["AppicaShellDangerBrush"] = "#FF3B30",
+            ["AppicaShellDangerSurfaceBrush"] = "#FFF2F2",
+            ["AppicaShellDangerHoverBrush"] = "#FFE5E5",
+            ["AppicaShellDangerBorderBrush"] = "#FFD0CE",
+            ["AppicaShellFocusBrush"] = "#0071E3",
+            ["AppicaDashboardHeroBrush"] = "#F0F6FF",
+            ["AppicaDashboardHeroBorderBrush"] = "#D4E5FF",
+            ["AppicaDashboardPurpleSoftBrush"] = "#F2F0FF",
+            ["AppicaDashboardPurpleBrush"] = "#5856D6",
+            ["AppicaDashboardGreenSoftBrush"] = "#EAF8EF",
+            ["AppicaDashboardGreenBrush"] = "#28CD41"
+        };
+
+    private static readonly IReadOnlyDictionary<string, string> MaterialThemeBrushes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["WindowBackgroundBrush"] = "#F8F6F4",
+            ["SurfaceBrush"] = "#FFFFFFFF",
+            ["SurfaceSolidBrush"] = "#FFFFFFFF",
+            ["SurfaceAltBrush"] = "#F0EAE1",
+            ["BorderBrush"] = "#E2DDD5",
+            ["TextBrush"] = "#23201E",
+            ["MutedTextBrush"] = "#79747E",
+            ["AccentBrush"] = "#4E65F4",
+            ["AccentSoftBrush"] = "#ECEFFE",
+            ["ControlHoverBrush"] = "#F2EDE4",
+            ["ControlPressedBrush"] = "#E6DFD4",
+            ["ControlDisabledBrush"] = "#F8F6F4",
+            ["FocusRingBrush"] = "#4E65F4",
+            ["ScrollThumbBrush"] = "#C9C3BA",
+            ["ScrollThumbHoverBrush"] = "#99938A",
+            ["SuccessBrush"] = "#2E7D32",
+            ["WarningBrush"] = "#EF6C00",
+            ["DangerBrush"] = "#D32F2F",
+            ["MessagePlusBrush"] = "#7A757F",
+            ["InteractionOverlayBrush"] = "#23201E",
+            ["AppicaSelectedBorderBrush"] = "#B3BEFB",
+            ["AppicaPanelBorderBrush"] = "#E2DDD5",
+            ["AppicaShellCanvasBrush"] = "#F8F6F4",
+            ["AppicaShellSurfaceBrush"] = "#FFFFFFFF",
+            ["AppicaShellDividerBrush"] = "#E5E0D7",
+            ["AppicaShellTextBrush"] = "#23201E",
+            ["AppicaShellMutedBrush"] = "#79747E",
+            ["AppicaShellSubtleBrush"] = "#A19C93",
+            ["AppicaShellAccentBrush"] = "#4E65F4",
+            ["AppicaShellAccentHoverBrush"] = "#3D54E2",
+            ["AppicaShellAccentSoftBrush"] = "#ECEFFE",
+            ["AppicaShellAccentBorderBrush"] = "#CFD7FD",
+            ["AppicaShellHoverBrush"] = "#F2ECE4",
+            ["AppicaShellPressedBrush"] = "#E6DFD4",
+            ["AppicaShellStatusSurfaceBrush"] = "#F5F1EB",
+            ["AppicaShellSuccessBrush"] = "#2E7D32",
+            ["AppicaShellDangerBrush"] = "#D32F2F",
+            ["AppicaShellDangerSurfaceBrush"] = "#FDEEEE",
+            ["AppicaShellDangerHoverBrush"] = "#FBDADA",
+            ["AppicaShellDangerBorderBrush"] = "#F8C0C0",
+            ["AppicaShellFocusBrush"] = "#4E65F4",
+            ["AppicaDashboardHeroBrush"] = "#F0F3FE",
+            ["AppicaDashboardHeroBorderBrush"] = "#DCE3FD",
+            ["AppicaDashboardPurpleSoftBrush"] = "#F3EDF7",
+            ["AppicaDashboardPurpleBrush"] = "#6750A4",
+            ["AppicaDashboardGreenSoftBrush"] = "#E8F5E9",
+            ["AppicaDashboardGreenBrush"] = "#2E7D32"
+        };
+
     public static event EventHandler? Changed;
 
     public static void Apply(
@@ -194,10 +300,25 @@ public static class InterfaceSettingsRuntime
                 MaximumScalePercent)
             : DefaultScalePercent;
 
-    public static string NormalizeThemeName(string? themeName) =>
-        string.Equals(themeName, DarkThemeName, StringComparison.OrdinalIgnoreCase)
-            ? DarkThemeName
-            : LightThemeName;
+    public static string NormalizeThemeName(string? themeName)
+    {
+        if (string.Equals(themeName, DarkThemeName, StringComparison.OrdinalIgnoreCase))
+        {
+            return DarkThemeName;
+        }
+
+        if (string.Equals(themeName, CupertinoThemeName, StringComparison.OrdinalIgnoreCase))
+        {
+            return CupertinoThemeName;
+        }
+
+        if (string.Equals(themeName, MaterialThemeName, StringComparison.OrdinalIgnoreCase))
+        {
+            return MaterialThemeName;
+        }
+
+        return LightThemeName;
+    }
 
     private static void ApplyScaleResource(Application application)
     {
@@ -235,7 +356,13 @@ public static class InterfaceSettingsRuntime
         application.ThemeMode = isDark ? ThemeMode.Dark : ThemeMode.Light;
 #pragma warning restore WPF0001
 
-        var palette = isDark ? DarkThemeBrushes : LightThemeBrushes;
+        var palette = ThemeName switch
+        {
+            DarkThemeName => DarkThemeBrushes,
+            CupertinoThemeName => CupertinoThemeBrushes,
+            MaterialThemeName => MaterialThemeBrushes,
+            _ => LightThemeBrushes
+        };
         foreach (var (key, value) in palette)
         {
             var color = (Color)ColorConverter.ConvertFromString(value);
