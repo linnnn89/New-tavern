@@ -498,7 +498,6 @@
     <sys:String x:Key="Settings.Providers.ClearKey">清除已存 Key</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">保存设置不会自动联网。</sys:String>
     <sys:String x:Key="Settings.Providers.Save">保存当前设置</sys:String>
-    <sys:String x:Key="Settings.Providers.OpenModelCatalog">下一步：前往模型目录</sys:String>
     <sys:String x:Key="Settings.Tab.ModelCatalog">模型目录</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">先选择供应商</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">再输入模型 ID 或名称搜索</sys:String>

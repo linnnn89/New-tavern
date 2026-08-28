@@ -264,11 +264,6 @@
                                                  Command="{Binding SaveCommand}"
                                                  Style="{StaticResource PrimaryButtonStyle}" />
                                     </WrapPanel>
-                                    <Button Margin="0,10,0,0"
-                                            HorizontalAlignment="Right"
-                                            Content="{StaticResource Settings.Providers.OpenModelCatalog}"
-                                            Command="{Binding OpenModelCatalogCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
                                 </StackPanel>
                             </Grid>
                         </ScrollViewer>
