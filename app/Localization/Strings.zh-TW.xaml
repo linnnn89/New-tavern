@@ -1036,7 +1036,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Theme.Dark">深炭黑</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">未儲存 API Key。</sys:String>
     <sys:String x:Key="Settings.Status.Intro">儲存供應商不會聯網；只有主動按一下「重新整理模型目錄」才會請求對應 API。</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Pending">自動推薦尚未啟用；後續可讀取本機顯示解析度與 DPI 給出建議，不會自動更改。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Pending">暫時無法計算縮放建議。</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">介面語言、縮放、聊天自動滾動、字型和字級會儲存到本機設定。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">個人資料目錄由 Windows 使用者級設定管理。</sys:String>
     <sys:String x:Key="Settings.Function.Chat">角色聊天</sys:String>
@@ -1073,8 +1073,11 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Interface.AutoScrollOff">聊天自動滾動已關閉。</sys:String>
     <sys:String x:Key="Settings.Interface.Restored">已還原預設值；語言將在儲存並重新啟動後還原為簡體中文，縮放和主題已預覽。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.DefaultReason">根據本機顯示資訊計算</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Format">推薦 {0}%：{1}。僅供選擇，不會自動更改。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Format">推薦 {0}%：{1}。僅供選擇，已儲存的縮放不會被覆蓋。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Failed">暫時無法讀取縮放建議；目前手動設定不受影響。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.Standard">目前螢幕適合預設大小</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.LargeWorkspace">工作區較大，適合略為放大介面</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.OsScaled">系統顯示縮放已經放大介面</sys:String>
     <sys:String x:Key="Settings.Provider.AddFailedFormat">新增供應商失敗：{0}</sys:String>
     <sys:String x:Key="Settings.Provider.AddedFormat">已新增「{0}」；固定使用 OpenAI Chat Completions 相容協議，請填寫 API Key 後儲存。</sys:String>
     <sys:String x:Key="Settings.Provider.DeleteFailedFormat">供應商刪除失敗，設定和 DPAPI Key 均已保留：{0}</sys:String>

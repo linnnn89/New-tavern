@@ -1036,7 +1036,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Settings.Theme.Dark">Charcoal dark</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">No API key saved.</sys:String>
     <sys:String x:Key="Settings.Status.Intro">Saving a provider does not connect to the network. Its API is requested only when you explicitly select Refresh Model Catalog.</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Pending">Automatic recommendations are not enabled yet. A future version may read local display resolution and DPI to offer a suggestion, but will not change settings automatically.</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Pending">No scale recommendation is available yet.</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">Interface language, scale, chat autoscroll, font, and font size are saved to local settings.</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">The personal data directory is managed by Windows per-user configuration.</sys:String>
     <sys:String x:Key="Settings.Function.Chat">Character chat</sys:String>
@@ -1073,8 +1073,11 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Settings.Interface.AutoScrollOff">Chat autoscroll is off.</sys:String>
     <sys:String x:Key="Settings.Interface.Restored">Defaults restored. After saving and restarting, language returns to Simplified Chinese; scale and theme are previewed now.</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.DefaultReason">Calculated from local display information</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Format">Recommended: {0}% — {1}. This is a suggestion only and is not applied automatically.</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Format">Recommended: {0}% — {1}. This is a suggestion only; a saved scale is never overwritten.</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Failed">Scale recommendation is temporarily unavailable; the current manual setting is unaffected.</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.Standard">The current display fits the default size</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.LargeWorkspace">The workspace is large enough for a slightly bigger interface</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.OsScaled">Windows display scaling already enlarges the interface</sys:String>
     <sys:String x:Key="Settings.Provider.AddFailedFormat">Could not add provider: {0}</sys:String>
     <sys:String x:Key="Settings.Provider.AddedFormat">Added “{0}” with the fixed OpenAI Chat Completions-compatible protocol. Enter an API key and save.</sys:String>
     <sys:String x:Key="Settings.Provider.DeleteFailedFormat">Could not delete provider; configuration and DPAPI key were retained: {0}</sys:String>

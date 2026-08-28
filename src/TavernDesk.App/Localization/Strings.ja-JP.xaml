@@ -1036,7 +1036,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Settings.Theme.Dark">チャコールダーク</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">API キーは未保存です。</sys:String>
     <sys:String x:Key="Settings.Status.Intro">プロバイダー保存では接続しません。「モデルカタログを更新」を押した場合だけ API を要求します。</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Pending">自動推奨は未実装です。将来ローカル解像度と DPI から提案できますが、自動変更はしません。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Pending">倍率の推奨をまだ計算できません。</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">表示言語、倍率、自動スクロール、フォント、文字サイズをローカル設定に保存します。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">個人データディレクトリは Windows ユーザー別設定で管理します。</sys:String>
     <sys:String x:Key="Settings.Function.Chat">キャラクターチャット</sys:String>
@@ -1073,8 +1073,11 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Settings.Interface.AutoScrollOff">チャット自動スクロールはオフです。</sys:String>
     <sys:String x:Key="Settings.Interface.Restored">既定値に戻しました。保存して再起動すると言語は簡体字中国語へ戻り、倍率とテーマは現在プレビューします。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.DefaultReason">ローカル表示情報から計算</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Format">推奨 {0}%：{1}。提案だけで自動変更しません。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Format">推奨 {0}%：{1}。提案のみで、保存済みの倍率は上書きしません。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Failed">倍率の推奨を読み取れません。現在の手動設定には影響しません。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.Standard">現在の画面は既定サイズに適しています</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.LargeWorkspace">作業領域が広いため、少し大きい表示が適しています</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.OsScaled">Windows の表示スケーリングですでに拡大されています</sys:String>
     <sys:String x:Key="Settings.Provider.AddFailedFormat">プロバイダーを追加できません：{0}</sys:String>
     <sys:String x:Key="Settings.Provider.AddedFormat">「{0}」を追加しました。OpenAI Chat Completions 互換固定です。API キーを入力して保存してください。</sys:String>
     <sys:String x:Key="Settings.Provider.DeleteFailedFormat">プロバイダーを削除できず、設定と DPAPI キーを保持しました：{0}</sys:String>

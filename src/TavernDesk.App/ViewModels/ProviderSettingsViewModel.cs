@@ -692,7 +692,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             || autoScroll;
         InterfaceFontFamily = NormalizeFontFamily(fontFamilyTask.Result);
         InterfaceFontSize = NormalizeFontSize(fontSizeTask.Result);
-        SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(scaleTask.Result);
+        SelectedInterfaceScaleOption = await ResolveInitialScaleOptionAsync(scaleTask.Result);
         SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(themeTask.Result);
         SelectedLanguageOption = LanguageRuntime.Resolve(languageTask.Result);
         InterfaceSettingsRuntime.Apply(
@@ -1052,6 +1052,27 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 InterfaceSettingsRuntime.MinimumFontSize,
                 InterfaceSettingsRuntime.MaximumFontSize)
             : InterfaceSettingsRuntime.DefaultFontSize;
+
+    private async Task<InterfaceScaleOption> ResolveInitialScaleOptionAsync(string? savedValue)
+    {
+        if (!string.IsNullOrWhiteSpace(savedValue))
+        {
+            return ResolveInterfaceScaleOption(savedValue);
+        }
+
+        var recommendation = _interfaceScaleRecommendationProvider?.GetRecommendation();
+        var option = ResolveInterfaceScaleOption(
+            recommendation?.Percent
+            ?? InterfaceSettingsRuntime.DefaultScalePercent);
+        if (_appSettings is not null)
+        {
+            await _appSettings.SetAsync(
+                InterfaceScalePercentSettingKey,
+                option.Percent.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return option;
+    }
 
     private static InterfaceScaleOption ResolveInterfaceScaleOption(string? value) =>
         int.TryParse(

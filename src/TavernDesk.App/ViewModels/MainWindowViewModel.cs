@@ -90,6 +90,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.Settings,
             services.DataLocation,
             personas,
+            interfaceScaleRecommendationProvider: new InterfaceScaleRecommendationProvider(),
             diagnostics: services.Diagnostics);
         Worldbooks = new WorldbookViewModel(
             services.WorldbookService,

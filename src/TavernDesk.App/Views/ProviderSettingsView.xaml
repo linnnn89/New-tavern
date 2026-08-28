@@ -13,6 +13,7 @@
         </StackPanel>
 
         <TabControl Grid.Row="1"
+                    Style="{StaticResource SettingsNavTabControlStyle}"
                     TabStripPlacement="Left"
                     SelectedIndex="{Binding SelectedSettingsTabIndex}">
             <TabItem Header="{StaticResource Settings.Tab.Providers}">

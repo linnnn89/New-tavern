@@ -1007,7 +1007,7 @@
     <sys:String x:Key="Settings.Theme.Dark">深炭黑</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">未保存 API Key。</sys:String>
     <sys:String x:Key="Settings.Status.Intro">保存接入商不会联网；只有主动点击“刷新模型目录”才会请求对应 API。</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Pending">自动推荐尚未启用；后续可读取本机显示分辨率与 DPI 给出建议，不会自动更改。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Pending">暂时无法计算缩放建议。</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">界面语言、缩放、聊天自动滚动、字体和字号会保存到本地设置。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">个人资料目录由 Windows 用户级配置管理。</sys:String>
     <sys:String x:Key="Settings.Function.Chat">角色聊天</sys:String>
@@ -1044,8 +1044,11 @@
     <sys:String x:Key="Settings.Interface.AutoScrollOff">聊天自动滚动已关闭。</sys:String>
     <sys:String x:Key="Settings.Interface.Restored">已恢复默认值；语言将在保存并重启后恢复为简体中文，缩放和主题已预览。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.DefaultReason">根据本机显示信息计算</sys:String>
-    <sys:String x:Key="Settings.ScaleRecommendation.Format">推荐 {0}%：{1}。仅供选择，不会自动更改。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Format">推荐 {0}%：{1}。仅供选择，已保存的缩放不会被覆盖。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Failed">暂时无法读取缩放建议；当前手动设置不受影响。</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.Standard">当前屏幕适合默认大小</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.LargeWorkspace">工作区较大，适合略放大界面</sys:String>
+    <sys:String x:Key="Settings.ScaleRecommendation.Reason.OsScaled">系统显示缩放已经放大界面</sys:String>
     <sys:String x:Key="Settings.Provider.AddFailedFormat">添加接入商失败：{0}</sys:String>
     <sys:String x:Key="Settings.Provider.AddedFormat">已添加“{0}”；固定使用 OpenAI Chat Completions 兼容协议，请填写 API Key 后保存。</sys:String>
     <sys:String x:Key="Settings.Provider.DeleteFailedFormat">接入商删除失败，配置和 DPAPI Key 均已保留：{0}</sys:String>
