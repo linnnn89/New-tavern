@@ -469,7 +469,10 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Campaigns.Play.ApplyGmModelToolTip">從下一次裁定起使用所選模型與輸出長度；劇本、世界狀態和既有記錄保持不變。</sys:String>
     <!-- Settings -->
     <sys:String x:Key="Settings.Title">設定</sys:String>
-    <sys:String x:Key="Settings.Tab.Providers">AI 與模型 · 供應商</sys:String>
+    <sys:String x:Key="Settings.Section.AiModels">AI 與模型</sys:String>
+    <sys:String x:Key="Settings.Section.Personal">個人偏好</sys:String>
+    <sys:String x:Key="Settings.Section.System">系統設定</sys:String>
+    <sys:String x:Key="Settings.Tab.Providers">供應商</sys:String>
     <sys:String x:Key="Settings.Providers.Title">供應商</sys:String>
     <sys:String x:Key="Settings.Providers.AddToolTip">新增新的自訂 OpenAI-compatible API 供應商</sys:String>
     <sys:String x:Key="Settings.Providers.ListToolTip">選擇供應商；按右鍵可刪除供應商及其本機模型、功能指派和 Key。</sys:String>
@@ -488,7 +491,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Providers.ClearKey">清除已存 Key</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">儲存設定不會自動聯網。</sys:String>
     <sys:String x:Key="Settings.Providers.Save">儲存目前設定</sys:String>
-    <sys:String x:Key="Settings.Tab.ModelCatalog">AI 與模型 · 模型目錄</sys:String>
+    <sys:String x:Key="Settings.Providers.OpenModelCatalog">下一步：前往模型目錄</sys:String>
+    <sys:String x:Key="Settings.Tab.ModelCatalog">模型目錄</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">先選擇供應商</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">再輸入模型 ID 或名稱搜尋</sys:String>
     <sys:String x:Key="Settings.Models.AddCustomToolTip">輸入任意模型 ID 或名稱儲存到目前供應商的本機目錄；實際呼叫介面由功能指派決定。</sys:String>
@@ -499,7 +503,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Models.OutputLimit">最大輸出 tokens</sys:String>
     <sys:String x:Key="Settings.Models.RefreshPreservesLimits">目錄重新整理會保留同一模型已經手動設定的上下文和輸出上限。</sys:String>
     <sys:String x:Key="Settings.Models.SaveLimits">儲存模型上限</sys:String>
-    <sys:String x:Key="Settings.Tab.Assignments">AI 與模型 · 功能指派</sys:String>
+    <sys:String x:Key="Settings.Tab.Assignments">功能指派</sys:String>
+    <sys:String x:Key="Settings.Assignments.SelectedFunctionUnassigned">目前功能尚未指派模型。請選擇供應商和模型，然後儲存指派。</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectFunctionToolTip">選擇要指派模型的功能</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectProviderToolTip">然後選擇供應商</sys:String>
     <sys:String x:Key="Settings.Assignments.SearchModelToolTip">最後輸入具體模型名稱或 ID 搜尋</sys:String>
@@ -532,13 +537,13 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Personas.UserSettings">使用者設定</sys:String>
     <sys:String x:Key="Settings.Personas.CancelChanges">取消修改</sys:String>
     <sys:String x:Key="Settings.Personas.Save">儲存人設</sys:String>
-    <sys:String x:Key="Settings.Tab.Prompts">AI 行為模板</sys:String>
+    <sys:String x:Key="Settings.Tab.Prompts">行為模板</sys:String>
     <sys:String x:Key="Settings.Prompts.CategoryAndFunction">模板分類與功能</sys:String>
     <sys:String x:Key="Settings.Prompts.Scope">設定生效範圍</sys:String>
     <sys:String x:Key="Settings.Prompts.RestoreDefault">還原預設</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveAs">另存完整設定…</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveGlobal">儲存全域提示詞</sys:String>
-    <sys:String x:Key="Settings.Tab.Interface">介面</sys:String>
+    <sys:String x:Key="Settings.Tab.Interface">介面風格</sys:String>
     <sys:String x:Key="Settings.Interface.Description">調整介面語言、縮放、字型、字級和主題；設定僅儲存在本機。</sys:String>
     <sys:String x:Key="Settings.Interface.Language">介面語言</sys:String>
     <sys:String x:Key="Settings.Interface.LanguageHelp">選擇菜單、按鈕、提示和狀態資訊使用的語言。</sys:String>
@@ -554,7 +559,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Interface.ThemeHelp">可選預設淺色或深炭黑；僅改變顏色與材質，不改變視窗結構和操作邏輯。</sys:String>
     <sys:String x:Key="Settings.Interface.ThemePreviewHelp">選擇後立即預覽，儲存後下次啟動繼續使用。</sys:String>
     <sys:String x:Key="Settings.Interface.Save">儲存介面設定</sys:String>
-    <sys:String x:Key="Settings.Tab.Data">資料</sys:String>
+    <sys:String x:Key="Settings.Tab.Data">資料與診斷</sys:String>
     <sys:String x:Key="Settings.Data.Title">個人資料目錄</sys:String>
     <sys:String x:Key="Settings.Data.Description">資料庫、聊天記錄、角色卡、跑團劇本、附件、匯出檔案和其他個人資料都儲存在這裡；軟體目錄本身不儲存個人資料。</sys:String>
     <sys:String x:Key="Settings.Data.CurrentRoot">目前讀取根目錄</sys:String>

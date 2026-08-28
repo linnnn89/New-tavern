@@ -99,7 +99,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         LanguageRuntime.GetString("Settings.Diagnostics.Status.Disabled");
     private string _apiTestOutputSummary =
         LanguageRuntime.Format("Settings.Diagnostics.OutputSummaryFormat", 0, "0 B");
-    private int _selectedSettingsTabIndex;
+    private SettingsPage _selectedSettingsPage = SettingsPage.Providers;
+    private bool _isSelectedFunctionUnassigned;
     private int _catalogLoadVersion;
     private int _assignmentLoadVersion;
 
@@ -153,6 +154,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SaveCommand = new AsyncRelayCommand(
             SaveProviderAsync,
             () => SelectedProfile is not null);
+        OpenModelCatalogCommand = new RelayCommand(
+            OpenSelectedProviderModelCatalog,
+            CanOpenSelectedProviderModelCatalog);
         ClearKeyCommand = new AsyncRelayCommand(
             ClearKeyAsync,
             () => SelectedProfile is { SecretReference.Length: > 0 });
@@ -222,6 +226,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public IReadOnlyList<ModelFunctionOption> FunctionOptions { get; }
     public AsyncRelayCommand DeleteProviderCommand { get; }
     public AsyncRelayCommand SaveCommand { get; }
+    public RelayCommand OpenModelCatalogCommand { get; }
     public AsyncRelayCommand ClearKeyCommand { get; }
     public AsyncRelayCommand RefreshModelsCommand { get; }
     public AsyncRelayCommand AddCustomModelCommand { get; }
@@ -258,6 +263,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             OnPropertyChanged(nameof(CredentialHelpText));
             SaveCommand.RaiseCanExecuteChanged();
             ClearKeyCommand.RaiseCanExecuteChanged();
+            OpenModelCatalogCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -352,6 +358,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             if (SetProperty(ref _selectedFunction, value))
             {
                 OnPropertyChanged(nameof(IsEmbeddingFunctionSelected));
+                IsSelectedFunctionUnassigned = false;
                 var version = ++_assignmentLoadVersion;
                 _ = LoadFunctionAssignmentSafeAsync(version);
             }
@@ -594,10 +601,16 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         private set => SetProperty(ref _apiTestOutputSummary, value);
     }
 
-    public int SelectedSettingsTabIndex
+    public SettingsPage SelectedSettingsPage
     {
-        get => _selectedSettingsTabIndex;
-        set => SetProperty(ref _selectedSettingsTabIndex, value);
+        get => _selectedSettingsPage;
+        set => SetProperty(ref _selectedSettingsPage, value);
+    }
+
+    public bool IsSelectedFunctionUnassigned
+    {
+        get => _isSelectedFunctionUnassigned;
+        private set => SetProperty(ref _isSelectedFunctionUnassigned, value);
     }
 
     public async Task LoadAsync()
@@ -629,7 +642,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public void OpenPrompt(GlobalPromptKey key)
     {
-        SelectedSettingsTabIndex = 5;
+        SelectedSettingsPage = SettingsPage.Prompts;
         Prompts.Open(key);
         Status = LanguageRuntime.GetString("Settings.PromptLocated");
     }
@@ -1425,6 +1438,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
 
         _persistedProfileIds.Add(SelectedProfile.Id);
+        OpenModelCatalogCommand.RaiseCanExecuteChanged();
         Editor.MarkSaved();
         PendingApiKey = string.Empty;
         KeyStatus = KeyStatusFor(SelectedProfile);
@@ -1583,6 +1597,23 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         {
             Status = LanguageRuntime.Format("Settings.Models.RefreshFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
+    }
+
+    private bool CanOpenSelectedProviderModelCatalog() =>
+        SelectedProfile is not null
+        && _persistedProfileIds.Contains(SelectedProfile.Id);
+
+    private void OpenSelectedProviderModelCatalog()
+    {
+        if (SelectedProfile is null)
+        {
+            return;
+        }
+
+        CatalogProvider = Profiles.FirstOrDefault(profile =>
+                              profile.Id == SelectedProfile.Id)
+                          ?? SelectedProfile;
+        SelectedSettingsPage = SettingsPage.ModelCatalog;
     }
 
     private async Task AddCustomModelAsync()
@@ -1749,6 +1780,8 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 return;
             }
 
+            IsSelectedFunctionUnassigned = assignment is null;
+
             var provider = Profiles.FirstOrDefault(profile =>
                                profile.Id == assignment?.ProviderId)
                            ?? AssignmentProvider
@@ -1778,6 +1811,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
         catch (Exception exception) when (version == _assignmentLoadVersion)
         {
+            IsSelectedFunctionUnassigned = false;
             Status = LanguageRuntime.Format("Settings.Assignments.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
     }
@@ -1933,6 +1967,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             UpdatedAt = DateTimeOffset.Now
         };
         await _assignments.UpsertAsync(assignment);
+        IsSelectedFunctionUnassigned = false;
         await RefreshAssignmentOverviewAsync();
         Status = LanguageRuntime.Format(
             "Settings.Assignments.SavedFormat",
@@ -2012,6 +2047,18 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 LanguageRuntime.GetString("Settings.Key.Protected"),
             _ => LanguageRuntime.GetString("Settings.Key.Optional")
         };
+}
+
+public enum SettingsPage
+{
+    Providers,
+    ModelCatalog,
+    Assignments,
+    Prompts,
+    Personas,
+    DefaultBehavior,
+    Interface,
+    Data
 }
 
 public sealed record ModelFunctionOption(
