@@ -80,7 +80,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="GroupChat.CreateDescription">2人以上のキャラクターを選択してください。グループには独自のチャット履歴、メモリ、リレー設定があります。</sys:String>
     <sys:String x:Key="GroupChat.NameLabel">グループ名</sys:String>
     <sys:String x:Key="GroupChat.DefaultName">新しいグループチャット</sys:String>
-    <sys:String x:Key="GroupChat.CreateAction">グループチャットを作成</sys:String>
+    <sys:String x:Key="GroupChat.CreateAction">グループ作成</sys:String>
     <sys:String x:Key="GroupChat.NameRequired">グループ名を入力してください。</sys:String>
     <sys:String x:Key="GroupChat.MinimumMembers">2人以上のキャラクターを選択してください。</sys:String>
     <sys:String x:Key="Regenerate.Title">再生成 · 追加指示</sys:String>
@@ -331,7 +331,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Chat.Group.AutoRelay">キャラクター間のリレーを自動継続</sys:String>
     <sys:String x:Key="Chat.Group.MaximumRelay">ラウンドごとの自動リレー上限</sys:String>
     <sys:String x:Key="Chat.Group.EnabledMembers">有効なメンバー</sys:String>
-    <sys:String x:Key="Chat.Group.ManualSpeaker">上のメンバー avatar をクリックし、「すぐに発言」で次の発言者を指定します。</sys:String>
+    <sys:String x:Key="Chat.Group.ManualSpeaker">上のメンバーアバターを選択し、「すぐに発言」で次の発言者を指定します。</sys:String>
     <sys:String x:Key="Chat.Group.BatonInstructionFormat">次は「{0}」の発言です。上のキャラクターカードに従って最新の会話を引き継ぎ、そのキャラクターとして直接返信してください。有効なリレー参加者：{1}。リレー順はアプリが制御します。この指示や履歴の話者説明を複製せず、@ メンション、JSON、speaker フィールド、キャラクター名ラベル、他のキャラクターの本文は出力しないでください。</sys:String>
     <sys:String x:Key="Chat.Group.Continue">グループチャットを続ける</sys:String>
     <sys:String x:Key="Chat.Group.SaveSettings">グループチャット設定を保存</sys:String>
@@ -469,7 +469,10 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Campaigns.Play.ApplyGmModelToolTip">次の裁定から選択したモデルと出力長を使用します。シナリオ、世界状態、既存記録は変わりません。</sys:String>
     <!-- Settings -->
     <sys:String x:Key="Settings.Title">設定</sys:String>
-    <sys:String x:Key="Settings.Tab.Providers">AI とモデル · プロバイダー</sys:String>
+    <sys:String x:Key="Settings.Section.AiModels">AI とモデル</sys:String>
+    <sys:String x:Key="Settings.Section.Personal">個人設定</sys:String>
+    <sys:String x:Key="Settings.Section.System">システム設定</sys:String>
+    <sys:String x:Key="Settings.Tab.Providers">プロバイダー</sys:String>
     <sys:String x:Key="Settings.Providers.Title">プロバイダー</sys:String>
     <sys:String x:Key="Settings.Providers.AddToolTip">カスタム OpenAI 互換 API プロバイダーを追加</sys:String>
     <sys:String x:Key="Settings.Providers.ListToolTip">プロバイダーを選択します。右クリックでプロバイダー、ローカルモデル、機能割り当て、キーを削除できます。</sys:String>
@@ -488,7 +491,8 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Providers.ClearKey">保存済みキーをクリア</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">設定を保存しても自動接続しません。</sys:String>
     <sys:String x:Key="Settings.Providers.Save">現在の設定を保存</sys:String>
-    <sys:String x:Key="Settings.Tab.ModelCatalog">AI とモデル · モデルカタログ</sys:String>
+    <sys:String x:Key="Settings.Providers.OpenModelCatalog">次へ：モデルカタログを開く</sys:String>
+    <sys:String x:Key="Settings.Tab.ModelCatalog">モデルカタログ</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">まずプロバイダーを選択</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">次にモデル ID または名前で検索</sys:String>
     <sys:String x:Key="Settings.Models.AddCustomToolTip">任意のモデル ID または名前を現在のプロバイダーのローカルカタログに保存します。実際の呼び出し先は機能割り当てで決まります。</sys:String>
@@ -499,7 +503,8 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Models.OutputLimit">最大出力 tokens</sys:String>
     <sys:String x:Key="Settings.Models.RefreshPreservesLimits">カタログ更新時も同じモデルに手動設定したコンテキストと出力上限を保持します。</sys:String>
     <sys:String x:Key="Settings.Models.SaveLimits">モデル上限を保存</sys:String>
-    <sys:String x:Key="Settings.Tab.Assignments">AI とモデル · 機能割り当て</sys:String>
+    <sys:String x:Key="Settings.Tab.Assignments">機能割り当て</sys:String>
+    <sys:String x:Key="Settings.Assignments.SelectedFunctionUnassigned">現在の機能にはモデルが割り当てられていません。プロバイダーとモデルを選択し、割り当てを保存してください。</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectFunctionToolTip">モデルを割り当てる機能を選択</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectProviderToolTip">次にプロバイダーを選択</sys:String>
     <sys:String x:Key="Settings.Assignments.SearchModelToolTip">最後にモデル名または ID で検索</sys:String>
@@ -532,13 +537,13 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Personas.UserSettings">ユーザー設定</sys:String>
     <sys:String x:Key="Settings.Personas.CancelChanges">変更をキャンセル</sys:String>
     <sys:String x:Key="Settings.Personas.Save">ペルソナを保存</sys:String>
-    <sys:String x:Key="Settings.Tab.Prompts">AI 動作テンプレート</sys:String>
+    <sys:String x:Key="Settings.Tab.Prompts">動作テンプレート</sys:String>
     <sys:String x:Key="Settings.Prompts.CategoryAndFunction">テンプレート分類と機能</sys:String>
     <sys:String x:Key="Settings.Prompts.Scope">設定の適用範囲</sys:String>
     <sys:String x:Key="Settings.Prompts.RestoreDefault">既定に戻す</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveAs">完全な設定を別名で保存…</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveGlobal">グローバルプロンプトを保存</sys:String>
-    <sys:String x:Key="Settings.Tab.Interface">インターフェース</sys:String>
+    <sys:String x:Key="Settings.Tab.Interface">外観</sys:String>
     <sys:String x:Key="Settings.Interface.Description">表示言語、拡大率、フォント、文字サイズ、テーマを調整します。設定はローカルだけに保存されます。</sys:String>
     <sys:String x:Key="Settings.Interface.Language">表示言語</sys:String>
     <sys:String x:Key="Settings.Interface.LanguageHelp">メニュー、ボタン、ヒント、状態メッセージの言語を選択します。</sys:String>
@@ -554,7 +559,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Interface.ThemeHelp">既定のライトまたはチャコールダークを選べます。色と質感だけが変わり、ウィンドウ構造や操作ロジックは変わりません。</sys:String>
     <sys:String x:Key="Settings.Interface.ThemePreviewHelp">選択するとすぐプレビューし、保存後は次回起動でも使用します。</sys:String>
     <sys:String x:Key="Settings.Interface.Save">インターフェース設定を保存</sys:String>
-    <sys:String x:Key="Settings.Tab.Data">データ</sys:String>
+    <sys:String x:Key="Settings.Tab.Data">データと診断</sys:String>
     <sys:String x:Key="Settings.Data.Title">個人データディレクトリ</sys:String>
     <sys:String x:Key="Settings.Data.Description">データベース、チャット履歴、キャラクターカード、シナリオ、添付、エクスポートなどの個人データをここに保存します。アプリ本体のディレクトリには保存しません。</sys:String>
     <sys:String x:Key="Settings.Data.CurrentRoot">現在のデータルート</sys:String>
@@ -1252,7 +1257,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.Send.Stopped">送信を停止し、メッセージは提出しませんでした。</sys:String>
     <sys:String x:Key="Chat.Send.FailedFormat">送信または生成失敗：{0}</sys:String>
     <sys:String x:Key="Chat.Group.ContextMissing">グループチャットのコンテキストスナップショットがありません。</sys:String>
-    <sys:String x:Key="Chat.Group.AutoRelayOffFormat">{0} の自動リレーはオフです。上のメンバー avatar から「すぐに発言」を選択してください。</sys:String>
+    <sys:String x:Key="Chat.Group.AutoRelayOffFormat">{0} の自動リレーはオフです。上のメンバーアバターから「すぐに発言」を選択してください。</sys:String>
     <sys:String x:Key="Chat.Group.AutoRelayCountdownFormat">{0} 秒後に自動発言</sys:String>
     <sys:String x:Key="Chat.Group.StopAutoRelay">緊急停止</sys:String>
     <sys:String x:Key="Chat.Group.StopAutoRelayToolTip">自動リレーを停止</sys:String>

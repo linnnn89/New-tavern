@@ -1,6 +1,7 @@
 <UserControl x:Class="TavernDesk.App.Views.ProviderSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:TavernDesk.App.ViewModels">
     <Grid Margin="20,16,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -12,11 +13,55 @@
             <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
         </StackPanel>
 
-        <TabControl Grid.Row="1"
-                    Style="{StaticResource SettingsNavTabControlStyle}"
-                    TabStripPlacement="Left"
-                    SelectedIndex="{Binding SelectedSettingsTabIndex}">
-            <TabItem Header="{StaticResource Settings.Tab.Providers}">
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ListBox Style="{StaticResource SettingsNavListBoxStyle}"
+                         SelectedValuePath="Tag"
+                         SelectedValue="{Binding SelectedSettingsPage, Mode=TwoWay}">
+                    <ListBoxItem Content="{StaticResource Settings.Section.AiModels}"
+                                 IsEnabled="False"
+                                 Style="{StaticResource SettingsNavSectionHeaderStyle}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.Providers}"
+                                 Tag="{x:Static viewModels:SettingsPage.Providers}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.ModelCatalog}"
+                                 Tag="{x:Static viewModels:SettingsPage.ModelCatalog}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.Assignments}"
+                                 Tag="{x:Static viewModels:SettingsPage.Assignments}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.Prompts}"
+                                 Tag="{x:Static viewModels:SettingsPage.Prompts}" />
+
+                    <ListBoxItem Content="{StaticResource Settings.Section.Personal}"
+                                 IsEnabled="False"
+                                 Style="{StaticResource SettingsNavSectionHeaderStyle}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.Personas}"
+                                 Tag="{x:Static viewModels:SettingsPage.Personas}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.DefaultBehavior}"
+                                 Tag="{x:Static viewModels:SettingsPage.DefaultBehavior}" />
+
+                    <ListBoxItem Content="{StaticResource Settings.Section.System}"
+                                 IsEnabled="False"
+                                 Style="{StaticResource SettingsNavSectionHeaderStyle}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.Interface}"
+                                 Tag="{x:Static viewModels:SettingsPage.Interface}" />
+                    <ListBoxItem Content="{StaticResource Settings.Tab.Data}"
+                                 Tag="{x:Static viewModels:SettingsPage.Data}" />
+                </ListBox>
+            </ScrollViewer>
+
+            <TabControl Grid.Column="2"
+                        Style="{StaticResource SettingsContentTabControlStyle}"
+                        SelectedValuePath="Tag"
+                        SelectedValue="{Binding SelectedSettingsPage, Mode=TwoWay}">
+            <TabItem Header="{StaticResource Settings.Tab.Providers}"
+                     Tag="{x:Static viewModels:SettingsPage.Providers}">
                 <Grid Margin="18,12,16,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="220" MinWidth="180" />
@@ -216,9 +261,14 @@
                                                 Command="{Binding ClearKeyCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                         <Button Content="{StaticResource Settings.Providers.Save}"
-                                                Command="{Binding SaveCommand}"
-                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                                 Command="{Binding SaveCommand}"
+                                                 Style="{StaticResource PrimaryButtonStyle}" />
                                     </WrapPanel>
+                                    <Button Margin="0,10,0,0"
+                                            HorizontalAlignment="Right"
+                                            Content="{StaticResource Settings.Providers.OpenModelCatalog}"
+                                            Command="{Binding OpenModelCatalogCommand}"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
                                 </StackPanel>
                             </Grid>
                         </ScrollViewer>
@@ -226,7 +276,8 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.ModelCatalog}">
+            <TabItem Header="{StaticResource Settings.Tab.ModelCatalog}"
+                     Tag="{x:Static viewModels:SettingsPage.ModelCatalog}">
                 <Grid Margin="18,12,16,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -307,9 +358,11 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.Assignments}">
+            <TabItem Header="{StaticResource Settings.Tab.Assignments}"
+                     Tag="{x:Static viewModels:SettingsPage.Assignments}">
                 <Grid Margin="18,12,16,16">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
@@ -336,7 +389,18 @@
                                      ToolTip="{StaticResource Settings.Assignments.SearchModelToolTip}" />
                         </Grid>
                     </Border>
-                    <Grid Grid.Row="1" Margin="0,16,0,0">
+                    <Border Grid.Row="1"
+                            Margin="0,10,0,0"
+                            Padding="12,9"
+                            Background="{DynamicResource AccentSoftBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Visibility="{Binding IsSelectedFunctionUnassigned, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{StaticResource Settings.Assignments.SelectedFunctionUnassigned}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                    <Grid Grid.Row="2" Margin="0,16,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" MinWidth="260" />
                             <ColumnDefinition Width="14" />
@@ -546,7 +610,8 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.DefaultBehavior}">
+            <TabItem Header="{StaticResource Settings.Tab.DefaultBehavior}"
+                     Tag="{x:Static viewModels:SettingsPage.DefaultBehavior}">
                 <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
@@ -587,7 +652,8 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.Personas}">
+            <TabItem Header="{StaticResource Settings.Tab.Personas}"
+                     Tag="{x:Static viewModels:SettingsPage.Personas}">
                 <Grid Margin="18,12,16,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="220" MinWidth="180" />
@@ -690,7 +756,8 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.Prompts}">
+            <TabItem Header="{StaticResource Settings.Tab.Prompts}"
+                     Tag="{x:Static viewModels:SettingsPage.Prompts}">
                 <Grid Margin="18,12,16,16">
                     <Grid.Resources>
                         <CollectionViewSource x:Key="PromptNavigationView"
@@ -849,7 +916,8 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.Interface}">
+            <TabItem Header="{StaticResource Settings.Tab.Interface}"
+                     Tag="{x:Static viewModels:SettingsPage.Interface}">
                 <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
@@ -1007,7 +1075,8 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="{StaticResource Settings.Tab.Data}">
+            <TabItem Header="{StaticResource Settings.Tab.Data}"
+                     Tag="{x:Static viewModels:SettingsPage.Data}">
                 <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
@@ -1150,6 +1219,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-        </TabControl>
+            </TabControl>
+        </Grid>
     </Grid>
 </UserControl>

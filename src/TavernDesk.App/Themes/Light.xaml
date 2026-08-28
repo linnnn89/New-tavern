@@ -793,6 +793,65 @@
         </Setter>
     </Style>
 
+    <Style x:Key="SettingsNavListBoxItemStyle"
+           TargetType="{x:Type ListBoxItem}"
+           BasedOn="{StaticResource ModernListBoxItemStyle}">
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+    </Style>
+
+    <Style x:Key="SettingsNavSectionHeaderStyle" TargetType="{x:Type ListBoxItem}">
+        <Setter Property="Margin" Value="0,10,0,2" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SettingsNavListBoxStyle" TargetType="{x:Type ListBox}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource SettingsNavListBoxItemStyle}" />
+    </Style>
+
+    <Style x:Key="SettingsContentTabControlStyle" TargetType="{x:Type TabControl}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabControl}">
+                    <ContentPresenter x:Name="PART_SelectedContentHost"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Stretch"
+                                      Content="{TemplateBinding SelectedContent}"
+                                      ContentSource="SelectedContent"
+                                      ContentStringFormat="{TemplateBinding SelectedContentStringFormat}"
+                                      ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SettingsNavTabControlStyle" TargetType="{x:Type TabControl}">
         <Setter Property="TabStripPlacement" Value="Left" />
         <Setter Property="Background" Value="Transparent" />

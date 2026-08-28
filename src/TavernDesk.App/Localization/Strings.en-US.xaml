@@ -80,7 +80,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="GroupChat.CreateDescription">Select at least two characters. The group has its own chat history, memory, and relay settings.</sys:String>
     <sys:String x:Key="GroupChat.NameLabel">Group name</sys:String>
     <sys:String x:Key="GroupChat.DefaultName">New group chat</sys:String>
-    <sys:String x:Key="GroupChat.CreateAction">Create group chat</sys:String>
+    <sys:String x:Key="GroupChat.CreateAction">Create Group</sys:String>
     <sys:String x:Key="GroupChat.NameRequired">Group name is required.</sys:String>
     <sys:String x:Key="GroupChat.MinimumMembers">Select at least two characters.</sys:String>
     <sys:String x:Key="Regenerate.Title">Regenerate · Additional instruction</sys:String>
@@ -469,7 +469,10 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Campaigns.Play.ApplyGmModelToolTip">Use the selected model and output length from the next ruling. The scenario, world state, and existing records remain unchanged.</sys:String>
     <!-- Settings -->
     <sys:String x:Key="Settings.Title">Settings</sys:String>
-    <sys:String x:Key="Settings.Tab.Providers">AI and models · Providers</sys:String>
+    <sys:String x:Key="Settings.Section.AiModels">AI and models</sys:String>
+    <sys:String x:Key="Settings.Section.Personal">Personal preferences</sys:String>
+    <sys:String x:Key="Settings.Section.System">System</sys:String>
+    <sys:String x:Key="Settings.Tab.Providers">Providers</sys:String>
     <sys:String x:Key="Settings.Providers.Title">Providers</sys:String>
     <sys:String x:Key="Settings.Providers.AddToolTip">Add a custom OpenAI-compatible API provider</sys:String>
     <sys:String x:Key="Settings.Providers.ListToolTip">Select a provider. Right-click to delete the provider, its local models, feature assignments, and key.</sys:String>
@@ -488,7 +491,8 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Providers.ClearKey">Clear saved key</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">Saving settings does not connect to the network.</sys:String>
     <sys:String x:Key="Settings.Providers.Save">Save current settings</sys:String>
-    <sys:String x:Key="Settings.Tab.ModelCatalog">AI and models · Model catalog</sys:String>
+    <sys:String x:Key="Settings.Providers.OpenModelCatalog">Next: open model catalog</sys:String>
+    <sys:String x:Key="Settings.Tab.ModelCatalog">Model catalog</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">First select a provider</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">Then search by model ID or name</sys:String>
     <sys:String x:Key="Settings.Models.AddCustomToolTip">Save any model ID or name to the current provider's local catalog. Feature assignments determine which interface is called.</sys:String>
@@ -499,7 +503,8 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Models.OutputLimit">Maximum output (tokens)</sys:String>
     <sys:String x:Key="Settings.Models.RefreshPreservesLimits">Catalog refresh preserves manually set context and output limits for the same model.</sys:String>
     <sys:String x:Key="Settings.Models.SaveLimits">Save model limits</sys:String>
-    <sys:String x:Key="Settings.Tab.Assignments">AI and models · Feature assignments</sys:String>
+    <sys:String x:Key="Settings.Tab.Assignments">Feature assignments</sys:String>
+    <sys:String x:Key="Settings.Assignments.SelectedFunctionUnassigned">The current feature has no model assigned. Select a provider and model, then save the assignment.</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectFunctionToolTip">Select the feature to assign</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectProviderToolTip">Then select a provider</sys:String>
     <sys:String x:Key="Settings.Assignments.SearchModelToolTip">Finally search for a model name or ID</sys:String>
@@ -532,13 +537,13 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Personas.UserSettings">User settings</sys:String>
     <sys:String x:Key="Settings.Personas.CancelChanges">Cancel changes</sys:String>
     <sys:String x:Key="Settings.Personas.Save">Save persona</sys:String>
-    <sys:String x:Key="Settings.Tab.Prompts">AI behavior templates</sys:String>
+    <sys:String x:Key="Settings.Tab.Prompts">Behavior templates</sys:String>
     <sys:String x:Key="Settings.Prompts.CategoryAndFunction">Template category and function</sys:String>
     <sys:String x:Key="Settings.Prompts.Scope">Configuration scope</sys:String>
     <sys:String x:Key="Settings.Prompts.RestoreDefault">Restore default</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveAs">Save complete configuration as…</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveGlobal">Save global prompts</sys:String>
-    <sys:String x:Key="Settings.Tab.Interface">Interface</sys:String>
+    <sys:String x:Key="Settings.Tab.Interface">Appearance</sys:String>
     <sys:String x:Key="Settings.Interface.Description">Adjust interface language, scale, font, font size, and theme. Settings are stored locally only.</sys:String>
     <sys:String x:Key="Settings.Interface.Language">Interface language</sys:String>
     <sys:String x:Key="Settings.Interface.LanguageHelp">Choose the language used for menus, buttons, hints, and status messages.</sys:String>
@@ -554,7 +559,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Interface.ThemeHelp">Choose the default light or charcoal-dark theme. Only colors and materials change; window structure and interaction logic do not.</sys:String>
     <sys:String x:Key="Settings.Interface.ThemePreviewHelp">Selection previews immediately and remains active after the next launch once saved.</sys:String>
     <sys:String x:Key="Settings.Interface.Save">Save interface settings</sys:String>
-    <sys:String x:Key="Settings.Tab.Data">Data</sys:String>
+    <sys:String x:Key="Settings.Tab.Data">Data and diagnostics</sys:String>
     <sys:String x:Key="Settings.Data.Title">Personal data directory</sys:String>
     <sys:String x:Key="Settings.Data.Description">The database, chat history, character cards, campaign scenarios, attachments, exports, and other personal data are stored here. The application directory itself contains no personal data.</sys:String>
     <sys:String x:Key="Settings.Data.CurrentRoot">Current data root</sys:String>
@@ -1373,14 +1378,14 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.ImportedWarningsFormat">Imported scenario “{0}”; {1}</sys:String>
     <sys:String x:Key="Campaigns.Scenario.FillHint">Complete the scenario structure in questionnaire order; it is added to the library only after saving.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.Select">Select a scenario first.</sys:String>
-    <sys:String x:Key="Campaigns.Scenario.Missing">The scenario does not exist.</sys:String>
+    <sys:String x:Key="Campaigns.Scenario.Missing">Scenario not found.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.EditHint">Edit structured scenario fields. Changes are written to the local library only after saving.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.NoEditor">No scenario is being edited.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.TitleRequired">Scenario title is required.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.SavedFormat">Scenario “{0}” saved. Campaigns already started continue using their own frozen scenario snapshots.</sys:String>
     <sys:String x:Key="Campaigns.Lobby.Intro">Before starting, you can change the world, rules, imported character memory, and model for each seat. These freeze after the campaign starts.</sys:String>
     <sys:String x:Key="Campaigns.Game.Select">Select a campaign first.</sys:String>
-    <sys:String x:Key="Campaigns.Game.Missing">The campaign does not exist.</sys:String>
+    <sys:String x:Key="Campaigns.Game.Missing">Campaign not found.</sys:String>
     <sys:String x:Key="Campaigns.Lobby.DraftLoaded">Lobby draft loaded. Confirm participation mode, characters, and models before starting.</sys:String>
     <sys:String x:Key="Campaigns.Game.Loaded">Campaign loaded from local records. Continue from Current Step on the right.</sys:String>
     <sys:String x:Key="Campaigns.Game.RenameSelect">Right-click the campaign to rename first.</sys:String>

@@ -476,7 +476,10 @@
 
     <!-- Settings -->
     <sys:String x:Key="Settings.Title">设置</sys:String>
-    <sys:String x:Key="Settings.Tab.Providers">AI 与模型 · 接入商</sys:String>
+    <sys:String x:Key="Settings.Section.AiModels">AI 与模型</sys:String>
+    <sys:String x:Key="Settings.Section.Personal">个人偏好</sys:String>
+    <sys:String x:Key="Settings.Section.System">系统设置</sys:String>
+    <sys:String x:Key="Settings.Tab.Providers">接入商</sys:String>
     <sys:String x:Key="Settings.Providers.Title">接入商</sys:String>
     <sys:String x:Key="Settings.Providers.AddToolTip">添加新的自定义 OpenAI-compatible API 提供商</sys:String>
     <sys:String x:Key="Settings.Providers.ListToolTip">选择接入商；右键可删除接入商及其本地模型、功能分配和 Key。</sys:String>
@@ -495,7 +498,8 @@
     <sys:String x:Key="Settings.Providers.ClearKey">清除已存 Key</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">保存设置不会自动联网。</sys:String>
     <sys:String x:Key="Settings.Providers.Save">保存当前设置</sys:String>
-    <sys:String x:Key="Settings.Tab.ModelCatalog">AI 与模型 · 模型目录</sys:String>
+    <sys:String x:Key="Settings.Providers.OpenModelCatalog">下一步：前往模型目录</sys:String>
+    <sys:String x:Key="Settings.Tab.ModelCatalog">模型目录</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">先选择供应商</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">再输入模型 ID 或名称搜索</sys:String>
     <sys:String x:Key="Settings.Models.AddCustomToolTip">输入任意模型 ID 或名称保存到当前供应商的本地目录；实际调用接口由功能分配决定。</sys:String>
@@ -506,7 +510,8 @@
     <sys:String x:Key="Settings.Models.OutputLimit">最大输出 tokens</sys:String>
     <sys:String x:Key="Settings.Models.RefreshPreservesLimits">目录刷新会保留同一模型已经手动设置的上下文和输出上限。</sys:String>
     <sys:String x:Key="Settings.Models.SaveLimits">保存模型上限</sys:String>
-    <sys:String x:Key="Settings.Tab.Assignments">AI 与模型 · 功能分配</sys:String>
+    <sys:String x:Key="Settings.Tab.Assignments">功能分配</sys:String>
+    <sys:String x:Key="Settings.Assignments.SelectedFunctionUnassigned">当前功能尚未分配模型。请选择接入商和模型，然后保存分配。</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectFunctionToolTip">选择要分配模型的功能</sys:String>
     <sys:String x:Key="Settings.Assignments.SelectProviderToolTip">然后选择供应商</sys:String>
     <sys:String x:Key="Settings.Assignments.SearchModelToolTip">最后输入具体模型名称或 ID 搜索</sys:String>
@@ -539,13 +544,13 @@
     <sys:String x:Key="Settings.Personas.UserSettings">用户设定</sys:String>
     <sys:String x:Key="Settings.Personas.CancelChanges">取消修改</sys:String>
     <sys:String x:Key="Settings.Personas.Save">保存人设</sys:String>
-    <sys:String x:Key="Settings.Tab.Prompts">AI 行为模板</sys:String>
+    <sys:String x:Key="Settings.Tab.Prompts">行为模板</sys:String>
     <sys:String x:Key="Settings.Prompts.CategoryAndFunction">模板分类与功能</sys:String>
     <sys:String x:Key="Settings.Prompts.Scope">配置生效范围</sys:String>
     <sys:String x:Key="Settings.Prompts.RestoreDefault">恢复默认</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveAs">另存完整配置…</sys:String>
     <sys:String x:Key="Settings.Prompts.SaveGlobal">保存全局提示词</sys:String>
-    <sys:String x:Key="Settings.Tab.Interface">界面</sys:String>
+    <sys:String x:Key="Settings.Tab.Interface">界面风格</sys:String>
     <sys:String x:Key="Settings.Interface.Description">调整界面语言、缩放、字体、字号和主题；设置仅保存在本机。</sys:String>
     <sys:String x:Key="Settings.Interface.Language">界面语言</sys:String>
     <sys:String x:Key="Settings.Interface.LanguageHelp">选择菜单、按钮、提示和状态信息使用的语言。</sys:String>
@@ -561,7 +566,7 @@
     <sys:String x:Key="Settings.Interface.ThemeHelp">可选默认浅色或深炭黑；仅改变颜色与材质，不改变窗口结构和操作逻辑。</sys:String>
     <sys:String x:Key="Settings.Interface.ThemePreviewHelp">选择后立即预览，保存后下次启动继续使用。</sys:String>
     <sys:String x:Key="Settings.Interface.Save">保存界面设置</sys:String>
-    <sys:String x:Key="Settings.Tab.Data">数据</sys:String>
+    <sys:String x:Key="Settings.Tab.Data">数据与诊断</sys:String>
     <sys:String x:Key="Settings.Data.Title">个人资料目录</sys:String>
     <sys:String x:Key="Settings.Data.Description">数据库、聊天记录、角色卡、跑团剧本、附件、导出文件和其他个人资料都保存在这里；软件目录本身不保存个人资料。</sys:String>
     <sys:String x:Key="Settings.Data.CurrentRoot">当前读取根目录</sys:String>
