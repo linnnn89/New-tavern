@@ -28,29 +28,40 @@
                         <TextBlock Text="{Binding Subtitle}"
                                    Style="{StaticResource AppicaDashboardHeroSubtitleStyle}" />
                         <StackPanel Margin="0,17,0,0"
-                                    Orientation="Horizontal">
-                            <Border Padding="10,5"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <Border Height="36"
+                                    Padding="12,0"
+                                    VerticalAlignment="Center"
                                     Background="{DynamicResource AppicaShellSurfaceBrush}"
                                     BorderBrush="{DynamicResource AppicaDashboardHeroBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="12">
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal"
+                                            VerticalAlignment="Center">
                                     <Ellipse Width="7"
                                              Height="7"
                                              Margin="0,0,7,0"
                                              VerticalAlignment="Center"
                                              Fill="{DynamicResource AppicaShellSuccessBrush}" />
-                                    <TextBlock Text="{StaticResource Dashboard.LocalDataReady}"
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{StaticResource Dashboard.LocalDataReady}"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppicaShellMutedBrush}" />
                                 </StackPanel>
                             </Border>
-                            <Button Margin="10,0,0,0"
-                                    Padding="12,6"
+                            <Button Height="36"
+                                    MinHeight="36"
+                                    Margin="10,0,0,0"
+                                    Padding="12,0"
+                                    VerticalAlignment="Center"
+                                    VerticalContentAlignment="Center"
                                     Command="{Binding ResumeLatestCommand}"
                                     Content="{StaticResource Dashboard.ResumeRecent}">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                        <Setter Property="MinHeight" Value="36" />
+                                        <Setter Property="Padding" Value="12,0" />
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding HasRecentConversation}" Value="True">
@@ -65,11 +76,7 @@
 
                     <Border Grid.Column="1"
                             Style="{StaticResource AppicaDashboardHeroFeatureStyle}">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
+                        <StackPanel VerticalAlignment="Center">
                             <Border Width="42"
                                     Height="42"
                                     HorizontalAlignment="Left"
@@ -82,21 +89,18 @@
                                            FontSize="21"
                                            Foreground="White" />
                             </Border>
-                            <StackPanel Grid.Row="1"
-                                        Margin="0,16,0,0"
-                                        VerticalAlignment="Bottom">
-                                <TextBlock Text="{StaticResource Dashboard.LocalFirst}"
-                                           FontSize="17"
-                                           FontWeight="SemiBold"
-                                           Foreground="White" />
-                                <TextBlock Margin="0,5,0,0"
-                                           Text="{StaticResource Dashboard.LocalFirstDescription}"
-                                           FontSize="12"
-                                           LineHeight="18"
-                                           TextWrapping="Wrap"
-                                           Foreground="#DCEAFF" />
-                            </StackPanel>
-                        </Grid>
+                            <TextBlock Margin="0,14,0,0"
+                                       Text="{StaticResource Dashboard.LocalFirst}"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Foreground="White" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Text="{StaticResource Dashboard.LocalFirstDescription}"
+                                       FontSize="12"
+                                       LineHeight="18"
+                                       TextWrapping="Wrap"
+                                       Foreground="#DCEAFF" />
+                        </StackPanel>
                     </Border>
                 </Grid>
             </Border>
@@ -104,21 +108,17 @@
             <UniformGrid Grid.Row="1"
                          Margin="0,20,0,24"
                          Columns="3">
-                <Border Margin="0,0,8,0"
-                        Style="{StaticResource AppicaDashboardStatCardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="44" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                <Button Margin="0,0,8,0"
+                        Command="{Binding DataContext.ShowCharactersCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="{StaticResource Shell.Characters.ToolTip}"
+                        Style="{StaticResource AppicaDashboardStatButtonStyle}">
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center">
                             <Border Width="34"
                                     Height="34"
-                                    HorizontalAlignment="Left"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
                                     Background="{DynamicResource AppicaShellAccentSoftBrush}"
                                     CornerRadius="10">
                                 <TextBlock Text="&#xE77B;"
@@ -128,44 +128,36 @@
                                            FontSize="17"
                                            Foreground="{DynamicResource AppicaShellAccentBrush}" />
                             </Border>
-                            <TextBlock Grid.Column="1"
-                                       VerticalAlignment="Center"
+                            <TextBlock VerticalAlignment="Center"
                                        Text="{StaticResource Dashboard.Characters}"
                                        Style="{StaticResource AppicaDashboardStatLabelStyle}" />
-                        </Grid>
-                        <Grid Grid.Row="1"
-                              Margin="0,13,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding CharacterCount}"
+                        </StackPanel>
+                        <StackPanel Margin="0,16,0,0"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <TextBlock VerticalAlignment="Bottom"
+                                       Text="{Binding CharacterCount}"
                                        Style="{StaticResource AppicaDashboardStatMetricStyle}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="12,0,0,3"
+                            <TextBlock Margin="10,0,0,6"
                                        VerticalAlignment="Bottom"
                                        Text="{StaticResource Dashboard.CharacterShelf}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </Grid>
-                    </Grid>
-                </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
 
-                <Border Margin="4,0"
-                        Style="{StaticResource AppicaDashboardStatCardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="44" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                <Button Margin="4,0"
+                        Command="{Binding DataContext.ShowChatCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="{StaticResource Shell.Chat.ToolTip}"
+                        Style="{StaticResource AppicaDashboardStatButtonStyle}">
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center">
                             <Border Width="34"
                                     Height="34"
-                                    HorizontalAlignment="Left"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
                                     Background="{DynamicResource AppicaDashboardPurpleSoftBrush}"
                                     CornerRadius="10">
                                 <TextBlock Text="&#xE8BD;"
@@ -175,44 +167,36 @@
                                            FontSize="17"
                                            Foreground="{DynamicResource AppicaDashboardPurpleBrush}" />
                             </Border>
-                            <TextBlock Grid.Column="1"
-                                       VerticalAlignment="Center"
+                            <TextBlock VerticalAlignment="Center"
                                        Text="{StaticResource Dashboard.Conversations}"
                                        Style="{StaticResource AppicaDashboardStatLabelStyle}" />
-                        </Grid>
-                        <Grid Grid.Row="1"
-                              Margin="0,13,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding ConversationCount}"
+                        </StackPanel>
+                        <StackPanel Margin="0,16,0,0"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <TextBlock VerticalAlignment="Bottom"
+                                       Text="{Binding ConversationCount}"
                                        Style="{StaticResource AppicaDashboardStatMetricStyle}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="12,0,0,3"
+                            <TextBlock Margin="10,0,0,6"
                                        VerticalAlignment="Bottom"
                                        Text="{StaticResource Dashboard.ConversationsLocal}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </Grid>
-                    </Grid>
-                </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
 
-                <Border Margin="8,0,0,0"
-                        Style="{StaticResource AppicaDashboardStatCardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="44" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                <Button Margin="8,0,0,0"
+                        Command="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="{StaticResource Shell.Settings.ToolTip}"
+                        Style="{StaticResource AppicaDashboardStatButtonStyle}">
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center">
                             <Border Width="34"
                                     Height="34"
-                                    HorizontalAlignment="Left"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
                                     Background="{DynamicResource AppicaDashboardGreenSoftBrush}"
                                     CornerRadius="10">
                                 <TextBlock Text="&#xE713;"
@@ -222,28 +206,24 @@
                                            FontSize="17"
                                            Foreground="{DynamicResource AppicaDashboardGreenBrush}" />
                             </Border>
-                            <TextBlock Grid.Column="1"
-                                       VerticalAlignment="Center"
+                            <TextBlock VerticalAlignment="Center"
                                        Text="{StaticResource Dashboard.Providers}"
                                        Style="{StaticResource AppicaDashboardStatLabelStyle}" />
-                        </Grid>
-                        <Grid Grid.Row="1"
-                              Margin="0,13,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding ProviderCount}"
+                        </StackPanel>
+                        <StackPanel Margin="0,16,0,0"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <TextBlock VerticalAlignment="Bottom"
+                                       Text="{Binding ProviderCount}"
                                        Style="{StaticResource AppicaDashboardStatMetricStyle}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="12,0,0,3"
+                            <TextBlock Margin="10,0,0,6"
                                        VerticalAlignment="Bottom"
                                        Text="{StaticResource Dashboard.ProviderSaveOffline}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </Grid>
-                    </Grid>
-                </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
             </UniformGrid>
 
             <Border Grid.Row="2"

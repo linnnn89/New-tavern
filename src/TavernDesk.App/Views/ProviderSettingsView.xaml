@@ -1,7 +1,7 @@
 <UserControl x:Class="TavernDesk.App.Views.ProviderSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="32,26,32,32">
+    <Grid Margin="20,16,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -18,9 +18,9 @@
             <TabItem Header="{StaticResource Settings.Tab.Providers}">
                 <Grid Margin="18,12,16,16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="290" MinWidth="230" />
-                        <ColumnDefinition Width="20" />
-                        <ColumnDefinition Width="*" MinWidth="400" />
+                        <ColumnDefinition Width="220" MinWidth="180" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" MinWidth="260" />
                     </Grid.ColumnDefinitions>
 
                     <Border Style="{StaticResource CardStyle}" Padding="0">
@@ -92,7 +92,7 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="138" />
+                                    <ColumnDefinition Width="110" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
@@ -204,25 +204,20 @@
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </Border>
-                                    <Grid Margin="0,12,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button Content="{StaticResource Settings.Providers.ClearKey}"
+                                    <TextBlock Margin="0,12,0,0"
+                                               Text="{StaticResource Settings.Providers.SaveOffline}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
+                                               TextWrapping="Wrap" />
+                                    <WrapPanel Margin="0,12,0,0"
+                                               HorizontalAlignment="Right">
+                                        <Button Margin="0,0,8,0"
+                                                Content="{StaticResource Settings.Providers.ClearKey}"
                                                 Command="{Binding ClearKeyCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
-                                        <TextBlock Grid.Column="1"
-                                                   Margin="12,0"
-                                                   VerticalAlignment="Center"
-                                                   Text="{StaticResource Settings.Providers.SaveOffline}"
-                                                   Foreground="{DynamicResource MutedTextBrush}" />
-                                        <Button Grid.Column="2"
-                                                Content="{StaticResource Settings.Providers.Save}"
+                                        <Button Content="{StaticResource Settings.Providers.Save}"
                                                 Command="{Binding SaveCommand}"
                                                 Style="{StaticResource PrimaryButtonStyle}" />
-                                    </Grid>
+                                    </WrapPanel>
                                 </StackPanel>
                             </Grid>
                         </ScrollViewer>
@@ -266,9 +261,9 @@
                     </Border>
                     <Grid Grid.Row="1" Margin="0,16,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" MinWidth="360" />
-                            <ColumnDefinition Width="18" />
-                            <ColumnDefinition Width="330" />
+                            <ColumnDefinition Width="*" MinWidth="260" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="330" MinWidth="240" />
                         </Grid.ColumnDefinitions>
                         <Border Style="{StaticResource CardStyle}" Padding="8">
                             <ListBox ItemsSource="{Binding VisibleCatalogModels}"
@@ -342,9 +337,9 @@
                     </Border>
                     <Grid Grid.Row="1" Margin="0,16,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" MinWidth="360" />
-                            <ColumnDefinition Width="18" />
-                            <ColumnDefinition Width="360" />
+                            <ColumnDefinition Width="*" MinWidth="260" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="*" MinWidth="260" />
                         </Grid.ColumnDefinitions>
                         <Border Style="{StaticResource CardStyle}" Padding="8">
                             <ListBox ItemsSource="{Binding VisibleAssignmentModels}"
@@ -594,9 +589,9 @@
             <TabItem Header="{StaticResource Settings.Tab.Personas}">
                 <Grid Margin="18,12,16,16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="250" MinWidth="210" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="*" MinWidth="400" />
+                        <ColumnDefinition Width="220" MinWidth="180" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" MinWidth="260" />
                     </Grid.ColumnDefinitions>
 
                     <Border Style="{StaticResource CardStyle}" Padding="8">
@@ -705,9 +700,9 @@
                         </CollectionViewSource>
                     </Grid.Resources>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="280" MinWidth="230" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="*" MinWidth="420" />
+                        <ColumnDefinition Width="220" MinWidth="180" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" MinWidth="260" />
                     </Grid.ColumnDefinitions>
 
                     <Border Style="{StaticResource CardStyle}" Padding="8">
@@ -827,26 +822,22 @@
                                      VerticalContentAlignment="Top"
                                      VerticalScrollBarVisibility="Auto"
                                      Text="{Binding Prompts.SelectedPrompt.Text, UpdateSourceTrigger=PropertyChanged}" />
-                            <Grid Grid.Row="4" Margin="0,12,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Button Content="{StaticResource Settings.Prompts.RestoreDefault}"
+                            <WrapPanel Grid.Row="4"
+                                       Margin="0,12,0,0"
+                                       HorizontalAlignment="Right">
+                                <Button Margin="0,0,8,8"
+                                        Content="{StaticResource Settings.Prompts.RestoreDefault}"
                                         Command="{Binding Prompts.RestoreDefaultCommand}"
                                         Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button Grid.Column="2"
-                                        Margin="0,0,8,0"
+                                <Button Margin="0,0,8,8"
                                         Content="{StaticResource Settings.Prompts.SaveAs}"
                                         Command="{Binding Prompts.ExportCommand}"
                                         Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button Grid.Column="3"
+                                <Button Margin="0,0,0,8"
                                         Content="{StaticResource Settings.Prompts.SaveGlobal}"
                                         Command="{Binding Prompts.SaveCommand}"
                                         Style="{StaticResource PrimaryButtonStyle}" />
-                            </Grid>
+                            </WrapPanel>
                             <TextBlock Grid.Row="5"
                                        Margin="0,12,0,0"
                                        Text="{Binding Prompts.Status}"

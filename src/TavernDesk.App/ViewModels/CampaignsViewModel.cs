@@ -232,6 +232,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         ScheduleUserJoinCommand = new AsyncRelayCommand(
             ScheduleUserJoinAsync);
         RollDiceCommand = new AsyncRelayCommand(RollDiceAsync);
+        RollDicePresetCommand = new AsyncRelayCommand(RollDicePresetAsync);
         RetryEventCommand = new AsyncRelayCommand(RetryEventAsync);
         RetryCampaignMemoryCommand = new AsyncRelayCommand(
             RetryCampaignMemoryAsync);
@@ -282,6 +283,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     public AsyncRelayCommand NextGmCandidateCommand { get; }
     public AsyncRelayCommand ScheduleUserJoinCommand { get; }
     public AsyncRelayCommand RollDiceCommand { get; }
+    public AsyncRelayCommand RollDicePresetCommand { get; }
     public AsyncRelayCommand RetryEventCommand { get; }
     public AsyncRelayCommand RetryCampaignMemoryCommand { get; }
     public AsyncRelayCommand ToggleCampaignMemoryCommand { get; }
@@ -1610,6 +1612,16 @@ public sealed class CampaignsViewModel : ViewModelBase
             await LoadGameAsync(_game.Campaign.Id);
             StatusText = LanguageRuntime.GetString("Campaigns.UserJoin.Scheduled");
         });
+    }
+
+    private Task RollDicePresetAsync(object? parameter)
+    {
+        if (parameter is string expression && !string.IsNullOrWhiteSpace(expression))
+        {
+            DiceExpression = expression;
+        }
+
+        return RollDiceAsync();
     }
 
     private async Task RollDiceAsync()

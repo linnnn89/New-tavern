@@ -26,6 +26,7 @@
     <Color x:Key="ScrollThumbColor">#B7C2D1</Color>
     <Color x:Key="ScrollThumbHoverColor">#7D8DA2</Color>
     <Color x:Key="SuccessColor">#178A60</Color>
+    <Color x:Key="WarningColor">#B45309</Color>
     <Color x:Key="DangerColor">#D92D20</Color>
     <Color x:Key="MessagePlusColor">#748096</Color>
     <Color x:Key="InteractionOverlayColor">#1F2937</Color>
@@ -47,6 +48,7 @@
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="{StaticResource ScrollThumbColor}" />
     <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="{StaticResource ScrollThumbHoverColor}" />
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}" />
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="MessagePlusBrush" Color="{StaticResource MessagePlusColor}" />
     <SolidColorBrush x:Key="InteractionOverlayBrush" Color="{StaticResource InteractionOverlayColor}" />
@@ -63,12 +65,20 @@
         <Setter Property="FontSize" Value="{DynamicResource InterfaceFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
     </Style>
 
     <Style x:Key="InterfaceScaleRootStyle"
            TargetType="{x:Type FrameworkElement}">
         <Setter Property="LayoutTransform"
                 Value="{DynamicResource InterfaceScaleTransform}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
     </Style>
 
     <Style TargetType="TextBlock">
@@ -76,6 +86,8 @@
         <Setter Property="FontSize" Value="{DynamicResource InterfaceFontSize}" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
     </Style>
 
     <!-- Shared modern control chrome. Local variants inherit these templates so

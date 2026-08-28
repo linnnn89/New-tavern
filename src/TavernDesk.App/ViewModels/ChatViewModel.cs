@@ -391,6 +391,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             / _tokenEstimate.ContextLimit,
             0,
             100);
+    public string EstimatedTokenUsageLevel =>
+        EstimatedTokenUsagePercent >= 90 ? "Danger"
+        : EstimatedTokenUsagePercent >= 70 ? "Warning"
+        : "Normal";
     public bool IsEstimatedOverLimit =>
         _tokenEstimate.ExceedsLimit
         || _groupContextBudgetResult is { CanSend: false };
@@ -3274,6 +3278,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(EstimatedTokenText));
         OnPropertyChanged(nameof(EstimatedTokenHeadline));
         OnPropertyChanged(nameof(EstimatedTokenUsagePercent));
+        OnPropertyChanged(nameof(EstimatedTokenUsageLevel));
         OnPropertyChanged(nameof(IsEstimatedOverLimit));
         SendLocalCommand.RaiseCanExecuteChanged();
     }

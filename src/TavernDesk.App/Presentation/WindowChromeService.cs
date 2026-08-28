@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Shell;
+using TavernDesk.App.Services;
 
 namespace TavernDesk.App.Presentation;
 
@@ -15,6 +16,7 @@ internal static class WindowChromeService
     {
         ArgumentNullException.ThrowIfNull(window);
         window.WindowStyle = WindowStyle.None;
+        InterfaceSettingsRuntime.ApplyTextRendering(window);
         WindowChrome.SetWindowChrome(
             window,
             new WindowChrome

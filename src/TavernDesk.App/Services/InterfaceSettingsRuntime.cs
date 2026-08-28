@@ -44,6 +44,7 @@ public static class InterfaceSettingsRuntime
             ["ScrollThumbBrush"] = "#B7C2D1",
             ["ScrollThumbHoverBrush"] = "#7D8DA2",
             ["SuccessBrush"] = "#178A60",
+            ["WarningBrush"] = "#B45309",
             ["DangerBrush"] = "#D92D20",
             ["MessagePlusBrush"] = "#748096",
             ["InteractionOverlayBrush"] = "#1F2937",
@@ -95,6 +96,7 @@ public static class InterfaceSettingsRuntime
             ["ScrollThumbBrush"] = "#555C68",
             ["ScrollThumbHoverBrush"] = "#737D8D",
             ["SuccessBrush"] = "#55D982",
+            ["WarningBrush"] = "#E8B86D",
             ["DangerBrush"] = "#FF7772",
             ["MessagePlusBrush"] = "#9AA3B5",
             ["InteractionOverlayBrush"] = "#FFFFFFFF",
@@ -202,6 +204,25 @@ public static class InterfaceSettingsRuntime
         var transform = new ScaleTransform(ScaleFactor, ScaleFactor);
         transform.Freeze();
         application.Resources["InterfaceScaleTransform"] = transform;
+        foreach (Window window in application.Windows)
+        {
+            ApplyTextRendering(window);
+        }
+    }
+
+    public static void ApplyTextRendering(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        var formatting = ScalePercent == DefaultScalePercent
+            ? TextFormattingMode.Display
+            : TextFormattingMode.Ideal;
+        TextOptions.SetTextFormattingMode(window, formatting);
+        TextOptions.SetTextRenderingMode(window, TextRenderingMode.ClearType);
+        if (window.Content is DependencyObject content)
+        {
+            TextOptions.SetTextFormattingMode(content, formatting);
+            TextOptions.SetTextRenderingMode(content, TextRenderingMode.ClearType);
+        }
     }
 
     private static void ApplyThemeResources(Application application)

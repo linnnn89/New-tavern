@@ -292,33 +292,39 @@
                                             <Image.RenderTransform>
                                                 <ScaleTransform x:Name="PortraitScale" ScaleX="1" ScaleY="1" />
                                             </Image.RenderTransform>
-                                            <Image.Effect>
-                                                <BlurEffect x:Name="PortraitBlur" Radius="0" />
-                                            </Image.Effect>
                                         </Image>
 
                                         <Border x:Name="HoverOverlay"
-                                                Opacity="0"
-                                                Background="#76000000">
+                                                Padding="10,18,10,10"
+                                                VerticalAlignment="Bottom"
+                                                Opacity="0">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                                    <GradientStop Color="#00000000" Offset="0" />
+                                                    <GradientStop Color="#99000000" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
                                             <StackPanel HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center">
-                                                <Button MinWidth="110"
-                                                        MinHeight="46"
+                                                        Orientation="Horizontal">
+                                                <Button MinWidth="64"
+                                                        MinHeight="28"
+                                                        Padding="10,2"
                                                         Content="{StaticResource Characters.Chat}"
-                                                        FontSize="16"
-                                                         FontWeight="SemiBold"
-                                                         Command="{Binding DataContext.StartChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                         CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
-                                                         Style="{StaticResource PrimaryButtonStyle}" />
-                                                <Button MinWidth="110"
-                                                        MinHeight="46"
-                                                        Margin="0,12,0,0"
+                                                        FontSize="12"
+                                                        FontWeight="SemiBold"
+                                                        Command="{Binding DataContext.StartChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                                <Button MinWidth="64"
+                                                        MinHeight="28"
+                                                        Margin="8,0,0,0"
+                                                        Padding="10,2"
                                                         Content="{StaticResource Characters.Edit}"
-                                                        FontSize="16"
-                                                         FontWeight="SemiBold"
-                                                         Command="{Binding DataContext.EditCharacterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                         CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
-                                                         Style="{StaticResource SecondaryButtonStyle}" />
+                                                        FontSize="12"
+                                                        FontWeight="SemiBold"
+                                                        Command="{Binding DataContext.EditCharacterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                                        Style="{StaticResource SecondaryButtonStyle}" />
                                             </StackPanel>
                                         </Border>
                                         <CheckBox Panel.ZIndex="2"
@@ -358,20 +364,16 @@
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetName="PortraitScale"
                                                              Storyboard.TargetProperty="ScaleX"
-                                                             To="1.2"
-                                                             Duration="0:0:0.2" />
+                                                             To="1.04"
+                                                             Duration="0:0:0.16" />
                                             <DoubleAnimation Storyboard.TargetName="PortraitScale"
                                                              Storyboard.TargetProperty="ScaleY"
-                                                             To="1.2"
-                                                             Duration="0:0:0.2" />
-                                            <DoubleAnimation Storyboard.TargetName="PortraitBlur"
-                                                             Storyboard.TargetProperty="Radius"
-                                                             To="5"
-                                                             Duration="0:0:0.18" />
+                                                             To="1.04"
+                                                             Duration="0:0:0.16" />
                                             <DoubleAnimation Storyboard.TargetName="HoverOverlay"
                                                              Storyboard.TargetProperty="Opacity"
                                                              To="1"
-                                                             Duration="0:0:0.18" />
+                                                             Duration="0:0:0.16" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
@@ -381,19 +383,15 @@
                                             <DoubleAnimation Storyboard.TargetName="PortraitScale"
                                                              Storyboard.TargetProperty="ScaleX"
                                                              To="1"
-                                                             Duration="0:0:0.18" />
+                                                             Duration="0:0:0.14" />
                                             <DoubleAnimation Storyboard.TargetName="PortraitScale"
                                                              Storyboard.TargetProperty="ScaleY"
                                                              To="1"
-                                                             Duration="0:0:0.18" />
-                                            <DoubleAnimation Storyboard.TargetName="PortraitBlur"
-                                                             Storyboard.TargetProperty="Radius"
-                                                             To="0"
-                                                             Duration="0:0:0.16" />
+                                                             Duration="0:0:0.14" />
                                             <DoubleAnimation Storyboard.TargetName="HoverOverlay"
                                                              Storyboard.TargetProperty="Opacity"
                                                              To="0"
-                                                             Duration="0:0:0.16" />
+                                                             Duration="0:0:0.14" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
