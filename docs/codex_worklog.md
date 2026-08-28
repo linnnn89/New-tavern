@@ -1960,3 +1960,8 @@
 - 既有 `scripts/Test-Localization.ps1` 仍会把跑团骰子按钮的固定记法 `1d20`、`2d6`、`1d100` 误判为未本地化按钮文字；本轮未修改无关跑团界面或检查器。
 - `scripts/Build-WindowsInstaller.ps1 -Force` 已同步根目录 `app/` 并重建安装包；RID 与 `app/TavernDesk.App.dll` SHA-256 均为 `A14A6618DAAD6ACA1516828F6BAC2F47D8E1C8E5EFB1B73823AE82DDF418F9EB`。安装包大小 `67,276,800` 字节，SHA-256 为 `94A768A5E08C547496A2565E77E85E6002A287D0B85F9EF638F3EA95835D6B5C`。
 - 根目录 `TavernDesk.exe --probe` 退出码为 `0`；发布目录未发现 PDB、数据库、`config.json`、日志或测试输出。未启动 GUI、未读取或发送 API Key、未调用真实 Provider；实际观感留给用户从根启动器手工验收。
+
+## 2026-08-28 — 移除接入商页冗余下一步按钮
+
+- 按用户实际界面验收意见，删除接入商页“下一步：前往模型目录”按钮，并同步移除其后台命令与四语资源；设置分组、页面枚举和其他布局不变。
+- 当前开发工作区完整 Release 私有测试 `293/293` 通过；隔离提交工作树完成 Release 构建与发布同步。未启动 GUI、未执行根启动器探测、未读取或发送 API Key、未调用真实 Provider。

@@ -154,9 +154,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SaveCommand = new AsyncRelayCommand(
             SaveProviderAsync,
             () => SelectedProfile is not null);
-        OpenModelCatalogCommand = new RelayCommand(
-            OpenSelectedProviderModelCatalog,
-            CanOpenSelectedProviderModelCatalog);
         ClearKeyCommand = new AsyncRelayCommand(
             ClearKeyAsync,
             () => SelectedProfile is { SecretReference.Length: > 0 });
@@ -226,7 +223,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public IReadOnlyList<ModelFunctionOption> FunctionOptions { get; }
     public AsyncRelayCommand DeleteProviderCommand { get; }
     public AsyncRelayCommand SaveCommand { get; }
-    public RelayCommand OpenModelCatalogCommand { get; }
     public AsyncRelayCommand ClearKeyCommand { get; }
     public AsyncRelayCommand RefreshModelsCommand { get; }
     public AsyncRelayCommand AddCustomModelCommand { get; }
@@ -263,7 +259,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             OnPropertyChanged(nameof(CredentialHelpText));
             SaveCommand.RaiseCanExecuteChanged();
             ClearKeyCommand.RaiseCanExecuteChanged();
-            OpenModelCatalogCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -1438,7 +1433,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         }
 
         _persistedProfileIds.Add(SelectedProfile.Id);
-        OpenModelCatalogCommand.RaiseCanExecuteChanged();
         Editor.MarkSaved();
         PendingApiKey = string.Empty;
         KeyStatus = KeyStatusFor(SelectedProfile);
@@ -1597,23 +1591,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         {
             Status = LanguageRuntime.Format("Settings.Models.RefreshFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
-    }
-
-    private bool CanOpenSelectedProviderModelCatalog() =>
-        SelectedProfile is not null
-        && _persistedProfileIds.Contains(SelectedProfile.Id);
-
-    private void OpenSelectedProviderModelCatalog()
-    {
-        if (SelectedProfile is null)
-        {
-            return;
-        }
-
-        CatalogProvider = Profiles.FirstOrDefault(profile =>
-                              profile.Id == SelectedProfile.Id)
-                          ?? SelectedProfile;
-        SelectedSettingsPage = SettingsPage.ModelCatalog;
     }
 
     private async Task AddCustomModelAsync()

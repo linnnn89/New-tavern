@@ -491,7 +491,6 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Providers.ClearKey">Clear saved key</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">Saving settings does not connect to the network.</sys:String>
     <sys:String x:Key="Settings.Providers.Save">Save current settings</sys:String>
-    <sys:String x:Key="Settings.Providers.OpenModelCatalog">Next: open model catalog</sys:String>
     <sys:String x:Key="Settings.Tab.ModelCatalog">Model catalog</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">First select a provider</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">Then search by model ID or name</sys:String>

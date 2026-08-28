@@ -491,7 +491,6 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Providers.ClearKey">保存済みキーをクリア</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">設定を保存しても自動接続しません。</sys:String>
     <sys:String x:Key="Settings.Providers.Save">現在の設定を保存</sys:String>
-    <sys:String x:Key="Settings.Providers.OpenModelCatalog">次へ：モデルカタログを開く</sys:String>
     <sys:String x:Key="Settings.Tab.ModelCatalog">モデルカタログ</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">まずプロバイダーを選択</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">次にモデル ID または名前で検索</sys:String>

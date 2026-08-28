@@ -491,7 +491,6 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Providers.ClearKey">清除已存 Key</sys:String>
     <sys:String x:Key="Settings.Providers.SaveOffline">儲存設定不會自動聯網。</sys:String>
     <sys:String x:Key="Settings.Providers.Save">儲存目前設定</sys:String>
-    <sys:String x:Key="Settings.Providers.OpenModelCatalog">下一步：前往模型目錄</sys:String>
     <sys:String x:Key="Settings.Tab.ModelCatalog">模型目錄</sys:String>
     <sys:String x:Key="Settings.Models.SelectProviderToolTip">先選擇供應商</sys:String>
     <sys:String x:Key="Settings.Models.SearchToolTip">再輸入模型 ID 或名稱搜尋</sys:String>
