@@ -27,12 +27,19 @@ public sealed class DashboardViewModel : ViewModelBase
         _providers = providers;
         _openConversation = openConversation;
         OpenConversationCommand = new AsyncRelayCommand(OpenConversationAsync);
+        ResumeLatestCommand = new AsyncRelayCommand(
+            _ => OpenConversationAsync(LatestConversation),
+            _ => HasRecentConversation);
     }
 
     public string Title => LanguageRuntime.GetString("Dashboard.Title");
     public string Subtitle => LanguageRuntime.GetString("Dashboard.Subtitle");
     public ObservableCollection<ConversationSummary> RecentConversations { get; } = [];
+    public ConversationSummary? LatestConversation =>
+        RecentConversations.Count > 0 ? RecentConversations[0] : null;
+    public bool HasRecentConversation => LatestConversation is not null;
     public AsyncRelayCommand OpenConversationCommand { get; }
+    public AsyncRelayCommand ResumeLatestCommand { get; }
 
     public int CharacterCount
     {
@@ -63,6 +70,10 @@ public sealed class DashboardViewModel : ViewModelBase
         {
             RecentConversations.Add(conversation);
         }
+
+        OnPropertyChanged(nameof(LatestConversation));
+        OnPropertyChanged(nameof(HasRecentConversation));
+        ResumeLatestCommand.RaiseCanExecuteChanged();
     }
 
     private async Task OpenConversationAsync(object? parameter)

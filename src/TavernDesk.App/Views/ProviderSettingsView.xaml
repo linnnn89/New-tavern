@@ -16,7 +16,7 @@
                     TabStripPlacement="Left"
                     SelectedIndex="{Binding SelectedSettingsTabIndex}">
             <TabItem Header="{StaticResource Settings.Tab.Providers}">
-                <Grid Margin="18,4,4,4">
+                <Grid Margin="18,12,16,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="290" MinWidth="230" />
                         <ColumnDefinition Width="20" />
@@ -231,7 +231,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.ModelCatalog}">
-                <Grid Margin="18,4,4,4">
+                <Grid Margin="18,12,16,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -312,7 +312,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.Assignments}">
-                <Grid Margin="18,4,4,4">
+                <Grid Margin="18,12,16,16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -551,7 +551,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.DefaultBehavior}">
-                <ScrollViewer Margin="18,4,4,4"
+                <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Text="{StaticResource Settings.Tab.DefaultBehavior}"
@@ -592,7 +592,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.Personas}">
-                <Grid Margin="18,4,4,4">
+                <Grid Margin="18,12,16,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="250" MinWidth="210" />
                         <ColumnDefinition Width="16" />
@@ -695,7 +695,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.Prompts}">
-                <Grid Margin="18,4,4,4">
+                <Grid Margin="18,12,16,16">
                     <Grid.Resources>
                         <CollectionViewSource x:Key="PromptNavigationView"
                                               Source="{Binding Prompts.NavigationItems}">
@@ -858,7 +858,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.Interface}">
-                <ScrollViewer Margin="18,4,4,4"
+                <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                             <TextBlock Text="{StaticResource Settings.Tab.Interface}"
@@ -1016,7 +1016,7 @@
             </TabItem>
 
             <TabItem Header="{StaticResource Settings.Tab.Data}">
-                <ScrollViewer Margin="18,4,4,4"
+                <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Text="{StaticResource Settings.Data.Title}"

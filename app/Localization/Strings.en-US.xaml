@@ -47,6 +47,10 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Shell.Worldbook.ToolTip">Import, manage, and test Tavern worldbooks. Keyword and semantic retrieval run separately.</sys:String>
     <sys:String x:Key="Shell.Settings.Label">Settings</sys:String>
     <sys:String x:Key="Shell.Settings.ToolTip">Configure model providers, API keys, default models, and global prompts.</sys:String>
+    <sys:String x:Key="Shell.Caption.Minimize">Minimize</sys:String>
+    <sys:String x:Key="Shell.Caption.Maximize">Maximize</sys:String>
+    <sys:String x:Key="Shell.Caption.Restore">Restore</sys:String>
+    <sys:String x:Key="Shell.Caption.Close">Close</sys:String>
     <sys:String x:Key="Shell.LocalWorkspace">Local workspace</sys:String>
     <sys:String x:Key="Shell.RuntimeStatus">Runtime status</sys:String>
     <sys:String x:Key="Shell.StopAll.Label">Stop all</sys:String>
@@ -120,6 +124,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <!-- Dashboard -->
     <sys:String x:Key="Dashboard.Eyebrow">TAVERNDESK · LOCAL WORKSPACE</sys:String>
     <sys:String x:Key="Dashboard.LocalDataReady">Local data ready</sys:String>
+    <sys:String x:Key="Dashboard.ResumeRecent">Resume last chat</sys:String>
     <sys:String x:Key="Dashboard.LocalFirst">Local-first</sys:String>
     <sys:String x:Key="Dashboard.LocalFirstDescription">Characters, conversations, and model configuration remain on this device.</sys:String>
     <sys:String x:Key="Dashboard.Characters">Characters</sys:String>
@@ -160,6 +165,8 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Characters.Layout.Medium">Medium</sys:String>
     <sys:String x:Key="Characters.Layout.Large">Large</sys:String>
     <sys:String x:Key="Characters.ImportCard">Import character card</sys:String>
+    <sys:String x:Key="Characters.Empty.Title">This shelf is empty</sys:String>
+    <sys:String x:Key="Characters.Empty.Hint">Import a PNG, JSON, or CHARX character card, or add characters from another shelf.</sys:String>
     <sys:String x:Key="Characters.BackToShelf">← Back to character library</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">Current layout:</sys:String>
     <sys:String x:Key="Characters.LayoutHelp"> Vertical covers preserve their aspect ratio when cropped. Hover to enlarge and reveal Chat and Edit shortcuts.</sys:String>

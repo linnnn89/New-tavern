@@ -5,8 +5,20 @@
         Title="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
         MinWidth="960"
         MinHeight="620"
-        ResizeMode="CanResize">
+        ResizeMode="CanResize"
+        Background="{DynamicResource AppicaShellCanvasBrush}">
     <Grid Style="{StaticResource InterfaceScaleRootStyle}">
-        <views:ChatView />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Border Style="{StaticResource AppicaShellTopBarStyle}">
+            <Grid>
+                <TextBlock Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
+                           Style="{StaticResource AppicaShellSectionTitleStyle}" />
+                <views:ShellCaptionButtons HorizontalAlignment="Right" />
+            </Grid>
+        </Border>
+        <views:ChatView Grid.Row="1" />
     </Grid>
 </Window>

@@ -1386,43 +1386,47 @@
     </Style>
 
     <Style x:Key="MessagePlusButtonStyle" TargetType="Button">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="24" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Opacity" Value="0.65" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource MessagePlusBrush}" />
-        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid Width="28" Height="28" Background="Transparent">
-                        <TextBlock x:Name="PlusGlyph"
-                                   Text="+"
+                    <Border x:Name="Chrome"
+                            Width="32"
+                            Height="24"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="12">
+                        <TextBlock x:Name="MoreGlyph"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
-                                   FontFamily="Microsoft YaHei UI"
-                                   FontSize="19"
-                                   FontWeight="Bold"
-                                   Foreground="{TemplateBinding Foreground}">
-                            <TextBlock.Effect>
-                                <DropShadowEffect Color="#60000000"
-                                                  BlurRadius="7"
-                                                  ShadowDepth="2"
-                                                  Opacity="0.55" />
-                            </TextBlock.Effect>
-                        </TextBlock>
-                    </Grid>
+                                   Text="&#xE712;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="11"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   TextOptions.TextFormattingMode="Display" />
+                    </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PlusGlyph" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                            <Setter Property="Opacity" Value="1" />
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="PlusGlyph" Property="Opacity" Value="0.72" />
+                            <Setter Property="Opacity" Value="0.85" />
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlPressedBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="PlusGlyph" Property="Opacity" Value="0.35" />
+                            <Setter Property="Opacity" Value="0.35" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

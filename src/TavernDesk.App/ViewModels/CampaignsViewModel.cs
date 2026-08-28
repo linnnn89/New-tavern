@@ -2138,6 +2138,11 @@ public sealed class CampaignsViewModel : ViewModelBase
             seat.IsRetryAction = actionState.IsRetry;
             seat.RetryEventId = actionState.RetryEventId;
             seat.ActionHelpText = actionState.HelpText;
+            seat.IsCurrentTurn = flowSnapshot.CurrentParticipantId is not null
+                                 && string.Equals(
+                                     flowSnapshot.CurrentParticipantId,
+                                     participant.Id,
+                                     StringComparison.Ordinal);
             Seats.Add(seat);
         }
 

@@ -41,6 +41,10 @@
     <sys:String x:Key="Shell.Worldbook.ToolTip">导入、管理并测试酒馆世界书；关键词和语义召回分开运行。</sys:String>
     <sys:String x:Key="Shell.Settings.Label">设置</sys:String>
     <sys:String x:Key="Shell.Settings.ToolTip">配置模型供应商、API Key、默认模型与全局提示词。</sys:String>
+    <sys:String x:Key="Shell.Caption.Minimize">最小化</sys:String>
+    <sys:String x:Key="Shell.Caption.Maximize">最大化</sys:String>
+    <sys:String x:Key="Shell.Caption.Restore">还原</sys:String>
+    <sys:String x:Key="Shell.Caption.Close">关闭</sys:String>
     <sys:String x:Key="Shell.LocalWorkspace">本地工作区</sys:String>
     <sys:String x:Key="Shell.RuntimeStatus">运行状态</sys:String>
     <sys:String x:Key="Shell.StopAll.Label">停止全部</sys:String>
@@ -122,6 +126,7 @@
     <!-- Dashboard -->
     <sys:String x:Key="Dashboard.Eyebrow">TAVERNDESK · 本地工作区</sys:String>
     <sys:String x:Key="Dashboard.LocalDataReady">本地数据已就绪</sys:String>
+    <sys:String x:Key="Dashboard.ResumeRecent">继续上次对话</sys:String>
     <sys:String x:Key="Dashboard.LocalFirst">本地优先</sys:String>
     <sys:String x:Key="Dashboard.LocalFirstDescription">角色、会话与模型配置都保留在当前设备。</sys:String>
     <sys:String x:Key="Dashboard.Characters">角色</sys:String>
@@ -164,6 +169,8 @@
     <sys:String x:Key="Characters.Layout.Medium">中等</sys:String>
     <sys:String x:Key="Characters.Layout.Large">大图</sys:String>
     <sys:String x:Key="Characters.ImportCard">导入角色卡</sys:String>
+    <sys:String x:Key="Characters.Empty.Title">书架还是空的</sys:String>
+    <sys:String x:Key="Characters.Empty.Hint">导入 PNG / JSON / CHARX 角色卡，或从其他书架把角色加进来。</sys:String>
     <sys:String x:Key="Characters.BackToShelf">← 返回角色书架</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">当前排列：</sys:String>
     <sys:String x:Key="Characters.LayoutHelp">　竖向封面按原比例裁切；悬停放大并提供聊天、编辑两个快捷入口。</sys:String>

@@ -1,4 +1,5 @@
 using System.Windows;
+using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 
@@ -14,6 +15,7 @@ public partial class ConversationWindow : Window
         WindowPlacementService windowPlacement)
     {
         InitializeComponent();
+        WindowChromeService.Attach(this);
         _viewModel = viewModel;
         _windowPlacement = windowPlacement;
         DataContext = viewModel;

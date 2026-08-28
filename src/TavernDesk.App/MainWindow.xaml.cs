@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using TavernDesk.App.Localization;
+using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     {
         _windowPlacement = windowPlacement;
         InitializeComponent();
+        WindowChromeService.Attach(this);
         DataContext = viewModel;
         Closing += OnClosing;
         Closed += OnClosed;

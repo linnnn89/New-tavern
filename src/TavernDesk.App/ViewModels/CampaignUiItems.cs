@@ -116,6 +116,7 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     private bool _isRetryAction;
     private string? _retryEventId;
     private string _actionHelpText = string.Empty;
+    private bool _isCurrentTurn;
 
     public CampaignSeatViewModel(CampaignParticipant participant)
     {
@@ -178,6 +179,12 @@ public sealed class CampaignSeatViewModel : ViewModelBase
     {
         get => _actionHelpText;
         set => SetProperty(ref _actionHelpText, value);
+    }
+
+    public bool IsCurrentTurn
+    {
+        get => _isCurrentTurn;
+        set => SetProperty(ref _isCurrentTurn, value);
     }
 }
 

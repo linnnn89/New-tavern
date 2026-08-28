@@ -47,6 +47,10 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Shell.Worldbook.ToolTip">Tavern ワールドブックをインポート、管理、テストします。キーワード検索と意味検索は別々に実行されます。</sys:String>
     <sys:String x:Key="Shell.Settings.Label">設定</sys:String>
     <sys:String x:Key="Shell.Settings.ToolTip">モデルプロバイダー、API キー、既定モデル、グローバルプロンプトを設定します。</sys:String>
+    <sys:String x:Key="Shell.Caption.Minimize">最小化</sys:String>
+    <sys:String x:Key="Shell.Caption.Maximize">最大化</sys:String>
+    <sys:String x:Key="Shell.Caption.Restore">元に戻す</sys:String>
+    <sys:String x:Key="Shell.Caption.Close">閉じる</sys:String>
     <sys:String x:Key="Shell.LocalWorkspace">ローカルワークスペース</sys:String>
     <sys:String x:Key="Shell.RuntimeStatus">実行状態</sys:String>
     <sys:String x:Key="Shell.StopAll.Label">すべて停止</sys:String>
@@ -120,6 +124,7 @@ Choose the TavernDesk interface language.
     <!-- Dashboard -->
     <sys:String x:Key="Dashboard.Eyebrow">TAVERNDESK · ローカルワークスペース</sys:String>
     <sys:String x:Key="Dashboard.LocalDataReady">ローカルデータ準備完了</sys:String>
+    <sys:String x:Key="Dashboard.ResumeRecent">前回の会話を続ける</sys:String>
     <sys:String x:Key="Dashboard.LocalFirst">ローカルファースト</sys:String>
     <sys:String x:Key="Dashboard.LocalFirstDescription">キャラクター、会話、モデル設定はこのデバイス内に保持されます。</sys:String>
     <sys:String x:Key="Dashboard.Characters">キャラクター</sys:String>
@@ -160,6 +165,8 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Characters.Layout.Medium">中</sys:String>
     <sys:String x:Key="Characters.Layout.Large">大</sys:String>
     <sys:String x:Key="Characters.ImportCard">キャラクターカードをインポート</sys:String>
+    <sys:String x:Key="Characters.Empty.Title">この本棚は空です</sys:String>
+    <sys:String x:Key="Characters.Empty.Hint">PNG / JSON / CHARX のキャラクターカードをインポートするか、別の本棚から追加してください。</sys:String>
     <sys:String x:Key="Characters.BackToShelf">← キャラクターライブラリへ戻る</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">現在のレイアウト：</sys:String>
     <sys:String x:Key="Characters.LayoutHelp"> 縦長の表紙は縦横比を保ってトリミングされます。ポイントすると拡大し、チャットと編集のショートカットを表示します。</sys:String>

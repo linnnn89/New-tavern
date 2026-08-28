@@ -1145,7 +1145,11 @@ public sealed class CharactersViewModel : ViewModelBase
         {
             VisibleCharacters.Add(character);
         }
+
+        OnPropertyChanged(nameof(HasVisibleCharacters));
     }
+
+    public bool HasVisibleCharacters => VisibleCharacters.Count > 0;
 
     private async Task RefreshCharactersPreservingEditorAsync(
         CharacterDetailSession session)

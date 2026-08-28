@@ -401,6 +401,24 @@ public partial class ChatView : UserControl
             }));
     }
 
+    private void MessageHost_OnMouseEnter(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement host
+            && host.FindName("HoverActions") is UIElement bar)
+        {
+            bar.IsHitTestVisible = true;
+        }
+    }
+
+    private void MessageHost_OnMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement host
+            && host.FindName("HoverActions") is UIElement bar)
+        {
+            bar.IsHitTestVisible = false;
+        }
+    }
+
     private void MessageBubble_OnPreviewMouseRightButtonUp(
         object sender,
         MouseButtonEventArgs e)

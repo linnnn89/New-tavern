@@ -45,6 +45,21 @@
                                                Foreground="{DynamicResource AppicaShellMutedBrush}" />
                                 </StackPanel>
                             </Border>
+                            <Button Margin="10,0,0,0"
+                                    Padding="12,6"
+                                    Command="{Binding ResumeLatestCommand}"
+                                    Content="{StaticResource Dashboard.ResumeRecent}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasRecentConversation}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
 

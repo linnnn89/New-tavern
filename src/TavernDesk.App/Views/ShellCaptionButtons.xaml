@@ -1,0 +1,34 @@
+<UserControl x:Class="TavernDesk.App.Views.ShellCaptionButtons"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework">
+    <StackPanel Orientation="Horizontal">
+        <Button x:Name="MinimizeButton"
+                Click="MinimizeButton_OnClick"
+                ToolTip="{StaticResource Shell.Caption.Minimize}"
+                AutomationProperties.Name="{StaticResource Shell.Caption.Minimize}"
+                shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                Style="{StaticResource AppicaCaptionButtonStyle}">
+            <TextBlock Text="&#xE921;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="10" />
+        </Button>
+        <Button x:Name="MaximizeButton"
+                Click="MaximizeButton_OnClick"
+                ToolTip="{StaticResource Shell.Caption.Maximize}"
+                AutomationProperties.Name="{StaticResource Shell.Caption.Maximize}"
+                shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                Style="{StaticResource AppicaCaptionButtonStyle}">
+            <TextBlock x:Name="MaximizeGlyph"
+                       Text="&#xE922;"
+                       FontFamily="{StaticResource AppicaShellIconFont}"
+                       FontSize="10" />
+        </Button>
+        <Button x:Name="CloseButton"
+                Click="CloseButton_OnClick"
+                ToolTip="{StaticResource Shell.Caption.Close}"
+                AutomationProperties.Name="{StaticResource Shell.Caption.Close}"
+                shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                Style="{StaticResource AppicaCaptionCloseButtonStyle}">
+            <TextBlock Text="&#xE8BB;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="10" />
+        </Button>
+    </StackPanel>
+</UserControl>

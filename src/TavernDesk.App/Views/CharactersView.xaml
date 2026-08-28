@@ -200,6 +200,40 @@
                     </Grid>
                 </Border>
 
+                <Border Grid.Row="1">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource AppicaEmptyStateStyle}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasVisibleCharacters}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock HorizontalAlignment="Center"
+                                   FontFamily="{StaticResource AppicaShellIconFont}"
+                                   FontSize="36"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   Text="&#xE8F1;" />
+                        <TextBlock Margin="0,12,0,0"
+                                   HorizontalAlignment="Center"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Text="{StaticResource Characters.Empty.Title}" />
+                        <TextBlock Margin="0,6,0,14"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource MutedTextBrush}"
+                                   Text="{StaticResource Characters.Empty.Hint}" />
+                        <Button HorizontalAlignment="Center"
+                                Content="{StaticResource Characters.ImportCard}"
+                                Command="{Binding ImportCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </StackPanel>
+                </Border>
                 <ListBox x:Name="CharacterCardList"
                      Grid.Row="1"
                      ItemsSource="{Binding VisibleCharacters}"

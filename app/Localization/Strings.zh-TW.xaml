@@ -47,6 +47,10 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Shell.Worldbook.ToolTip">匯入、管理並測試酒館世界書；關鍵詞和語義檢索分開執行。</sys:String>
     <sys:String x:Key="Shell.Settings.Label">設定</sys:String>
     <sys:String x:Key="Shell.Settings.ToolTip">設定模型供應商、API Key、預設模型與全域提示詞。</sys:String>
+    <sys:String x:Key="Shell.Caption.Minimize">最小化</sys:String>
+    <sys:String x:Key="Shell.Caption.Maximize">最大化</sys:String>
+    <sys:String x:Key="Shell.Caption.Restore">還原</sys:String>
+    <sys:String x:Key="Shell.Caption.Close">關閉</sys:String>
     <sys:String x:Key="Shell.LocalWorkspace">本機工作區</sys:String>
     <sys:String x:Key="Shell.RuntimeStatus">執行狀態</sys:String>
     <sys:String x:Key="Shell.StopAll.Label">停止全部</sys:String>
@@ -120,6 +124,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <!-- Dashboard -->
     <sys:String x:Key="Dashboard.Eyebrow">TAVERNDESK · 本機工作區</sys:String>
     <sys:String x:Key="Dashboard.LocalDataReady">本機資料已就緒</sys:String>
+    <sys:String x:Key="Dashboard.ResumeRecent">繼續上次對話</sys:String>
     <sys:String x:Key="Dashboard.LocalFirst">本機優先</sys:String>
     <sys:String x:Key="Dashboard.LocalFirstDescription">角色、會話與模型設定都保留在目前裝置。</sys:String>
     <sys:String x:Key="Dashboard.Characters">角色</sys:String>
@@ -160,6 +165,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Characters.Layout.Medium">中等</sys:String>
     <sys:String x:Key="Characters.Layout.Large">大圖</sys:String>
     <sys:String x:Key="Characters.ImportCard">匯入角色卡</sys:String>
+    <sys:String x:Key="Characters.Empty.Title">書架還是空的</sys:String>
+    <sys:String x:Key="Characters.Empty.Hint">匯入 PNG / JSON / CHARX 角色卡，或從其他書架把角色加進來。</sys:String>
     <sys:String x:Key="Characters.BackToShelf">← 返回角色書架</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">目前排列：</sys:String>
     <sys:String x:Key="Characters.LayoutHelp">　豎向封面按原比例裁切；懸停放大並提供聊天、編輯兩個快捷入口。</sys:String>
