@@ -72,6 +72,28 @@ public sealed class AppDataLocationService
                 + "请选择同级或其他位置的目录。");
         }
 
+        // GetFullPath only normalizes path text. Resolve each existing directory
+        // link as well so a junction alias cannot hide equality or nesting.
+        var physicalOldRoot = ResolvePathThroughDirectoryLinks(oldRoot);
+        var physicalNewRoot = ResolvePathThroughDirectoryLinks(newRoot);
+        if (string.Equals(
+                physicalOldRoot,
+                physicalNewRoot,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "所选目录通过链接指向当前个人资料目录，实际位置没有变化。"
+                + "请保留当前目录或选择其他位置。");
+        }
+
+        if (IsNestedRoot(physicalOldRoot, physicalNewRoot)
+            || IsNestedRoot(physicalNewRoot, physicalOldRoot))
+        {
+            throw new InvalidOperationException(
+                "新的个人资料目录通过链接指向当前个人资料目录内部，"
+                + "或反过来包含当前目录。请选择其他位置的目录。");
+        }
+
         var copiedFiles = 0;
         long copiedBytes = 0;
         if (migrationMode == DataRootMigrationMode.CopyCurrentData)
@@ -166,6 +188,11 @@ public sealed class AppDataLocationService
         {
             if (File.Exists(sourceDatabase))
             {
+                // SQLite opens links transparently, so apply the same root
+                // boundary before reading the live database.
+                ThrowIfLinkedEntry(
+                    sourceRoot,
+                    new FileInfo(sourceDatabase));
                 await BackupDatabaseAsync(
                     sourceDatabase,
                     targetDatabase,
@@ -174,40 +201,68 @@ public sealed class AppDataLocationService
                 bytes += new FileInfo(targetDatabase).Length;
             }
 
-            foreach (var directory in Directory.EnumerateDirectories(
-                         sourceRoot,
-                         "*",
-                         SearchOption.AllDirectories))
+            // SearchOption.AllDirectories follows directory links. Walking one
+            // level at a time lets us stop before a junction can leave the
+            // selected data root or introduce a recursive cycle.
+            var pendingDirectories = new Queue<string>();
+            pendingDirectories.Enqueue(sourceRoot);
+            while (pendingDirectories.TryDequeue(out var currentDirectory))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var relative = Path.GetRelativePath(sourceRoot, directory);
-                Directory.CreateDirectory(Path.Combine(stagingRoot, relative));
-            }
-
-            foreach (var sourceFile in Directory.EnumerateFiles(
-                         sourceRoot,
-                         "*",
-                         SearchOption.AllDirectories))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (string.Equals(
-                        Path.GetFullPath(sourceFile),
-                        Path.GetFullPath(sourceDatabase),
-                        StringComparison.OrdinalIgnoreCase)
-                    || IsSqliteSidecar(sourceFile))
+                if (!string.Equals(
+                        currentDirectory,
+                        sourceRoot,
+                        StringComparison.OrdinalIgnoreCase))
                 {
-                    continue;
+                    // Recheck immediately before traversal in case a directory
+                    // changed into a link after it was first enumerated.
+                    ThrowIfLinkedEntry(
+                        sourceRoot,
+                        new DirectoryInfo(currentDirectory));
                 }
 
-                var relative = Path.GetRelativePath(sourceRoot, sourceFile);
-                var targetFile = Path.Combine(stagingRoot, relative);
-                Directory.CreateDirectory(
-                    Path.GetDirectoryName(targetFile)
-                    ?? throw new InvalidOperationException(
-                        "个人资料文件缺少目标父目录。"));
-                await _copyFile(sourceFile, targetFile, cancellationToken);
-                files++;
-                bytes += new FileInfo(targetFile).Length;
+                foreach (var directory in Directory.EnumerateDirectories(
+                             currentDirectory,
+                             "*",
+                             SearchOption.TopDirectoryOnly))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ThrowIfLinkedEntry(
+                        sourceRoot,
+                        new DirectoryInfo(directory));
+                    var relative = Path.GetRelativePath(sourceRoot, directory);
+                    Directory.CreateDirectory(Path.Combine(stagingRoot, relative));
+                    pendingDirectories.Enqueue(directory);
+                }
+
+                foreach (var sourceFile in Directory.EnumerateFiles(
+                             currentDirectory,
+                             "*",
+                             SearchOption.TopDirectoryOnly))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (string.Equals(
+                            Path.GetFullPath(sourceFile),
+                            Path.GetFullPath(sourceDatabase),
+                            StringComparison.OrdinalIgnoreCase)
+                        || IsSqliteSidecar(sourceFile))
+                    {
+                        continue;
+                    }
+
+                    // FileStream follows file links even though no directory
+                    // recursion occurs, so reject them before copying content.
+                    ThrowIfLinkedEntry(sourceRoot, new FileInfo(sourceFile));
+
+                    var relative = Path.GetRelativePath(sourceRoot, sourceFile);
+                    var targetFile = Path.Combine(stagingRoot, relative);
+                    Directory.CreateDirectory(
+                        Path.GetDirectoryName(targetFile)
+                        ?? throw new InvalidOperationException(
+                            "个人资料文件缺少目标父目录。"));
+                    await _copyFile(sourceFile, targetFile, cancellationToken);
+                    files++;
+                    bytes += new FileInfo(targetFile).Length;
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -456,6 +511,52 @@ public sealed class AppDataLocationService
         var fileName = Path.GetFileName(path);
         return fileName.Equals("taverndesk.db-wal", StringComparison.OrdinalIgnoreCase)
                || fileName.Equals("taverndesk.db-shm", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void ThrowIfLinkedEntry(
+        string sourceRoot,
+        FileSystemInfo entry)
+    {
+        if (entry.ResolveLinkTarget(returnFinalTarget: false) is null)
+        {
+            return;
+        }
+
+        var relative = Path.GetRelativePath(sourceRoot, entry.FullName);
+        throw new InvalidOperationException(
+            $"当前个人资料目录包含链接项“{relative}”，无法保证复制范围。"
+            + "请先将需要的真实文件或目录移入个人资料目录，再重新迁移。");
+    }
+
+    private static string ResolvePathThroughDirectoryLinks(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath)
+                   ?? throw new InvalidOperationException("个人资料目录缺少路径根。");
+        var resolved = root;
+        var segments = fullPath[root.Length..].Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+        foreach (var segment in segments)
+        {
+            var candidate = Path.Combine(resolved, segment);
+            if (Directory.Exists(candidate))
+            {
+                // ResolveLinkTarget supports Windows junctions and symbolic
+                // links; entries that are not directory links return null.
+                var target = new DirectoryInfo(candidate).ResolveLinkTarget(
+                    returnFinalTarget: true);
+                resolved = target?.FullName ?? candidate;
+            }
+            else
+            {
+                // Once a segment is absent, its descendants are lexical only;
+                // retaining them still resolves any linked existing ancestor.
+                resolved = candidate;
+            }
+        }
+
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(resolved));
     }
 
     private static bool IsNestedRoot(string possibleChild, string possibleParent)

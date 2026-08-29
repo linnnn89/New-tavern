@@ -16,12 +16,13 @@ public sealed class MarkdownMessagePresenter : UserControl
             new PropertyMetadata(string.Empty, OnMarkdownTextChanged));
 
     private readonly StackPanel _root = new();
+    private bool _isWatchingInterfaceSettings;
 
     public MarkdownMessagePresenter()
     {
         Content = _root;
-        InterfaceSettingsRuntime.Changed += OnThemeChanged;
-        Unloaded += (_, _) => InterfaceSettingsRuntime.Changed -= OnThemeChanged;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public string MarkdownText
@@ -32,6 +33,33 @@ public sealed class MarkdownMessagePresenter : UserControl
 
     private void OnThemeChanged(object? sender, EventArgs args) =>
         Dispatcher.BeginInvoke(Rebuild);
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        // Virtualized message controls can load more than once. Pair the global
+        // subscription with each loaded lifetime so reloaded controls still
+        // respond without accumulating duplicate handlers.
+        if (!_isWatchingInterfaceSettings)
+        {
+            InterfaceSettingsRuntime.Changed += OnThemeChanged;
+            _isWatchingInterfaceSettings = true;
+        }
+
+        Rebuild();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        if (!_isWatchingInterfaceSettings)
+        {
+            return;
+        }
+
+        // The event source is static, so releasing the handler here prevents
+        // unloaded message controls from being retained for the app lifetime.
+        InterfaceSettingsRuntime.Changed -= OnThemeChanged;
+        _isWatchingInterfaceSettings = false;
+    }
 
     private static void OnMarkdownTextChanged(
         DependencyObject target,
