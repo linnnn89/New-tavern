@@ -19,6 +19,8 @@ internal static class TavernDeskRootLauncher
                 "--probe",
                 StringComparison.OrdinalIgnoreCase))
         {
+            // File-presence check only. This does not launch or initialize the app.
+            // Use scripts/Start-IsolatedTest.ps1 -StartupProbe for source startup QA.
             return File.Exists(target) ? 0 : 2;
         }
 

@@ -17,10 +17,11 @@ public sealed class InfrastructureServices
 {
     public InfrastructureServices(
         string? dataRoot = null,
-        ITavernDeskDiagnostics? diagnostics = null)
+        ITavernDeskDiagnostics? diagnostics = null,
+        AppDataConfiguration? dataConfiguration = null)
     {
         Diagnostics = diagnostics ?? NullTavernDeskDiagnostics.Instance;
-        DataConfiguration = new AppDataConfiguration();
+        DataConfiguration = dataConfiguration ?? new AppDataConfiguration();
         Paths = new AppDataPaths(dataRoot, DataConfiguration);
         Database = new SqliteDatabase(Paths);
         DataLocation = new AppDataLocationService(
@@ -72,6 +73,7 @@ public sealed class InfrastructureServices
             openAiCompatibleGateway,
             grokCliGateway,
             Diagnostics);
+        ChatReplies = new ChatReplyExecutor(Conversations, ProviderGateway, GenerationCoordinator, GenerationSessions);
         EmbeddingProviderGateway = (IEmbeddingProviderGateway)ProviderGateway;
         GroupMemory = new GroupMemoryUpdateService(
             Conversations,
@@ -182,6 +184,7 @@ public sealed class InfrastructureServices
     public IConversationGenerationSessionStore GenerationSessions { get; }
     public ISecretStore Secrets { get; }
     public IProviderGateway ProviderGateway { get; }
+    public ChatReplyExecutor ChatReplies { get; }
     public IEmbeddingProviderGateway EmbeddingProviderGateway { get; }
     public ICampaignRunner CampaignRunner { get; }
     public IReadOnlyList<ICharacterCardCodec> CharacterCardCodecs { get; }

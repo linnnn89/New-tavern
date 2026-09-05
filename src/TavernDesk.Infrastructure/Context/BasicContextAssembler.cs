@@ -67,6 +67,9 @@ public sealed class BasicContextAssembler : IContextAssembler
         }
 
         var sourceMessages = messages;
+        // Group turns can contain several character replies after one USER
+        // message. Keep complete stages instead of cutting at an arbitrary
+        // message count and changing who appears to have answered whom.
         var historyMessages = request.Retrieval is { IsEnabled: true } retrievalOptions
             ? conversation.Mode == ConversationMode.Group
                 ? SelectRecentHistoryByStages(
@@ -171,6 +174,8 @@ public sealed class BasicContextAssembler : IContextAssembler
                 roster,
                 true,
                 125);
+            // A bank without a source digest predates the validated checkpoint
+            // contract. Do not inject it until a rebuild proves its provenance.
             var sharedCheckpoint = await _groupMemories.GetCheckpointAsync(
                 conversation.Id,
                 GroupMemoryScope.Shared,
@@ -255,6 +260,8 @@ public sealed class BasicContextAssembler : IContextAssembler
         var effectiveCharacterName = string.IsNullOrWhiteSpace(character?.Name)
             ? string.Empty
             : character.Name.Trim();
+        // __seed keeps deterministic worldbook probability stable for the same
+        // conversation/input while still allowing different turns to diverge.
         var macroVariables = new Dictionary<string, string>(
             StringComparer.OrdinalIgnoreCase)
         {
@@ -311,6 +318,9 @@ public sealed class BasicContextAssembler : IContextAssembler
         if (conversation.Mode == ConversationMode.Group
             && allowRemoteSemanticRetrieval)
         {
+            // Remote embedding is optional. First prove that mandatory group
+            // context can fit locally; an unsendable request must not incur a
+            // remote call merely to produce diagnostics.
             var preflightSegments = new List<ContextSegment>(segments);
             for (var messageIndex = 0; messageIndex < historyMessages.Count; messageIndex++)
             {
@@ -390,6 +400,8 @@ public sealed class BasicContextAssembler : IContextAssembler
             }
         }
 
+        // Deterministic rules take precedence. Semantic retrieval may enrich
+        // them, but must not inject the same world knowledge twice.
         var deterministicWorldbookContents = worldbookResult.Matches
             .Select(match => NormalizeForDuplicateCheck(
                 _macros.Expand(match.Content, macroVariables)))
@@ -549,6 +561,9 @@ public sealed class BasicContextAssembler : IContextAssembler
             });
         }
 
+        // Depth injections share a HistoryBlockId with their target group stage,
+        // so budget trimming keeps the instruction and its conversation turn
+        // together instead of producing an orphaned prompt.
         var historyOrder = 600;
         for (var messageIndex = 0; messageIndex < historyMessages.Count; messageIndex++)
         {
@@ -928,6 +943,9 @@ public sealed class BasicContextAssembler : IContextAssembler
         string? continuationInstruction,
         string? userInput)
     {
+        // These high order values encode the provider-facing contract: stable
+        // prefix first, then post-history controls, continuation/current input,
+        // and finally the group baton instruction that owns the reply turn.
         AddIfPresent(
             segments,
             $"post-history:{characterId ?? conversationId}",

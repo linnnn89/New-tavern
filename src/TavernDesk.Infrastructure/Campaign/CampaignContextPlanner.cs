@@ -192,6 +192,9 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
         int inputBudget)
     {
         var normalizedReservedOutput = Math.Max(0, reservedOutputTokens);
+        // Mandatory protocol, identity, current action, and authority context are
+        // measured first and never silently truncated. A blocked plan is safer
+        // than sending a syntactically valid request that changes game semantics.
         var mandatory = sections.Where(item => item.IsMandatory).ToArray();
         var mandatoryEstimate = Estimate(mandatory, effectiveLimit, normalizedReservedOutput, modelId);
         if (inputBudget <= 0 || mandatoryEstimate.InputTokens > inputBudget)
@@ -236,6 +239,8 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             item.Id is "player.public-memory" or "gm.memory");
         if (memory is not null && memory.Content.Length > 0)
         {
+            // Long-term memory is useful but cannot crowd out recent authoritative
+            // events; cap it at 40% of the post-mandatory input and at 3,000 tokens.
             var memoryBudget = Math.Min(
                 MaximumMemoryTokens,
                 Math.Max(0, remainingInput * 40 / 100));
@@ -612,12 +617,17 @@ public sealed class CampaignContextPlanner : ICampaignContextPlanner
             return candidate;
         }
 
+        // Token counts are model/envelope dependent and not proportional to UTF-16
+        // length. Binary-search candidate lengths with the real estimator instead
+        // of deriving a character limit from an assumed tokens-per-character ratio.
         var low = 0;
         var high = content.Length;
         string? best = null;
         while (low <= high)
         {
             var length = low + (high - low) / 2;
+            // History keeps complete recent event lines; memory keeps both its
+            // durable baseline (head) and most recent changes (tail).
             var probe = preserveWholeLines
                 ? TakeWholeLines(content, length)
                 : TakeHeadAndTail(content, length);

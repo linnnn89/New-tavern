@@ -43,6 +43,9 @@ public static class LanguageRuntime
         {
             var dictionary = LoadDictionary(normalized);
             var merged = application.Resources.MergedDictionaries;
+            // Replace the previous language dictionary in place. Accumulating
+            // dictionaries would leave stale resources whose lookup order depends
+            // on how many times the user has switched languages.
             var existingIndex = FindLanguageDictionaryIndex(merged);
             if (existingIndex >= 0)
             {
@@ -69,6 +72,9 @@ public static class LanguageRuntime
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
+        // The plain-XAML fallback keeps localization available to headless code
+        // and tests where WPF has no Application/resource tree. The visible key
+        // marker makes missing translations diagnosable instead of silently blank.
         if (TryGetString(_currentDictionary, key, out var localized)
             || TryGetString(Application.Current?.Resources, key, out localized)
             || TryGetPlainString(CurrentCultureName, key, out localized)
@@ -96,6 +102,9 @@ public static class LanguageRuntime
             // Diagnostics must never replace the original user-facing error.
         }
 
+        // Application exceptions contain deliberately localized user messages.
+        // Arbitrary backend/runtime messages are shown only when their script is
+        // compatible with the active UI; otherwise use a stable localized error.
         for (var candidate = exception;
              candidate is not null;
              candidate = candidate.InnerException)
@@ -244,6 +253,8 @@ public static class LanguageRuntime
     private static IReadOnlyDictionary<string, string> LoadPlainDictionary(
         string cultureName)
     {
+        // Parse the deployed XAML as data rather than instantiating WPF resources;
+        // this path must also work before Application.Current exists.
         var path = Path.Combine(
             AppContext.BaseDirectory,
             "Localization",

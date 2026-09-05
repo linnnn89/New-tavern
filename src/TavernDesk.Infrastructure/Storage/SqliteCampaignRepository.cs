@@ -181,6 +181,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 cancellationToken);
             ValidateStart(campaign, participants);
 
+            // Freeze the draft transition and the first ledger event in one
+            // transaction so an active campaign never exists without its
+            // authoritative start boundary.
             campaign.Status = CampaignStatus.Active;
             campaign.Phase = CampaignPhase.Opening;
             campaign.CurrentRound = 1;
@@ -362,10 +365,15 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 cancellationToken);
             if (existing is not null)
             {
+                // OperationId is the idempotency key for retries after an
+                // uncertain commit result. Return the committed event instead
+                // of allocating a second sequence number.
                 await transaction.CommitAsync(cancellationToken);
                 return existing;
             }
 
+            // Allocate and insert under the same transaction; sequence_no is
+            // the stable campaign order and must not be derived from rowid.
             campaignEvent.SequenceNo = await NextSequenceAsync(
                 connection,
                 (SqliteTransaction)transaction,
@@ -427,6 +435,8 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
 
             if (IsTerminal(stored.GenerationStatus))
             {
+                // The first terminal outcome wins. Late provider chunks or a
+                // racing cancellation must not rewrite an auditable attempt.
                 throw new InvalidOperationException("已经结束的生成尝试不能再次改写。");
             }
 
@@ -476,6 +486,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
     public async Task RecoverInterruptedGenerationsAsync(
         CancellationToken cancellationToken = default)
     {
+        // Provider streams cannot survive a process exit. Mark their cached
+        // events non-authoritative on startup so they never enter later
+        // resolution, context, or memory flows as completed facts.
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -523,12 +536,18 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
             if (campaign.Status != CampaignStatus.Active
                 || campaign.StateVersion != expectedStateVersion)
             {
+                // state_version is an optimistic concurrency gate: an older
+                // flow plan may report failure, but it may never overwrite a
+                // newer committed world state.
                 throw new InvalidOperationException(
                     "跑团状态已经变化，旧操作没有覆盖新的世界状态。请重新载入。");
             }
 
             if (!string.IsNullOrWhiteSpace(update.CommitEventId))
             {
+                // Candidate locking and runtime advancement share this
+                // transaction. There is no state where a candidate is accepted
+                // without the corresponding round/turn transition.
                 var commitEventId = update.CommitEventId;
                 var commitEvent = await ReadEventByIdAsync(
                                       connection,
@@ -622,6 +641,9 @@ public sealed class SqliteCampaignRepository : ICampaignRepository
                 if (pendingUsers.Length == 1)
                 {
                     var now = DateTimeOffset.Now;
+                    // Reserve a temporary index outside the active range, then
+                    // shift seats from the end. This avoids transient unique
+                    // sort-index collisions while inserting USER at position 0.
                     await using (var reserveUserIndex = connection.CreateCommand())
                     {
                         reserveUserIndex.Transaction =

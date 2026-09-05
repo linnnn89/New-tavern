@@ -2017,3 +2017,71 @@
 - 根目录 `TavernDesk.exe --probe` 退出码为 `0`；独立使用相同参数再次发布后，与 `app/` 的 `417` 个文件逐一比较，文件名差异和 SHA-256 差异均为 `0`。
 - 发布目录未发现 PDB、数据库、SQLite 文件、日志或测试宿主文件；未启动 GUI、未调用真实 Provider、未读取或发送 API Key。
 - 独立复现使用的本地 `.publish-verify/` 目录因执行环境阻止递归删除而暂时保留；它未被 Git 暂存，也不会上传远端。
+
+## 2026-08-30 — 复杂代码原因型注释审计
+
+### 审计与补充
+
+- 结合 `docs/architecture.md`、跑团模式设计、上下文预算说明和既有工作日志，复核生产源码中的并发、持久化、缓存/预算、兼容导入导出、安全边界和 WPF 生命周期；没有按文件大小机械增加方法复述型注释。
+- 在 28 个生产源码文件补充原因型注释，重点记录数据库迁移与事务原子性、跑团事件权威性和候选锁定、生成注册栅栏与停止语义、群聊记忆 CAS/摘要校验、上下文强制段与裁剪顺序、世界书递归/RRF/远程 Embedding 边界、DPAPI 引用约束、PNG/CHARX 无损保留和语言/主题生命周期。
+- 未修改公共接口、数据库结构、依赖、配置或产品行为；源码差异除新增注释外，仅包含 `ConversationGenerationCoordinator` 一行既有错误缩进的格式校正。
+- 大型但以属性映射、简单命令转发或数据缓冲为主的文件没有为了“覆盖率”堆砌注释，避免注释重复代码并在后续迭代中失真。
+
+### 验证与边界
+
+- `git diff --check`：通过；逐行反证检查确认生产源码的非注释差异只有上述缩进校正。
+- `dotnet build TavernDesk.sln -c Release --no-restore`：`0` 警告、`0` 错误。
+- `dotnet test tests/TavernDesk.Tests/TavernDesk.Tests.csproj -c Release --no-restore`：`193/193` 通过，`0` 失败、`0` 跳过。
+- 未构建安装包、未同步根目录 `app/`、未启动 GUI、未调用真实 Provider、未读取或发送 API Key；本地未跟踪的 `.publish-verify/` 保持不动。
+
+## 2026-09-05 — 隔离测试入口与启动检查分级
+
+### 目标与变更
+
+- 用户确认实施架构审查第 3 项：固化临时测试数据库入口，明确启动检查的含义；测试继续维持 Git 排除。
+- 新增 `scripts/Start-IsolatedTest.ps1`，使用现有依赖执行 Release `--no-restore` 构建，直接启动源码输出。每次创建全新 `work/isolated-test-*` 目录，核对应用返回的进程 ID、数据库、配置、日志路径与数据库存在性；不复制个人数据、不更新发布产物。
+- 新增显式 `--test-root` / `--test-startup-probe` 模式。在初始化个人配置或默认日志之前解析测试参数，通过配置对象注入，将数据库、资产、密钥、配置、错误日志及 API 测试输出限定到本次测试根下。初始化检查不调用 Provider，写入原子替换的 `startup-result.json` 后正常退出；交互模式的主窗口增加 `[TEST]` 标记。
+- 拒绝已有目录、相对路径、链接祖先、不完整参数和混用普通数据目录参数；保留原单实例约束，测试失败不附着已有实例，错误路径不回退个人日志。脚本超时仅终止自己创建的进程，并保留测试资料。
+- 架构文档增加使用方法及验证分级；根启动器源码仅补充注释，说明 `--probe` 只检查文件存在且不转发测试参数。未修改根启动器二进制。
+
+### 验证与边界
+
+- 新增本地私有回归 `IsolatedTestStartupTests`：5/5 通过；完整 Release 测试 198/198 通过，0 失败、0 跳过。
+- `Start-IsolatedTest.ps1 -StartupProbe` 实测成功：Release 构建 0 警告、0 错误，初始化回执 `initialized`，退出码 0；所有回执路径位于新测试目录。
+- 三个实际进程失败路径：缺少测试根、相对路径、已存在目录均退出码 1，无模态错误对话框阻塞。
+- 交互入口实测 `initialized` 且进程响应；保持它运行时启动第二个隔离探针，第二进程退出码 1、回执 `failed`、未创建数据库，第一测试进程仍运行。随后仅关闭本次创建的测试进程。
+- `git diff --check` 通过；新增测试文件仍由 `/tests/` 排除。既有未提交注释及日志保持原样。
+- 未执行完整 GUI 交互或主窗口视觉验收，未调用真实 Provider，未读取或复制个人数据库。未构建安装包、覆盖 `app/`、提交或推送；初始化探针不能证明真实模型、旧数据库迁移或长局行为。
+
+## 2026-09-05 — 单条聊天回复执行职责抽离
+
+### 范围与设计
+
+- 用户授权有限重构，要求参考 GitHub 经验且避免过度工程化。参考 HandBrake WPF 的服务职责分离（https://github.com/HandBrake/HandBrake/blob/master/win/CS/HandBrakeWPF/Services/Queue/QueueService.cs），仅借鉴长期任务与界面分离，不引入其队列或容器实现。
+- 新增 `Infrastructure/Context/ChatReplyExecutor.cs`，负责一条新回复的 Provider 流读取、正文缓冲、已有群聊归属清洗和消息/首候选原子提交，返回结构化结果。无 WPF、ViewModel 或界面回调依赖；不创建第二套生成状态。
+- `InfrastructureServices` 装配共享执行类，`ChatViewModelFactory` 注入；原构造调用可继续使用相同依赖构造无状态执行类，便于既有私有测试替换 Provider/仓储。
+- `ChatViewModel` 保留上下文快照与请求组装、发送/接力操作登记收尾、错误文案、群聊调度和记忆触发。原单条回复入口由发送、续写和群聊复用，因此保留其归属检查；重新生成仅复用流读取，候选提交逻辑未抽离。
+- 进度显示消费已有共享会话事件。未改数据库结构、提示词、模型参数、群聊轮次、记忆策略、依赖或发布文件。
+
+### 验证与反证
+
+- 抽离后原有 198 项 Release 回归通过；新增 4 个不创建 ViewModel 的执行测试，验证成功正文/候选提交、思考不落盘、usage、空回复、中断、断流，以及执行类不提前结束外层会话。
+- 加入新测试后首次全套结果 201 通过、1 失败：群聊测试在 TestWorkspace.Dispose 删除临时数据库时发生文件占用。检查发现该测试没有释放 ChatViewModel；改为 await using，保留全部业务断言，未增加延时、删除测试或放宽断言。
+- 修正测试清理后完整 Release 202/202 通过，0 失败、0 跳过，包括关闭视图后重附着、续写、重新生成、群聊接力和原子候选写入回归。
+- 反证边界：仅移动方法而仍传递 ViewModel 会保留耦合；当前执行测试直接构造仓储、假 Provider、协调器和会话存储即可完成，无窗口依赖。整个 SendAsync 与后续记忆/接力仍在 ViewModel，本轮不声称完成全聊天业务解耦。
+- `Start-IsolatedTest.ps1 -StartupProbe` 通过：构建 0 警告、0 错误，全新测试库初始化成功且进程正常退出。`git diff --check` 通过；测试继续由 /tests/ 排除。
+- 未访问个人数据库，未调用真实 Provider，未进行完整 GUI 交互验收；未重建发布 app/、安装包或根 EXE，未提交/推送。既有未提交修改均保留。
+
+## 2026-09-05 — 聊天回复重构发布到可运行程序
+
+- 用户明确要求更新日常可用 EXE。执行 `scripts/Build-WindowsInstaller.ps1 -Force`，已将当前源码发布为 win-x64 自包含版本并同步 `app/`，重新生成安装包。根 `TavernDesk.exe` 保持薄启动器，运行时指向本次更新的 `app/TavernDesk.App.exe`。
+- 安装包大小 69,365,760 字节，SHA-256：`26A1E578E47E53E860D2F127205EC7CE85CD87B64BEAFD5086F15F4CB86723C0`。安装包继续被 Git 排除。
+- 发布 App EXE、App/Core/Infrastructure DLL 与本次 RID 构建输出逐一 SHA-256 相同。发布目录未发现 PDB、数据库、SQLite、日志或 config.json。
+- 直接运行发布版 `app/TavernDesk.App.exe --test-root <全新 work/release-probe-* 路径> --test-startup-probe`：初始化 schema v23，所有回执路径位于隔离根，退出码 0。根启动器 `--probe` 文件存在检查亦通过。
+- 重构源码的完整回归已在前项验证 202/202 通过，本次未重复运行；未执行安装/卸载或完整 GUI 交互验收。未访问个人数据库、未调用真实 Provider、未提交或推送。
+
+## 2026-09-05 — 用户验收后直接提交 GitHub
+
+- 用户实际使用后目前未发现 BUG，明确要求快速提交到 linnnn89/New-tavern 并合并，禁止额外发布前测试。
+- 本次按授权直接提交源码、文档、隔离测试启动脚本与已生成 app/ 程序；不重新测试或打包。测试源码、安装包、work/ 和 .publish-verify/ 不纳入提交。
+- 目标为远端默认分支“跑团记忆升级版”；提交前远端与本地 HEAD 同为 74af760，采用普通快进推送，不强制覆盖远端。

@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Windows;
@@ -11,6 +10,7 @@ using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure.Group;
+using TavernDesk.Infrastructure.Context;
 
 namespace TavernDesk.App.ViewModels;
 
@@ -26,7 +26,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private readonly IConversationGenerationCoordinator _generationCoordinator;
     private readonly IConversationGenerationSessionStore _generationSessions;
     private readonly IModelAssignmentRepository _modelAssignments;
-    private readonly IProviderGateway _providerGateway;
+    private readonly ChatReplyExecutor _chatReplies;
     private readonly IAppSettingsRepository _settings;
     private readonly IGlobalPromptConfiguration _globalPrompts;
     private readonly IUserInteractionService _interaction;
@@ -109,7 +109,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         IFileDialogService fileDialog,
         Func<string, Task>? openConversationWindow = null,
         PlayerPersonaManagerViewModel? personas = null,
-        TimeSpan? groupAutoRelayDelay = null)
+        TimeSpan? groupAutoRelayDelay = null,
+        ChatReplyExecutor? chatReplies = null)
     {
         _repository = repository;
         _characters = characters;
@@ -121,7 +122,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _generationCoordinator = generationCoordinator;
         _generationSessions = generationSessions;
         _modelAssignments = modelAssignments;
-        _providerGateway = providerGateway;
+        _chatReplies = chatReplies ?? new ChatReplyExecutor(
+            repository, providerGateway, generationCoordinator, generationSessions);
         _settings = settings;
         _globalPrompts = globalPrompts;
         _interaction = interaction;
@@ -951,6 +953,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void StartSelectionLoad(ConversationListItemViewModel conversation)
     {
+        // Cancellation is advisory for SQLite/WPF continuations; the monotonic
+        // version also prevents a late load from replacing a newer selection.
         _selectionCancellation?.Cancel();
         _selectionCancellation?.Dispose();
         _selectionCancellation = new CancellationTokenSource();
@@ -1483,97 +1487,27 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         ContextAssemblyResult context,
         string speakerId)
     {
-        var assistant = new ChatMessage
-        {
-            ConversationId = snapshot.ConversationId,
-            SenderKind = MessageSenderKind.Character,
-            SenderId = speakerId,
-            Content = string.Empty,
-            ActiveCandidateIndex = 0
-        };
-        _generationSessions.BeginReply(
+        BeginProviderGeneration(snapshot.ConversationId);
+        var result = await _chatReplies.ExecuteAsync(
             snapshot.ConversationId,
             snapshot.OperationId,
-            assistant.Id,
             speakerId,
-            LiveReplyKind.NewMessage);
-        BeginProviderGeneration(snapshot.ConversationId);
-        var buffer = new System.Text.StringBuilder();
-        await _generationCoordinator.RunAsync(
-            snapshot.ConversationId,
-            token => StreamProviderContentAsync(
-                snapshot.ConversationId,
-                snapshot.OperationId,
-                CreateExecutionRequest(
-                    assignment,
-                    context,
-                    snapshot.ConversationId),
-                token),
-            (chunk, _) =>
-            {
-                buffer.Append(chunk);
-                assistant.Content = buffer.ToString();
-                return ValueTask.CompletedTask;
-            },
-            _generationSessions.GetCancellationToken(
-                snapshot.ConversationId,
-                snapshot.OperationId));
+            CreateExecutionRequest(assignment, context, snapshot.ConversationId),
+            snapshot.Mode == ConversationMode.Group,
+            snapshot.Context.Group?.MemberNames.GetValueOrDefault(speakerId));
         var telemetry = _generationSessions.Get(snapshot.ConversationId);
-        if (IsGenerationInterrupted(snapshot.ConversationId))
+        var status = result.Outcome switch
         {
-            SetStatusForConversation(
-                snapshot.ConversationId,
-                buffer.Length == 0
-                    ? EmptyReplyStatus(snapshot.ConversationId, telemetry)
-                    : LanguageRuntime.GetString("Chat.Generation.InterruptedPartial"));
-            return null;
-        }
-
-        if (buffer.Length == 0)
-        {
-            SetStatusForConversation(
-                snapshot.ConversationId,
-                EmptyReplyStatus(snapshot.ConversationId, telemetry));
-            return null;
-        }
-
-        if (snapshot.Mode == ConversationMode.Group)
-        {
-            var expectedSpeakerName = snapshot.Context.Group?.MemberNames
-                .GetValueOrDefault(speakerId);
-            var normalized = GroupRelayResponseNormalizer.Normalize(
-                buffer.ToString(),
-                expectedSpeakerName);
-            if (!normalized.IsValid)
-            {
-                SetStatusForConversation(
-                    snapshot.ConversationId,
-                    LanguageRuntime.GetString("Chat.Group.InvalidReply"));
-                return null;
-            }
-
-            assistant.Content = normalized.Content;
-        }
-        else
-        {
-            assistant.Content = buffer.ToString();
-        }
-
-        await _repository.AddMessageWithCandidateAsync(
-            assistant,
-            new MessageCandidate
-        {
-            MessageId = assistant.Id,
-            CandidateIndex = 0,
-            Content = assistant.Content
-        });
-        SetStatusForConversation(
-            snapshot.ConversationId,
-            CompletedReplyStatus(
-                snapshot.ConversationId,
-                assignment.ModelId,
-                telemetry));
-        return assistant;
+            ChatReplyOutcome.Saved => CompletedReplyStatus(
+                snapshot.ConversationId, assignment.ModelId, telemetry),
+            ChatReplyOutcome.Interrupted when result.HadContent =>
+                LanguageRuntime.GetString("Chat.Generation.InterruptedPartial"),
+            ChatReplyOutcome.InvalidGroupReply =>
+                LanguageRuntime.GetString("Chat.Group.InvalidReply"),
+            _ => EmptyReplyStatus(snapshot.ConversationId, telemetry)
+        };
+        SetStatusForConversation(snapshot.ConversationId, status);
+        return result.Message;
     }
 
     private async Task ContinueGroupRelayAsync(
@@ -2374,7 +2308,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             var buffer = new System.Text.StringBuilder();
             await _generationCoordinator.RunAsync(
                 conversationId,
-                token => StreamProviderContentAsync(
+                token => _chatReplies.StreamContentAsync(
                     conversationId,
                     operationId,
                     CreateExecutionRequest(
@@ -3160,51 +3094,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             LanguageRuntime.GetString("Chat.Generation.Waiting"));
     }
 
-    // Reasoning is deliberately reduced to a UI-only signal. Only Content events
-    // enter the coordinator, message bubbles, candidates, and persistent storage.
-    private async IAsyncEnumerable<string> StreamProviderContentAsync(
-        string conversationId,
-        string operationId,
-        ModelExecutionRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        await foreach (var streamEvent in _providerGateway.StreamChatAsync(
-                           request,
-                           cancellationToken).WithCancellation(cancellationToken))
-        {
-            _generationSessions.ApplyProviderEvent(
-                conversationId,
-                operationId,
-                streamEvent);
-            switch (streamEvent.Kind)
-            {
-                case ProviderStreamEventKind.Reasoning:
-                    _generationCoordinator.ReportReceivedText(
-                        operationId,
-                        streamEvent.Content);
-                    SetStatusForConversation(
-                        conversationId,
-                        LanguageRuntime.GetString("Chat.Generation.Thinking"));
-                    break;
-
-                case ProviderStreamEventKind.Content:
-                    if (streamEvent.Content.Length == 0)
-                    {
-                        break;
-                    }
-
-                    SetStatusForConversation(
-                        conversationId,
-                        LanguageRuntime.GetString("Chat.Generation.Receiving"));
-                    yield return streamEvent.Content;
-                    break;
-
-                case ProviderStreamEventKind.Completed:
-                    break;
-            }
-        }
-    }
-
     private string EmptyReplyStatus(
         string conversationId,
         ConversationGenerationSession telemetry,
@@ -3302,6 +3191,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string conversationId,
         ContextAssemblyResult result)
     {
+        // Once a real request has produced an actual budget, a slower preview
+        // must not overwrite it with an estimate from an older input snapshot.
         if (SelectedConversation?.Id != conversationId
             || string.Equals(
                 _actualBudgetConversationId,
@@ -3366,6 +3257,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void ApplyGenerationSession(ConversationGenerationSession session)
     {
+        // Live progress belongs to the shared session; each window renders it
+        // without being called back by the reply executor.
+        if (session.IsThinking)
+            SetStatusForConversation(session.ConversationId, LanguageRuntime.GetString("Chat.Generation.Thinking"));
+        else if (session.IsBusy && session.SawContent)
+            SetStatusForConversation(session.ConversationId, LanguageRuntime.GetString("Chat.Generation.Receiving"));
+
         if (SelectedConversation?.Id != session.ConversationId)
         {
             return;
@@ -3378,15 +3276,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Group.RefreshGenerationState();
         SendLocalCommand.RaiseCanExecuteChanged();
         ApplyLiveSession(session);
-        if (session.IsThinking)
-        {
-            Status = LanguageRuntime.GetString("Chat.Generation.Thinking");
-        }
-        else if (session.IsBusy && session.SawContent)
-        {
-            Status = LanguageRuntime.GetString("Chat.Generation.Receiving");
-        }
-
         if (!session.IsBusy && session.OperationId is not null)
         {
             ScheduleCompletedSessionReload(
@@ -3414,6 +3303,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
+            // Streaming new replies appear immediately, but this transient item
+            // is only a projection; repository reload supplies the committed row.
             var transient = new ChatMessage
             {
                 Id = session.MessageId,
@@ -3453,6 +3344,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         try
         {
             var current = _generationSessions.Get(conversationId);
+            // A new operation may start before this queued reload runs. Only the
+            // operation that actually reached terminal state may refresh the view.
             if (current.IsBusy
                 || !string.Equals(
                     current.OperationId,
@@ -3523,6 +3416,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return;
         }
 
+        // Disposing a window releases UI subscriptions and local preview loads;
+        // provider generation is application-owned and continues for other views.
         _disposed = true;
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
         _generationSessions.SessionChanged -= OnGenerationSessionChanged;

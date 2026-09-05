@@ -28,6 +28,9 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
             0,
             safetyMarginTokens
                 ?? CalculateSafetyMargin(contextLimit));
+        // Reserve output and a safety margin before selecting any content. The
+        // margin absorbs provider/tokenizer envelope differences rather than
+        // pretending all of the advertised context window is usable input.
         var availableInput = Math.Max(
             0,
             contextLimit - reservedOutputTokens - safetyMargin);
@@ -65,6 +68,9 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
             required.AddRange(latestHistoryBlock.Segments);
         }
 
+        // The newest complete history stage is part of the minimum reliable
+        // request; omitting it can detach the current reply from the user turn it
+        // is supposed to answer.
         var minimumRequired = EstimateExactSelection(
             required,
             contextLimit,
@@ -110,6 +116,8 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
             }
         }
 
+        // Attachments follow their owning stage and remain best-effort: the stage
+        // may fit even when an image/file payload does not.
         AddStageAttachments(
             latestHistoryBlock,
             stageAttachments,
@@ -305,6 +313,8 @@ public sealed class GroupContextBudgetPlanner : IGroupContextBudgetPlanner
         string? modelId,
         out int usedTokens)
     {
+        // Re-estimate the complete message set after each addition because chat
+        // envelopes and tokenizer boundaries make segment token costs non-additive.
         var proposed = selected.Append(candidate).ToArray();
         usedTokens = EstimateExactSelection(proposed, contextLimit, modelId);
         if (usedTokens > availableInput)

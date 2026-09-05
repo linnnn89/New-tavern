@@ -121,6 +121,8 @@ public sealed class SqliteMemoryBankService : IMemoryBankService
                 currentRevision = value is null or DBNull ? null : Convert.ToInt64(value);
             }
 
+            // Revision checking and the upsert share one transaction; performing
+            // them on separate connections would turn this into a racy read-then-write.
             if (expectedRevision is not null
                 && (currentRevision ?? 0) != expectedRevision.Value)
             {
@@ -285,6 +287,9 @@ public sealed class SqliteMemoryBankService : IMemoryBankService
                 return false;
             }
 
+            // Manual edits change the prose but do not claim additional source
+            // messages were summarized, so preserve sourceThrough and ensure an
+            // empty checkpoint exists for later automatic updates.
             var updatedAt = DateTimeOffset.Now.ToString("O");
             await using var command = connection.CreateCommand();
             command.Transaction = (Microsoft.Data.Sqlite.SqliteTransaction)transaction;

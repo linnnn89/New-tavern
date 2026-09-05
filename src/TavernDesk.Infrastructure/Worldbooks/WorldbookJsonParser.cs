@@ -37,6 +37,9 @@ public static class WorldbookJsonParser
                 return Missing("世界书 JSON 根节点必须是对象。");
             }
 
+            // Character-card V3 nests the book under data.character_book, while
+            // standalone and legacy exports may put entries at either root level.
+            // Normalize those shapes here so the runtime has one semantic model.
             var data = root["data"] as JsonObject ?? root;
             var book = data["character_book"] as JsonObject
                        ?? (root["entries"] is not null ? root : null)
@@ -279,6 +282,8 @@ public static class WorldbookJsonParser
             };
         }
 
+        // SillyTavern versions/exporters use both textual and numeric encodings;
+        // these numeric values are compatibility constants, not local enum ordinals.
         var numeric = ReadInt(entry, "selectiveLogic")
                       ?? ReadInt(entry, "selective_logic")
                       ?? ReadInt(extensions, "selectiveLogic")
@@ -314,6 +319,9 @@ public static class WorldbookJsonParser
             };
         }
 
+        // Position codes come from external formats. Unsupported slots degrade to
+        // a visible diagnostic plus a safe character-adjacent placement rather
+        // than silently dropping lore or injecting it into history.
         var numeric = ReadInt(entry, "position")
                       ?? ReadInt(extensions, "position");
         return numeric switch

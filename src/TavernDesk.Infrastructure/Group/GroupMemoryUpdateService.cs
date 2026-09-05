@@ -78,6 +78,9 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
         Task<GroupMemoryUpdateResult> runner;
         lock (state.Gate)
         {
+            // Coalesce concurrent triggers per conversation. Callers share one
+            // runner, while Pending records that the completed pass must inspect
+            // a newer message/memory snapshot before returning.
             state.Pending = true;
             state.PendingForce |= force;
             state.WaiterCount++;
@@ -180,6 +183,9 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
 
                 if (hasPending && pass < MaximumDrainPasses)
                 {
+                    // A superseded snapshot is expected during active chat. Retry
+                    // only while bounded; continuous edits must yield to the UI
+                    // instead of turning this into an unbounded background loop.
                     lock (state.Gate)
                     {
                         state.PendingForce |= force;
@@ -291,6 +297,9 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                         0);
                 }
 
+                // Clear derived memory only if the repository still observes an
+                // empty conversation; a concurrent new message supersedes this
+                // snapshot and must preserve/rebuild the memory instead.
                 if (!await _memories.ClearIfConversationHasNoMessagesAsync(
                         conversationId,
                         cancellationToken))
@@ -337,6 +346,8 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                 }
             }
 
+            // Snapshot every scope before any provider call. Revisions captured
+            // here later prevent generated text from overwriting manual edits.
             var prepared = new List<PreparedScope>(scopes.Count);
             foreach (var scope in scopes)
             {
@@ -429,6 +440,9 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
 
             if (updatedAny)
             {
+                // Provider calls prepare results in memory; banks, checkpoints
+                // and their optimistic expectations are committed together only
+                // after every successful scope has been validated.
                 var saved = await _memories.TrySaveBatchAsync(
                     outcomes
                         .Where(item => item.Updated)
@@ -517,6 +531,8 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
         var updated = false;
         var rebuilt = false;
         var through = checkpoint?.LastMessageSequence ?? 0;
+        // Process a bounded number of contiguous batches. Each checkpoint only
+        // advances through validated source, leaving any backlog for a later run.
         for (var batchNo = 0;
              batchNo < MaximumBatchesPerScope;
              batchNo++)
@@ -578,6 +594,8 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
                         "单条群聊消息与现有记忆超过当前记忆模型的上下文限制，请提高该功能的上下文上限或先缩短消息。");
                 }
 
+                // Remove newest messages first so the accepted batch remains a
+                // contiguous prefix and its checkpoint can advance safely.
                 batch = batch[..^1];
             }
             var raw = await GenerateAsync(
@@ -701,6 +719,9 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
             return true;
         }
 
+        // Sequence alone cannot detect edits, deletes or candidate switches.
+        // Count plus digest makes those changes force a full current-history
+        // rebuild rather than incrementally extending stale memory.
         var source = messages
             .Where(item => item.SequenceNo <= checkpoint.LastMessageSequence)
             .ToArray();

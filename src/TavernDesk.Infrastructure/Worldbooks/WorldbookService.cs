@@ -170,6 +170,9 @@ public sealed class WorldbookService : IWorldbookService
                               && !string.IsNullOrWhiteSpace(scopeId)
             ? scopeKind
             : WorldbookScopeKind.Global;
+        // The source hash identifies an imported working copy independently of
+        // where it is mounted. Re-importing identical bytes adds/re-enables the
+        // requested mount instead of duplicating entries and search indexes.
         var existingWorldbook = (await _repository.ListAsync(cancellationToken))
             .FirstOrDefault(book =>
                 string.Equals(book.SourceSha256, sourceHash, StringComparison.OrdinalIgnoreCase)
@@ -273,6 +276,9 @@ public sealed class WorldbookService : IWorldbookService
             return new WorldbookIndexResult(worldbookId, chunks.Count, 0, diagnostics);
         }
 
+        // Provider, model, adapter, and normalized endpoint form one vector
+        // space. Keeping them in the profile identity prevents silently mixing
+        // embeddings produced by incompatible backends.
         var profileId = await ProfileIdAsync(
             assignment.ProviderId,
             assignment.ModelId,
@@ -308,6 +314,8 @@ public sealed class WorldbookService : IWorldbookService
                 cancellationToken);
             foreach (var embedding in indexed)
             {
+                // Reuse is safe only when both the normalized content and vector
+                // shape still match the current chunk/profile contract.
                 if (!chunkById.TryGetValue(embedding.ChunkId, out var chunk)
                     || !string.Equals(
                         embedding.ContentHash,
@@ -418,6 +426,8 @@ public sealed class WorldbookService : IWorldbookService
                 );
         }
 
+        // Do not expose a half-rebuilt index: every remote batch is validated in
+        // memory before chunks, profile, and vectors are replaced atomically.
         await _repository.ReplaceIndexedChunksAsync(
             worldbookId,
             chunks,
@@ -475,6 +485,8 @@ public sealed class WorldbookService : IWorldbookService
             return new WorldbookRetrievalResult([], diagnostics);
         }
 
+        // FTS is always local and remains the fallback when semantic search is
+        // unavailable or deliberately disabled for a side-effect-free preview.
         var ftsHits = await _repository.SearchTextAsync(
             bookIds,
             request.QueryText,
@@ -486,6 +498,8 @@ public sealed class WorldbookService : IWorldbookService
             .ToDictionary(item => item.ChunkId, item => item.Rank, StringComparer.Ordinal);
 
         var vectorRanks = new Dictionary<string, double>(StringComparer.Ordinal);
+        // This flag is a side-effect boundary, not merely a ranking preference:
+        // preview callers must never transmit their query to a remote provider.
         if (!request.AllowRemoteEmbedding)
         {
             diagnostics.Add("本次为本地上下文预览，未发送 Embedding 查询请求。" );
@@ -562,6 +576,8 @@ public sealed class WorldbookService : IWorldbookService
             }
         }
 
+        // Reciprocal-rank fusion combines ordering rather than raw scores because
+        // FTS relevance and cosine similarity are not calibrated to one scale.
         var combined = ftsRanks
             .Concat(vectorRanks)
             .GroupBy(item => item.Key, StringComparer.Ordinal)

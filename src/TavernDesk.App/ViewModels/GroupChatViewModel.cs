@@ -275,6 +275,8 @@ public sealed class GroupChatViewModel : ViewModelBase
         Conversation? conversation,
         CancellationToken cancellationToken = default)
     {
+        // Cancellation is advisory across repository calls; the monotonic version
+        // also prevents a slow previous selection from replacing the current UI.
         var version = Interlocked.Increment(ref _loadVersion);
         if (conversation?.Mode != ConversationMode.Group)
         {
@@ -293,6 +295,9 @@ public sealed class GroupChatViewModel : ViewModelBase
         }
 
         var previousConversationId = _conversationId;
+        // A manual stop is an in-memory safety override for the current group.
+        // Reloading that same group must not silently re-enable persisted relay,
+        // while switching groups should still load the other group's own setting.
         var preserveAutoRelaySuppression =
             _autoRelaySuppressed
             && string.Equals(

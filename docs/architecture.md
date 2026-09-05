@@ -101,23 +101,29 @@ flowchart LR
 sequenceDiagram
     participant UI as ChatViewModel
     participant Context as ContextAssembler
+    participant Reply as ChatReplyExecutor
     participant Coordinator as GenerationCoordinator
     participant Provider as ProviderGateway
     participant Store as ConversationRepository
 
     UI->>Context: 构造同一份预览/请求结果
     Context-->>UI: 分段、Token 估算、诊断
-    UI->>Coordinator: 登记 conversation + operation
+    UI->>Reply: 请求、conversation、operation、speaker
+    Reply->>Coordinator: 复用现有操作与取消令牌
     Coordinator->>Provider: 发起流式请求
     Provider-->>Coordinator: reasoning 信号、正文、usage
-    Coordinator-->>UI: 临时状态与正文片段
-    UI->>Store: 事务提交消息和首个候选
+    Coordinator-->>Reply: 正文片段
+    Reply-->>UI: 通过已有共享会话发布进度
+    Reply->>Store: 事务提交消息和首个候选
+    Reply-->>UI: 保存、空回复、中断或无效回复结果
 ```
 
 - 不同会话可并发生成；同一会话拒绝重入。
 - 多个窗口可以附着同一会话生成快照；关闭一个展示窗口不等于取消请求。
 - 助手消息与首个候选必须在同一事务提交，不能留下“有消息、无候选”的半状态。
 - 停止、Provider 错误和正常完成竞争时，第一个终态胜出；迟到片段不得再次提交数据。
+
+2026-09-05 起，单条新回复的流接收、正文检查与消息/首候选提交由 `Infrastructure/Context/ChatReplyExecutor.cs` 执行。该类不依赖 WPF、ViewModel 或界面回调；应用装配共享实例，继续使用原有协调器和会话存储。`ChatViewModel` 保留上下文准备、操作登记/收尾、界面文案、群聊接力及记忆触发。群聊仍调用同一单条回复入口，原有归属清洗规则不变；重新生成只复用流读取，候选替换提交仍保留原规则。执行类不会提前结束整次发送/接力会话，不新增状态存储、队列或框架。
 
 ### 4.3 普通聊天上下文
 
@@ -199,6 +205,40 @@ sequenceDiagram
 | 自动化测试 | `tests/TavernDesk.Tests/` |
 
 ## 8. 当前证据与未验证边界
+
+### 隔离测试入口（2026-09-05）
+
+在仓库根目录使用 PowerShell 7，测试只使用脚本新建的虚构资料库，不复制或打开个人数据库：
+
+```powershell
+# 构建当前源码，并打开隔离的首次启动界面。
+& .\scripts\Start-IsolatedTest.ps1
+
+# 无界面初始化检查：初始化 SQLite 和基础服务，写结果，然后退出。
+& .\scripts\Start-IsolatedTest.ps1 -StartupProbe
+```
+
+脚本使用已有 SDK 和依赖，执行 Release `--no-restore` 构建，直接运行源码输出中的 `TavernDesk.App.exe`；不会更新根目录 `app/`、安装包或 `TavernDesk.exe`。每次在 `work/isolated-test-<时间>-<随机 ID>/` 下新建独立目录：
+
+- `data/`：临时数据库、资产、密钥目录；首次为空，只有默认基础配置。
+- `config/`：测试配置位置；启动时不会读取个人 `config.json`，没有保存配置时文件可以不存在。
+- `logs/`：测试错误日志；API 测试输出路径为本次目录中的 `tests/output/`，API 测试模式默认关闭。
+- `startup-result.json`：进程 ID、实际路径、schema 版本与初始化状态，不包含聊天正文或密钥。
+
+应用仅在显式 `--test-root <全新绝对路径>` 下启用测试模式，拒绝已有目录、链接祖先、混用 `--data-root` 或不完整测试参数。`--test-startup-probe` 必须配合测试根使用。保持原有单实例约束：已有实例运行时测试会失败退出，不附着或停止已有实例。交互测试通过首次语言选择后，主窗口带 `[TEST]` 标记；测试结束应关闭该窗口。脚本超时或校验失败时只终止自己创建的进程，保留测试目录供检查，不自动递归删除。
+
+注意：根目录薄启动器不转发参数，不能用 `TavernDesk.exe --data-root ...` 或 `--test-root ...` 作为测试入口。
+
+| 验证层级 | 能证明什么 | 不能证明什么 |
+| --- | --- | --- |
+| 根启动器 `--probe` | `app/TavernDesk.App.exe` 文件存在 | 依赖完整、程序启动、数据库或 UI 正常 |
+| `Start-IsolatedTest.ps1 -StartupProbe` | 当前源码构建成功，隔离 SQLite/基础服务初始化成功，进程正常退出 | 主窗口交互、真实 Provider、个人旧库迁移 |
+| `Start-IsolatedTest.ps1` | 返回 `initialized` 表示基础服务初始化；`window-shown` 表示主窗口已显示 | 按钮操作、完整业务或视觉验收通过 |
+| 私有回归测试及人工验收 | 各自实际执行的场景 | 未执行的 Provider、长局或高 DPI 场景 |
+
+`tests/` 继续排除于 Git，本地验证记录应附源码版本、工作区差异和实际命令。初始化检查不调用 Provider；交互测试不得自行配置真实凭据或调用付费模型。
+
+### 历史验证快照
 
 以下是工作记录中的最近可信快照，不代表任何未提交工作区修改已经通过同等验证：
 

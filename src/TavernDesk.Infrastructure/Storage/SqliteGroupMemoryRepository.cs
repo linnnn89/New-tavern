@@ -175,6 +175,9 @@ public sealed class SqliteGroupMemoryRepository : IGroupMemoryRepository
                 (SqliteTransaction)transaction,
                 conversationId,
                 cancellationToken);
+            // Check emptiness and delete derived memory under one write
+            // transaction; otherwise a concurrent message could be committed
+            // between the check and the cleanup.
             await using (var count = connection.CreateCommand())
             {
                 count.Transaction = (SqliteTransaction)transaction;
@@ -344,6 +347,9 @@ public sealed class SqliteGroupMemoryRepository : IGroupMemoryRepository
                     cancellationToken);
             }
 
+            // Expectations are a compare-and-swap fence over both bank and
+            // checkpoint revisions. A stale provider result returns false instead
+            // of overwriting a newer memory update.
             if (expectations is not null)
             {
                 foreach (var expectation in expectations)
@@ -361,6 +367,9 @@ public sealed class SqliteGroupMemoryRepository : IGroupMemoryRepository
                 }
             }
 
+            // Revision equality alone cannot detect edits, deletions, or candidate
+            // switches inside an already processed range; verify its count+digest
+            // before advancing any checkpoint.
             if (validateSource)
             {
                 foreach (var checkpoint in checkpoints)
@@ -383,6 +392,9 @@ public sealed class SqliteGroupMemoryRepository : IGroupMemoryRepository
                 }
             }
 
+            // Banks and checkpoints describe one derived snapshot and must become
+            // visible together; partial publication would skip or double-process
+            // transcript ranges on the next update.
             foreach (var bank in banks)
             {
                 await UpsertBankAsync(

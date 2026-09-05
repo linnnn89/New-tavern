@@ -2080,6 +2080,8 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     private async Task LoadGameAsync(string campaignId)
     {
+        // Generation progress is application-scoped and may outlive a page load.
+        // Drop only other campaigns; preserve live operations for this campaign.
         foreach (var stale in _generationProgresses
                      .Where(pair => pair.Value.CampaignId != campaignId)
                      .Select(pair => pair.Key)
@@ -2101,6 +2103,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         var flowSnapshot = _flowEngine.Inspect(_game);
         var currentGmCandidateIds = flowSnapshot.ResolutionPlan.CandidateResolutionIds
             .ToHashSet(StringComparer.Ordinal);
+        // The flow engine, not UI chronology, owns the set of candidates that
+        // may still resolve the current slot.
         var gmCandidates = _game.Events
             .Where(item => currentGmCandidateIds.Contains(item.Id))
             .OrderBy(item => item.SequenceNo)
@@ -2185,6 +2189,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         var currentGmResolutionIds = gmCandidates
             .Select(item => item.Id)
             .ToHashSet(StringComparer.Ordinal);
+        // Keep locked resolutions as canonical history, show current retry
+        // candidates as one selectable group, and hide superseded attempts.
         var canonicalGmResolutionIds = _game.Events
             .Where(item =>
                 item.Kind == CampaignEventKind.GmResolution
@@ -2278,6 +2284,8 @@ public sealed class CampaignsViewModel : ViewModelBase
                      item.GenerationStatus == CampaignGenerationStatus.Completed
                      && item.IsLocked))
         {
+            // Follow the full retry chain so an accepted third attempt hides both
+            // earlier attempts. The visited set also bounds malformed cyclic legacy data.
             var ancestorId = successfulEvent.ReplacesEventId;
             var visited = new HashSet<string>(StringComparer.Ordinal);
             while (!string.IsNullOrWhiteSpace(ancestorId)
@@ -2294,6 +2302,8 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     private async Task RefreshContextPreviewAsync()
     {
+        // Preview consumes the same planner used by generation but never invokes
+        // the provider. This preserves an inspectable, side-effect-free budget view.
         ContextPreviewItems.Clear();
         _contextBlockedSeatReasons.Clear();
         _contextPreviewBlocked = false;

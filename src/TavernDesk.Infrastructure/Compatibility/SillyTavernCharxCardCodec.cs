@@ -43,6 +43,9 @@ public sealed class SillyTavernCharxCardCodec : ICharacterCardCodec
             ZipArchiveMode.Read,
             leaveOpen: false,
             entryNameEncoding: Encoding.UTF8);
+        // Validate the whole central directory before reading even card.json.
+        // This makes path, expansion, duplicate, and entry-count limits apply to
+        // every archive we accept or may later preserve during re-export.
         var entries = ValidateEntries(archive);
         var cardEntry = entries.SingleOrDefault(entry => entry.Path == "card.json")
                         ?? throw new InvalidDataException("CHARX 根目录缺少 card.json。");
@@ -168,6 +171,9 @@ public sealed class SillyTavernCharxCardCodec : ICharacterCardCodec
                 if (character.SourceCardFormat == CharacterCardFormat.Charx
                     && File.Exists(character.SourceCardPath))
                 {
+                    // Preserve extension resources from the original archive, but
+                    // regenerate card.json below from the current working copy so
+                    // stale metadata cannot override the user's edits.
                     copiedResources = await CopyPreservedEntriesAsync(
                         character.SourceCardPath,
                         destinationArchive,
@@ -213,6 +219,8 @@ public sealed class SillyTavernCharxCardCodec : ICharacterCardCodec
                 await writer.WriteAsync(cardJson.AsMemory(), cancellationToken);
             }
 
+            // Replace the destination only after the ZIP has closed successfully;
+            // an interrupted export therefore cannot truncate an existing card.
             File.Move(temporaryPath, destinationFullPath, overwrite: true);
         }
         catch
@@ -234,6 +242,9 @@ public sealed class SillyTavernCharxCardCodec : ICharacterCardCodec
 
     private static IReadOnlyList<ValidatedZipEntry> ValidateEntries(ZipArchive archive)
     {
+        // Strict paths are required even though imports currently stream entries:
+        // accepted paths are also copied into future exports and may eventually be
+        // consumed by extractors with different traversal behavior.
         if (archive.Entries.Count > MaximumEntryCount)
         {
             throw new InvalidDataException($"CHARX 文件条目超过 {MaximumEntryCount} 个安全上限。");
@@ -324,6 +335,8 @@ public sealed class SillyTavernCharxCardCodec : ICharacterCardCodec
                            StringComparison.OrdinalIgnoreCase))
                        ?? icons.FirstOrDefault();
         var uri = selected is null ? null : ReadString(selected, "uri");
+        // "embeded" is the spelling defined by the character-card ecosystem;
+        // correcting it here would break compatibility with existing CHARX files.
         if (uri?.StartsWith("embeded://", StringComparison.Ordinal) != true)
         {
             return null;

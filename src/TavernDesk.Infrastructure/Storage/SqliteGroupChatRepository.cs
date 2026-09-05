@@ -326,6 +326,9 @@ public sealed class SqliteGroupChatRepository : IGroupChatRepository
                 await delete.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            // Membership replacement and orphan-memory cleanup are one unit. A
+            // removed member must not retain private derived memory that could be
+            // exposed if the character is added back later.
             await InsertMembersAsync(
                 connection,
                 (SqliteTransaction)transaction,

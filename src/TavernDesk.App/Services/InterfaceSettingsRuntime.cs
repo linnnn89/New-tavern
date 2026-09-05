@@ -267,6 +267,8 @@ public static class InterfaceSettingsRuntime
             ApplyScaleResource(application);
         }
 
+        // Publish after all shared resources have changed so subscribers always
+        // rebuild against one coherent font/scale/theme state.
         Changed?.Invoke(null, EventArgs.Empty);
     }
 
@@ -323,6 +325,8 @@ public static class InterfaceSettingsRuntime
     private static void ApplyScaleResource(Application application)
     {
         var transform = new ScaleTransform(ScaleFactor, ScaleFactor);
+        // Resource transforms are shared by many visual trees; freezing prevents
+        // accidental mutation and lets WPF safely optimize the shared Freezable.
         transform.Freeze();
         application.Resources["InterfaceScaleTransform"] = transform;
         foreach (Window window in application.Windows)
@@ -353,6 +357,9 @@ public static class InterfaceSettingsRuntime
             DarkThemeName,
             StringComparison.Ordinal);
 #pragma warning disable WPF0001
+        // Cupertino and Material intentionally use the light WPF base styles and
+        // supply their complete product palette below. Only the dark preset opts
+        // into WPF's dark base resources, avoiding dark values leaking into them.
         application.ThemeMode = isDark ? ThemeMode.Dark : ThemeMode.Light;
 #pragma warning restore WPF0001
 

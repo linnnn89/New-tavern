@@ -8,6 +8,9 @@ using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 using TavernDesk.Infrastructure;
 using TavernDesk.Infrastructure.Diagnostics;
+using TavernDesk.Infrastructure.Storage;
+using TavernDesk.Core.Abstractions;
+using System.Text.Json;
 
 namespace TavernDesk.App;
 
@@ -23,8 +26,8 @@ public partial class App : Application
     private static DateTimeOffset _lastReportedUnhandledExceptionAt;
     private static bool _isShowingUnhandledException;
     private SingleInstanceGate? _singleInstanceGate;
-    private readonly ITavernDeskDiagnostics _diagnostics =
-        new TavernDeskDiagnostics();
+    private ITavernDeskDiagnostics _diagnostics = NullTavernDeskDiagnostics.Instance;
+    private IsolatedTestStartup? _testStartup;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -40,12 +43,22 @@ public partial class App : Application
 
         try
         {
+            // Resolve isolation before constructing anything that reads personal
+            // configuration or creates the default per-user log directory.
+            _testStartup = IsolatedTestStartup.Parse(e.Args);
+            if (_testStartup is not null)
+                Directory.CreateDirectory(_testStartup.Root);
+            _diagnostics = _testStartup is null
+                ? new TavernDeskDiagnostics()
+                : new TavernDeskDiagnostics(_testStartup.LogRoot, _testStartup.Root);
             _singleInstanceGate =
                 SingleInstanceGate.TryAcquire(SingleInstanceMutexName);
             if (!_singleInstanceGate.IsPrimaryInstance)
             {
                 _singleInstanceGate.Dispose();
                 _singleInstanceGate = null;
+                if (_testStartup is not null)
+                    throw new InvalidOperationException("已有 TavernDesk 实例运行；测试模式拒绝附着或操作该实例。");
                 LocalizedMessageBox.Show(
                     LanguageRuntime.GetString("Startup.AlreadyRunning"),
                     "TavernDesk",
@@ -56,8 +69,10 @@ public partial class App : Application
             }
 
             var services = new InfrastructureServices(
-                ParseDataRoot(e.Args),
-                _diagnostics);
+                _testStartup?.DataRoot ?? ParseDataRoot(e.Args),
+                _diagnostics,
+                _testStartup is null ? null : new AppDataConfiguration(
+                    _testStartup.ConfigurationRoot, _testStartup.DataRoot));
             var databaseExistedAtStartup = File.Exists(services.Paths.DatabasePath);
             var pendingLanguagePath = Path.Combine(
                 services.Paths.RootDirectory,
@@ -69,6 +84,15 @@ public partial class App : Application
             }
 
             await services.InitializeAsync();
+            if (_testStartup is not null)
+            {
+                await WriteTestReceiptAsync("initialized", services.Paths.DatabasePath);
+                if (_testStartup.ProbeOnly)
+                {
+                    Shutdown(0);
+                    return;
+                }
+            }
             await ConfigureLanguageAsync(
                 services,
                 databaseExistedAtStartup,
@@ -99,9 +123,27 @@ public partial class App : Application
             await windowPlacement.RestoreAsync(window, "window.main", 1440, 900);
             MainWindow = window;
             window.Show();
+            if (_testStartup is not null)
+            {
+                window.Title = "[TEST] " + window.Title;
+                await WriteTestReceiptAsync("window-shown", services.Paths.DatabasePath);
+            }
         }
         catch (Exception exception)
         {
+            // A failed probe must terminate rather than leave a modal dialog
+            // hanging in automation; never write errors into personal logs.
+            if (e.Args.Any(arg => arg.StartsWith("--test-", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (_testStartup is not null)
+                {
+                    try { await WriteTestReceiptAsync("failed", error: exception.GetType().Name); }
+                    catch (IOException) { /* No personal-log fallback for a broken test workspace. */ }
+                    catch (UnauthorizedAccessException) { /* Same isolation boundary. */ }
+                }
+                Shutdown(1);
+                return;
+            }
             LocalizedMessageBox.Show(
                 LanguageRuntime.Format("Startup.Failed.Message", LanguageRuntime.ErrorMessage(exception)),
                 LanguageRuntime.GetString("Startup.Failed.Title"),
@@ -109,6 +151,21 @@ public partial class App : Application
                 MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    private async Task WriteTestReceiptAsync(string status, string? database = null, string? error = null)
+    {
+        var test = _testStartup!;
+        var json = JsonSerializer.Serialize(new
+        {
+            status, processId = Environment.ProcessId, testRoot = test.Root,
+            database, configuration = Path.Combine(test.ConfigurationRoot, "config.json"),
+            logs = test.LogRoot, apiTestOutput = Path.Combine(test.Root, "tests", "output"),
+            schemaVersion = SqliteDatabase.CurrentSchemaVersion, error
+        }, new JsonSerializerOptions { WriteIndented = true });
+        var temporary = test.ReceiptPath + ".tmp";
+        await File.WriteAllTextAsync(temporary, json);
+        File.Move(temporary, test.ReceiptPath, overwrite: true);
     }
 
     protected override void OnExit(ExitEventArgs e)

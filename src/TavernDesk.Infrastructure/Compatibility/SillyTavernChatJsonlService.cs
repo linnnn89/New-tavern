@@ -53,6 +53,8 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
                 $"聊天 JSONL 超过 {MaximumArchiveBytes / 1024 / 1024} MiB 安全上限。");
         }
 
+        // Parse and validate the complete archive before opening a write
+        // transaction. A malformed late line must not leave a partial import.
         var parsed = await ParseAsync(
             sourceFullPath,
             fileInfo.LastWriteTimeUtc,
@@ -109,6 +111,8 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
                 warnings))
             .ToArray();
 
+        // Placeholder character, conversation, raw compatibility payloads,
+        // messages and candidates form one import unit and roll back together.
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(
@@ -219,6 +223,9 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
         foreach (var message in messages)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            // Start from the original SillyTavern object so unknown extension
+            // fields survive round-trip, then overwrite only TavernDesk-owned
+            // message and candidate fields with current values.
             var raw = archive.RawMessages.TryGetValue(message.Id, out var rawJson)
                 ? ParseStoredObject(rawJson, $"消息 {message.Id}", warnings)
                 : null;
@@ -239,6 +246,8 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
         var directory = Path.GetDirectoryName(destinationFullPath)
                         ?? throw new InvalidOperationException("导出路径缺少父目录。");
         Directory.CreateDirectory(directory);
+        // Write beside the destination and rename only after a complete flush;
+        // cancellation cannot replace a valid export with a truncated JSONL.
         var temporaryPath = Path.Combine(
             directory,
             $".{Path.GetFileName(destinationFullPath)}.{Guid.NewGuid():N}.tmp");
@@ -422,6 +431,8 @@ public sealed class SillyTavernChatJsonlService : IChatArchiveService
                 .ToArray()
             : [];
         var requestedSwipe = ReadInt32(payload, "swipe_id") ?? 0;
+        // Preserve the source body even when it disagrees with swipe_id. Both
+        // representations are retained so export can round-trip imperfect files.
         var activeSwipe = swipes.Length == 0
             ? 0
             : Math.Clamp(requestedSwipe, 0, swipes.Length - 1);

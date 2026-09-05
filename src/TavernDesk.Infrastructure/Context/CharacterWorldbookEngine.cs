@@ -73,6 +73,9 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
             var maximumSteps = document.RecursiveScanning
                 ? Math.Clamp(request.MaximumRecursionSteps, 1, 20)
                 : 1;
+            // Recursive scanning feeds newly activated entry content into the next
+            // pass. activeIds guarantees termination and ExcludeRecursion keeps
+            // entries intended only for direct user/history matches out of it.
             for (var level = 0; level < maximumSteps; level++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -144,6 +147,9 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
         }
 
         var parsed = WorldbookJsonParser.Parse(rawJson);
+        // Raw card JSON is immutable for a scan, so it is a safe cache key. A
+        // small clear-all cap avoids retaining many old edited card versions and
+        // needs no eviction coordination across concurrent scans.
         if (_documentCache.Count >= MaximumCachedDocuments)
         {
             _documentCache.Clear();
@@ -221,6 +227,8 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
                     options |= RegexOptions.IgnoreCase;
                 }
 
+                // Imported regexes are untrusted; the timeout prevents one worldbook
+                // key from stalling the complete context assembly pipeline.
                 return Regex.IsMatch(
                     scanText,
                     pattern,
@@ -289,6 +297,8 @@ public sealed class CharacterWorldbookEngine : IWorldbookEngine
             return false;
         }
 
+        // Probability is deterministic for the same conversation/input/entry.
+        // Context previews and the eventual send therefore activate the same lore.
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
             $"{request.ConversationId}\0{request.UserInput}\0{entry.Id}"));
         return BitConverter.ToUInt32(bytes, 0) % 100 < entry.Probability;

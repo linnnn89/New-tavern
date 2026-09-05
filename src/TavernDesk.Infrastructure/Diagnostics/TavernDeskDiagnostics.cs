@@ -332,6 +332,8 @@ public sealed partial class TavernDeskDiagnostics : ITavernDeskDiagnostics
             EnsureExpectedTestOutputPath();
             Directory.CreateDirectory(ApiTestOutputDirectory);
             var deletedEntries = 0;
+            // Delete only verified direct children. Reparse-point directories are
+            // removed as links and are never traversed outside tests/output.
             foreach (var entry in Directory.EnumerateFileSystemEntries(
                          ApiTestOutputDirectory,
                          "*",
@@ -538,6 +540,8 @@ public sealed partial class TavernDeskDiagnostics : ITavernDeskDiagnostics
         }
         finally
         {
+            // Remove the active marker before pruning so the just-completed file
+            // becomes eligible, while still protecting every live trace.
             _activeTraceFiles.Remove(session.FilePath);
             Interlocked.Decrement(ref _activeApiTestTraces);
             try
@@ -573,6 +577,8 @@ public sealed partial class TavernDeskDiagnostics : ITavernDeskDiagnostics
             return;
         }
 
+        // Active JSONL files are excluded because pruning a stream between its
+        // request and response records would leave misleading diagnostics.
         var files = Directory.EnumerateFiles(
                 ApiTestOutputDirectory,
                 "*.jsonl",
@@ -794,6 +800,8 @@ public sealed partial class TavernDeskDiagnostics : ITavernDeskDiagnostics
         public SensitiveDataRedactor(
             IEnumerable<(string Value, string Replacement)> paths)
         {
+            // Replace longer paths first so a parent-directory replacement does
+            // not hide a more specific data-root/log label.
             _paths = paths
                 .Where(item => !string.IsNullOrWhiteSpace(item.Value))
                 .OrderByDescending(item => item.Value.Length)
@@ -889,6 +897,8 @@ public sealed partial class TavernDeskDiagnostics : ITavernDeskDiagnostics
 
         private JsonNode? SanitizeNode(JsonNode? node)
         {
+            // Field-name filtering handles structured secrets; Redact handles
+            // token/path patterns that can appear inside otherwise safe strings.
             switch (node)
             {
                 case JsonObject jsonObject:

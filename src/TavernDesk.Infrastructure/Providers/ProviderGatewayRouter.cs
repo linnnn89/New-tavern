@@ -164,6 +164,8 @@ public sealed class ProviderGatewayRouter :
             var result = await embeddingGateway.CreateEmbeddingsAsync(
                 request,
                 cancellationToken);
+            // Test traces record shape and usage only. Raw vectors are large and
+            // can encode user content, so they never enter diagnostic output.
             await trace.CompleteAsync(
                 new
                 {
@@ -272,6 +274,8 @@ public sealed class ProviderGatewayRouter :
                 yield return item;
             }
 
+            // Trace finalization is best-effort bookkeeping and should survive a
+            // caller cancellation that already ended the provider operation.
             await trace.CompleteAsync(
                 responseBody: null,
                 CancellationToken.None);

@@ -97,6 +97,9 @@ public sealed partial class SqliteMessageRetrievalRepository
             return [];
         }
 
+        // Trigram FTS cannot form a useful MATCH term below three characters;
+        // fall back to escaped LIKE so short Chinese names and abbreviations still
+        // remain retrievable instead of failing open to an empty result.
         var matchQuery = BuildMatchQuery(query.QueryText);
         return matchQuery.Length == 0
             ? await SearchShortTextAsync(query, cancellationToken)
@@ -265,6 +268,9 @@ public sealed partial class SqliteMessageRetrievalRepository
                 continue;
             }
 
+            // Generate bounded overlapping CJK trigrams. Unlike word-oriented
+            // tokenization this supports searches inside unsegmented Chinese text,
+            // while the cap keeps user input from producing an excessive query.
             if (ContainsCjk(token) && token.Length > 3)
             {
                 for (var index = 0; index <= token.Length - 3; index++)

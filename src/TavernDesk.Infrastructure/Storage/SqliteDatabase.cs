@@ -42,6 +42,8 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             await pragma.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        // schema_info is an append-only migration ledger. A gap usually means
+        // a partial/manual database, so guessing the missing state is unsafe.
         var appliedVersions = await ReadAppliedVersionsAsync(connection, cancellationToken);
         if (appliedVersions.Count > 0)
         {
@@ -68,6 +70,8 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             return;
         }
 
+        // Apply every pending schema change and its ledger row atomically. A
+        // failed upgrade must leave the database at its last complete version.
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -75,6 +79,9 @@ public sealed class SqliteDatabase : IDatabaseInitializer
             {
                 await using var command = connection.CreateCommand();
                 command.Transaction = (SqliteTransaction)transaction;
+                // Some pre-release v23 databases already lack this column but
+                // have no v23 ledger row. Normalize their data without trying
+                // to drop the same column a second time.
                 command.CommandText = migration.Version == 23
                                       && !await HasGroupPauseColumnAsync(
                                           connection,
@@ -106,6 +113,8 @@ public sealed class SqliteDatabase : IDatabaseInitializer
         }
     }
 
+    // Released migrations are immutable and forward-only. Compatibility fixes
+    // belong in a new migration rather than rewriting an already applied step.
     private static readonly IReadOnlyList<SchemaMigration> Migrations =
     [
         new(

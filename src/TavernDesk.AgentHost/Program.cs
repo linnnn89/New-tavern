@@ -9,6 +9,8 @@ using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
 using TavernDesk.Infrastructure.Campaigns;
 
+// This executable is an opt-in diagnostic host. With no recognized switch it
+// reports capability only; provider calls are never started implicitly.
 try
 {
     if (args.Length == 2
@@ -128,6 +130,8 @@ static async Task RunCampaignLivePreflightAsync(string sourceDataRoot)
     var snapshotRoot = Path.Combine(
         Path.GetTempPath(),
         $"taverndesk-campaign-preflight-{Guid.NewGuid():N}");
+    // Preflight reads a disposable database snapshot so schema initialization or
+    // compatibility repair cannot mutate the user's active data root.
     Directory.CreateDirectory(snapshotRoot);
     File.Copy(
         databasePath,
@@ -347,6 +351,9 @@ static async Task RunCampaignLiveSmokeAsync(
     var sourceSnapshotRoot = Path.Combine(
         Path.GetTempPath(),
         $"taverndesk-campaign-live-source-{Guid.NewGuid():N}");
+    // Live smoke tests need the selected saved credentials, but all database and
+    // secret reads are copied into isolated roots. Source fingerprints below
+    // verify that the real profile remains unchanged.
     var sourceDatabaseHashBefore = Sha256(
         await File.ReadAllBytesAsync(sourceDatabasePath));
     var sourceSecretsFingerprintBefore =

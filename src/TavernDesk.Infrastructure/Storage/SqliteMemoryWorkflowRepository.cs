@@ -268,6 +268,9 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                 "记忆目标必须在 1000–20000 tokens 之间。");
         }
 
+        // A draft is an optimistic proposal over both its source transcript and
+        // target memory revision. Revalidate those snapshots and consume the draft
+        // in the same transaction that publishes the edited bank.
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
@@ -329,6 +332,8 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                     cancellationToken);
             }
 
+            // Merge drafts depend on two independently mutable banks, so the
+            // source revision must be checked in addition to the target revision.
             if (draft.Kind == MemoryDraftKind.GroupMerge)
             {
                 await EnsureGroupMergeSourceIsCurrentAsync(
@@ -584,6 +589,9 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         await reader.ReadAsync(cancellationToken);
         var currentRevision = reader.IsDBNull(0) ? 0 : reader.GetInt64(0);
+        // New drafts carry exact revisions and source digests. The timestamp and
+        // checkpoint branches retain safe rejection semantics for legacy drafts
+        // created before those fields existed.
         var bankChanged = draft.TargetBankRevision.HasValue
             ? currentRevision != draft.TargetBankRevision.Value
             : !reader.IsDBNull(1)

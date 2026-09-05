@@ -65,7 +65,8 @@ public sealed class ChatViewModelFactory
             _fileDialog,
             OpenConversationWindow,
             _personas,
-            TimeSpan.FromSeconds(5));
+            TimeSpan.FromSeconds(5),
+            _services.ChatReplies);
         viewModel.OpenCharacterCard = OpenCharacterCard;
         viewModel.OpenPromptSettings = OpenPromptSettings;
         return viewModel;

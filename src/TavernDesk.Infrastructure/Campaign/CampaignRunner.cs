@@ -149,6 +149,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                               "当前跑团没有 USER 玩家席位。");
         var actionPlan = _flowEngine.PlanAction(aggregate, participant.Id);
         EnsureActionAllowed(actionPlan, participant.Id);
+        // The visible action and its automatic d20 are one ledger fact. Keeping
+        // the roll in structured_data_json prevents a half-saved action/roll pair.
         var action = AttachAutomaticActionRoll(content.Trim());
         var campaignEvent = await _campaigns.AppendEventAsync(
             new CampaignEvent
@@ -194,6 +196,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
         IReadOnlyList<CampaignEvent> results;
         if (actionPlan.ExecutionMode == CampaignActionExecutionMode.Parallel)
         {
+            // Simultaneous/secret seats deliberately share this frozen aggregate
+            // so no participant can observe another participant's in-flight turn.
             results = await Task.WhenAll(targets.Select(item =>
                 GenerateAiActionCoreAsync(
                     aggregate,
@@ -204,6 +208,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
         }
         else
         {
+            // Sequential flows reload before each seat because an earlier locked
+            // action may legitimately change what the next seat is allowed to see.
             var sequential = new List<CampaignEvent>();
             foreach (var participant in targets)
             {
@@ -651,6 +657,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
         CampaignContextPlan? contextPlan = null,
         CampaignNarrativeAuthority? narrativeAuthority = null)
     {
+        // Persist the queued attempt before contacting a provider. Disconnects,
+        // cancellation and process recovery then have an auditable event to close.
         campaignEvent.GenerationStatus = CampaignGenerationStatus.Queued;
         campaignEvent.EndReason = CampaignEndReason.None;
         campaignEvent.IsLocked = false;
@@ -723,6 +731,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 .GetState(generationOperationId)
                 .Status;
             campaignEvent.Content = buffer.ToString();
+            // GM text is never promoted directly from the stream buffer. The
+            // protocol tail and narrative authority must both validate before
+            // the attempt can become a completed campaign fact.
             var authorityValidation = campaignEvent.Kind
                                       == CampaignEventKind.GmResolution
                                       && narrativeAuthority is not null
@@ -802,6 +813,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
 
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Completed;
                 campaignEvent.EndReason = CampaignEndReason.Normal;
+                // A successful first GM attempt advances immediately. Retry
+                // candidates stay unlocked until the user chooses one explicitly.
                 campaignEvent.IsLocked = campaignEvent.Kind != CampaignEventKind.GmResolution
                                           || campaignEvent.AttemptNo <= 1;
             }
@@ -837,6 +850,9 @@ public sealed partial class CampaignRunner : ICampaignRunner
             campaignEvent.EndReason = CampaignEndReason.ProviderError;
         }
 
+        // Once a provider attempt started, persist its terminal state even if the
+        // caller token was cancelled; otherwise startup recovery sees a false
+        // in-flight event and the failure audit loses its actual end reason.
         await _campaigns.UpdateEventAsync(campaignEvent, CancellationToken.None);
         PublishProgress(
             campaignEvent,
@@ -855,6 +871,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
             ModelExecutionRequest request,
             [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        // The shared campaign gate serializes provider generation against memory
+        // projection writes for the same campaign without introducing a global queue.
         await using var operationLease =
             await _operationGate.EnterGenerationAsync(
                 campaignEvent.CampaignId,
@@ -956,6 +974,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
             resolution,
             commitCandidate);
 
+        // SqliteCampaignRepository applies candidate locking, narrative state and
+        // round/turn advancement in one optimistic-concurrency transaction.
         await _campaigns.UpdateRuntimeAsync(
             campaignId,
             aggregate.Campaign.StateVersion,

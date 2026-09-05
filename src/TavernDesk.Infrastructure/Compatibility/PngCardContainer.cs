@@ -74,6 +74,9 @@ internal sealed class PngCardContainer
 
             var type = Encoding.ASCII.GetString(typeBytes);
             var data = bytes.AsSpan(offset + 8, length).ToArray();
+            // Validate every chunk before retaining it. Rewrite preserves unknown
+            // ancillary/APNG chunks, so carrying a corrupt chunk forward would
+            // produce an apparently successful but invalid exported card.
             var expectedCrc = BinaryPrimitives.ReadUInt32BigEndian(
                 bytes.AsSpan(offset + 8 + length, 4));
             var actualCrc = PngCrc32.Compute(typeBytes, data);
@@ -124,6 +127,9 @@ internal sealed class PngCardContainer
         string ccv3Base64,
         string charaBase64)
     {
+        // Replace only Tavern card metadata. Image data, animation chunks,
+        // unknown ancillary chunks, their order, and legal trailing bytes remain
+        // byte-for-byte represented in the rewritten container.
         using var output = new MemoryStream();
         output.Write(Signature);
         foreach (var chunk in _chunks)
@@ -231,6 +237,8 @@ internal sealed class PngCardContainer
 
     private static string Decompress(byte[] compressed, Encoding encoding)
     {
+        // Compressed PNG text is attacker-controlled import data; bound the
+        // expanded size rather than trusting the small compressed input size.
         using var source = new MemoryStream(compressed, writable: false);
         using var zlib = new ZLibStream(source, CompressionMode.Decompress);
         using var output = new MemoryStream();

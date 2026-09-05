@@ -32,6 +32,9 @@ public sealed class WindowsDpapiSecretStore : ISecretStore
             throw new ArgumentException("密钥不能为空。", nameof(secret));
         }
 
+        // Keep references opaque and non-deterministic: the database should not
+        // reveal the provider/account owner, and saving a replacement secret
+        // must create a new reference instead of overwriting a live credential.
         var fileName = $"{Sha256Hex(
             $"{ownerId}\0{Convert.ToHexString(RandomNumberGenerator.GetBytes(16))}")}.secret";
         var targetPath = ResolveReferencePath(ReferencePrefix + fileName);
@@ -40,6 +43,8 @@ public sealed class WindowsDpapiSecretStore : ISecretStore
         byte[]? protectedBytes = null;
         try
         {
+            // The file name is additional entropy, so a protected blob cannot be
+            // copied to another valid-looking reference and decrypted there.
             protectedBytes = ProtectedData.Protect(
                 plaintext,
                 BuildEntropy(fileName),
@@ -48,6 +53,8 @@ public sealed class WindowsDpapiSecretStore : ISecretStore
                 temporaryPath,
                 protectedBytes,
                 cancellationToken);
+            // Publish the reference only after a complete sibling file exists;
+            // callers never receive a reference to a partially written blob.
             File.Move(temporaryPath, targetPath, overwrite: true);
             return ReferencePrefix + fileName;
         }
@@ -143,6 +150,8 @@ public sealed class WindowsDpapiSecretStore : ISecretStore
 
     private string ResolveReferencePath(string reference)
     {
+        // References are untrusted persisted input. Restrict both their syntax
+        // and resolved root so they can never become arbitrary file-system paths.
         if (!reference.StartsWith(ReferencePrefix, StringComparison.Ordinal))
         {
             throw new InvalidDataException("无法识别密钥引用格式。");

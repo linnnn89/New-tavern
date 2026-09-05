@@ -11,6 +11,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
     private readonly ConcurrentDictionary<string, GenerationRun> _runs = new();
     private readonly ConcurrentDictionary<string, ConversationGenerationState> _states = new();
     private readonly ConcurrentQueue<CompletedStateKey> _terminalStateOrder = new();
+    // This gate couples registration with the global stop switch. Concurrent
+    // dictionaries alone cannot prevent a new run from slipping into Stop All.
     private readonly object _registrationGate = new();
     private readonly SemaphoreSlim _cancelAllGate = new(1, 1);
     private bool _acceptingRuns = true;
@@ -89,6 +91,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
             GenerationRun[] runs;
             lock (_registrationGate)
             {
+                // Close registration before taking the snapshot, then wait for
+                // every run's local finally block before reopening the gate.
                 _acceptingRuns = false;
                 runs = _runs.Values.ToArray();
             }
@@ -146,7 +150,7 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
             }
         }
 
-            Publish(operationId, generationId, ConversationGenerationStatus.Queued);
+        Publish(operationId, generationId, ConversationGenerationStatus.Queued);
         try
         {
             Publish(operationId, generationId, ConversationGenerationStatus.Streaming);
@@ -184,6 +188,9 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         }
         catch (Exception) when (linkedCancellation.IsCancellationRequested)
         {
+            // Providers may surface transport/disposal errors after cancellation
+            // instead of OperationCanceledException; user intent still defines
+            // this terminal state as interrupted rather than failed.
             Publish(
                 operationId,
                 generationId,
@@ -217,6 +224,9 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         ConversationGenerationState state;
         lock (_registrationGate)
         {
+            // Status callbacks, normal completion and cancellation can race.
+            // ShouldReplace makes terminal states immutable and keeps Stopping
+            // from regressing to Streaming.
             if (_states.TryGetValue(operationId, out var current)
                 && !ShouldReplace(current.Status, status))
             {
@@ -280,6 +290,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
                     oldest.GenerationId,
                     StringComparison.Ordinal))
             {
+                // The same operation id may already belong to a newer run; an
+                // old retention entry must not evict that newer state.
                 continue;
             }
 
@@ -308,6 +320,8 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         long itemBytes)
     {
         run.ReceivedUtf8Bytes += itemBytes;
+        // Progress is UI telemetry, not accounting. Throttling avoids a
+        // dispatcher notification for every tiny streaming chunk.
         if (run.LastProgressTimestamp != 0
             && Stopwatch.GetElapsedTime(run.LastProgressTimestamp)
                 < TimeSpan.FromMilliseconds(120))
