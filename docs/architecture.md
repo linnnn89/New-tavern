@@ -206,26 +206,34 @@ sequenceDiagram
 
 ## 8. 当前证据与未验证边界
 
-### 隔离测试入口（2026-09-05）
+### 隔离测试入口（2026-09-07）
 
-在仓库根目录使用 PowerShell 7，测试只使用脚本新建的虚构资料库，不复制或打开个人数据库：
+在仓库根目录使用 PowerShell 7，日常测试复用专用虚构资料库，不复制或打开个人数据库：
 
 ```powershell
-# 构建当前源码，并打开隔离的首次启动界面。
+# 构建当前源码，复用固定测试资料并打开已有角色主页。
 & .\scripts\Start-IsolatedTest.ps1
+
+# 仅在需要新增测试卡时指定文件；每次显式传入都会执行一次导入。
+& .\scripts\Start-IsolatedTest.ps1 -CharacterCard 'I:\New-tarven\work\TAVERN-TEST\cards\card-v3.json'
+
+# 验证从零开始的首次启动和语言选择，保留固定资料。
+& .\scripts\Start-IsolatedTest.ps1 -Fresh
 
 # 无界面初始化检查：初始化 SQLite 和基础服务，写结果，然后退出。
 & .\scripts\Start-IsolatedTest.ps1 -StartupProbe
 ```
 
-脚本使用已有 SDK 和依赖，执行 Release `--no-restore` 构建，直接运行源码输出中的 `TavernDesk.App.exe`；不会更新根目录 `app/`、安装包或 `TavernDesk.exe`。每次在 `work/isolated-test-<时间>-<随机 ID>/` 下新建独立目录：
+脚本使用已有 SDK 和依赖，执行 Release `--no-restore` 构建，直接运行源码输出中的 `TavernDesk.App.exe`；不会更新根目录 `app/`、安装包或 `TavernDesk.exe`。默认复用 `work/TAVERN-TEST/profile/`；其同级 `cards/` 放测试卡，`exports/` 放导出结果，`evidence/` 放验证记录。仅 `-Fresh` 或 `-StartupProbe` 在 `work/isolated-test-<时间>-<随机 ID>/` 下新建目录。每份测试资料包含：
 
-- `data/`：临时数据库、资产、密钥目录；首次为空，只有默认基础配置。
+- `data/`：专用测试数据库、资产、密钥目录；日常重启保留角色和设置。
 - `config/`：测试配置位置；启动时不会读取个人 `config.json`，没有保存配置时文件可以不存在。
 - `logs/`：测试错误日志；API 测试输出路径为本次目录中的 `tests/output/`，API 测试模式默认关闭。
 - `startup-result.json`：进程 ID、实际路径、schema 版本与初始化状态，不包含聊天正文或密钥。
 
-应用仅在显式 `--test-root <全新绝对路径>` 下启用测试模式，拒绝已有目录、链接祖先、混用 `--data-root` 或不完整测试参数。`--test-startup-probe` 必须配合测试根使用。保持原有单实例约束：已有实例运行时测试会失败退出，不附着或停止已有实例。交互测试通过首次语言选择后，主窗口带 `[TEST]` 标记；测试结束应关闭该窗口。脚本超时或校验失败时只终止自己创建的进程，保留测试目录供检查，不自动递归删除。
+应用仅在显式 `--test-root <绝对路径>` 下启用测试模式。复用已有目录必须额外传入 `--test-reuse`，并验证应用创建的专用目录标记及其中记录的完整路径；拒绝未标记目录、链接祖先或目录内链接、混用 `--data-root` 及不完整参数。`--test-startup-probe` 和 `--test-character-card` 必须配合测试根使用。固定模式首次默认中文，之后保留语言选择；已有角色时直接打开角色主页，显式测试卡经正式导入服务导入。`-Fresh` 保留首次语言选择流程。
+
+保持原有单实例约束：启动前先关闭已有窗口；已有实例运行时测试会失败退出，不附着或停止已有实例。主窗口带 `[TEST]` 标记。脚本只接受本次进程的回执，交互模式等待 `window-shown`；超时或校验失败时只终止自己创建的进程，保留测试目录供检查，不自动递归删除。
 
 注意：根目录薄启动器不转发参数，不能用 `TavernDesk.exe --data-root ...` 或 `--test-root ...` 作为测试入口。
 

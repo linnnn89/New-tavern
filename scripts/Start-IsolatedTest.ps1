@@ -2,10 +2,16 @@
 [CmdletBinding()]
 param(
     [switch]$StartupProbe,
+    [string]$CharacterCard,
+    [switch]$Fresh,
     [ValidateRange(5, 120)][int]$TimeoutSeconds = 30
 )
 
 $ErrorActionPreference = 'Stop'
+if ($CharacterCard -and (!(Test-Path -LiteralPath $CharacterCard -PathType Leaf) -or
+    ![IO.Path]::IsPathFullyQualified($CharacterCard))) {
+    throw '测试角色卡必须是现有文件的绝对路径。'
+}
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $appProject = Join-Path $projectRoot 'src/TavernDesk.App/TavernDesk.App.csproj'
 $appExe = Join-Path $projectRoot 'src/TavernDesk.App/bin/Release/net10.0-windows/TavernDesk.App.exe'
@@ -19,14 +25,20 @@ try {
 }
 finally { Pop-Location }
 
-$runRoot = Join-Path $projectRoot ('work/isolated-test-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
-if (Test-Path -LiteralPath $runRoot) { throw '测试目录必须是全新路径。' }
+$runRoot = if ($Fresh -or $StartupProbe) {
+    Join-Path $projectRoot ('work/isolated-test-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
+} else { Join-Path $projectRoot 'work/TAVERN-TEST/profile' }
 $startInfo = [Diagnostics.ProcessStartInfo]::new()
 $startInfo.FileName = $appExe
 $startInfo.WorkingDirectory = $projectRoot
 $startInfo.UseShellExecute = $false
 $startInfo.ArgumentList.Add('--test-root')
 $startInfo.ArgumentList.Add($runRoot)
+if (!$Fresh -and !$StartupProbe) { $startInfo.ArgumentList.Add('--test-reuse') }
+if ($CharacterCard) {
+    $startInfo.ArgumentList.Add('--test-character-card')
+    $startInfo.ArgumentList.Add([IO.Path]::GetFullPath($CharacterCard))
+}
 if ($StartupProbe) {
     $startInfo.ArgumentList.Add('--test-startup-probe')
     $startInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
@@ -39,8 +51,15 @@ try {
     $receipt = $null
     do {
         if (Test-Path -LiteralPath $receiptPath) {
-            $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
-            break
+            $candidateReceipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
+            if ($candidateReceipt.processId -eq $process.Id) {
+                if ($candidateReceipt.status -eq 'failed') { throw "隔离启动失败：$($candidateReceipt.error)" }
+                if (($StartupProbe -and $candidateReceipt.status -eq 'initialized') -or
+                    (!$StartupProbe -and $candidateReceipt.status -eq 'window-shown')) {
+                    $receipt = $candidateReceipt
+                    break
+                }
+            }
         }
         if ($process.HasExited) { throw "测试程序提前退出，退出码 $($process.ExitCode)。" }
         Start-Sleep -Milliseconds 100
@@ -51,7 +70,8 @@ try {
         $receipt.database -ne (Join-Path $runRoot 'data/taverndesk.db') -or
         $receipt.configuration -ne (Join-Path $runRoot 'config/config.json') -or
         $receipt.logs -ne (Join-Path $runRoot 'logs') -or
-        !(Test-Path -LiteralPath $receipt.database)) {
+        !(Test-Path -LiteralPath $receipt.database) -or
+        ($CharacterCard -and !$receipt.importedCharacterId)) {
         throw "隔离启动结果校验失败，详见 $receiptPath"
     }
     if ($StartupProbe) {
@@ -66,6 +86,7 @@ try {
         TestRoot = $runRoot
         Receipt = $receiptPath
         Status = $receipt.status
+        ImportedCharacterId = $receipt.importedCharacterId
         Exited = $process.HasExited
     }
 }

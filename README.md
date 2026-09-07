@@ -161,6 +161,8 @@ dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj -c Release --no-bu
 
 The source of truth is in `src/`. The checked-in `app/` directory is a runnable publication snapshot and is not updated by an ordinary `dotnet build`.
 
+For development testing, run `& .\scripts\Start-IsolatedTest.ps1` in PowerShell 7. It builds the source app and reuses the dedicated `work/TAVERN-TEST/profile/` workspace, preserving test characters and language settings. It defaults to Chinese on first use and opens an existing character page on later runs. Close the previous app instance before launching. Use `-CharacterCard <absolute-file-path>` only when importing an additional test card, `-Fresh` to test first-run language selection, or `-StartupProbe` for a fresh headless initialization check. See the [isolated testing guide](./docs/architecture.md#隔离测试入口2026-09-07) for data boundaries and validation limits.
+
 ## Documentation
 
 - [Architecture baseline](./docs/architecture.md)
