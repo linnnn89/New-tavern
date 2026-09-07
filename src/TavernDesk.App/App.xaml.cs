@@ -28,6 +28,7 @@ public partial class App : Application
     private SingleInstanceGate? _singleInstanceGate;
     private ITavernDeskDiagnostics _diagnostics = NullTavernDeskDiagnostics.Instance;
     private IsolatedTestStartup? _testStartup;
+    private string? _testImportedCharacterId;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -47,7 +48,7 @@ public partial class App : Application
             // configuration or creates the default per-user log directory.
             _testStartup = IsolatedTestStartup.Parse(e.Args);
             if (_testStartup is not null)
-                Directory.CreateDirectory(_testStartup.Root);
+                _testStartup.EnsureWorkspace();
             _diagnostics = _testStartup is null
                 ? new TavernDeskDiagnostics()
                 : new TavernDeskDiagnostics(_testStartup.LogRoot, _testStartup.Root);
@@ -84,6 +85,21 @@ public partial class App : Application
             }
 
             await services.InitializeAsync();
+            TavernDesk.Core.Models.Character? testCharacter = null;
+            if (_testStartup?.CharacterCardPath is { } testCardPath)
+            {
+                // Exercise the normal importer only after all storage/configuration has been isolated.
+                var imported = await services.CharacterCards.ImportAsync(testCardPath);
+                testCharacter = imported.Character;
+                _testImportedCharacterId = testCharacter.Id;
+            }
+            else if (_testStartup?.ReuseWorkspace == true)
+            {
+                testCharacter = (await services.Characters.ListAsync()).FirstOrDefault();
+            }
+            if (_testStartup?.ReuseWorkspace == true &&
+                string.IsNullOrWhiteSpace(await services.Settings.GetAsync(LanguageRuntime.SettingKey)))
+                await services.Settings.SetAsync(LanguageRuntime.SettingKey, LanguageRuntime.DefaultCultureName);
             if (_testStartup is not null)
             {
                 await WriteTestReceiptAsync("initialized", services.Paths.DatabasePath);
@@ -118,6 +134,8 @@ public partial class App : Application
             chatViewModels.OpenCharacterCard = viewModel.OpenCharacterCardAsync;
             chatViewModels.OpenPromptSettings = viewModel.OpenPromptSettingsAsync;
             await viewModel.InitializeAsync();
+            if (testCharacter is not null)
+                await viewModel.OpenCharacterCardAsync(testCharacter);
 
             var window = new MainWindow(viewModel, windowPlacement);
             await windowPlacement.RestoreAsync(window, "window.main", 1440, 900);
@@ -161,7 +179,8 @@ public partial class App : Application
             status, processId = Environment.ProcessId, testRoot = test.Root,
             database, configuration = Path.Combine(test.ConfigurationRoot, "config.json"),
             logs = test.LogRoot, apiTestOutput = Path.Combine(test.Root, "tests", "output"),
-            schemaVersion = SqliteDatabase.CurrentSchemaVersion, error
+            schemaVersion = SqliteDatabase.CurrentSchemaVersion,
+            importedCharacterId = _testImportedCharacterId, error
         }, new JsonSerializerOptions { WriteIndented = true });
         var temporary = test.ReceiptPath + ".tmp";
         await File.WriteAllTextAsync(temporary, json);

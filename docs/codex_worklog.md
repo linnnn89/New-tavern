@@ -2085,3 +2085,21 @@
 - 用户实际使用后目前未发现 BUG，明确要求快速提交到 linnnn89/New-tavern 并合并，禁止额外发布前测试。
 - 本次按授权直接提交源码、文档、隔离测试启动脚本与已生成 app/ 程序；不重新测试或打包。测试源码、安装包、work/ 和 .publish-verify/ 不纳入提交。
 - 目标为远端默认分支“跑团记忆升级版”；提交前远端与本地 HEAD 同为 74af760，采用普通快进推送，不强制覆盖远端。
+
+## 2026-09-07 — WinCode 实机检查与固定测试资料
+
+- 按用户要求先提交推送 WinCode：`codex/agent-efficiency-round1` 的 `6fba44a7404960257e5c749210892477ad26845c` 已与远端核对一致。TavernDesk 从 `aa9df56` 建立 `codex/card-ui-maintenance`；本轮只修改源码、测试入口和文档，未更新发布目录或安装包。
+- 用户明确要求日常测试复用固定目录，避免每次重新选择语言、导入角色。固定入口为 `scripts/Start-IsolatedTest.ps1`，资料位于 `work/TAVERN-TEST/profile/`；同级 cards 放 v1/v2/v3 测试卡副本，exports 放导出，evidence 放验证记录。默认保留角色与语言，首次默认中文；`-Fresh` 专门验证首次启动，`-StartupProbe` 仍使用全新目录。
+- 增加带完整路径的测试目录标记校验，拒绝未标记目录、链接及不完整参数；创建前再次校验。启动脚本按新进程 ID 筛选回执，交互模式等待 window-shown，避免接受上次启动遗留的成功回执。
+- `-CharacterCard` 调用正式 CharacterCardLibrary.ImportAsync，随后通过既有 ViewModel 打开角色主页；普通重启不再导入。首次导入 v3 后，截图确认“V3 固定样本”角色主页。重启同一资料后角色仍为唯一一条，ID 为 `7fdae14e5cf24388b0b14bdac5014658`，回执 window-shown。验证记录保存在本地 `work/TAVERN-TEST/evidence/profile-reuse.json`。
+- 实机发现六个主导航按钮的 UI Automation Name/AutomationId 为空。“角色”查询原先遍历 66 个节点仍未找到；补齐稳定标识及既有本地化标签后，NavCharacters 遍历 68 个节点唯一命中、名称为“角色”。重启后再次唯一命中。未改变导航布局或可见文案。
+- computer use 连续两次因窗口进程归属识别错误而无法选中窗口，未成功执行点击；停止重复尝试。实际导入由上述应用测试入口完成，不能将其描述为鼠标操作导入验收。
+- 定向 Release 回归 33/33 通过：IsolatedTestStartupTests、CharacterCardCompatibilityTests、CharacterDetailsTests、CharacterEditBufferTests。源码构建 0 警告、0 错误。早期旧回归仅显式隔离数据库，构造服务仍会尝试读取默认配置；已为相关测试注入独立 AppDataConfiguration 并重新运行。不能声称早期旧测试完全未尝试访问默认配置；实际 GUI 从始至终使用独立测试配置、日志和数据库。
+- 反证检查：进程初始化成功不等于窗口显示；导入成功不等于重启保留。因此分别核对窗口截图、window-shown 回执以及只读测试库中的角色 ID 和条数。未调用真实 Provider，未验证付费请求或完整鼠标编辑/保存流程。测试源码继续由 /tests/ 排除，既有 .publish-verify/ 未动。
+- WinCode 后续问题：workspace_open 返回约 5 万 token 的完整树，包含发布产物等噪声；当前连接的 prepare_context 工具版本尚未暴露新精准范围参数，不能以源码测试代替已连接 MCP 的实测。README 和架构文档已同步固定测试入口。
+
+## 2026-09-08 — 提交并合并固定测试入口
+
+- 用户授权将最新 TavernDesk 变更推送 GitHub 并合并。提交范围为固定测试目录复用、测试卡导入入口、导航可访问性及 README/架构/工作日志，共 7 个已跟踪文件。
+- 提交前已刷新远端；目标分支为“跑团记忆升级版”，相对本轮基线 aa9df56 无新增提交。沿用上一轮 33/33 定向测试及源码构建结果，本次执行差异检查，不重复启动测试或重建发布包。
+- 本地测试资料、被忽略的 tests/、work/ 和既有 .publish-verify/ 均不纳入提交。
