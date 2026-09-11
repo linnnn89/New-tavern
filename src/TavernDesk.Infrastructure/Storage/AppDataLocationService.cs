@@ -19,7 +19,7 @@ public sealed record DataRootChangeResult(
 /// Owns the user-selectable personal-data root and the one-time compatibility
 /// repair for paths written by older TavernDesk builds.
 /// </summary>
-public sealed class AppDataLocationService
+public sealed partial class AppDataLocationService
 {
     private readonly AppDataConfiguration _configuration;
     private readonly SqliteDatabase _database;
@@ -46,10 +46,14 @@ public sealed class AppDataLocationService
 
     public bool IsExternallyOverridden => _paths.IsExternalOverride;
 
-    public async Task<DataRootChangeResult> ChangeRootAsync(
+    // Only call while no business services can write to the source root.
+    public Task<DataRootChangeResult> ChangeRootAsync(
         string requestedRoot,
         DataRootMigrationMode migrationMode,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ChangeRootCoreAsync(requestedRoot, migrationMode, null, cancellationToken);
+
+    private (string OldRoot, string NewRoot) ValidateRootChange(string requestedRoot)
     {
         if (IsExternallyOverridden)
         {
@@ -62,7 +66,7 @@ public sealed class AppDataLocationService
         var oldRoot = Path.GetFullPath(CurrentRoot);
         if (string.Equals(oldRoot, newRoot, StringComparison.OrdinalIgnoreCase))
         {
-            return new DataRootChangeResult(oldRoot, newRoot, false, 0, 0);
+            return (oldRoot, newRoot);
         }
 
         if (IsNestedRoot(oldRoot, newRoot) || IsNestedRoot(newRoot, oldRoot))
@@ -94,12 +98,27 @@ public sealed class AppDataLocationService
                 + "或反过来包含当前目录。请选择其他位置的目录。");
         }
 
+        return (oldRoot, newRoot);
+    }
+
+    private async Task<DataRootChangeResult> ChangeRootCoreAsync(
+        string requestedRoot,
+        DataRootMigrationMode migrationMode,
+        string? requestId,
+        CancellationToken cancellationToken)
+    {
+        var (oldRoot, newRoot) = ValidateRootChange(requestedRoot);
+        if (!Enum.IsDefined(migrationMode))
+            throw new ArgumentOutOfRangeException(nameof(migrationMode));
+        if (string.Equals(oldRoot, newRoot, StringComparison.OrdinalIgnoreCase))
+            return new DataRootChangeResult(oldRoot, newRoot, false, 0, 0);
+
         var copiedFiles = 0;
         long copiedBytes = 0;
         if (migrationMode == DataRootMigrationMode.CopyCurrentData)
         {
             (copiedFiles, copiedBytes) =
-                await CopyCurrentDataAsync(oldRoot, newRoot, cancellationToken);
+                await CopyCurrentDataAsync(oldRoot, newRoot, cancellationToken, requestId);
         }
         else
         {
@@ -154,7 +173,8 @@ public sealed class AppDataLocationService
     private async Task<(int Files, long Bytes)> CopyCurrentDataAsync(
         string sourceRoot,
         string targetRoot,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? requestId = null)
     {
         if (!Directory.Exists(sourceRoot))
         {
@@ -186,6 +206,9 @@ public sealed class AppDataLocationService
         var targetDatabase = Path.Combine(stagingRoot, "taverndesk.db");
         try
         {
+            if (requestId is not null)
+                await File.WriteAllTextAsync(
+                    Path.Combine(stagingRoot, MigrationMarkerName), requestId, cancellationToken);
             if (File.Exists(sourceDatabase))
             {
                 // SQLite opens links transparently, so apply the same root
@@ -240,6 +263,8 @@ public sealed class AppDataLocationService
                              SearchOption.TopDirectoryOnly))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (Path.GetFileName(sourceFile) == MigrationMarkerName)
+                        continue;
                     if (string.Equals(
                             Path.GetFullPath(sourceFile),
                             Path.GetFullPath(sourceDatabase),
@@ -466,6 +491,7 @@ public sealed class AppDataLocationService
             DataSource = sourcePath,
             Mode = SqliteOpenMode.ReadOnly,
             Cache = SqliteCacheMode.Shared,
+            Pooling = false,
             ForeignKeys = true
         }.ToString());
         var target = new SqliteConnection(new SqliteConnectionStringBuilder
@@ -473,6 +499,7 @@ public sealed class AppDataLocationService
             DataSource = targetPath,
             Mode = SqliteOpenMode.ReadWriteCreate,
             Cache = SqliteCacheMode.Private,
+            Pooling = false,
             ForeignKeys = true
         }.ToString());
         await using (source)

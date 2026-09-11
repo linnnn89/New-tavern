@@ -9,110 +9,88 @@ public sealed class CharacterCardLibrary : ICharacterCardLibrary
 {
     private readonly AppDataPaths _paths;
     private readonly ICharacterRepository _characters;
-    private readonly IWorldbookService _worldbooks;
+    private readonly WorldbookService _worldbooks;
+    private readonly SqliteCharacterImportStore _imports;
 
     public CharacterCardLibrary(
         AppDataPaths paths,
         ICharacterRepository characters,
         IReadOnlyList<ICharacterCardCodec> codecs,
-        IWorldbookService worldbooks)
+        WorldbookService worldbooks,
+        SqliteCharacterImportStore imports)
     {
         _paths = paths;
         _characters = characters;
         _worldbooks = worldbooks;
+        _imports = imports;
         Codecs = codecs;
     }
 
     public IReadOnlyList<ICharacterCardCodec> Codecs { get; }
 
     public async Task<CharacterCardImportResult> ImportAsync(
-        string sourcePath,
-        CancellationToken cancellationToken = default)
+        string sourcePath, CancellationToken cancellationToken = default)
     {
         var sourceFullPath = Path.GetFullPath(sourcePath);
         var codec = Codecs.FirstOrDefault(candidate => candidate.CanRead(sourceFullPath))
-                    ?? throw new NotSupportedException(
-                        $"不支持此角色卡格式：{Path.GetExtension(sourceFullPath)}");
-        var decoded = await codec.ImportAsync(sourceFullPath, cancellationToken);
-        var character = decoded.Character;
-        var targetDirectory = GetCharacterDirectory(character.Id);
-        if (Directory.Exists(targetDirectory))
-        {
-            throw new IOException($"角色资源目录已存在：{character.Id}");
-        }
-
-        Directory.CreateDirectory(targetDirectory);
+            ?? throw new NotSupportedException($"不支持此角色卡格式：{Path.GetExtension(sourceFullPath)}");
+        var extension = Path.GetExtension(sourceFullPath).ToLowerInvariant();
+        var stagingDirectory = GetCharacterDirectory(".import-" + Guid.NewGuid().ToString("N"));
+        string? committedDirectory = null;
+        Directory.CreateDirectory(stagingDirectory);
         try
         {
-            var extension = Path.GetExtension(sourceFullPath).ToLowerInvariant();
-            var sourceCopyPath = Path.Combine(targetDirectory, $"source{extension}");
-            await CopyFileAsync(sourceFullPath, sourceCopyPath, cancellationToken);
-
+            // Decode and preserve the same bounded snapshot, even if the source
+            // is replaced while the import is running.
+            var snapshotPath = Path.Combine(stagingDirectory, Path.GetFileName(sourceFullPath));
+            await using (var input = ImportFileReader.Open(sourceFullPath, ImportFileReader.MaximumBytesFor(extension)))
+            await using (var output = new FileStream(snapshotPath, FileMode.CreateNew, FileAccess.Write,
+                             FileShare.None, 64 * 1024, useAsync: true))
+                await ImportFileReader.CopyAsync(input, output, ImportFileReader.MaximumBytesFor(extension), cancellationToken);
+            var decoded = await codec.ImportAsync(snapshotPath, cancellationToken);
+            var character = decoded.Character;
+            var targetDirectory = GetCharacterDirectory(character.Id);
+            if (Directory.Exists(targetDirectory))
+                throw new IOException($"角色资源目录已存在：{character.Id}");
+            var sourceCopyPath = Path.Combine(stagingDirectory, $"source{extension}");
+            if (!string.Equals(snapshotPath, sourceCopyPath, StringComparison.OrdinalIgnoreCase))
+                File.Move(snapshotPath, sourceCopyPath);
             character.SourceCardFormat = codec.Format;
-            character.SourceCardPath = sourceCopyPath;
+            character.SourceCardPath = Path.Combine(targetDirectory, $"source{extension}");
             if (codec.Format == CharacterCardFormat.Png)
-            {
-                character.AvatarPath = sourceCopyPath;
-            }
+                character.AvatarPath = character.SourceCardPath;
             else if (decoded.PreviewImage is { Length: > 0 }
-                     && TryNormalizePreviewExtension(
-                         decoded.PreviewExtension,
-                         out var previewExtension))
+                     && TryNormalizePreviewExtension(decoded.PreviewExtension, out var previewExtension))
             {
-                var coverPath = Path.Combine(targetDirectory, $"cover.{previewExtension}");
-                await File.WriteAllBytesAsync(
-                    coverPath,
-                    decoded.PreviewImage,
-                    cancellationToken);
-                character.AvatarPath = coverPath;
+                var coverName = $"cover.{previewExtension}";
+                await File.WriteAllBytesAsync(Path.Combine(stagingDirectory, coverName), decoded.PreviewImage, cancellationToken);
+                character.AvatarPath = Path.Combine(targetDirectory, coverName);
             }
 
-            var storedReport = decoded.Report with { SourcePreserved = true };
-            var embeddedWorldbook = WorldbookJsonParser.Parse(
-                character.RawCardJson,
-                character.Name);
-            if (embeddedWorldbook.FoundBook)
+            var report = decoded.Report with { SourcePreserved = true };
+            var embedded = WorldbookJsonParser.Parse(character.RawCardJson, character.Name);
+            WorldbookImportResult? prepared = null;
+            if (embedded.FoundBook)
             {
-                try
-                {
-                    var worldbook = await _worldbooks.ImportAsync(
-                        sourceCopyPath,
-                        WorldbookScopeKind.Character,
-                        character.Id,
-                        cancellationToken);
-                    if (worldbook.Warnings.Count > 0)
-                    {
-                        storedReport = storedReport with
-                        {
-                            Warnings = storedReport.Warnings
-                                .Concat(worldbook.Warnings)
-                                .ToArray()
-                        };
-                    }
-                }
-                catch (Exception exception)
-                {
-                    storedReport = storedReport with
-                    {
-                        Warnings = storedReport.Warnings
-                            .Append($"角色卡内置世界书未能建立本地工作副本：{exception.Message}")
-                            .ToArray()
-                    };
-                }
+                prepared = await _worldbooks.PrepareImportAsync(sourceCopyPath, cancellationToken);
+                prepared.Worldbook.SourcePath = character.SourceCardPath;
             }
+            else if (character.RawCardJson.Contains("\"character_book\"", StringComparison.Ordinal))
+                report = report with { Warnings = report.Warnings.Concat(embedded.Diagnostics).ToArray() };
 
-            character.ImportReportJson = CharacterCardReportSerializer.Write(storedReport);
+            cancellationToken.ThrowIfCancellationRequested();
+            // A crash here may leave an unreferenced asset folder, but committed
+            // rows can never reference a file that has not been published yet.
+            Directory.Move(stagingDirectory, targetDirectory);
+            committedDirectory = targetDirectory;
             character.UpdatedAt = DateTimeOffset.Now;
-            await _characters.UpsertAsync(character, cancellationToken);
-            return decoded with
-            {
-                Character = character,
-                Report = storedReport
-            };
+            report = await _imports.SaveAsync(character, report, prepared, cancellationToken);
+            return decoded with { Character = character, Report = report };
         }
         catch
         {
-            DeleteNewCharacterDirectory(targetDirectory);
+            DeleteNewCharacterDirectory(stagingDirectory);
+            if (committedDirectory is not null) DeleteNewCharacterDirectory(committedDirectory);
             throw;
         }
     }

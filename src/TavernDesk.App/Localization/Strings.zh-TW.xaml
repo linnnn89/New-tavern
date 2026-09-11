@@ -131,8 +131,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Dashboard.CharacterShelf">本機角色書架</sys:String>
     <sys:String x:Key="Dashboard.Conversations">會話</sys:String>
     <sys:String x:Key="Dashboard.ConversationsLocal">全部儲存在本機</sys:String>
-    <sys:String x:Key="Dashboard.Providers">供應商</sys:String>
-    <sys:String x:Key="Dashboard.ProviderSaveOffline">儲存設定不會聯網</sys:String>
+    <sys:String x:Key="Dashboard.Providers">已啟用接入商</sys:String>
+    <sys:String x:Key="Dashboard.ProviderSaveOffline">不代表模型已設定</sys:String>
     <sys:String x:Key="Dashboard.RecentConversations">最近會話</sys:String>
     <sys:String x:Key="Dashboard.ResumeConversation">從上次停下的位置繼續</sys:String>
     <sys:String x:Key="Dashboard.LocalRecordsOnly">僅展示本機記錄</sys:String>
@@ -565,7 +565,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Data.CurrentRootHelp">所有模組都會從這個根目錄派生絕對路徑；資料庫中的受管檔案路徑使用相對路徑儲存，因此可以跨磁碟機代號和電腦複製。</sys:String>
     <sys:String x:Key="Settings.Data.Browse">瀏覽…</sys:String>
     <sys:String x:Key="Settings.Data.ConfigurationFile">設定檔：</sys:String>
-    <sys:String x:Key="Settings.Data.SaveAndSwitch">儲存並切換個人資料目錄</sys:String>
+    <sys:String x:Key="Settings.Data.SaveAndSwitch">安排下次啟動切換資料目錄</sys:String>
     <sys:String x:Key="Settings.Diagnostics.Title">診斷與測試記錄</sys:String>
     <sys:String x:Key="Settings.Diagnostics.Description">錯誤日誌用於定位軟體故障；API 測試模式用於暫時分析模型請求的實際利用情況。兩類檔案都只儲存在本機。</sys:String>
     <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">本機錯誤日誌（永遠啟用）</sys:String>
@@ -689,12 +689,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Interaction.DeleteCampaign.Title">確認永久刪除跑團</sys:String>
     <sys:String x:Key="Interaction.ClearKey.MessageFormat">清除「{0}」儲存在 Windows DPAPI 中的 API Key？</sys:String>
     <sys:String x:Key="Interaction.ClearKey.Title">清除 API Key</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">個人資料目錄即將切換。是否先把目前資料庫、聊天記錄、角色卡、劇本、附件和其他個人資料複製到新目錄？
-
-選擇「是」會複製目前資料並保留舊目錄作為安全備份；選擇「否」只切換設定，不會覆蓋新目錄中的已有檔案；選擇「取消」保持不變。
-
-目前：{0}
-新目錄：{1}</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">下次啟動時切換個人資料目錄。是否同時複製目前資料庫、聊天記錄、角色卡、劇本和附件？&#10;&#10;「是」：下次啟動複製最新資料並保留舊目錄；「否」：下次啟動使用新目錄，不複製資料；「取消」：保留現有安排。&#10;&#10;目前：{0}&#10;新目錄：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">切換個人資料目錄</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">將永久刪除以下目錄中的全部子檔案和子資料夾，但保留目錄本身：&#10;&#10;{0}&#10;&#10;是否繼續？</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.Title">清空 API 測試輸出</sys:String>
@@ -1064,8 +1059,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Interface.Loaded">介面設定已載入；修改後按一下「儲存介面設定」。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Unavailable">目前環境沒有可用的個人資料目錄管理器。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Overridden">目前目錄由 --data-root 或 TAVERNDESK_DATA_ROOT 覆蓋；請移除覆蓋後再從這裡修改。</sys:String>
-    <sys:String x:Key="Settings.DataRoot.ConfigFormat">設定檔：{0}。修改後需要重啟 TavernDesk 才會切換目前服務。</sys:String>
-    <sys:String x:Key="Settings.DataRoot.Selected">已選擇新目錄；按一下「儲存並切換」後會先詢問是否遷移目前資料。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.ConfigFormat">設定檔：{0}。下次啟動時才會切換，目前仍使用原目錄。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.Selected">已選擇新目錄；按「安排下次啟動切換」選擇是否複製目前資料。</sys:String>
     <sys:String x:Key="Settings.DataRoot.OverrideBlocked">目前目錄由 --data-root 或 TAVERNDESK_DATA_ROOT 覆蓋，未修改設定。</sys:String>
     <sys:String x:Key="Settings.DataRoot.InvalidFormat">個人資料目錄無效：{0}</sys:String>
     <sys:String x:Key="Settings.DataRoot.Unchanged">個人資料目錄沒有變化。</sys:String>
@@ -1556,4 +1551,14 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Campaigns.ContextSection.GmCurrentIntents">本輪待裁定行動與骰點</sys:String>
     <sys:String x:Key="Campaigns.ContextSection.GmCurrentTask">目前 GM 裁定任務</sys:String>
     <sys:String x:Key="Campaigns.ContextSection.Unknown">其他上下文</sys:String>
+    <sys:String x:Key="Settings.DataRoot.Scheduled">已安排下次啟動切換；目前繼續使用原目錄，結束前儲存的內容也會一併遷移（若選擇複製）。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.PendingFormat">目前使用：{0}。已安排下次啟動切換至：{1}。輸入目前目錄並儲存可取消此安排。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.StartupFailed">資料遷移未完成，將繼續使用原目錄。遷移請求已保留，下次啟動可重試，也可在設定中取消。&#10;{0}</sys:String>
+    <sys:String x:Key="Dashboard.GetStarted">開始你的第一段對話</sys:String>
+    <sys:String x:Key="Dashboard.GetStartedHelp">先設定聊天模型，再匯入角色卡。完成後選擇一個角色開始聊天。</sys:String>
+    <sys:String x:Key="Dashboard.ConfigureModels">設定聊天模型</sys:String>
+    <sys:String x:Key="Dashboard.ImportCharacter">匯入角色卡</sys:String>
+    <sys:String x:Key="Dashboard.StartChat">選擇角色開始聊天</sys:String>
+    <sys:String x:Key="Dashboard.OpenCharacters">管理角色</sys:String>
+    <sys:String x:Key="Dashboard.OpenConversations">開啟對話</sys:String>
 </ResourceDictionary>

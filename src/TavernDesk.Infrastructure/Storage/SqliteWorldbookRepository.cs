@@ -11,6 +11,55 @@ public sealed class SqliteWorldbookRepository : IWorldbookRepository
     private readonly SqliteDatabase _database;
     private readonly AppDataPaths _paths;
 
+    public async Task<WorldbookImportResult> ImportAsync(
+        WorldbookImportResult prepared, WorldbookScopeKind scopeKind, string? scopeId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
+        var result = await ImportAsync(prepared, scopeKind, scopeId, connection, transaction, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
+    internal async Task<WorldbookImportResult> ImportAsync(
+        WorldbookImportResult prepared, WorldbookScopeKind scopeKind, string? scopeId,
+        SqliteConnection connection, SqliteTransaction transaction, CancellationToken cancellationToken)
+    {
+        Worldbook? existing;
+        await using (var find = connection.CreateCommand())
+        {
+            find.Transaction = transaction;
+            find.CommandText = WorldbookSelectSql
+                + " WHERE w.source_sha256 = $hash COLLATE NOCASE AND w.source_kind = $kind LIMIT 1;";
+            find.Parameters.AddWithValue("$hash", prepared.Worldbook.SourceSha256);
+            find.Parameters.AddWithValue("$kind", (int)prepared.Worldbook.SourceKind);
+            await using var reader = await find.ExecuteReaderAsync(cancellationToken);
+            existing = await reader.ReadAsync(cancellationToken) ? ReadWorldbook(reader) : null;
+        }
+        var result = prepared;
+        if (existing is null)
+            await UpsertAsync(prepared.Worldbook, prepared.Entries, connection, transaction, cancellationToken);
+        else
+            result = new WorldbookImportResult(existing,
+                await ListEntriesAsync(existing.Id, connection, transaction, cancellationToken),
+                prepared.Warnings.Append("来源内容与已有世界书一致；已复用已有工作副本并补充当前挂载。").ToArray());
+
+        var effectiveScope = scopeKind is (WorldbookScopeKind.Character or WorldbookScopeKind.Campaign)
+            && !string.IsNullOrWhiteSpace(scopeId) ? scopeKind : WorldbookScopeKind.Global;
+        await UpsertMountAsync(new WorldbookMount
+        {
+            WorldbookId = result.Worldbook.Id,
+            ScopeKind = effectiveScope,
+            ScopeId = effectiveScope == WorldbookScopeKind.Global ? string.Empty : scopeId!.Trim(),
+            SortIndex = 100,
+            IsEnabled = true,
+            MountedRevision = result.Worldbook.Revision
+        }, connection, transaction, cancellationToken);
+        return result;
+    }
+
     public SqliteWorldbookRepository(
         SqliteDatabase database,
         AppDataPaths paths)
@@ -132,13 +181,20 @@ public sealed class SqliteWorldbookRepository : IWorldbookRepository
     }
 
     public async Task<IReadOnlyList<WorldbookEntry>> ListEntriesAsync(
-        string worldbookId,
-        CancellationToken cancellationToken = default)
+        string worldbookId, CancellationToken cancellationToken = default)
     {
-        var result = new List<WorldbookEntry>();
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
+        return await ListEntriesAsync(worldbookId, connection, null, cancellationToken);
+    }
+
+    internal async Task<IReadOnlyList<WorldbookEntry>> ListEntriesAsync(
+        string worldbookId,
+        SqliteConnection connection, SqliteTransaction? transaction, CancellationToken cancellationToken)
+    {
+        var result = new List<WorldbookEntry>();
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             SELECT worldbook_id, entry_id, title, comment, content,
                    keys_json, secondary_keys_json, content_type, visibility,
@@ -217,183 +273,185 @@ public sealed class SqliteWorldbookRepository : IWorldbookRepository
         }
     }
 
-    public async Task UpsertAsync(
-        Worldbook worldbook,
-        IReadOnlyList<WorldbookEntry> entries,
+    public async Task UpsertAsync(Worldbook worldbook, IReadOnlyList<WorldbookEntry> entries,
         CancellationToken cancellationToken = default)
+    {
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
+        await UpsertAsync(worldbook, entries, connection, transaction, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    internal async Task UpsertAsync(Worldbook worldbook, IReadOnlyList<WorldbookEntry> entries,
+        SqliteConnection connection, SqliteTransaction transaction, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(worldbook.Id);
         ArgumentException.ThrowIfNullOrWhiteSpace(worldbook.Name);
-
-        await using var connection = _database.CreateConnection();
-        await connection.OpenAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-        try
+        await using (var book = connection.CreateCommand())
         {
-            await using (var book = connection.CreateCommand())
-            {
-                book.Transaction = (SqliteTransaction)transaction;
-                book.CommandText = """
-                    INSERT INTO worldbooks(
-                        id, name, description, source_kind, source_path,
-                        source_file_name, source_sha256, raw_json, is_enabled,
-                        scan_depth, token_budget, recursive_scanning, revision,
-                        created_at, updated_at)
-                    VALUES(
-                        $id, $name, $description, $sourceKind, $sourcePath,
-                        $sourceFileName, $sourceSha256, $rawJson, $isEnabled,
-                        $scanDepth, $tokenBudget, $recursiveScanning, $revision,
-                        $createdAt, $updatedAt)
-                    ON CONFLICT(id) DO UPDATE SET
-                        name = excluded.name,
-                        description = excluded.description,
-                        source_kind = excluded.source_kind,
-                        source_path = excluded.source_path,
-                        source_file_name = excluded.source_file_name,
-                        source_sha256 = excluded.source_sha256,
-                        raw_json = excluded.raw_json,
-                        is_enabled = excluded.is_enabled,
-                        scan_depth = excluded.scan_depth,
-                        token_budget = excluded.token_budget,
-                        recursive_scanning = excluded.recursive_scanning,
-                        revision = excluded.revision,
-                        updated_at = excluded.updated_at;
-                    """;
-                book.Parameters.AddWithValue("$id", worldbook.Id);
-                book.Parameters.AddWithValue("$name", worldbook.Name);
-                book.Parameters.AddWithValue("$description", worldbook.Description);
-                book.Parameters.AddWithValue("$sourceKind", (int)worldbook.SourceKind);
-                book.Parameters.AddWithValue(
-                    "$sourcePath",
-                    _paths.ToStoredPath(worldbook.SourcePath));
-                book.Parameters.AddWithValue("$sourceFileName", worldbook.SourceFileName);
-                book.Parameters.AddWithValue("$sourceSha256", worldbook.SourceSha256);
-                book.Parameters.AddWithValue("$rawJson", worldbook.RawJson);
-                book.Parameters.AddWithValue("$isEnabled", worldbook.IsEnabled ? 1 : 0);
-                book.Parameters.AddWithValue("$scanDepth", worldbook.ScanDepth);
-                book.Parameters.AddWithValue("$tokenBudget", worldbook.TokenBudget);
-                book.Parameters.AddWithValue(
-                    "$recursiveScanning",
-                    worldbook.RecursiveScanning ? 1 : 0);
-                book.Parameters.AddWithValue("$revision", worldbook.Revision);
-                book.Parameters.AddWithValue("$createdAt", worldbook.CreatedAt.ToString("O"));
-                book.Parameters.AddWithValue("$updatedAt", worldbook.UpdatedAt.ToString("O"));
-                await book.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            await using (var source = connection.CreateCommand())
-            {
-                source.Transaction = (SqliteTransaction)transaction;
-                source.CommandText = """
-                    DELETE FROM worldbook_sources
-                    WHERE worldbook_id = $worldbookId;
-
-                    INSERT INTO worldbook_sources(
-                        id, worldbook_id, file_name, source_format,
-                        source_sha256, raw_json, parser_version, imported_at)
-                    VALUES(
-                        $sourceId, $worldbookId, $fileName, $sourceFormat,
-                        $sourceSha256, $rawJson, $parserVersion, $importedAt);
-                    """;
-                source.Parameters.AddWithValue("$sourceId", Guid.NewGuid().ToString("N"));
-                source.Parameters.AddWithValue("$worldbookId", worldbook.Id);
-                source.Parameters.AddWithValue("$fileName", worldbook.SourceFileName);
-                source.Parameters.AddWithValue(
-                    "$sourceFormat",
-                    worldbook.SourceKind == WorldbookSourceKind.CharacterCardEmbedded
-                        ? "character-card"
-                        : "world-info-json");
-                source.Parameters.AddWithValue("$sourceSha256", worldbook.SourceSha256);
-                source.Parameters.AddWithValue("$rawJson", worldbook.RawJson);
-                source.Parameters.AddWithValue("$parserVersion", "worldbook-v1");
-                source.Parameters.AddWithValue("$importedAt", DateTimeOffset.Now.ToString("O"));
-                await source.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            await using (var deleteFts = connection.CreateCommand())
-            {
-                deleteFts.Transaction = (SqliteTransaction)transaction;
-                deleteFts.CommandText =
-                    "DELETE FROM worldbook_chunks_fts WHERE worldbook_id = $id;";
-                deleteFts.Parameters.AddWithValue("$id", worldbook.Id);
-                await deleteFts.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            await using (var deleteEntries = connection.CreateCommand())
-            {
-                deleteEntries.Transaction = (SqliteTransaction)transaction;
-                deleteEntries.CommandText = "DELETE FROM worldbook_entries WHERE worldbook_id = $id;";
-                deleteEntries.Parameters.AddWithValue("$id", worldbook.Id);
-                await deleteEntries.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            foreach (var entry in entries)
-            {
-                await using var command = connection.CreateCommand();
-                command.Transaction = (SqliteTransaction)transaction;
-                command.CommandText = """
-                    INSERT INTO worldbook_entries(
-                        worldbook_id, entry_id, title, comment, content,
-                        keys_json, secondary_keys_json, content_type, visibility,
-                        semantic_enabled, enabled, constant, case_sensitive,
-                        match_whole_words, selective_logic, insertion_order,
-                        position, depth, provider_role, probability, use_probability,
-                        inclusion_group, group_weight, exclude_recursion,
-                        original_index, content_hash, extensions_json)
-                    VALUES(
-                        $worldbookId, $entryId, $title, $comment, $content,
-                        $keys, $secondaryKeys, $contentType, $visibility,
-                        $semanticEnabled, $enabled, $constant, $caseSensitive,
-                        $wholeWords, $logic, $order, $position, $depth, $role,
-                        $probability, $useProbability, $group, $groupWeight,
-                        $excludeRecursion, $originalIndex, $contentHash, $extensions);
-                    """;
-                command.Parameters.AddWithValue("$worldbookId", worldbook.Id);
-                command.Parameters.AddWithValue("$entryId", entry.Id);
-                command.Parameters.AddWithValue("$title", entry.Title);
-                command.Parameters.AddWithValue("$comment", entry.Comment);
-                command.Parameters.AddWithValue("$content", entry.Content);
-                command.Parameters.AddWithValue("$keys", Serialize(entry.Keys));
-                command.Parameters.AddWithValue("$secondaryKeys", Serialize(entry.SecondaryKeys));
-                command.Parameters.AddWithValue("$contentType", (int)entry.ContentType);
-                command.Parameters.AddWithValue("$visibility", (int)entry.Visibility);
-                command.Parameters.AddWithValue("$semanticEnabled", entry.SemanticEnabled ? 1 : 0);
-                command.Parameters.AddWithValue("$enabled", entry.Enabled ? 1 : 0);
-                command.Parameters.AddWithValue("$constant", entry.Constant ? 1 : 0);
-                command.Parameters.AddWithValue("$caseSensitive", entry.CaseSensitive ? 1 : 0);
-                command.Parameters.AddWithValue("$wholeWords", entry.MatchWholeWords ? 1 : 0);
-                command.Parameters.AddWithValue("$logic", (int)entry.SelectiveLogic);
-                command.Parameters.AddWithValue("$order", entry.InsertionOrder);
-                command.Parameters.AddWithValue("$position", (int)entry.Position);
-                command.Parameters.AddWithValue("$depth", entry.Depth);
-                command.Parameters.AddWithValue("$role", entry.ProviderRole);
-                command.Parameters.AddWithValue("$probability", entry.Probability);
-                command.Parameters.AddWithValue("$useProbability", entry.UseProbability ? 1 : 0);
-                command.Parameters.AddWithValue("$group", entry.InclusionGroup);
-                command.Parameters.AddWithValue("$groupWeight", entry.GroupWeight);
-                command.Parameters.AddWithValue("$excludeRecursion", entry.ExcludeRecursion ? 1 : 0);
-                command.Parameters.AddWithValue("$originalIndex", entry.OriginalIndex);
-                command.Parameters.AddWithValue("$contentHash", entry.ContentHash);
-                command.Parameters.AddWithValue("$extensions", entry.ExtensionsJson);
-                await command.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
+            book.Transaction = (SqliteTransaction)transaction;
+            book.CommandText = """
+                INSERT INTO worldbooks(
+                    id, name, description, source_kind, source_path,
+                    source_file_name, source_sha256, raw_json, is_enabled,
+                    scan_depth, token_budget, recursive_scanning, revision,
+                    created_at, updated_at)
+                VALUES(
+                    $id, $name, $description, $sourceKind, $sourcePath,
+                    $sourceFileName, $sourceSha256, $rawJson, $isEnabled,
+                    $scanDepth, $tokenBudget, $recursiveScanning, $revision,
+                    $createdAt, $updatedAt)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    description = excluded.description,
+                    source_kind = excluded.source_kind,
+                    source_path = excluded.source_path,
+                    source_file_name = excluded.source_file_name,
+                    source_sha256 = excluded.source_sha256,
+                    raw_json = excluded.raw_json,
+                    is_enabled = excluded.is_enabled,
+                    scan_depth = excluded.scan_depth,
+                    token_budget = excluded.token_budget,
+                    recursive_scanning = excluded.recursive_scanning,
+                    revision = excluded.revision,
+                    updated_at = excluded.updated_at;
+                """;
+            book.Parameters.AddWithValue("$id", worldbook.Id);
+            book.Parameters.AddWithValue("$name", worldbook.Name);
+            book.Parameters.AddWithValue("$description", worldbook.Description);
+            book.Parameters.AddWithValue("$sourceKind", (int)worldbook.SourceKind);
+            book.Parameters.AddWithValue(
+                "$sourcePath",
+                _paths.ToStoredPath(worldbook.SourcePath));
+            book.Parameters.AddWithValue("$sourceFileName", worldbook.SourceFileName);
+            book.Parameters.AddWithValue("$sourceSha256", worldbook.SourceSha256);
+            book.Parameters.AddWithValue("$rawJson", worldbook.RawJson);
+            book.Parameters.AddWithValue("$isEnabled", worldbook.IsEnabled ? 1 : 0);
+            book.Parameters.AddWithValue("$scanDepth", worldbook.ScanDepth);
+            book.Parameters.AddWithValue("$tokenBudget", worldbook.TokenBudget);
+            book.Parameters.AddWithValue(
+                "$recursiveScanning",
+                worldbook.RecursiveScanning ? 1 : 0);
+            book.Parameters.AddWithValue("$revision", worldbook.Revision);
+            book.Parameters.AddWithValue("$createdAt", worldbook.CreatedAt.ToString("O"));
+            book.Parameters.AddWithValue("$updatedAt", worldbook.UpdatedAt.ToString("O"));
+            await book.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch
+
+        await using (var source = connection.CreateCommand())
         {
-            await transaction.RollbackAsync(CancellationToken.None);
-            throw;
+            source.Transaction = (SqliteTransaction)transaction;
+            source.CommandText = """
+                DELETE FROM worldbook_sources
+                WHERE worldbook_id = $worldbookId;
+
+                INSERT INTO worldbook_sources(
+                    id, worldbook_id, file_name, source_format,
+                    source_sha256, raw_json, parser_version, imported_at)
+                VALUES(
+                    $sourceId, $worldbookId, $fileName, $sourceFormat,
+                    $sourceSha256, $rawJson, $parserVersion, $importedAt);
+                """;
+            source.Parameters.AddWithValue("$sourceId", Guid.NewGuid().ToString("N"));
+            source.Parameters.AddWithValue("$worldbookId", worldbook.Id);
+            source.Parameters.AddWithValue("$fileName", worldbook.SourceFileName);
+            source.Parameters.AddWithValue(
+                "$sourceFormat",
+                worldbook.SourceKind == WorldbookSourceKind.CharacterCardEmbedded
+                    ? "character-card"
+                    : "world-info-json");
+            source.Parameters.AddWithValue("$sourceSha256", worldbook.SourceSha256);
+            source.Parameters.AddWithValue("$rawJson", worldbook.RawJson);
+            source.Parameters.AddWithValue("$parserVersion", "worldbook-v1");
+            source.Parameters.AddWithValue("$importedAt", DateTimeOffset.Now.ToString("O"));
+            await source.ExecuteNonQueryAsync(cancellationToken);
         }
+
+        await using (var deleteFts = connection.CreateCommand())
+        {
+            deleteFts.Transaction = (SqliteTransaction)transaction;
+            deleteFts.CommandText =
+                "DELETE FROM worldbook_chunks_fts WHERE worldbook_id = $id;";
+            deleteFts.Parameters.AddWithValue("$id", worldbook.Id);
+            await deleteFts.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var deleteEntries = connection.CreateCommand())
+        {
+            deleteEntries.Transaction = (SqliteTransaction)transaction;
+            deleteEntries.CommandText = "DELETE FROM worldbook_entries WHERE worldbook_id = $id;";
+            deleteEntries.Parameters.AddWithValue("$id", worldbook.Id);
+            await deleteEntries.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        foreach (var entry in entries)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = (SqliteTransaction)transaction;
+            command.CommandText = """
+                INSERT INTO worldbook_entries(
+                    worldbook_id, entry_id, title, comment, content,
+                    keys_json, secondary_keys_json, content_type, visibility,
+                    semantic_enabled, enabled, constant, case_sensitive,
+                    match_whole_words, selective_logic, insertion_order,
+                    position, depth, provider_role, probability, use_probability,
+                    inclusion_group, group_weight, exclude_recursion,
+                    original_index, content_hash, extensions_json)
+                VALUES(
+                    $worldbookId, $entryId, $title, $comment, $content,
+                    $keys, $secondaryKeys, $contentType, $visibility,
+                    $semanticEnabled, $enabled, $constant, $caseSensitive,
+                    $wholeWords, $logic, $order, $position, $depth, $role,
+                    $probability, $useProbability, $group, $groupWeight,
+                    $excludeRecursion, $originalIndex, $contentHash, $extensions);
+                """;
+            command.Parameters.AddWithValue("$worldbookId", worldbook.Id);
+            command.Parameters.AddWithValue("$entryId", entry.Id);
+            command.Parameters.AddWithValue("$title", entry.Title);
+            command.Parameters.AddWithValue("$comment", entry.Comment);
+            command.Parameters.AddWithValue("$content", entry.Content);
+            command.Parameters.AddWithValue("$keys", Serialize(entry.Keys));
+            command.Parameters.AddWithValue("$secondaryKeys", Serialize(entry.SecondaryKeys));
+            command.Parameters.AddWithValue("$contentType", (int)entry.ContentType);
+            command.Parameters.AddWithValue("$visibility", (int)entry.Visibility);
+            command.Parameters.AddWithValue("$semanticEnabled", entry.SemanticEnabled ? 1 : 0);
+            command.Parameters.AddWithValue("$enabled", entry.Enabled ? 1 : 0);
+            command.Parameters.AddWithValue("$constant", entry.Constant ? 1 : 0);
+            command.Parameters.AddWithValue("$caseSensitive", entry.CaseSensitive ? 1 : 0);
+            command.Parameters.AddWithValue("$wholeWords", entry.MatchWholeWords ? 1 : 0);
+            command.Parameters.AddWithValue("$logic", (int)entry.SelectiveLogic);
+            command.Parameters.AddWithValue("$order", entry.InsertionOrder);
+            command.Parameters.AddWithValue("$position", (int)entry.Position);
+            command.Parameters.AddWithValue("$depth", entry.Depth);
+            command.Parameters.AddWithValue("$role", entry.ProviderRole);
+            command.Parameters.AddWithValue("$probability", entry.Probability);
+            command.Parameters.AddWithValue("$useProbability", entry.UseProbability ? 1 : 0);
+            command.Parameters.AddWithValue("$group", entry.InclusionGroup);
+            command.Parameters.AddWithValue("$groupWeight", entry.GroupWeight);
+            command.Parameters.AddWithValue("$excludeRecursion", entry.ExcludeRecursion ? 1 : 0);
+            command.Parameters.AddWithValue("$originalIndex", entry.OriginalIndex);
+            command.Parameters.AddWithValue("$contentHash", entry.ContentHash);
+            command.Parameters.AddWithValue("$extensions", entry.ExtensionsJson);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
     }
 
     public async Task UpsertMountAsync(
-        WorldbookMount mount,
-        CancellationToken cancellationToken = default)
+        WorldbookMount mount, CancellationToken cancellationToken = default)
     {
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
+        await UpsertMountAsync(mount, connection, null, cancellationToken);
+    }
+
+    internal async Task UpsertMountAsync(
+        WorldbookMount mount,
+        SqliteConnection connection, SqliteTransaction? transaction, CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO worldbook_mounts(
                 worldbook_id, scope_kind, scope_id, sort_index,

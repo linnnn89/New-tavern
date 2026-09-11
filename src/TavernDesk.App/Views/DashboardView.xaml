@@ -10,6 +10,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0"
@@ -111,6 +112,8 @@
                 <Button Margin="0,0,8,0"
                         Command="{Binding DataContext.ShowCharactersCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         ToolTip="{StaticResource Shell.Characters.ToolTip}"
+                        AutomationProperties.Name="{StaticResource Dashboard.OpenCharacters}"
+                        Cursor="Hand"
                         Style="{StaticResource AppicaDashboardStatButtonStyle}">
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal"
@@ -150,6 +153,8 @@
                 <Button Margin="4,0"
                         Command="{Binding DataContext.ShowChatCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         ToolTip="{StaticResource Shell.Chat.ToolTip}"
+                        AutomationProperties.Name="{StaticResource Dashboard.OpenConversations}"
+                        Cursor="Hand"
                         Style="{StaticResource AppicaDashboardStatButtonStyle}">
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal"
@@ -189,6 +194,8 @@
                 <Button Margin="8,0,0,0"
                         Command="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         ToolTip="{StaticResource Shell.Settings.ToolTip}"
+                        AutomationProperties.Name="{StaticResource Dashboard.ConfigureModels}"
+                        Cursor="Hand"
                         Style="{StaticResource AppicaDashboardStatButtonStyle}">
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal"
@@ -226,8 +233,54 @@
                 </Button>
             </UniformGrid>
 
-            <Border Grid.Row="2"
-                    Style="{StaticResource AppicaDashboardRecentPanelStyle}">
+            <Border Grid.Row="2" Padding="22" Margin="0,0,0,20">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource AppicaDashboardRecentPanelStyle}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasRecentConversation}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <TextBlock Text="{StaticResource Dashboard.GetStarted}" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppicaShellTextBrush}" />
+                    <TextBlock Text="{StaticResource Dashboard.GetStartedHelp}" Margin="0,8,0,16" TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppicaShellMutedBrush}" />
+                    <WrapPanel>
+                        <Button Content="{StaticResource Dashboard.ConfigureModels}" Margin="0,0,10,8"
+                                Command="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Content="{StaticResource Dashboard.ImportCharacter}" Margin="0,0,10,8"
+                                Command="{Binding DataContext.ImportCharacterFromDashboardCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                        <Button Content="{StaticResource Dashboard.StartChat}" Margin="0,0,0,8"
+                                Command="{Binding DataContext.ShowCharactersCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CharacterCount}" Value="0">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Border Grid.Row="3">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource AppicaDashboardRecentPanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasRecentConversation}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <StackPanel>
                     <Grid Height="62"
                           Margin="20,0">

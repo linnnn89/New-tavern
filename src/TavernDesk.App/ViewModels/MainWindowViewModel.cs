@@ -125,6 +125,11 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         ShowDashboardCommand = new AsyncRelayCommand(ShowDashboardAsync);
         ShowCharactersCommand = new AsyncRelayCommand(ShowCharactersAsync);
+        ImportCharacterFromDashboardCommand = new AsyncRelayCommand(async () =>
+        {
+            await ShowCharactersAsync();
+            if (ReferenceEquals(CurrentPage, Characters)) await Characters.ImportAsync();
+        });
         ShowChatCommand = new AsyncRelayCommand(ShowChatAsync);
         ShowCampaignsCommand = new AsyncRelayCommand(ShowCampaignsAsync);
         ShowWorldbooksCommand = new AsyncRelayCommand(ShowWorldbooksAsync);
@@ -190,6 +195,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public AsyncRelayCommand ShowDashboardCommand { get; }
     public AsyncRelayCommand ShowCharactersCommand { get; }
+    public AsyncRelayCommand ImportCharacterFromDashboardCommand { get; }
     public AsyncRelayCommand ShowChatCommand { get; }
     public AsyncRelayCommand ShowCampaignsCommand { get; }
     public AsyncRelayCommand ShowWorldbooksCommand { get; }

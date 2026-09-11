@@ -131,8 +131,8 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Dashboard.CharacterShelf">ローカルキャラクターライブラリ</sys:String>
     <sys:String x:Key="Dashboard.Conversations">会話</sys:String>
     <sys:String x:Key="Dashboard.ConversationsLocal">ローカルに保存</sys:String>
-    <sys:String x:Key="Dashboard.Providers">プロバイダー</sys:String>
-    <sys:String x:Key="Dashboard.ProviderSaveOffline">設定の保存では接続しません</sys:String>
+    <sys:String x:Key="Dashboard.Providers">有効な接続先</sys:String>
+    <sys:String x:Key="Dashboard.ProviderSaveOffline">モデル設定は別途必要</sys:String>
     <sys:String x:Key="Dashboard.RecentConversations">最近の会話</sys:String>
     <sys:String x:Key="Dashboard.ResumeConversation">前回の続きから再開</sys:String>
     <sys:String x:Key="Dashboard.LocalRecordsOnly">ローカル記録のみ</sys:String>
@@ -565,7 +565,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Data.CurrentRootHelp">全モジュールがこのルートから絶対パスを作ります。管理対象ファイルはデータベースに相対パスで保存されるため、別ドライブや別 PC にコピーできます。</sys:String>
     <sys:String x:Key="Settings.Data.Browse">参照…</sys:String>
     <sys:String x:Key="Settings.Data.ConfigurationFile">設定ファイル：</sys:String>
-    <sys:String x:Key="Settings.Data.SaveAndSwitch">保存して個人データディレクトリを切り替え</sys:String>
+    <sys:String x:Key="Settings.Data.SaveAndSwitch">次回起動時のデータ移行を予約</sys:String>
     <sys:String x:Key="Settings.Diagnostics.Title">診断とテスト記録</sys:String>
     <sys:String x:Key="Settings.Diagnostics.Description">エラーログはアプリの不具合調査に使用します。API テストモードはモデル通信の利用状況を一時的に記録します。どちらもこの端末内にのみ保存されます。</sys:String>
     <sys:String x:Key="Settings.Diagnostics.ErrorLogTitle">ローカルエラーログ（常時有効）</sys:String>
@@ -689,12 +689,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Interaction.DeleteCampaign.Title">キャンペーン完全削除の確認</sys:String>
     <sys:String x:Key="Interaction.ClearKey.MessageFormat">Windows DPAPI に保存された「{0}」の API キーをクリアしますか？</sys:String>
     <sys:String x:Key="Interaction.ClearKey.Title">API キーをクリア</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">個人データディレクトリを切り替えます。現在のデータベース、チャット履歴、キャラクターカード、シナリオ、添付などを先に新しいディレクトリへコピーしますか？
-
-「はい」はコピーして旧ディレクトリを安全バックアップとして保持、「いいえ」は設定だけを切り替えて新ディレクトリの既存ファイルを上書きせず、「キャンセル」は変更しません。
-
-現在：{0}
-新しいディレクトリ：{1}</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">次回起動時に個人データディレクトリを切り替えます。データベース、チャット、キャラクターカード、シナリオ、添付もコピーしますか？&#10;&#10;「はい」：次回起動時に最新データをコピーし、旧ディレクトリを保持。「いいえ」：コピーせず次回起動時に新ディレクトリを使用。「キャンセル」：既存の予約を保持。&#10;&#10;現在：{0}&#10;新ディレクトリ：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">個人データディレクトリを切り替え</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">次のディレクトリ内にあるすべての子ファイルと子フォルダーを完全に削除します。ディレクトリ自体は残します：&#10;&#10;{0}&#10;&#10;続行しますか？</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.Title">API テスト出力をクリア</sys:String>
@@ -1064,8 +1059,8 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Settings.Interface.Loaded">インターフェース設定を読み込みました。変更後に保存してください。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Unavailable">現在の環境では個人データディレクトリ管理を利用できません。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Overridden">現在のディレクトリは --data-root または TAVERNDESK_DATA_ROOT で上書きされています。ここで変更する前に上書きを解除してください。</sys:String>
-    <sys:String x:Key="Settings.DataRoot.ConfigFormat">設定ファイル：{0}。変更後に TavernDesk を再起動すると現在のサービスを切り替えます。</sys:String>
-    <sys:String x:Key="Settings.DataRoot.Selected">新しいディレクトリを選択しました。「保存して切替」で現在データを移行するか確認します。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.ConfigFormat">設定ファイル：{0}。切り替えは次回起動時に行います。現在は元のディレクトリを使用します。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.Selected">新しいディレクトリを選択しました。移行を予約し、現在のデータをコピーするか選んでください。</sys:String>
     <sys:String x:Key="Settings.DataRoot.OverrideBlocked">--data-root または TAVERNDESK_DATA_ROOT の上書き中のため設定を変更しませんでした。</sys:String>
     <sys:String x:Key="Settings.DataRoot.InvalidFormat">個人データディレクトリが無効です：{0}</sys:String>
     <sys:String x:Key="Settings.DataRoot.Unchanged">個人データディレクトリは変わりません。</sys:String>
@@ -1556,4 +1551,14 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Campaigns.ContextSection.GmCurrentIntents">今回の裁定待ち行動とダイス</sys:String>
     <sys:String x:Key="Campaigns.ContextSection.GmCurrentTask">現在の GM 裁定タスク</sys:String>
     <sys:String x:Key="Campaigns.ContextSection.Unknown">その他のコンテキスト</sys:String>
+    <sys:String x:Key="Settings.DataRoot.Scheduled">次回起動時の切り替えを予約しました。現在は元のディレクトリを使用し、コピーには終了前の保存内容も含まれます。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.PendingFormat">現在：{0}。次回起動時：{1}。現在のディレクトリを入力して保存すると予約を取り消せます。</sys:String>
+    <sys:String x:Key="Settings.DataRoot.StartupFailed">移行が完了しなかったため、元のディレクトリを使用します。次回起動時に再試行します。設定から予約を取り消すこともできます。&#10;{0}</sys:String>
+    <sys:String x:Key="Dashboard.GetStarted">最初の会話を始めましょう</sys:String>
+    <sys:String x:Key="Dashboard.GetStartedHelp">チャットモデルを設定し、キャラクターカードを読み込んだら、相手を選んで会話を始めましょう。</sys:String>
+    <sys:String x:Key="Dashboard.ConfigureModels">モデルを設定</sys:String>
+    <sys:String x:Key="Dashboard.ImportCharacter">キャラクターを読み込む</sys:String>
+    <sys:String x:Key="Dashboard.StartChat">相手を選んで会話を開始</sys:String>
+    <sys:String x:Key="Dashboard.OpenCharacters">キャラクターを管理</sys:String>
+    <sys:String x:Key="Dashboard.OpenConversations">会話を開く</sys:String>
 </ResourceDictionary>

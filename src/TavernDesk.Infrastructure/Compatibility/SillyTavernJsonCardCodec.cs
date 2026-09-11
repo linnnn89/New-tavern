@@ -32,7 +32,7 @@ public sealed class SillyTavernJsonCardCodec : ICharacterCardCodec
             throw new InvalidDataException("角色卡 JSON 超过 16 MiB 安全上限。");
         }
 
-        var json = await File.ReadAllTextAsync(path, Encoding.UTF8, cancellationToken);
+        var json = await ImportFileReader.ReadTextAsync(path, MaximumJsonBytes, cancellationToken);
         var parsed = CharacterCardJsonMapper.Parse(
             json,
             Path.GetFileNameWithoutExtension(path));

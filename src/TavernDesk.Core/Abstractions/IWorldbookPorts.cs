@@ -4,6 +4,12 @@ namespace TavernDesk.Core.Abstractions;
 
 public interface IWorldbookRepository
 {
+    Task<WorldbookImportResult> ImportAsync(
+        WorldbookImportResult prepared,
+        WorldbookScopeKind scopeKind,
+        string? scopeId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Worldbook>> ListAsync(
         CancellationToken cancellationToken = default);
 
