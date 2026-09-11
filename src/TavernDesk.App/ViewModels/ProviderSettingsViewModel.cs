@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
-using System.Windows.Media;
 using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
@@ -15,31 +14,12 @@ namespace TavernDesk.App.ViewModels;
 
 public sealed class ProviderSettingsViewModel : ViewModelBase
 {
-    public const string ChatAutoScrollSettingKey = "ui.chat.autoScroll";
-    public const string InterfaceFontFamilySettingKey = "ui.font.family";
-    public const string InterfaceFontSizeSettingKey = "ui.font.size";
-    public const string InterfaceScalePercentSettingKey = "ui.scale.percent";
-    public const string InterfaceThemeSettingKey = "ui.theme";
+    public const string ChatAutoScrollSettingKey = InterfaceSettingsViewModel.ChatAutoScrollSettingKey;
+    public const string InterfaceFontFamilySettingKey = InterfaceSettingsViewModel.InterfaceFontFamilySettingKey;
+    public const string InterfaceFontSizeSettingKey = InterfaceSettingsViewModel.InterfaceFontSizeSettingKey;
+    public const string InterfaceScalePercentSettingKey = InterfaceSettingsViewModel.InterfaceScalePercentSettingKey;
+    public const string InterfaceThemeSettingKey = InterfaceSettingsViewModel.InterfaceThemeSettingKey;
     public const string ApiTestModeSettingKey = "diagnostics.apiTestMode.enabled";
-
-    private static readonly Lazy<IReadOnlyList<string>> SystemFontFamilies =
-        new(LoadSystemFontFamilies);
-    private static readonly IReadOnlyList<InterfaceScaleOption> InterfaceScaleOptions =
-    [
-        new(80, LanguageRuntime.GetString("Settings.Scale.Compact")),
-        new(90, "90%"),
-        new(100, LanguageRuntime.GetString("Settings.Scale.Default")),
-        new(110, "110%"),
-        new(125, "125%"),
-        new(150, LanguageRuntime.GetString("Settings.Scale.Large"))
-    ];
-    private static readonly IReadOnlyList<InterfaceThemeOption> InterfaceThemeOptions =
-    [
-        new(InterfaceSettingsRuntime.LightThemeName, LanguageRuntime.GetString("Settings.Theme.Light")),
-        new(InterfaceSettingsRuntime.DarkThemeName, LanguageRuntime.GetString("Settings.Theme.Dark")),
-        new(InterfaceSettingsRuntime.CupertinoThemeName, LanguageRuntime.GetString("Settings.Theme.Cupertino")),
-        new(InterfaceSettingsRuntime.MaterialThemeName, LanguageRuntime.GetString("Settings.Theme.Material"))
-    ];
 
     private readonly IProviderProfileRepository _repository;
     private readonly IModelCatalogRepository _models;
@@ -53,8 +33,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private readonly AppDataLocationService? _dataLocation;
     private readonly ITavernDeskDiagnostics _diagnostics;
     private readonly PlayerPersonaManagerViewModel? _personas;
-    private readonly IInterfaceScaleRecommendationProvider?
-        _interfaceScaleRecommendationProvider;
     private readonly HashSet<string> _persistedProfileIds = new(StringComparer.Ordinal);
     private readonly List<ProviderModel> _allCatalogModels = [];
     private readonly List<ProviderModel> _allAssignmentModels = [];
@@ -76,24 +54,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private string _assignmentTemperature = "0.8";
     private string _assignmentTopP = "1";
     private string _status = LanguageRuntime.GetString("Settings.Status.Intro");
-    private bool _chatAutoScrollEnabled =
-        InterfaceSettingsRuntime.DefaultChatAutoScroll;
-    private string _interfaceFontFamily =
-        InterfaceSettingsRuntime.DefaultFontFamily;
-    private double _interfaceFontSize =
-        InterfaceSettingsRuntime.DefaultFontSize;
-    private InterfaceScaleOption _selectedInterfaceScaleOption =
-        InterfaceScaleOptions.Single(option =>
-            option.Percent == InterfaceSettingsRuntime.DefaultScalePercent);
-    private InterfaceThemeOption _selectedInterfaceThemeOption =
-        InterfaceThemeOptions.Single(option =>
-            option.Value == InterfaceSettingsRuntime.DefaultThemeName);
-    private SupportedLanguage _selectedLanguageOption =
-        LanguageRuntime.Resolve(LanguageRuntime.CurrentCultureName);
-    private string _interfaceScaleRecommendationText =
-        LanguageRuntime.GetString("Settings.ScaleRecommendation.Pending");
-    private string _interfaceSettingsStatus =
-        LanguageRuntime.GetString("Settings.Interface.Intro");
     private string _dataRoot = string.Empty;
     private string _dataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Intro");
     private bool _isApiTestModeEnabled;
@@ -137,7 +97,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                     ?? (appSettings is null
                         ? null
                         : new PlayerPersonaManagerViewModel(appSettings, interaction));
-        _interfaceScaleRecommendationProvider = interfaceScaleRecommendationProvider;
+        Interface = new InterfaceSettingsViewModel(appSettings, interfaceScaleRecommendationProvider);
+        // Keep existing settings bindings synchronized with the owned editor.
+        Interface.PropertyChanged += (_, args) => OnPropertyChanged(args.PropertyName);
         Prompts = new PromptSettingsViewModel(globalPrompts, fileDialog);
         FunctionOptions =
         [
@@ -178,11 +140,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             {
                 IsReasoningAvailable: true
             });
-        SaveInterfaceSettingsCommand = new AsyncRelayCommand(
-            SaveInterfaceSettingsAsync,
-            () => _appSettings is not null);
-        RestoreInterfaceDefaultsCommand = new RelayCommand(
-            RestoreInterfaceDefaults);
         PickDataRootCommand = new RelayCommand(PickDataRoot);
         ChangeDataRootCommand = new AsyncRelayCommand(
             ChangeDataRootAsync,
@@ -231,19 +188,20 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     public AsyncRelayCommand SaveModelLimitsCommand { get; }
     public AsyncRelayCommand SaveAssignmentCommand { get; }
     public AsyncRelayCommand ToggleReasoningCommand { get; }
-    public AsyncRelayCommand SaveInterfaceSettingsCommand { get; }
-    public RelayCommand RestoreInterfaceDefaultsCommand { get; }
+    public InterfaceSettingsViewModel Interface { get; }
+    public AsyncRelayCommand SaveInterfaceSettingsCommand => Interface.SaveInterfaceSettingsCommand;
+    public RelayCommand RestoreInterfaceDefaultsCommand => Interface.RestoreInterfaceDefaultsCommand;
     public RelayCommand PickDataRootCommand { get; }
     public AsyncRelayCommand ChangeDataRootCommand { get; }
     public AsyncRelayCommand SetApiTestModeCommand { get; }
     public AsyncRelayCommand OpenApiTestOutputCommand { get; }
     public AsyncRelayCommand ClearApiTestOutputCommand { get; }
     public IReadOnlyList<string> AvailableInterfaceFontFamilies =>
-        SystemFontFamilies.Value;
+        Interface.AvailableInterfaceFontFamilies;
     public IReadOnlyList<InterfaceScaleOption> AvailableInterfaceScaleOptions =>
-        InterfaceScaleOptions;
+        Interface.AvailableInterfaceScaleOptions;
     public IReadOnlyList<InterfaceThemeOption> AvailableInterfaceThemeOptions =>
-        InterfaceThemeOptions;
+        Interface.AvailableInterfaceThemeOptions;
 
     public ProviderProfile? SelectedProfile
     {
@@ -459,97 +417,44 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public bool ChatAutoScrollEnabled
     {
-        get => _chatAutoScrollEnabled;
-        set => SetProperty(ref _chatAutoScrollEnabled, value);
+        get => Interface.ChatAutoScrollEnabled;
+        set => Interface.ChatAutoScrollEnabled = value;
     }
 
     public string InterfaceFontFamily
     {
-        get => _interfaceFontFamily;
-        set => SetProperty(ref _interfaceFontFamily, value);
+        get => Interface.InterfaceFontFamily;
+        set => Interface.InterfaceFontFamily = value;
     }
 
     public double InterfaceFontSize
     {
-        get => _interfaceFontSize;
-        set => SetProperty(ref _interfaceFontSize, value);
+        get => Interface.InterfaceFontSize;
+        set => Interface.InterfaceFontSize = value;
     }
 
     public InterfaceScaleOption SelectedInterfaceScaleOption
     {
-        get => _selectedInterfaceScaleOption;
-        set
-        {
-            if (value is null)
-            {
-                return;
-            }
-
-            var normalized = ResolveInterfaceScaleOption(value.Percent);
-            if (!SetProperty(ref _selectedInterfaceScaleOption, normalized))
-            {
-                return;
-            }
-
-            OnPropertyChanged(nameof(InterfaceScalePercent));
-            InterfaceSettingsRuntime.ApplyScale(normalized.Percent);
-            InterfaceSettingsStatus = LanguageRuntime.Format(
-                "Settings.ScalePreviewFormat",
-                normalized.Percent);
-        }
+        get => Interface.SelectedInterfaceScaleOption;
+        set => Interface.SelectedInterfaceScaleOption = value;
     }
-
-    public int InterfaceScalePercent => SelectedInterfaceScaleOption.Percent;
 
     public InterfaceThemeOption SelectedInterfaceThemeOption
     {
-        get => _selectedInterfaceThemeOption;
-        set
-        {
-            if (value is null)
-            {
-                return;
-            }
-
-            var normalized = ResolveInterfaceThemeOption(value.Value);
-            if (!SetProperty(ref _selectedInterfaceThemeOption, normalized))
-            {
-                return;
-            }
-
-            InterfaceSettingsRuntime.ApplyTheme(normalized.Value);
-            InterfaceSettingsStatus = LanguageRuntime.Format(
-                "Settings.ThemePreviewFormat",
-                normalized.Label);
-        }
+        get => Interface.SelectedInterfaceThemeOption;
+        set => Interface.SelectedInterfaceThemeOption = value;
     }
-
-    public string InterfaceScaleRecommendationText
-    {
-        get => _interfaceScaleRecommendationText;
-        private set => SetProperty(ref _interfaceScaleRecommendationText, value);
-    }
-
-    public string InterfaceSettingsStatus
-    {
-        get => _interfaceSettingsStatus;
-        private set => SetProperty(ref _interfaceSettingsStatus, value);
-    }
-
-    public IReadOnlyList<SupportedLanguage> LanguageOptions =>
-        LanguageRuntime.SupportedLanguages;
 
     public SupportedLanguage SelectedLanguageOption
     {
-        get => _selectedLanguageOption;
-        set
-        {
-            if (value is not null)
-            {
-                SetProperty(ref _selectedLanguageOption, LanguageRuntime.Resolve(value.CultureName));
-            }
-        }
+        get => Interface.SelectedLanguageOption;
+        set => Interface.SelectedLanguageOption = value;
     }
+
+    public int InterfaceScalePercent => Interface.InterfaceScalePercent;
+    public string InterfaceScaleRecommendationText => Interface.InterfaceScaleRecommendationText;
+    public string InterfaceSettingsStatus => Interface.InterfaceSettingsStatus;
+    public IReadOnlyList<SupportedLanguage> LanguageOptions => Interface.LanguageOptions;
 
     public string DataRoot
     {
@@ -614,7 +519,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     {
         LoadDataRootSettings();
         await LoadDiagnosticsSettingsAsync();
-        await LoadInterfaceSettingsAsync();
+        await Interface.LoadAsync();
         if (_personas is not null)
         {
             await _personas.LoadAsync();
@@ -667,52 +572,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             default:
                 return false;
         }
-    }
-
-    private async Task LoadInterfaceSettingsAsync()
-    {
-        if (_appSettings is null)
-        {
-            InterfaceSettingsRuntime.Apply(
-                InterfaceFontFamily,
-                InterfaceFontSize,
-                ChatAutoScrollEnabled,
-                InterfaceScalePercent,
-                SelectedInterfaceThemeOption.Value);
-            LoadInterfaceScaleRecommendation();
-            return;
-        }
-
-        var autoScrollTask = _appSettings.GetAsync(ChatAutoScrollSettingKey);
-        var fontFamilyTask = _appSettings.GetAsync(InterfaceFontFamilySettingKey);
-        var fontSizeTask = _appSettings.GetAsync(InterfaceFontSizeSettingKey);
-        var scaleTask = _appSettings.GetAsync(InterfaceScalePercentSettingKey);
-        var themeTask = _appSettings.GetAsync(InterfaceThemeSettingKey);
-        var languageTask = _appSettings.GetAsync(LanguageRuntime.SettingKey);
-        await Task.WhenAll(
-            autoScrollTask,
-            fontFamilyTask,
-            fontSizeTask,
-            scaleTask,
-            themeTask,
-            languageTask);
-
-        ChatAutoScrollEnabled =
-            !bool.TryParse(autoScrollTask.Result, out var autoScroll)
-            || autoScroll;
-        InterfaceFontFamily = NormalizeFontFamily(fontFamilyTask.Result);
-        InterfaceFontSize = NormalizeFontSize(fontSizeTask.Result);
-        SelectedInterfaceScaleOption = await ResolveInitialScaleOptionAsync(scaleTask.Result);
-        SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(themeTask.Result);
-        SelectedLanguageOption = LanguageRuntime.Resolve(languageTask.Result);
-        InterfaceSettingsRuntime.Apply(
-            InterfaceFontFamily,
-            InterfaceFontSize,
-            ChatAutoScrollEnabled,
-            InterfaceScalePercent,
-            SelectedInterfaceThemeOption.Value);
-        LoadInterfaceScaleRecommendation();
-        InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.Loaded");
     }
 
     private void LoadDataRootSettings()
@@ -986,190 +845,6 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         {
             DataRootStatus = LanguageRuntime.Format("Settings.DataRoot.FailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
-    }
-
-    private async Task SaveInterfaceSettingsAsync()
-    {
-        if (_appSettings is null)
-        {
-            InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.RepositoryUnavailable");
-            return;
-        }
-
-        InterfaceFontFamily = NormalizeFontFamily(InterfaceFontFamily);
-        InterfaceFontSize = NormalizeFontSize(InterfaceFontSize);
-        await Task.WhenAll(
-            _appSettings.SetAsync(
-                ChatAutoScrollSettingKey,
-                ChatAutoScrollEnabled.ToString(CultureInfo.InvariantCulture)),
-            _appSettings.SetAsync(
-                InterfaceFontFamilySettingKey,
-                InterfaceFontFamily),
-            _appSettings.SetAsync(
-                InterfaceFontSizeSettingKey,
-                InterfaceFontSize.ToString(CultureInfo.InvariantCulture)),
-            _appSettings.SetAsync(
-                InterfaceScalePercentSettingKey,
-                InterfaceScalePercent.ToString(CultureInfo.InvariantCulture)),
-            _appSettings.SetAsync(
-                InterfaceThemeSettingKey,
-                SelectedInterfaceThemeOption.Value),
-            _appSettings.SetAsync(
-                LanguageRuntime.SettingKey,
-                SelectedLanguageOption.CultureName));
-        InterfaceSettingsRuntime.Apply(
-            InterfaceFontFamily,
-            InterfaceFontSize,
-            ChatAutoScrollEnabled,
-            InterfaceScalePercent,
-            SelectedInterfaceThemeOption.Value);
-        InterfaceSettingsStatus = LanguageRuntime.Format(
-            "Settings.Interface.SavedFormat",
-            SelectedLanguageOption.NativeName,
-            InterfaceScalePercent,
-            SelectedInterfaceThemeOption.Label,
-            InterfaceFontFamily,
-            InterfaceFontSize,
-            ChatAutoScrollEnabled
-                ? LanguageRuntime.GetString("Settings.Interface.AutoScrollOn")
-                : LanguageRuntime.GetString("Settings.Interface.AutoScrollOff"));
-    }
-
-    private void RestoreInterfaceDefaults()
-    {
-        ChatAutoScrollEnabled = InterfaceSettingsRuntime.DefaultChatAutoScroll;
-        InterfaceFontFamily = InterfaceSettingsRuntime.DefaultFontFamily;
-        InterfaceFontSize = InterfaceSettingsRuntime.DefaultFontSize;
-        SelectedInterfaceScaleOption = ResolveInterfaceScaleOption(
-            InterfaceSettingsRuntime.DefaultScalePercent);
-        SelectedInterfaceThemeOption = ResolveInterfaceThemeOption(
-            InterfaceSettingsRuntime.DefaultThemeName);
-        SelectedLanguageOption = LanguageRuntime.Resolve(LanguageRuntime.DefaultCultureName);
-        InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.Restored");
-    }
-
-    private string NormalizeFontFamily(string? value)
-    {
-        var requested = string.IsNullOrWhiteSpace(value)
-            ? InterfaceSettingsRuntime.DefaultFontFamily
-            : value.Trim();
-        return AvailableInterfaceFontFamilies.FirstOrDefault(font =>
-                   string.Equals(font, requested, StringComparison.OrdinalIgnoreCase))
-               ?? InterfaceSettingsRuntime.DefaultFontFamily;
-    }
-
-    private static double NormalizeFontSize(string? value) =>
-        double.TryParse(
-            value,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var parsed)
-            ? NormalizeFontSize(parsed)
-            : InterfaceSettingsRuntime.DefaultFontSize;
-
-    private static double NormalizeFontSize(double value) =>
-        double.IsFinite(value)
-            ? Math.Clamp(
-                Math.Round(value, MidpointRounding.AwayFromZero),
-                InterfaceSettingsRuntime.MinimumFontSize,
-                InterfaceSettingsRuntime.MaximumFontSize)
-            : InterfaceSettingsRuntime.DefaultFontSize;
-
-    private async Task<InterfaceScaleOption> ResolveInitialScaleOptionAsync(string? savedValue)
-    {
-        if (!string.IsNullOrWhiteSpace(savedValue))
-        {
-            return ResolveInterfaceScaleOption(savedValue);
-        }
-
-        var recommendation = _interfaceScaleRecommendationProvider?.GetRecommendation();
-        var option = ResolveInterfaceScaleOption(
-            recommendation?.Percent
-            ?? InterfaceSettingsRuntime.DefaultScalePercent);
-        if (_appSettings is not null)
-        {
-            await _appSettings.SetAsync(
-                InterfaceScalePercentSettingKey,
-                option.Percent.ToString(CultureInfo.InvariantCulture));
-        }
-
-        return option;
-    }
-
-    private static InterfaceScaleOption ResolveInterfaceScaleOption(string? value) =>
-        int.TryParse(
-            value,
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out var parsed)
-            ? ResolveInterfaceScaleOption(parsed)
-            : ResolveInterfaceScaleOption(
-                InterfaceSettingsRuntime.DefaultScalePercent);
-
-    private static InterfaceScaleOption ResolveInterfaceScaleOption(int value)
-    {
-        var normalized = InterfaceSettingsRuntime.NormalizeScalePercent(value);
-        return InterfaceScaleOptions
-            .OrderBy(option => Math.Abs(option.Percent - normalized))
-            .ThenBy(option => Math.Abs(
-                option.Percent - InterfaceSettingsRuntime.DefaultScalePercent))
-            .First();
-    }
-
-    private static InterfaceThemeOption ResolveInterfaceThemeOption(string? value)
-    {
-        var normalized = InterfaceSettingsRuntime.NormalizeThemeName(value);
-        return InterfaceThemeOptions.Single(option => option.Value == normalized);
-    }
-
-    private void LoadInterfaceScaleRecommendation()
-    {
-        if (_interfaceScaleRecommendationProvider is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var recommendation = _interfaceScaleRecommendationProvider
-                .GetRecommendation();
-            if (recommendation is null)
-            {
-                return;
-            }
-
-            var option = ResolveInterfaceScaleOption(recommendation.Percent);
-            var reason = string.IsNullOrWhiteSpace(recommendation.Reason)
-                ? LanguageRuntime.GetString("Settings.ScaleRecommendation.DefaultReason")
-                : recommendation.Reason.Trim();
-            InterfaceScaleRecommendationText = LanguageRuntime.Format(
-                "Settings.ScaleRecommendation.Format",
-                option.Percent,
-                reason);
-        }
-        catch
-        {
-            InterfaceScaleRecommendationText =
-                LanguageRuntime.GetString("Settings.ScaleRecommendation.Failed");
-        }
-    }
-
-    private static IReadOnlyList<string> LoadSystemFontFamilies()
-    {
-        var fonts = Fonts.SystemFontFamilies
-            .Select(font => font.Source)
-            .Where(font => !string.IsNullOrWhiteSpace(font))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(font => font, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
-        if (!fonts.Contains(
-                InterfaceSettingsRuntime.DefaultFontFamily,
-                StringComparer.OrdinalIgnoreCase))
-        {
-            fonts.Insert(0, InterfaceSettingsRuntime.DefaultFontFamily);
-        }
-
-        return fonts;
     }
 
     private async Task ReloadProfilesAsync()
