@@ -27,3 +27,8 @@ public sealed class CampaignScenario
 public sealed record CampaignScenarioImportResult(
     CampaignScenario Scenario,
     IReadOnlyList<string> Warnings);
+
+public sealed record CampaignScenarioWorldbookBinding(
+    string WorldbookId,
+    bool IsBound,
+    int MountedRevision);

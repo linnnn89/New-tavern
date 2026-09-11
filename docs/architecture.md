@@ -231,6 +231,22 @@ flowchart LR
 
 主题和缩放在选择后即时预览；保存后应用字体和自动滚动，语言偏好在下次启动时生效。恢复默认值会修改编辑状态并预览主题、缩放，但仍需保存才会写入数据库。现有 `ui.*` 设置键不变；仅在首次缺少缩放设置时持久化显示器建议，已保存的缩放值不会被建议覆盖。
 
+### 剧本编辑与事务边界
+
+`CampaignsViewModel` 负责页面导航、选择和忙碌状态，通过原有属性转发保持 XAML 绑定兼容；`CampaignScenarioEditorViewModel` 管理剧本字段、叙事权限、世界书勾选与未保存草稿。保存时从原记录复制来源元数据并构造独立对象，避免失败写入污染剧本库中的已保存对象。
+
+```mermaid
+flowchart LR
+    View[剧本编辑页面] --> Parent[CampaignsViewModel]
+    Parent --> Editor[CampaignScenarioEditorViewModel]
+    Editor --> Port[ICampaignScenarioRepository]
+    Port --> Transaction[SQLite 同一连接与事务]
+    Transaction --> Body[剧本主体]
+    Transaction --> Mounts[本次提交的世界书挂载选择]
+```
+
+`SaveWithWorldbookBindingsAsync` 将剧本主体与本次提交的挂载新增、更新和删除放入同一事务；未提交的世界书与其他作用域不变。不引入通用工作单元，也不改变 schema。任一写入失败时全部回滚，新建剧本不会留下空记录；编辑器保留草稿供重试。保存成功后刷新剧本库并退出编辑，返回剧本库则放弃未保存修改。原始卡片元数据和已开始跑团的冻结快照沿用既有边界。
+
 ## 7. 代码定位
 
 | 任务 | 首选入口 |
@@ -249,6 +265,7 @@ flowchart LR
 | 会话与 schema | `src/TavernDesk.Infrastructure/Storage/SqliteConversationRepository.cs`、`SqliteDatabase.cs` |
 | 世界书与检索 | `src/TavernDesk.Infrastructure/Knowledge/`、`Retrieval/` |
 | 跑团界面 | `src/TavernDesk.App/ViewModels/CampaignsViewModel.cs` |
+| 剧本草稿与原子保存 | `src/TavernDesk.App/ViewModels/CampaignScenarioEditorViewModel.cs`、`src/TavernDesk.Infrastructure/Storage/SqliteCampaignScenarioRepository.cs` |
 | 跑团流程 | `src/TavernDesk.Core/Campaign/Flow/` |
 | 跑团执行与上下文 | `src/TavernDesk.Infrastructure/Campaign/` |
 | 自动化测试 | `tests/TavernDesk.Tests/` |
@@ -299,6 +316,7 @@ flowchart LR
 
 以下是工作记录中的最近可信快照，不代表任何未提交工作区修改已经通过同等验证：
 
+- 2026-09-11（剧本编辑与原子保存）：Release 私有测试 `305/305`。新增两项真实 SQLite 回归覆盖已有剧本主体与挂载中途失败的完整回滚、保留草稿后重试，以及新建失败不留记录并沿用草稿 ID 重试。首项先在旧实现中复现部分写入，再验证修复。真实主窗口完成五个编辑页签、字段与权限保存、挂载切换、故障提示、重试、重新打开和取消新建/修改；绑定与 Dispatcher 错误均为零。使用专用虚构资料，未调用真实 Provider。
 - 2026-09-11（预览职责拆分）：Release 私有测试 `301/301`，其中新增 3 项可控异步场景，覆盖旧输入与 A→B→A、实际预算优先级和关闭后的迟到结果/错误。真实 WPF 窗口配合专用虚构资料、可控预览组装器和本地流式替身，验证快速输入合并、迟到 A 预览不覆盖 B、实际预算不被迟到预览覆盖、待处理预览窗口关闭后零属性通知，并复验发送、切换、停止、持久化及浅/深色主题；绑定与 Dispatcher 错误均为零。未调用真实 Provider。
 - 2026-09-11：本次流式显示与聊天职责拆分的 Release 私有测试 `298/298`、四语资源校验和隔离启动初始化通过。真实 WPF 窗口使用专用虚构资料与本地流式替身，验证发送、会话切换、重新附着、关闭第二窗口、停止及浅/深色主题，绑定与 Dispatcher 错误均为零。完整套件首次有一项固定 300 ms 等待的加载测试未及时完成，改为等待实际就绪状态并保留超时后复验通过。
 - 同次本机流式对比覆盖 16K/64K/128K 正文和 64K 代码，最终文本均一致。128K 正文的生产线程分配从约 128.5 MiB 降至 0.67 MiB，累计正文绑定更新耗时从约 18.3 s 降至 0.28 s；64K 代码的累计布局耗时从约 1.23 s 降至 0.20 s。固定片段与发送节奏下各单次运行，快照改为在显示端按需生成，因此生产线程分配不等于全进程分配；结果不代表真实 Provider 延迟或所有硬件的收益。五组新旧渲染行距比较一致。

@@ -30,7 +30,6 @@ public sealed class CampaignsViewModel : ViewModelBase
     private readonly ICampaignContextPlanner? _campaignContextPlanner;
     private readonly IFileDialogService _fileDialog;
     private readonly IUserInteractionService _interaction;
-    private readonly IWorldbookService? _worldbooks;
     private readonly ICampaignFlowEngine _flowEngine;
     private Campaign? _draftCampaign;
     private CampaignAggregate? _game;
@@ -43,25 +42,10 @@ public sealed class CampaignsViewModel : ViewModelBase
     private CampaignEventItemViewModel? _selectedEvent;
     private string _screen = "library";
     private string _statusText = LanguageRuntime.GetString("Campaigns.Status.Intro");
-    private bool _isCreatingScenario;
     private string _title = string.Empty;
     private string _worldSetting = string.Empty;
     private string _rules = string.Empty;
     private string _openingPrompt = string.Empty;
-    private string _scenarioTitle = string.Empty;
-    private string _scenarioSummary = string.Empty;
-    private string _scenarioWorldSetting = string.Empty;
-    private string _scenarioPublicRules = string.Empty;
-    private string _scenarioGmInstructions = string.Empty;
-    private CampaignNarrativePermissionChoice
-        _scenarioNewNpcPermission = null!;
-    private CampaignNarrativePermissionChoice
-        _scenarioRelationshipChangePermission = null!;
-    private CampaignNarrativePermissionChoice
-        _scenarioIndependentPlotPermission = null!;
-    private string _scenarioOpeningSetup = string.Empty;
-    private string _scenarioOpeningNarration = string.Empty;
-    private string _scenarioLegacyExamplesArchive = string.Empty;
     private string _userPersonaName = "USER";
     private string _userPersonaDescription = string.Empty;
     private int _playerHistoryBudget = 12000;
@@ -135,7 +119,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         _campaignContextPlanner = campaignContextPlanner;
         _fileDialog = fileDialog;
         _interaction = interaction;
-        _worldbooks = worldbooks;
+        ScenarioEditor = new CampaignScenarioEditorViewModel(scenarios, worldbooks);
+        ScenarioEditor.PropertyChanged += (_, args) => OnPropertyChanged(args.PropertyName);
         _flowEngine = flowEngine ?? CampaignFlowEngineFactory.CreateDefault();
 
         _runner.ProgressChanged += OnCampaignGenerationProgressChanged;
@@ -159,21 +144,6 @@ public sealed class CampaignsViewModel : ViewModelBase
                 CampaignFlowPreset.StrictInitiative,
                 LanguageRuntime.GetString("Campaigns.Flow.Strict"),
                 LanguageRuntime.GetString("Campaigns.Flow.StrictHelp"))
-        ];
-        NarrativePermissionChoices =
-        [
-            new CampaignNarrativePermissionChoice(
-                CampaignNarrativePermission.Forbidden,
-                LanguageRuntime.GetString("Campaigns.Permission.Forbidden"),
-                LanguageRuntime.GetString("Campaigns.Permission.ForbiddenHelp")),
-            new CampaignNarrativePermissionChoice(
-                CampaignNarrativePermission.PlayerIntentOnly,
-                LanguageRuntime.GetString("Campaigns.Permission.PlayerIntent"),
-                LanguageRuntime.GetString("Campaigns.Permission.PlayerIntentHelp")),
-            new CampaignNarrativePermissionChoice(
-                CampaignNarrativePermission.GmDiscretion,
-                LanguageRuntime.GetString("Campaigns.Permission.GmDiscretion"),
-                LanguageRuntime.GetString("Campaigns.Permission.GmDiscretionHelp"))
         ];
         GmChoices =
         [
@@ -200,9 +170,6 @@ public sealed class CampaignsViewModel : ViewModelBase
         _selectedFlow = FlowChoices[0];
         _selectedGm = GmChoices[0];
         _selectedUserParticipation = UserParticipationChoices[0];
-        _scenarioNewNpcPermission = NarrativePermissionChoices[2];
-        _scenarioRelationshipChangePermission = NarrativePermissionChoices[1];
-        _scenarioIndependentPlotPermission = NarrativePermissionChoices[1];
 
         ImportScenarioCommand = new AsyncRelayCommand(ImportScenarioAsync);
         NewScenarioCommand = new AsyncRelayCommand(NewScenarioAsync);
@@ -246,6 +213,8 @@ public sealed class CampaignsViewModel : ViewModelBase
         OpenGlobalPromptCommand = new AsyncRelayCommand(OpenGlobalPromptAsync);
     }
 
+    public CampaignScenarioEditorViewModel ScenarioEditor { get; }
+
     public ObservableCollection<CampaignScenario> Scenarios { get; } = [];
     public ObservableCollection<CampaignSummaryItemViewModel> Campaigns { get; } = [];
     public ObservableCollection<CampaignCharacterChoiceViewModel> CharacterChoices { get; } = [];
@@ -255,10 +224,10 @@ public sealed class CampaignsViewModel : ViewModelBase
     public ObservableCollection<CampaignContextPreviewItemViewModel>
         ContextPreviewItems { get; } = [];
     public ObservableCollection<CampaignWorldbookBindingItem>
-        ScenarioWorldbookBindings { get; } = [];
+        ScenarioWorldbookBindings => ScenarioEditor.ScenarioWorldbookBindings;
     public IReadOnlyList<CampaignFlowChoice> FlowChoices { get; }
     public IReadOnlyList<CampaignNarrativePermissionChoice>
-        NarrativePermissionChoices { get; }
+        NarrativePermissionChoices => ScenarioEditor.NarrativePermissionChoices;
     public IReadOnlyList<CampaignGmChoice> GmChoices { get; }
     public IReadOnlyList<CampaignUserParticipationChoice>
         UserParticipationChoices { get; }
@@ -295,14 +264,9 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     public bool IsLibrary => _screen == "library";
     public bool IsScenarioEditor => _screen == "scenario-editor";
-    public bool IsCreatingScenario => _isCreatingScenario;
-    public string ScenarioEditorTitle =>
-        IsCreatingScenario
-            ? LanguageRuntime.GetString("Campaigns.Scenario.NewTitle")
-            : LanguageRuntime.GetString("Campaigns.Scenario.EditTitle");
-    public string ScenarioEditorDescription => IsCreatingScenario
-        ? LanguageRuntime.GetString("Campaigns.Scenario.NewDescription")
-        : LanguageRuntime.GetString("Campaigns.Scenario.EditDescription");
+    public bool IsCreatingScenario => ScenarioEditor.IsCreatingScenario;
+    public string ScenarioEditorTitle => ScenarioEditor.ScenarioEditorTitle;
+    public string ScenarioEditorDescription => ScenarioEditor.ScenarioEditorDescription;
     public bool IsLobby => _screen == "lobby";
     public bool IsGame => _screen == "game";
     public bool IsAiGm => SelectedGm.Value == CampaignGmKind.Ai;
@@ -657,50 +621,50 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     public string ScenarioTitle
     {
-        get => _scenarioTitle;
-        set => SetProperty(ref _scenarioTitle, value);
+        get => ScenarioEditor.ScenarioTitle;
+        set => ScenarioEditor.ScenarioTitle = value;
     }
 
     public string ScenarioSummary
     {
-        get => _scenarioSummary;
-        set => SetProperty(ref _scenarioSummary, value);
+        get => ScenarioEditor.ScenarioSummary;
+        set => ScenarioEditor.ScenarioSummary = value;
     }
 
     public string ScenarioWorldSetting
     {
-        get => _scenarioWorldSetting;
-        set => SetProperty(ref _scenarioWorldSetting, value);
+        get => ScenarioEditor.ScenarioWorldSetting;
+        set => ScenarioEditor.ScenarioWorldSetting = value;
     }
 
     public string ScenarioPublicRules
     {
-        get => _scenarioPublicRules;
-        set => SetProperty(ref _scenarioPublicRules, value);
+        get => ScenarioEditor.ScenarioPublicRules;
+        set => ScenarioEditor.ScenarioPublicRules = value;
     }
 
     public string ScenarioGmInstructions
     {
-        get => _scenarioGmInstructions;
-        set => SetProperty(ref _scenarioGmInstructions, value);
+        get => ScenarioEditor.ScenarioGmInstructions;
+        set => ScenarioEditor.ScenarioGmInstructions = value;
     }
 
     public string ScenarioOpeningSetup
     {
-        get => _scenarioOpeningSetup;
-        set => SetProperty(ref _scenarioOpeningSetup, value);
+        get => ScenarioEditor.ScenarioOpeningSetup;
+        set => ScenarioEditor.ScenarioOpeningSetup = value;
     }
 
     public string ScenarioOpeningNarration
     {
-        get => _scenarioOpeningNarration;
-        set => SetProperty(ref _scenarioOpeningNarration, value);
+        get => ScenarioEditor.ScenarioOpeningNarration;
+        set => ScenarioEditor.ScenarioOpeningNarration = value;
     }
 
     public string ScenarioLegacyExamplesArchive
     {
-        get => _scenarioLegacyExamplesArchive;
-        set => SetProperty(ref _scenarioLegacyExamplesArchive, value);
+        get => ScenarioEditor.ScenarioLegacyExamplesArchive;
+        set => ScenarioEditor.ScenarioLegacyExamplesArchive = value;
     }
 
     public string UserPersonaName
@@ -805,20 +769,20 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     public CampaignNarrativePermissionChoice ScenarioNewNpcPermission
     {
-        get => _scenarioNewNpcPermission;
-        set => SetProperty(ref _scenarioNewNpcPermission, value);
+        get => ScenarioEditor.ScenarioNewNpcPermission;
+        set => ScenarioEditor.ScenarioNewNpcPermission = value;
     }
 
     public CampaignNarrativePermissionChoice ScenarioRelationshipChangePermission
     {
-        get => _scenarioRelationshipChangePermission;
-        set => SetProperty(ref _scenarioRelationshipChangePermission, value);
+        get => ScenarioEditor.ScenarioRelationshipChangePermission;
+        set => ScenarioEditor.ScenarioRelationshipChangePermission = value;
     }
 
     public CampaignNarrativePermissionChoice ScenarioIndependentPlotPermission
     {
-        get => _scenarioIndependentPlotPermission;
-        set => SetProperty(ref _scenarioIndependentPlotPermission, value);
+        get => ScenarioEditor.ScenarioIndependentPlotPermission;
+        set => ScenarioEditor.ScenarioIndependentPlotPermission = value;
     }
 
     private async Task LoadReferenceDataAsync()
@@ -951,13 +915,8 @@ public sealed class CampaignsViewModel : ViewModelBase
     {
         await RunUiAsync(async () =>
         {
-            _isCreatingScenario = true;
-            OnPropertyChanged(nameof(IsCreatingScenario));
-            OnPropertyChanged(nameof(ScenarioEditorTitle));
-            OnPropertyChanged(nameof(ScenarioEditorDescription));
             SelectedScenario = new CampaignScenario();
-            LoadScenarioEditor(SelectedScenario);
-            await LoadScenarioWorldbookBindingsAsync(SelectedScenario.Id);
+            await ScenarioEditor.LoadAsync(SelectedScenario, isCreating: true);
             ShowScreen("scenario-editor");
             StatusText = LanguageRuntime.GetString("Campaigns.Scenario.FillHint");
         });
@@ -976,12 +935,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             var scenario = await _scenarios.GetAsync(selected.Id)
                            ?? throw new InvalidOperationException(
                                LanguageRuntime.GetString("Campaigns.Scenario.Missing"));
-            _isCreatingScenario = false;
-            OnPropertyChanged(nameof(IsCreatingScenario));
-            OnPropertyChanged(nameof(ScenarioEditorTitle));
-            OnPropertyChanged(nameof(ScenarioEditorDescription));
-            LoadScenarioEditor(scenario);
-            await LoadScenarioWorldbookBindingsAsync(scenario.Id);
+            await ScenarioEditor.LoadAsync(scenario);
             ShowScreen("scenario-editor");
             StatusText = LanguageRuntime.GetString("Campaigns.Scenario.EditHint");
         });
@@ -989,123 +943,15 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     private async Task SaveScenarioAsync()
     {
-        if (SelectedScenario is not { } scenario)
-        {
-            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.NoEditor");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(ScenarioTitle))
-        {
-            StatusText = LanguageRuntime.GetString("Campaigns.Scenario.TitleRequired");
-            return;
-        }
-
         await RunUiAsync(async () =>
         {
-            scenario.Title = ScenarioTitle.Trim();
-            scenario.Summary = ScenarioSummary.Trim();
-            scenario.WorldSetting = ScenarioWorldSetting.Trim();
-            scenario.PublicRules = ScenarioPublicRules.Trim();
-            scenario.GmInstructions = ScenarioGmInstructions.Trim();
-            scenario.NewNpcPermission = ScenarioNewNpcPermission.Value;
-            scenario.RelationshipChangePermission =
-                ScenarioRelationshipChangePermission.Value;
-            scenario.IndependentPlotPermission =
-                ScenarioIndependentPlotPermission.Value;
-            scenario.OpeningSetup = ScenarioOpeningSetup.Trim();
-            scenario.OpeningNarration = ScenarioOpeningNarration.Trim();
-            scenario.LegacyExamplesArchive = ScenarioLegacyExamplesArchive.Trim();
-            await _scenarios.UpsertAsync(scenario);
-            await SaveScenarioWorldbookBindingsAsync(scenario.Id);
+            var scenario = await ScenarioEditor.SaveAsync();
             await RefreshLibraryAsync();
             SelectedScenario = Scenarios.FirstOrDefault(item => item.Id == scenario.Id);
-            _isCreatingScenario = false;
-            OnPropertyChanged(nameof(IsCreatingScenario));
-            OnPropertyChanged(nameof(ScenarioEditorTitle));
-            OnPropertyChanged(nameof(ScenarioEditorDescription));
+            ScenarioEditor.EndEdit();
             ShowScreen("library");
             StatusText = LanguageRuntime.Format("Campaigns.Scenario.SavedFormat", scenario.Title);
         });
-    }
-
-    private void LoadScenarioEditor(CampaignScenario scenario)
-    {
-        ScenarioTitle = scenario.Title;
-        ScenarioSummary = scenario.Summary;
-        ScenarioWorldSetting = scenario.WorldSetting;
-        ScenarioPublicRules = scenario.PublicRules;
-        ScenarioGmInstructions = scenario.GmInstructions;
-        ScenarioNewNpcPermission = FindNarrativePermission(
-            scenario.NewNpcPermission);
-        ScenarioRelationshipChangePermission = FindNarrativePermission(
-            scenario.RelationshipChangePermission);
-        ScenarioIndependentPlotPermission = FindNarrativePermission(
-            scenario.IndependentPlotPermission);
-        ScenarioOpeningSetup = scenario.OpeningSetup;
-        ScenarioOpeningNarration = scenario.OpeningNarration;
-        ScenarioLegacyExamplesArchive = scenario.LegacyExamplesArchive;
-    }
-
-    private async Task LoadScenarioWorldbookBindingsAsync(string scenarioId)
-    {
-        ScenarioWorldbookBindings.Clear();
-        if (_worldbooks is null)
-        {
-            return;
-        }
-
-        var books = await _worldbooks.ListAsync();
-        var mounts = await Task.WhenAll(
-            books.Select(book => _worldbooks.ListMountsAsync(book.Id)));
-        var boundBookIds = mounts
-            .SelectMany(item => item)
-            .Where(mount => mount.ScopeKind == WorldbookScopeKind.Campaign
-                            && mount.IsEnabled
-                            && mount.ScopeId == scenarioId)
-            .Select(mount => mount.WorldbookId)
-            .ToHashSet(StringComparer.Ordinal);
-        foreach (var book in books.OrderBy(item => item.Name))
-        {
-            ScenarioWorldbookBindings.Add(
-                new CampaignWorldbookBindingItem(
-                    book,
-                    boundBookIds.Contains(book.Id)));
-        }
-    }
-
-    private async Task SaveScenarioWorldbookBindingsAsync(string scenarioId)
-    {
-        if (_worldbooks is null)
-        {
-            return;
-        }
-
-        var sortIndex = 100;
-        foreach (var item in ScenarioWorldbookBindings)
-        {
-            if (item.IsBound)
-            {
-                await _worldbooks.UpsertMountAsync(
-                    new WorldbookMount
-                    {
-                        WorldbookId = item.Worldbook.Id,
-                        ScopeKind = WorldbookScopeKind.Campaign,
-                        ScopeId = scenarioId,
-                        SortIndex = sortIndex,
-                        IsEnabled = true,
-                        MountedRevision = item.Worldbook.Revision
-                    });
-                sortIndex += 10;
-            }
-            else
-            {
-                await _worldbooks.RemoveMountAsync(
-                    item.Worldbook.Id,
-                    WorldbookScopeKind.Campaign,
-                    scenarioId);
-            }
-        }
     }
 
     private async Task OpenScenarioLobbyAsync()
@@ -1248,10 +1094,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             await RefreshLibraryAsync();
             var wasEditingScenario = IsScenarioEditor;
             var wasCreatingScenario = IsCreatingScenario;
-            _isCreatingScenario = false;
-            OnPropertyChanged(nameof(IsCreatingScenario));
-            OnPropertyChanged(nameof(ScenarioEditorTitle));
-            OnPropertyChanged(nameof(ScenarioEditorDescription));
+            ScenarioEditor.EndEdit();
             ShowScreen("library");
             StatusText = wasEditingScenario
                 ? wasCreatingScenario
@@ -2630,10 +2473,6 @@ public sealed class CampaignsViewModel : ViewModelBase
 
         return $"{prefix}{next}";
     }
-
-    private CampaignNarrativePermissionChoice FindNarrativePermission(
-        CampaignNarrativePermission value) =>
-        NarrativePermissionChoices.First(item => item.Value == value);
 
     private void ResetCharacterChoices()
     {

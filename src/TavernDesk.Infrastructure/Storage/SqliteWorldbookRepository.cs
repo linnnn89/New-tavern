@@ -481,7 +481,17 @@ public sealed class SqliteWorldbookRepository : IWorldbookRepository
     {
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
+        await RemoveMountAsync(worldbookId, scopeKind, scopeId,
+            connection, null, cancellationToken);
+    }
+
+    internal async Task RemoveMountAsync(
+        string worldbookId, WorldbookScopeKind scopeKind, string scopeId,
+        SqliteConnection connection, SqliteTransaction? transaction,
+        CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             DELETE FROM worldbook_mounts
             WHERE worldbook_id = $worldbookId
