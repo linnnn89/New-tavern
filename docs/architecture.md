@@ -216,6 +216,21 @@ flowchart LR
 - 跑团页面只有剧本库、准备大厅和游戏桌面三类主状态；开始后配置冻结，只开放明确允许的局内设置。
 - 不为局部界面问题增加全局 Store、事件总线、通用状态机、第二套生成主管或新依赖注入框架。
 
+### 界面设置的职责边界
+
+`ProviderSettingsViewModel` 持有 `InterfaceSettingsViewModel`，并转发原有属性、命令与属性变化通知，保持界面页和默认行为页的绑定兼容。子组件独立管理主题、字体、缩放、语言、自动滚动、缩放建议、加载、保存和恢复默认值；Provider 配置、模型分配、资料目录与诊断仍由父组件管理。
+
+```mermaid
+flowchart LR
+    Views[界面页 / 默认行为页] --> Parent[ProviderSettingsViewModel]
+    Parent --> Editor[InterfaceSettingsViewModel]
+    Editor --> Settings[IAppSettingsRepository]
+    Editor --> Runtime[InterfaceSettingsRuntime]
+    Editor --> Scale[IInterfaceScaleRecommendationProvider]
+```
+
+主题和缩放在选择后即时预览；保存后应用字体和自动滚动，语言偏好在下次启动时生效。恢复默认值会修改编辑状态并预览主题、缩放，但仍需保存才会写入数据库。现有 `ui.*` 设置键不变；仅在首次缺少缩放设置时持久化显示器建议，已保存的缩放值不会被建议覆盖。
+
 ## 7. 代码定位
 
 | 任务 | 首选入口 |
@@ -223,6 +238,7 @@ flowchart LR
 | 应用启动、单实例、语言 | `src/TavernDesk.App/App.xaml.cs`、`LanguageRuntime.cs` |
 | 主窗口与服务装配 | `src/TavernDesk.App/ViewModels/MainWindowViewModel.cs`、`src/TavernDesk.Infrastructure/InfrastructureServices.cs` |
 | 角色书架 | `src/TavernDesk.App/ViewModels/CharactersViewModel.cs` |
+| 界面设置与即时预览 | `src/TavernDesk.App/ViewModels/InterfaceSettingsViewModel.cs` |
 | 普通聊天 | `src/TavernDesk.App/ViewModels/ChatViewModel.cs` |
 | 会话列表与请求构造 | `src/TavernDesk.App/ViewModels/ConversationBrowserViewModel.cs`、`src/TavernDesk.App/Services/ChatRequestFactory.cs` |
 | 聊天上下文预览与预算展示 | `src/TavernDesk.App/ViewModels/ChatContextPreviewViewModel.cs` |

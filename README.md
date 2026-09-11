@@ -98,7 +98,7 @@ Campaign mode is a separate runtime, not group chat with an extra GM prompt.
 
 - Native WPF interface for Windows 10/11 x64.
 - Four-column chat workspace with a collapsible context inspector.
-- Light and charcoal-dark themes, interface scaling, and configurable fonts.
+- Light and charcoal-dark themes, interface scaling, and configurable fonts. Theme and scale changes preview immediately; Save persists interface preferences and applies fonts and chat auto-scroll. Language changes take effect after saving and restarting. Restore defaults still requires Save to persist.
 - Interface languages: Simplified Chinese, Traditional Chinese, English, and Japanese.
 - First-run language selection for a new workspace; later changes are available in Settings.
 
