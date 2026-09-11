@@ -1,8 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using System.Windows;
 using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
@@ -40,12 +38,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _invalidGroupMemoryScopes = new();
     private readonly ConcurrentDictionary<string, byte> _unsavedGroupMemoryBodies = new();
     private readonly ConcurrentDictionary<string, byte> _pendingSessionRefreshes = new();
-    private readonly SemaphoreSlim _groupReloadGate = new(1, 1);
     private readonly TimeSpan _groupAutoRelayDelay;
-    private readonly List<CharacterConversationGroupViewModel> _allGroups = [];
-    private readonly Dictionary<string, Character> _characterLookup =
-        new(StringComparer.Ordinal);
-    private readonly Func<string, Task>? _openConversationWindow;
+    private readonly ConversationBrowserViewModel _conversationBrowser;
     private readonly PlayerPersonaManagerViewModel _personas;
     private ConversationListItemViewModel? _selectedConversation;
     private CancellationTokenSource? _selectionCancellation;
@@ -113,7 +107,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         TimeSpan? groupAutoRelayDelay = null,
         ChatReplyExecutor? chatReplies = null)
     {
-        _sessionUpdates = new GenerationSessionUpdateQueue(Application.Current?.Dispatcher, ApplyGenerationSession);
+        _conversationBrowser = new ConversationBrowserViewModel(repository, characters, generationCoordinator, openConversationWindow, DeleteConversationAsync);
         _repository = repository;
         _characters = characters;
         _groupChats = groupChats;
@@ -131,7 +125,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _interaction = interaction;
         _chatArchives = chatArchives;
         _fileDialog = fileDialog;
-        _openConversationWindow = openConversationWindow;
         _groupAutoRelayDelay = groupAutoRelayDelay ?? TimeSpan.Zero;
         _personas = personas ?? new PlayerPersonaManagerViewModel(settings, interaction);
         _personas.PropertyChanged += OnPersonaManagerPropertyChanged;
@@ -201,10 +194,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             ExportChatArchiveAsync,
             () => SelectedConversation is not null);
         _generationCoordinator.StateChanged += OnGenerationStateChanged;
-        _generationSessions.SessionChanged += OnGenerationSessionChanged;
+        _sessionUpdates = new GenerationSessionUpdateQueue(generationSessions, Application.Current?.Dispatcher, ApplyGenerationSession);
     }
 
-    public ObservableCollection<CharacterConversationGroupViewModel> ConversationGroups { get; } = [];
+    public ObservableCollection<CharacterConversationGroupViewModel> ConversationGroups => _conversationBrowser.Groups;
     public ObservableCollection<ChatMessageItemViewModel> Messages { get; } = [];
     public ObservableCollection<ContextSegment> ContextSegments { get; } = [];
     public MemoryWorkflowViewModel Memory { get; }
@@ -295,7 +288,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return string.Empty;
             }
 
-            return _allGroups.FirstOrDefault(group =>
+            return _conversationBrowser.AllGroups.FirstOrDefault(group =>
                        group.FindConversation(conversationId) is not null)?.AvatarPath
                    ?? string.Empty;
         }
@@ -763,116 +756,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         return conversation;
     }
 
-    private async Task ReloadGroupsAsync(string? preferredConversationId)
-    {
-        await _groupReloadGate.WaitAsync();
-        try
-        {
-            await ReloadGroupsCoreAsync(preferredConversationId);
-        }
-        finally
-        {
-            _groupReloadGate.Release();
-        }
-    }
-
-    private async Task ReloadGroupsCoreAsync(string? preferredConversationId)
-    {
-        var expandedOwners = _allGroups
-            .Where(group => group.IsExpanded)
-            .Select(group => group.OwnerId)
-            .ToHashSet(StringComparer.Ordinal);
-        var characterTask = _characters.ListAsync();
-        var conversationTask = _repository.ListAllAsync();
-        await Task.WhenAll(characterTask, conversationTask);
-
-        _characterLookup.Clear();
-        foreach (var character in characterTask.Result)
-        {
-            _characterLookup[character.Id] = character;
-        }
-        _allGroups.Clear();
-
-        foreach (var grouping in conversationTask.Result
-                     .GroupBy(
-                         conversation => conversation.Mode == ConversationMode.Group
-                             ? "__group__"
-                             : conversation.CharacterId ?? "__deleted__",
-                         StringComparer.Ordinal))
-        {
-            var items = grouping
-                .Select(summary => new ConversationListItemViewModel(
-                    summary,
-                    _generationCoordinator.GetState(summary.Id),
-                    _openConversationWindow,
-                    DeleteConversationAsync))
-                .ToArray();
-            if (items.Length == 0)
-            {
-                continue;
-            }
-
-            CharacterConversationGroupViewModel group;
-            if (grouping.Key == "__group__")
-            {
-                group = new CharacterConversationGroupViewModel(
-                    "__group__",
-                    LanguageRuntime.GetString("Chat.Group.Label"),
-                    string.Empty,
-                    isGroup: true,
-                    items);
-            }
-            else if (grouping.Key == "__deleted__")
-            {
-                group = new CharacterConversationGroupViewModel(
-                    "__deleted__",
-                    LanguageRuntime.GetString("Chat.DeletedCharacter.Label"),
-                    string.Empty,
-                    isGroup: false,
-                    items);
-            }
-            else if (_characterLookup.TryGetValue(grouping.Key, out var character))
-            {
-                group = new CharacterConversationGroupViewModel(
-                    character.Id,
-                    character.Name,
-                    character.AvatarPath,
-                    isGroup: false,
-                    items);
-            }
-            else
-            {
-                group = new CharacterConversationGroupViewModel(
-                    grouping.Key,
-                    LanguageRuntime.GetString("Chat.DeletedCharacter.Label"),
-                    string.Empty,
-                    isGroup: false,
-                    items);
-            }
-
-            group.IsExpanded = expandedOwners.Contains(group.OwnerId)
-                               || group.FindConversation(preferredConversationId ?? string.Empty) is not null;
-            _allGroups.Add(group);
-        }
-
-        _allGroups.Sort((left, right) =>
-        {
-            var updatedComparison = right.UpdatedAt.CompareTo(left.UpdatedAt);
-            return updatedComparison != 0
-                ? updatedComparison
-                : string.Compare(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
-        });
-        ApplyConversationFilter(preferredConversationId);
-    }
+    private Task ReloadGroupsAsync(string? preferredConversationId) =>
+        _conversationBrowser.ReloadAsync(() => preferredConversationId, ApplyConversationFilter);
 
     private void ApplyConversationFilter(string? preferredConversationId = null)
     {
         var selectedId = preferredConversationId ?? SelectedConversation?.Id;
-        ConversationGroups.Clear();
-        foreach (var group in _allGroups.Where(group => group.ApplyFilter(ConversationSearchText)))
-        {
-            ConversationGroups.Add(group);
-        }
+        _conversationBrowser.ApplyFilter(ConversationSearchText);
 
         var next = FindConversation(selectedId);
         if (next is not null)
@@ -885,17 +775,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
     }
 
-    private ConversationListItemViewModel? FindConversation(string? conversationId)
-    {
-        if (conversationId is null)
-        {
-            return null;
-        }
-
-        return _allGroups
-            .Select(group => group.FindConversation(conversationId))
-            .FirstOrDefault(item => item is not null);
-    }
+    private ConversationListItemViewModel? FindConversation(string? conversationId) =>
+        _conversationBrowser.FindConversation(conversationId);
 
     private void SelectConversation(ConversationListItemViewModel conversation)
     {
@@ -1028,7 +909,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 var message = loadedMessages[index];
                 if (loadedConversation.Mode == ConversationMode.Group
                     && message.SenderKind == MessageSenderKind.Character
-                    && _characterLookup.TryGetValue(
+                    && _conversationBrowser.Characters.TryGetValue(
                         message.SenderId,
                         out var historyCharacter))
                 {
@@ -1054,7 +935,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 ? LanguageRuntime.Format("Chat.Memory.GroupFormat", loadedConversation.Title)
                 : LanguageRuntime.Format(
                     "Chat.Memory.CharacterFormat",
-                    _characterLookup.GetValueOrDefault(ownerId)?.Name
+                    _conversationBrowser.Characters.GetValueOrDefault(ownerId)?.Name
                     ?? loadedConversation.Title);
             Character? promptCharacter = null;
             if (loadedConversation.Mode == ConversationMode.SingleCharacter)
@@ -1494,7 +1375,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             snapshot.ConversationId,
             snapshot.OperationId,
             speakerId,
-            CreateExecutionRequest(assignment, context, snapshot.ConversationId),
+            ChatRequestFactory.CreateExecutionRequest(assignment, context, snapshot.ConversationId),
             snapshot.Mode == ConversationMode.Group,
             snapshot.Context.Group?.MemberNames.GetValueOrDefault(speakerId));
         var telemetry = _generationSessions.Get(snapshot.ConversationId);
@@ -2054,14 +1935,14 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             senderLabel: message.SenderKind switch
                 {
                     MessageSenderKind.Character =>
-                        _characterLookup.GetValueOrDefault(message.SenderId)?.Name,
+                        _conversationBrowser.Characters.GetValueOrDefault(message.SenderId)?.Name,
                     MessageSenderKind.User => EffectivePersonaLabel(),
                     _ => null
                 },
             personaName: EffectivePersonaLabel(),
             characterName: EffectiveCharacterMacroName(message),
             avatarPath: message.SenderKind == MessageSenderKind.Character
-                ? _characterLookup.GetValueOrDefault(message.SenderId)?.AvatarPath
+                ? _conversationBrowser.Characters.GetValueOrDefault(message.SenderId)?.AvatarPath
                 : null);
 
     private async Task ActivateCandidateAsync(
@@ -2110,7 +1991,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         if (message.SenderKind == MessageSenderKind.Character
             && !string.IsNullOrWhiteSpace(message.SenderId)
-            && _characterLookup.TryGetValue(message.SenderId, out var sender)
+            && _conversationBrowser.Characters.TryGetValue(message.SenderId, out var sender)
             && !string.IsNullOrWhiteSpace(sender.Name))
         {
             return sender.Name.Trim();
@@ -2118,7 +1999,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
         var conversationCharacterId = SelectedConversation?.CharacterId;
         return conversationCharacterId is not null
-               && _characterLookup.TryGetValue(
+               && _conversationBrowser.Characters.TryGetValue(
                    conversationCharacterId,
                    out var conversationCharacter)
                && !string.IsNullOrWhiteSpace(conversationCharacter.Name)
@@ -2313,7 +2194,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 token => _chatReplies.StreamContentAsync(
                     conversationId,
                     operationId,
-                    CreateExecutionRequest(
+                    ChatRequestFactory.CreateExecutionRequest(
                         assignment,
                         context,
                         conversationId),
@@ -2670,7 +2551,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             buffer.ApplyTo(character);
             character.UpdatedAt = DateTimeOffset.Now;
             await _characters.UpsertAsync(character);
-            _characterLookup[character.Id] = character;
+            _conversationBrowser.UpdateCharacter(character);
 
             if (SelectedConversation?.Id == conversationId)
             {
@@ -2857,7 +2738,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             }
 
             PublishPreviewContextBudget(selected.Id, result);
-            ApiRequestPreview = RenderApiRequestPreview(result);
+            ApiRequestPreview = ChatRequestFactory.RenderApiRequestPreview(result);
             SendLocalCommand.RaiseCanExecuteChanged();
             Retrieval.UpdateFromContext(result);
         }
@@ -2898,51 +2779,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         string? continuationInstruction = null,
         bool allowRemoteSemanticRetrieval = true)
     {
-        var group = string.Equals(
-            snapshot.Group?.Settings.ConversationId,
-            conversationId,
-            StringComparison.Ordinal)
-            ? snapshot.Group
-            : null;
-        var invalidScopes = GetInvalidGroupMemoryScopes(conversationId);
-        var historicalRegeneration = historyBeforeSequenceNo.HasValue;
         return _contextAssembler.AssembleAsync(
-            new ContextAssemblyRequest(
-                conversationId,
-                userInput,
-                snapshot.ContextLimit,
-                snapshot.ReservedOutputTokens,
-                MemoryOverride: historicalRegeneration
-                    ? string.Empty
-                    : snapshot.MemoryBody,
-                PersonaName: snapshot.PersonaName,
-                PersonaDescription: snapshot.PersonaDescription,
-                GlobalPreset: snapshot.GlobalPreset,
-                HistoryBeforeSequenceNo: historyBeforeSequenceNo,
-                SpeakerCharacterId: snapshot.SpeakerCharacterId,
-                GroupMemberIds: group?.Members
-                    .Where(member => member.IsEnabled
-                                     || member.CharacterId == snapshot.SpeakerCharacterId)
-                    .Select(member => member.CharacterId)
-                    .ToArray(),
-                GroupMemoryOverride: group is null
-                    ? null
-                    : historicalRegeneration
-                      || invalidScopes.HasFlag(GroupMemoryScopeMask.Shared)
-                      || _unsavedGroupMemoryBodies.ContainsKey(conversationId)
-                        ? string.Empty
-                        : snapshot.MemoryBody,
-                GroupMemberMemoryEnabled:
-                    !historicalRegeneration
-                    && !invalidScopes.HasFlag(GroupMemoryScopeMask.Members)
-                    && (group?.Settings.MemberMemoryEnabled ?? false),
-                GroupSystemPrompt: group?.Settings.GroupSystemPrompt,
-                GroupBatonInstruction: BuildGroupBatonInstruction(snapshot),
-                Retrieval: snapshot.Retrieval,
-                ModelId: snapshot.ModelId,
-                ContinuationInstruction: continuationInstruction,
-                AllowRemoteSemanticRetrieval: allowRemoteSemanticRetrieval),
-            cancellationToken);
+            ChatRequestFactory.CreateContextRequest(conversationId, userInput, historyBeforeSequenceNo,
+                snapshot, GetInvalidGroupMemoryScopes(conversationId),
+                _unsavedGroupMemoryBodies.ContainsKey(conversationId), continuationInstruction,
+                allowRemoteSemanticRetrieval), cancellationToken);
     }
 
     private ContextInputSnapshot CreateContextSnapshot(
@@ -2995,59 +2836,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             Retrieval: Retrieval.Snapshot());
     }
 
-    private static string? BuildGroupBatonInstruction(ContextInputSnapshot snapshot)
-    {
-        if (snapshot.Group is null || snapshot.SpeakerCharacterId is null)
-        {
-            return null;
-        }
-
-        var speaker = snapshot.Group.MemberNames.GetValueOrDefault(
-            snapshot.SpeakerCharacterId,
-            snapshot.SpeakerCharacterId);
-        var enabledNames = string.Join(
-            "、",
-            snapshot.Group.Members
-                .Where(member => member.IsEnabled)
-                .Select(member => snapshot.Group.MemberNames.GetValueOrDefault(
-                    member.CharacterId,
-                    member.CharacterId)));
-        return LanguageRuntime.Format(
-            "Chat.Group.BatonInstructionFormat",
-            speaker,
-            enabledNames);
-    }
-
-    private async Task ReloadGroupsPreservingSelectionAsync()
-    {
-        await _groupReloadGate.WaitAsync();
-        try
-        {
-            await ReloadGroupsCoreAsync(SelectedConversation?.Id);
-        }
-        finally
-        {
-            _groupReloadGate.Release();
-        }
-    }
-
-    private static ModelExecutionRequest CreateExecutionRequest(
-        ModelFunctionAssignment assignment,
-        ContextAssemblyResult context,
-        string conversationId) =>
-        new(
-            assignment.ProviderId,
-            assignment.ModelId,
-            context.Segments
-                .Select(segment => new ProviderChatMessage(
-                    segment.ProviderRole,
-                    segment.ProviderContent ?? segment.Content))
-                .ToArray(),
-            assignment.MaxOutputTokens,
-            assignment.Temperature,
-            assignment.TopP,
-            assignment.ReasoningEnabled,
-            SessionId: $"chat:{conversationId}");
+    private Task ReloadGroupsPreservingSelectionAsync() =>
+        _conversationBrowser.ReloadAsync(() => SelectedConversation?.Id, ApplyConversationFilter);
 
     private static string FormatAdditionalRequirement(string requirement) =>
         string.IsNullOrWhiteSpace(requirement)
@@ -3062,31 +2852,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         return additional.Length == 0
             ? instruction
             : $"{instruction}\n{additional}";
-    }
-
-    private static string RenderApiRequestPreview(ContextAssemblyResult context)
-    {
-        var payload = new
-        {
-            messages = context.Segments.Select(segment => new
-            {
-                role = segment.ProviderRole,
-                source = segment.Title,
-                content = segment.ProviderContent ?? segment.Content
-            }),
-            token_estimate = new
-            {
-                input = context.Estimate.InputTokens,
-                reserved_output = context.Estimate.ReservedOutputTokens,
-                context_limit = context.Estimate.ContextLimit,
-                is_exact = context.Estimate.IsExact
-            }
-        };
-        return JsonSerializer.Serialize(payload, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        });
     }
 
     private void BeginProviderGeneration(string conversationId)
@@ -3241,13 +3006,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
 
         ApplyGenerationState(state);
-    }
-
-    private void OnGenerationSessionChanged(
-        object? sender,
-        ConversationGenerationSession session)
-    {
-        _sessionUpdates.Post(session);
     }
 
     private void ApplyGenerationSession(ConversationGenerationSession session)
@@ -3419,7 +3177,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _disposed = true;
         _sessionUpdates.Dispose();
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
-        _generationSessions.SessionChanged -= OnGenerationSessionChanged;
         _personas.PropertyChanged -= OnPersonaManagerPropertyChanged;
         Memory.BodyChanged -= OnMemoryBodyChanged;
         Memory.BodySaved -= OnMemoryBodySaved;
@@ -3428,24 +3185,6 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _contextCancellation?.Cancel();
         _contextCancellation?.Dispose();
     }
-
-    private sealed record ContextInputSnapshot(
-        int ContextLimit,
-        int ReservedOutputTokens,
-        string? ModelId,
-        string MemoryBody,
-        string PersonaName,
-        string PersonaDescription,
-        string GlobalPreset,
-        string? SpeakerCharacterId,
-        GroupContextSnapshot? Group,
-        RetrievalContextOptions? Retrieval);
-
-    private sealed record GroupContextSnapshot(
-        GroupChatSettings Settings,
-        IReadOnlyList<GroupChatMember> Members,
-        IReadOnlyDictionary<string, string> MemberNames,
-        string? ManualSpeakerId);
 
     private sealed record SendSnapshot(
         string ConversationId,

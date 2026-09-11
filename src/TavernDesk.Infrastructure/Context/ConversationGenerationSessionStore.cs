@@ -10,24 +10,25 @@ namespace TavernDesk.Infrastructure.Context;
 /// owning or interrupting the underlying generation operation.
 /// </summary>
 public sealed class ConversationGenerationSessionStore
-    : IConversationGenerationSessionStore
+    : IConversationGenerationSessionStore, IConversationGenerationSessionUpdates
 {
     private readonly ConcurrentDictionary<string, SessionEntry> _active = new();
-    private readonly ConcurrentDictionary<string, ConversationGenerationSession>
-        _lastSnapshots = new();
+    private readonly ConcurrentDictionary<string, ConversationGenerationSessionUpdate>
+        _lastUpdates = new();
 
     public event EventHandler<ConversationGenerationSession>? SessionChanged;
+    public event EventHandler<ConversationGenerationSessionUpdate>? SessionUpdated;
 
     public ConversationGenerationSession Get(string conversationId)
     {
         if (_active.TryGetValue(conversationId, out var active))
         {
-            return active.Snapshot();
+            return active.Update().GetSnapshot();
         }
 
-        return _lastSnapshots.GetOrAdd(
+        return _lastUpdates.GetOrAdd(
             conversationId,
-            static id => Empty(id));
+            static id => new ConversationGenerationSessionUpdate(Empty(id))).GetSnapshot();
     }
 
     public bool TryBegin(string conversationId, out string operationId)
@@ -41,7 +42,7 @@ public sealed class ConversationGenerationSessionStore
             return false;
         }
 
-        Publish(entry.Snapshot());
+        Publish(entry.Update());
         return true;
     }
 
@@ -119,7 +120,7 @@ public sealed class ConversationGenerationSessionStore
             return;
         }
 
-        _lastSnapshots.TryRemove(conversationId, out _);
+        _lastUpdates.TryRemove(conversationId, out _);
     }
 
     private bool TryResolve(
@@ -132,10 +133,13 @@ public sealed class ConversationGenerationSessionStore
             operationId,
             StringComparison.Ordinal);
 
-    private void Publish(ConversationGenerationSession snapshot)
+    private void Publish(ConversationGenerationSessionUpdate update)
     {
-        _lastSnapshots[snapshot.ConversationId] = snapshot;
-        SessionChanged?.Invoke(this, snapshot);
+        // Keep the terminal version ready for reattachment and release its buffer.
+        if (!update.IsBusy) update.GetSnapshot();
+        _lastUpdates[update.ConversationId] = update;
+        SessionUpdated?.Invoke(this, update);
+        SessionChanged?.Invoke(this, update.GetSnapshot());
     }
 
     private static ConversationGenerationSession Empty(string conversationId) =>
@@ -157,7 +161,8 @@ public sealed class ConversationGenerationSessionStore
     private sealed class SessionEntry
     {
         private readonly object _sync = new();
-        private readonly StringBuilder _partialContent = new();
+        private StringBuilder _partialContent = new();
+        private ConversationGenerationSessionUpdate? _currentUpdate;
         private string? _messageId;
         private string? _senderId;
         private LiveReplyKind _replyKind;
@@ -182,7 +187,7 @@ public sealed class ConversationGenerationSessionStore
 
         public void Cancel() => _cancellation.Cancel();
 
-        public ConversationGenerationSession BeginReply(
+        public ConversationGenerationSessionUpdate BeginReply(
             string messageId,
             string senderId,
             LiveReplyKind replyKind)
@@ -192,18 +197,19 @@ public sealed class ConversationGenerationSessionStore
                 _messageId = messageId;
                 _senderId = senderId;
                 _replyKind = replyKind;
-                _partialContent.Clear();
+                // Older queued versions retain their own append-only buffer.
+                _partialContent = new StringBuilder();
                 _isThinking = false;
                 _sawReasoning = false;
                 _sawContent = false;
                 _usage = null;
                 _finishReason = null;
                 _updatedAt = DateTimeOffset.Now;
-                return SnapshotUnsafe();
+                return CreateUpdateUnsafe();
             }
         }
 
-        public ConversationGenerationSession Apply(
+        public ConversationGenerationSessionUpdate Apply(
             ProviderStreamEvent streamEvent)
         {
             lock (_sync)
@@ -230,43 +236,53 @@ public sealed class ConversationGenerationSessionStore
                 }
 
                 _updatedAt = DateTimeOffset.Now;
-                return SnapshotUnsafe();
+                return CreateUpdateUnsafe();
             }
         }
 
-        public ConversationGenerationSession End()
+        public ConversationGenerationSessionUpdate End()
         {
             lock (_sync)
             {
                 _isBusy = false;
                 _isThinking = false;
                 _updatedAt = DateTimeOffset.Now;
-                return SnapshotUnsafe();
+                return CreateUpdateUnsafe();
             }
         }
 
-        public ConversationGenerationSession Snapshot()
+        public ConversationGenerationSessionUpdate Update()
         {
             lock (_sync)
             {
-                return SnapshotUnsafe();
+                return _currentUpdate ?? CreateUpdateUnsafe();
             }
         }
 
-        private ConversationGenerationSession SnapshotUnsafe() =>
-            new(
+        private ConversationGenerationSessionUpdate CreateUpdateUnsafe()
+        {
+            var buffer = _partialContent;
+            var length = buffer.Length;
+            var metadata = new ConversationGenerationSession(
                 ConversationId,
                 OperationId,
                 _isBusy,
                 _messageId,
                 _senderId,
                 _replyKind,
-                _partialContent.ToString(),
+                string.Empty,
                 _isThinking,
                 _sawReasoning,
                 _sawContent,
                 _usage,
                 _finishReason,
                 _updatedAt);
+            return _currentUpdate = new ConversationGenerationSessionUpdate(metadata, () =>
+            {
+                // Capturing the prefix length, rather than reading the latest
+                // session, keeps delayed versions correct across replies/cancellation.
+                lock (_sync) return buffer.ToString(0, length);
+            });
+        }
     }
 }
