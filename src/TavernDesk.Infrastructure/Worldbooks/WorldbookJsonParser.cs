@@ -58,6 +58,14 @@ public static class WorldbookJsonParser
                 name = "未命名世界书";
             }
 
+            var entryCount = book["entries"] switch
+            {
+                JsonArray array => array.Count,
+                JsonObject map => map.Count,
+                _ => 0
+            };
+            if (entryCount > 20_000)
+                throw new InvalidDataException("世界书条目超过 20,000 个安全上限。");
             var entries = ReadEntryNodes(book["entries"]);
             var definitions = entries
                 .Select((item, index) => ReadEntry(

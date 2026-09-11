@@ -44,27 +44,27 @@ public sealed record IsolatedTestStartup(string Root, bool ProbeOnly, string? Ch
             }
             else
             {
-                throw new ArgumentException("测试模式支持 --test-root <绝对路径>、--test-reuse、--test-startup-probe 和 --test-character-card <绝对文件路径>。");
+                throw new ArgumentException("Test mode accepts --test-root <absolute-path>, --test-reuse, --test-startup-probe, and --test-character-card <absolute-file-path>.");
             }
         }
 
         if (string.IsNullOrWhiteSpace(root) || !Path.IsPathFullyQualified(root))
-            throw new ArgumentException("测试模式必须指定绝对路径，不能使用个人资料目录。");
+            throw new ArgumentException("Test mode requires an absolute path to a dedicated test workspace, never personal data.");
         root = Path.GetFullPath(root);
         if (File.Exists(root) || (Directory.Exists(root) && !reuse))
-            throw new ArgumentException("测试目录已经存在；请使用全新目录，不得复用或复制个人数据库。");
+            throw new ArgumentException("The test directory already exists. Use a fresh directory; never reuse or copy a personal database.");
 
         // Reject linked ancestors before creating any files in a test workspace.
         for (var parent = new DirectoryInfo(root); parent is not null; parent = parent.Parent)
             if (parent.Exists && parent.ResolveLinkTarget(false) is not null)
-                throw new ArgumentException("测试目录不能位于目录链接之下。");
+                throw new ArgumentException("The test directory must not be under a directory link.");
 
         if (Directory.Exists(root))
         {
             var marker = Path.Combine(root, MarkerFileName);
             if (!File.Exists(marker) || new FileInfo(marker).LinkTarget is not null ||
                 File.ReadAllText(marker) != "TavernDesk.TestWorkspace.v1\n" + root)
-                throw new ArgumentException("只能复用带有匹配标记的专用测试目录。");
+                throw new ArgumentException("Only a dedicated test directory with a matching marker can be reused.");
             // Check before descending: a marked profile must not redirect any later reads/writes.
             var pending = new Stack<DirectoryInfo>();
             pending.Push(new DirectoryInfo(root));
@@ -72,7 +72,7 @@ public sealed record IsolatedTestStartup(string Root, bool ProbeOnly, string? Ch
                 foreach (var entry in directory.EnumerateFileSystemInfos())
                 {
                     if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
-                        throw new ArgumentException("测试目录中不能包含文件或目录链接。");
+                        throw new ArgumentException("The test directory must not contain file or directory links.");
                     if (entry is DirectoryInfo child) pending.Push(child);
                 }
         }
@@ -80,7 +80,7 @@ public sealed record IsolatedTestStartup(string Root, bool ProbeOnly, string? Ch
         if (characterCard is not null)
         {
             if (!Path.IsPathFullyQualified(characterCard) || !File.Exists(characterCard))
-                throw new ArgumentException("测试角色卡必须是现有文件的绝对路径。");
+                throw new ArgumentException("The test character card must be an absolute path to an existing file.");
             characterCard = Path.GetFullPath(characterCard);
         }
         return new IsolatedTestStartup(root, probe, characterCard, reuse);

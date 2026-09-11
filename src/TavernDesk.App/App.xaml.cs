@@ -59,7 +59,7 @@ public partial class App : Application
                 _singleInstanceGate.Dispose();
                 _singleInstanceGate = null;
                 if (_testStartup is not null)
-                    throw new InvalidOperationException("已有 TavernDesk 实例运行；测试模式拒绝附着或操作该实例。");
+                    throw new InvalidOperationException("A TavernDesk instance is already running; test mode will not attach to or operate it.");
                 LocalizedMessageBox.Show(
                     LanguageRuntime.GetString("Startup.AlreadyRunning"),
                     "TavernDesk",
@@ -69,11 +69,22 @@ public partial class App : Application
                 return;
             }
 
-            var services = new InfrastructureServices(
-                _testStartup?.DataRoot ?? ParseDataRoot(e.Args),
-                _diagnostics,
-                _testStartup is null ? null : new AppDataConfiguration(
-                    _testStartup.ConfigurationRoot, _testStartup.DataRoot));
+            var explicitRoot = _testStartup?.DataRoot ?? ParseDataRoot(e.Args);
+            var dataConfiguration = _testStartup is null ? new AppDataConfiguration()
+                : new AppDataConfiguration(_testStartup.ConfigurationRoot, _testStartup.DataRoot);
+            try
+            {
+                await Task.Run(() => AppDataLocationService.ApplyPendingChangeAsync(
+                    dataConfiguration, explicitRoot));
+            }
+            catch (Exception exception)
+            {
+                LocalizedMessageBox.Show(
+                    LanguageRuntime.Format("Settings.DataRoot.StartupFailed", LanguageRuntime.ErrorMessage(exception)),
+                    LanguageRuntime.GetString("Interaction.ChangeDataRoot.Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            var services = new InfrastructureServices(explicitRoot, _diagnostics, dataConfiguration);
             var databaseExistedAtStartup = File.Exists(services.Paths.DatabasePath);
             var pendingLanguagePath = Path.Combine(
                 services.Paths.RootDirectory,

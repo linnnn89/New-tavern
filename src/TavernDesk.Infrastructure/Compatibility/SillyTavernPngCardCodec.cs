@@ -32,7 +32,7 @@ public sealed class SillyTavernPngCardCodec : ICharacterCardCodec
             throw new InvalidDataException("PNG 角色卡超过 256 MiB 安全上限。");
         }
 
-        var bytes = await File.ReadAllBytesAsync(path, cancellationToken);
+        var bytes = await ImportFileReader.ReadAsync(path, MaximumPngBytes, cancellationToken);
         var container = PngCardContainer.Parse(bytes);
         var entries = container.ReadTextEntries();
         var warnings = new List<string>();

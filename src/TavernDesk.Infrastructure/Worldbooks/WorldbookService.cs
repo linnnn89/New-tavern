@@ -1,3 +1,4 @@
+using TavernDesk.Infrastructure.Compatibility;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
@@ -105,6 +106,13 @@ public sealed class WorldbookService : IWorldbookService
         string? scopeId,
         CancellationToken cancellationToken = default)
     {
+        var prepared = await PrepareImportAsync(sourcePath, cancellationToken);
+        return await _repository.ImportAsync(prepared, scopeKind, scopeId, cancellationToken);
+    }
+
+    internal async Task<WorldbookImportResult> PrepareImportAsync(
+        string sourcePath, CancellationToken cancellationToken = default)
+    {
         var fullPath = Path.GetFullPath(sourcePath);
         var file = new FileInfo(fullPath);
         if (!file.Exists)
@@ -112,17 +120,21 @@ public sealed class WorldbookService : IWorldbookService
             throw new FileNotFoundException("世界书来源文件不存在。", fullPath);
         }
 
-        var sourceBytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
-        var sourceHash = Convert.ToHexString(SHA256.HashData(sourceBytes))
-            .ToLowerInvariant();
         var extension = file.Extension.ToLowerInvariant();
+        var maximumBytes = ImportFileReader.MaximumBytesFor(extension);
+        byte[]? sourceBytes = extension == ".json"
+            ? await ImportFileReader.ReadAsync(fullPath, maximumBytes, cancellationToken)
+            : null;
+        var sourceHash = sourceBytes is not null
+            ? Convert.ToHexString(SHA256.HashData(sourceBytes)).ToLowerInvariant()
+            : await ImportFileReader.HashAsync(fullPath, maximumBytes, cancellationToken);
         var warnings = new List<string>();
         string rawJson;
         WorldbookSourceKind sourceKind;
 
         if (extension == ".json")
         {
-            var text = Encoding.UTF8.GetString(sourceBytes).TrimStart('\uFEFF');
+            var text = Encoding.UTF8.GetString(sourceBytes!).TrimStart('\uFEFF');
             var parsed = WorldbookJsonParser.Parse(
                 text,
                 Path.GetFileNameWithoutExtension(fullPath));
@@ -165,41 +177,6 @@ public sealed class WorldbookService : IWorldbookService
         }
 
         warnings.AddRange(document.Diagnostics);
-        var effectiveScope = scopeKind is (WorldbookScopeKind.Character
-                                  or WorldbookScopeKind.Campaign)
-                              && !string.IsNullOrWhiteSpace(scopeId)
-            ? scopeKind
-            : WorldbookScopeKind.Global;
-        // The source hash identifies an imported working copy independently of
-        // where it is mounted. Re-importing identical bytes adds/re-enables the
-        // requested mount instead of duplicating entries and search indexes.
-        var existingWorldbook = (await _repository.ListAsync(cancellationToken))
-            .FirstOrDefault(book =>
-                string.Equals(book.SourceSha256, sourceHash, StringComparison.OrdinalIgnoreCase)
-                && book.SourceKind == sourceKind);
-        if (existingWorldbook is not null)
-        {
-            var existingEntries = await _repository.ListEntriesAsync(
-                existingWorldbook.Id,
-                cancellationToken);
-            await _repository.UpsertMountAsync(
-                new WorldbookMount
-                {
-                    WorldbookId = existingWorldbook.Id,
-                    ScopeKind = effectiveScope,
-                    ScopeId = effectiveScope is (WorldbookScopeKind.Character
-                        or WorldbookScopeKind.Campaign)
-                        ? scopeId!.Trim()
-                        : string.Empty,
-                    SortIndex = 100,
-                    IsEnabled = true,
-                    MountedRevision = existingWorldbook.Revision
-                },
-                cancellationToken);
-            warnings.Add("来源内容的 SHA-256 与已有世界书一致；已复用已有工作副本并补充当前挂载，不重复创建索引。" );
-            return new WorldbookImportResult(existingWorldbook, existingEntries, warnings);
-        }
-
         var worldbook = new Worldbook
         {
             Name = document.Name,
@@ -217,23 +194,6 @@ public sealed class WorldbookService : IWorldbookService
             UpdatedAt = DateTimeOffset.Now
         };
         var entries = BindEntries(worldbook.Id, document.Entries, warnings);
-        await _repository.UpsertAsync(worldbook, entries, cancellationToken);
-
-        await _repository.UpsertMountAsync(
-            new WorldbookMount
-            {
-                WorldbookId = worldbook.Id,
-                ScopeKind = effectiveScope,
-                ScopeId = effectiveScope is (WorldbookScopeKind.Character
-                    or WorldbookScopeKind.Campaign)
-                    ? scopeId!.Trim()
-                    : string.Empty,
-                SortIndex = 100,
-                IsEnabled = true,
-                MountedRevision = worldbook.Revision
-            },
-            cancellationToken);
-
         return new WorldbookImportResult(worldbook, entries, warnings);
     }
 

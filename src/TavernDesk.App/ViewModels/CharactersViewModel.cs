@@ -346,7 +346,7 @@ public sealed class CharactersViewModel : ViewModelBase
     public Task<bool> ConfirmCanLeaveAsync() =>
         ConfirmCanLeaveAsync(_characterSession);
 
-    private async Task ImportAsync()
+    public async Task ImportAsync()
     {
         var sessionAtStart = _characterSession;
         if (!await ConfirmCanLeaveAsync(sessionAtStart)

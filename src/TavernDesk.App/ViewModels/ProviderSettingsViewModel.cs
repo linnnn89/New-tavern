@@ -725,6 +725,22 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 : LanguageRuntime.Format(
                     "Settings.DataRoot.ConfigFormat",
                     _dataLocation.ConfigurationPath);
+        if (_dataLocation is not null && !_dataLocation.IsExternallyOverridden)
+        {
+            try
+            {
+                if (_dataLocation.PendingRoot is { } pendingRoot)
+                {
+                    DataRoot = pendingRoot;
+                    DataRootStatus = LanguageRuntime.Format("Settings.DataRoot.PendingFormat",
+                        _dataLocation.CurrentRoot, pendingRoot);
+                }
+            }
+            catch (Exception exception)
+            {
+                DataRootStatus = LanguageRuntime.Format("Settings.DataRoot.FailedFormat", LanguageRuntime.ErrorMessage(exception));
+            }
+        }
     }
 
     private async Task LoadDiagnosticsSettingsAsync()
@@ -940,6 +956,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 _dataLocation.CurrentRoot,
                 StringComparison.OrdinalIgnoreCase))
         {
+            await _dataLocation.ScheduleRootChangeAsync(requestedRoot, DataRootMigrationMode.KeepTargetAsIs);
             DataRoot = requestedRoot;
             DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Unchanged");
             return;
@@ -959,16 +976,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             var mode = decision == DataRootMigrationDecision.CopyCurrentData
                 ? DataRootMigrationMode.CopyCurrentData
                 : DataRootMigrationMode.KeepTargetAsIs;
-            var result = await _dataLocation.ChangeRootAsync(
+            await _dataLocation.ScheduleRootChangeAsync(
                 requestedRoot,
                 mode);
-            DataRoot = result.NewRoot;
-            DataRootStatus = result.Migrated
-                ? LanguageRuntime.Format(
-                    "Settings.DataRoot.MigratedFormat",
-                    result.CopiedFiles,
-                    result.CopiedBytes)
-                : LanguageRuntime.GetString("Settings.DataRoot.Switched");
+            DataRoot = requestedRoot;
+            DataRootStatus = LanguageRuntime.GetString("Settings.DataRoot.Scheduled");
         }
         catch (Exception exception)
         {

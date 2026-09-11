@@ -62,7 +62,14 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
     {
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
+        await UpsertAsync(character, connection, null, cancellationToken);
+    }
+
+    internal async Task UpsertAsync(Character character, SqliteConnection connection,
+        SqliteTransaction? transaction, CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO characters(
                 id, name, description, personality, scenario, first_message,

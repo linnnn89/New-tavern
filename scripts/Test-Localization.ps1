@@ -198,7 +198,9 @@ foreach ($file in $buttonXamlFiles) {
         foreach ($value in $values) {
             $isMarkup = $value.StartsWith('{')
             $isGlyphOnly = $value -match '^[\p{P}\p{S}\p{Co}\s]+$'
-            if (-not $isMarkup -and -not $isGlyphOnly) {
+            # Dice expressions are language-independent notation, not prose labels.
+            $isDiceNotation = $file.Name -eq 'CampaignsView.xaml' -and $value -in @('1d20', '2d6', '1d100')
+            if (-not $isMarkup -and -not $isGlyphOnly -and -not $isDiceNotation) {
                 $relativePath = $file.FullName.Substring($appRoot.Length + 1)
                 $unlocalizedButtonText.Add("${relativePath}: $value")
             }

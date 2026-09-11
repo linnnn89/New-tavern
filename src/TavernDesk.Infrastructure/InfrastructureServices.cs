@@ -108,18 +108,20 @@ public sealed class InfrastructureServices
             new SillyTavernJsonCardCodec(),
             new SillyTavernCharxCardCodec()
         ];
-        WorldbookService = new WorldbookService(
+        var worldbookService = new WorldbookService(
             Worldbooks,
             ModelAssignments,
             EmbeddingProviderGateway,
             CharacterCardCodecs,
             MacroEngine,
             Providers);
+        WorldbookService = worldbookService;
         CharacterCards = new CharacterCardLibrary(
             Paths,
             Characters,
             CharacterCardCodecs,
-            WorldbookService);
+            worldbookService,
+            new SqliteCharacterImportStore(Database, Paths));
         ContextAssembler = new BasicContextAssembler(
             Conversations,
             Characters,

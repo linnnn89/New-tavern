@@ -83,6 +83,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private bool _isGroupAutoRelayCountdownVisible;
     private CancellationTokenSource? _groupAutoRelayCountdownCancellation;
     private bool _disposed;
+    private readonly GenerationSessionUpdateQueue _sessionUpdates;
 
     public ChatViewModel(
         IConversationRepository repository,
@@ -112,6 +113,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         TimeSpan? groupAutoRelayDelay = null,
         ChatReplyExecutor? chatReplies = null)
     {
+        _sessionUpdates = new GenerationSessionUpdateQueue(Application.Current?.Dispatcher, ApplyGenerationSession);
         _repository = repository;
         _characters = characters;
         _groupChats = groupChats;
@@ -3245,14 +3247,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         object? sender,
         ConversationGenerationSession session)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            dispatcher.BeginInvoke(() => ApplyGenerationSession(session));
-            return;
-        }
-
-        ApplyGenerationSession(session);
+        _sessionUpdates.Post(session);
     }
 
     private void ApplyGenerationSession(ConversationGenerationSession session)
@@ -3319,8 +3314,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return;
         }
 
-        item.Message.Content = session.PartialContent;
-        item.RefreshContent();
+        if (!string.Equals(item.Message.Content, session.PartialContent, StringComparison.Ordinal))
+        {
+            item.Message.Content = session.PartialContent;
+            item.RefreshContent();
+        }
     }
 
     private void ScheduleCompletedSessionReload(
@@ -3419,6 +3417,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         // Disposing a window releases UI subscriptions and local preview loads;
         // provider generation is application-owned and continues for other views.
         _disposed = true;
+        _sessionUpdates.Dispose();
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
         _generationSessions.SessionChanged -= OnGenerationSessionChanged;
         _personas.PropertyChanged -= OnPersonaManagerPropertyChanged;
