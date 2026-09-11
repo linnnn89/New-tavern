@@ -214,6 +214,22 @@ public sealed class CampaignsViewModel : ViewModelBase
     }
 
     public CampaignScenarioEditorViewModel ScenarioEditor { get; }
+    public Task OfferScenarioRecoveryAsync() => RunUiAsync(async () =>
+    {
+        if (ScenarioEditor.HasActiveEdit || _scenarios is not ICampaignScenarioDraftRepository drafts) return;
+        foreach (var draft in await Task.Run(() => drafts.ListEditDraftsAsync()))
+        {
+            var choice = _interaction.ConfirmScenarioRecovery(draft);
+            if (choice == true)
+            {
+                await ScenarioEditor.RestoreDraftAsync(draft);
+                ShowScreen("scenario-editor");
+                return;
+            }
+            if (choice == false) await Task.Run(() => drafts.DeleteEditDraftAsync(draft.Id));
+            else return;
+        }
+    });
 
     public ObservableCollection<CampaignScenario> Scenarios { get; } = [];
     public ObservableCollection<CampaignSummaryItemViewModel> Campaigns { get; } = [];
@@ -1094,7 +1110,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             await RefreshLibraryAsync();
             var wasEditingScenario = IsScenarioEditor;
             var wasCreatingScenario = IsCreatingScenario;
-            ScenarioEditor.EndEdit();
+            await ScenarioEditor.DiscardDraftAsync();
             ShowScreen("library");
             StatusText = wasEditingScenario
                 ? wasCreatingScenario
@@ -1602,6 +1618,7 @@ public sealed class CampaignsViewModel : ViewModelBase
 
     public async Task<bool> ConfirmCanLeaveAsync()
     {
+        await ScenarioEditor.FlushDraftAsync();
         if (!IsLobby)
         {
             return true;

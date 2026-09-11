@@ -549,7 +549,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Interface.LanguageRestartHelp">Restart TavernDesk after saving to apply. Character cards, chat content, and prompts sent to models are not translated.</sys:String>
     <sys:String x:Key="Settings.Interface.Scale">Interface scale</sys:String>
     <sys:String x:Key="Settings.Interface.ScaleHelp">Change the size of text, buttons, navigation, and other interface elements.</sys:String>
-    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">Affects TavernDesk only and combines with Windows display scaling. Selection previews immediately.</sys:String>
+    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">Reverting in 10 seconds unless confirmed.</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">Global font</sys:String>
     <sys:String x:Key="Settings.Interface.Font">Font</sys:String>
     <sys:String x:Key="Settings.Interface.FontSizeHelp">Font size range: 10–32. Chat body text is one step larger.</sys:String>
@@ -1561,4 +1561,20 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Dashboard.StartChat">Choose a character to chat</sys:String>
     <sys:String x:Key="Dashboard.OpenCharacters">Manage characters</sys:String>
     <sys:String x:Key="Dashboard.OpenConversations">Open conversations</sys:String>
+    <sys:String x:Key="Recovery.Title">Recover unsaved scenario</sys:String>
+    <sys:String x:Key="Recovery.Prompt">Unfinished editing: {0}&#10;Saved locally: {1:g}&#10;Recover it? Discard removes only the recovery draft. Close this window to decide later.</sys:String>
+    <sys:String x:Key="Recovery.Accept">Recover editing</sys:String>
+    <sys:String x:Key="Recovery.Discard">Discard draft</sys:String>
+    <sys:String x:Key="Recovery.Ready">Edits are preserved locally every second. Use Save scenario to publish them to your library.</sys:String>
+    <sys:String x:Key="Recovery.Saved">Recovery draft preserved locally</sys:String>
+    <sys:String x:Key="Recovery.Restored">Previous editing recovered. Review it before saving.</sys:String>
+    <sys:String x:Key="Recovery.ConflictCopy">The original changed or was deleted. This recovery will be saved as a new scenario to preserve both versions.</sys:String>
+    <sys:String x:Key="Recovery.Failed">Could not preserve draft: {0}. Keep this window open and retry.</sys:String>
+    <sys:String x:Key="ScaleConfirm.Title">Confirm interface scale</sys:String>
+    <sys:String x:Key="ScaleConfirm.Prompt">Previewing {0}% scale. Keep this setting?</sys:String>
+    <sys:String x:Key="ScaleConfirm.Accept">Keep this scale</sys:String>
+    <sys:String x:Key="ScaleConfirm.Revert">Restore previous scale</sys:String>
+    <sys:String x:Key="ScaleConfirm.Countdown">Reverting in {0} seconds unless confirmed.</sys:String>
+    <sys:String x:Key="ScaleConfirm.Saved">Scale confirmed and saved.</sys:String>
+    <sys:String x:Key="ScaleConfirm.Reverted">Previous scale restored.</sys:String>
 </ResourceDictionary>

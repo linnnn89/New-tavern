@@ -93,13 +93,14 @@ Campaign mode is a separate runtime, not group chat with an extra GM prompt.
 - Recorded `1d20` action rolls plus optional public dice expressions.
 - Deterministic validation before a GM result advances the round or updates persistent campaign state.
 - Campaign-specific public and GM memory, context budgets, cancellation, and explicit retries.
-- Scenario content and worldbook bindings save together. A failed save keeps the draft for retry; returning to the library discards unsaved edits.
+- Scenario content and worldbook bindings save atomically. Edits are also preserved locally every second and flushed before normal exit. On returning to Campaigns, recover or explicitly discard the previous draft; closing that prompt keeps it for later. Saving clears the draft in the same transaction; returning to the scenario library discards it. If the original changed or disappeared, recovery saves as a new scenario. An abrupt process failure can still lose edits made since the last completed draft write.
 
 ### Desktop experience
 
 - Native WPF interface for Windows 10/11 x64.
 - Four-column chat workspace with a collapsible context inspector.
-- Light and charcoal-dark themes, interface scaling, and configurable fonts. Theme and scale changes preview immediately; Save persists interface preferences and applies fonts and chat auto-scroll. Language changes take effect after saving and restarting. Restore defaults still requires Save to persist.
+- New workspaces start at 100% application scale. Every scale change opens an always-on-top confirmation window, independent of application zoom: confirm within 10 seconds to persist that scale, or it automatically restores the previous setting. Closing the dialog also reverts. Other interface preferences, including restored defaults, still use Save; language changes require a restart. Existing saved scale preferences are retained.
+- At 100% application scale, the main window can shrink to 500 logical units in height. Interface settings stack labels above selectors, and key scenario fields, the chat composer, and scale controls expose accessible names. History reads run off the UI thread, and long histories are applied in batches so input and cancellation can be processed. Windows DPI scaling remains separate from application zoom.
 - Interface languages: Simplified Chinese, Traditional Chinese, English, and Japanese.
 - First-run language selection for a new workspace; later changes are available in Settings.
 

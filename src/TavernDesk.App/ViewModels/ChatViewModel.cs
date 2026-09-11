@@ -703,8 +703,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         return conversation;
     }
 
-    private Task ReloadGroupsAsync(string? preferredConversationId) =>
-        _conversationBrowser.ReloadAsync(() => preferredConversationId, ApplyConversationFilter);
+    private async Task ReloadGroupsAsync(string? preferredConversationId)
+    {
+        await _conversationBrowser.ReloadAsync(() => preferredConversationId, ApplyConversationFilter);
+        await _selectionLoadTask;
+    }
 
     private void ApplyConversationFilter(string? preferredConversationId = null)
     {
@@ -803,10 +806,16 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     {
         try
         {
-            var messagesTask = _repository.ListMessagesAsync(conversation.Id, cancellationToken);
-            var conversationTask = _repository.GetAsync(conversation.Id, cancellationToken);
-            await Task.WhenAll(messagesTask, conversationTask);
-            var loadedConversation = conversationTask.Result
+            // Microsoft.Data.Sqlite's async methods still execute synchronously.
+            // Keep the complete history read off the dispatcher, then apply only the current selection.
+            var snapshot = await Task.Run(async () =>
+            {
+                var messages = await _repository.ListMessagesAsync(conversation.Id, cancellationToken);
+                var selected = await _repository.GetAsync(conversation.Id, cancellationToken);
+                var candidates = await _repository.ListCandidatesForConversationAsync(conversation.Id, cancellationToken);
+                return (messages, selected, candidates);
+            }, cancellationToken);
+            var loadedConversation = snapshot.selected
                 ?? throw new InvalidOperationException(
                     LanguageRuntime.GetString("Chat.ConversationMissing"));
 
@@ -817,11 +826,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
-            var loadedMessages = messagesTask.Result;
-            var candidatesByMessage =
-                await _repository.ListCandidatesForConversationAsync(
-                    conversation.Id,
-                    cancellationToken);
+            var loadedMessages = snapshot.messages;
+            var candidatesByMessage = snapshot.candidates;
             if (cancellationToken.IsCancellationRequested
                 || version != _selectionVersion
                 || SelectedConversation?.Id != conversation.Id)
@@ -832,6 +838,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             Messages.Clear();
             for (var index = 0; index < loadedMessages.Count; index++)
             {
+                if (index > 0 && index % 50 == 0 && System.Windows.Application.Current?.Dispatcher.CheckAccess() == true)
+                {
+                    await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
+                    if (cancellationToken.IsCancellationRequested || version != _selectionVersion
+                        || SelectedConversation?.Id != conversation.Id) return;
+                }
                 var message = loadedMessages[index];
                 if (loadedConversation.Mode == ConversationMode.Group
                     && message.SenderKind == MessageSenderKind.Character
@@ -2717,8 +2729,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             Retrieval: Retrieval.Snapshot());
     }
 
-    private Task ReloadGroupsPreservingSelectionAsync() =>
-        _conversationBrowser.ReloadAsync(() => SelectedConversation?.Id, ApplyConversationFilter);
+    private async Task ReloadGroupsPreservingSelectionAsync()
+    {
+        await _conversationBrowser.ReloadAsync(() => SelectedConversation?.Id, ApplyConversationFilter);
+        // Relay and save continuations need the restored memory/group state, not only the list selection.
+        await _selectionLoadTask;
+    }
 
     private static string FormatAdditionalRequirement(string requirement) =>
         string.IsNullOrWhiteSpace(requirement)

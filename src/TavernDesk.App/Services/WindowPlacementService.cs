@@ -19,6 +19,8 @@ public sealed class WindowPlacementService
         double fallbackWidth,
         double fallbackHeight)
     {
+        window.MinWidth = Math.Min(window.MinWidth, SystemParameters.WorkArea.Width);
+        window.MinHeight = Math.Min(window.MinHeight, SystemParameters.WorkArea.Height);
         window.Width = await ReadDimensionAsync(
             $"{key}.width",
             fallbackWidth,
@@ -77,6 +79,6 @@ public sealed class WindowPlacementService
             value = minimum;
         }
 
-        return Math.Clamp(value, minimum, Math.Max(minimum, maximum));
+        return Math.Clamp(value, Math.Min(minimum, maximum), maximum);
     }
 }
