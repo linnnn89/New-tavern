@@ -549,7 +549,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Interface.LanguageRestartHelp">儲存後重啟 TavernDesk 生效；不會翻譯角色卡、聊天內容或發送給模型的提示詞。</sys:String>
     <sys:String x:Key="Settings.Interface.Scale">介面縮放</sys:String>
     <sys:String x:Key="Settings.Interface.ScaleHelp">更改文字、按鈕、導覽和其他介面元素的大小。</sys:String>
-    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">只影響 TavernDesk，並會與 Windows 顯示縮放疊加。選擇後立即預覽。</sys:String>
+    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒內未確認，將自動還原原比例。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">全域字型</sys:String>
     <sys:String x:Key="Settings.Interface.Font">字型</sys:String>
     <sys:String x:Key="Settings.Interface.FontSizeHelp">字級範圍 10–32；聊天內文會在此基礎上增加一級。</sys:String>
@@ -1561,4 +1561,20 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Dashboard.StartChat">選擇角色開始聊天</sys:String>
     <sys:String x:Key="Dashboard.OpenCharacters">管理角色</sys:String>
     <sys:String x:Key="Dashboard.OpenConversations">開啟對話</sys:String>
+    <sys:String x:Key="Recovery.Title">復原未儲存的劇本</sys:String>
+    <sys:String x:Key="Recovery.Prompt">發現上次未完成的編輯：{0}&#10;保留時間：{1:g}&#10;是否復原？捨棄只會清除復原草稿，不會刪除正式劇本。關閉視窗可稍後處理。</sys:String>
+    <sys:String x:Key="Recovery.Accept">復原編輯</sys:String>
+    <sys:String x:Key="Recovery.Discard">捨棄草稿</sys:String>
+    <sys:String x:Key="Recovery.Ready">編輯將每秒自動保留到本機；正式儲存仍需點擊儲存劇本。</sys:String>
+    <sys:String x:Key="Recovery.Saved">復原草稿已保留到本機</sys:String>
+    <sys:String x:Key="Recovery.Restored">已復原上次編輯，請檢查後儲存。</sys:String>
+    <sys:String x:Key="Recovery.ConflictCopy">原劇本已變更或被刪除；本次復原將另存為新劇本，保留兩個版本。</sys:String>
+    <sys:String x:Key="Recovery.Failed">草稿保留失敗：{0}。請保留此視窗並重試。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Title">確認介面縮放</sys:String>
+    <sys:String x:Key="ScaleConfirm.Prompt">已預覽 {0}% 縮放。是否保留此比例？</sys:String>
+    <sys:String x:Key="ScaleConfirm.Accept">保留此縮放</sys:String>
+    <sys:String x:Key="ScaleConfirm.Revert">還原原比例</sys:String>
+    <sys:String x:Key="ScaleConfirm.Countdown">{0} 秒內未確認，將自動還原原比例。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Saved">縮放比例已確認並儲存。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Reverted">已還原之前的縮放比例。</sys:String>
 </ResourceDictionary>

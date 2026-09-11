@@ -38,7 +38,7 @@
                                     Style="{StaticResource AppicaHeaderActionButtonStyle}" />
                         </StackPanel>
                     </Grid>
-                    <TextBox Text="{Binding ConversationSearchText, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox AutomationProperties.Name="{StaticResource Chat.SearchToolTip}" Text="{Binding ConversationSearchText, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource AppicaConversationSearchStyle}"
                              ToolTip="{StaticResource Chat.SearchToolTip}" />
                 </StackPanel>
@@ -836,6 +836,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBox Grid.Row="0"
+                             AutomationProperties.Name="{StaticResource Chat.ComposerToolTip}"
                              Text="{Binding ComposerText, UpdateSourceTrigger=PropertyChanged}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"

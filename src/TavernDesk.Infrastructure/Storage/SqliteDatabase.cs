@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 23;
+    public const int CurrentSchemaVersion = 24;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -18,7 +18,6 @@ public sealed class SqliteDatabase : IDatabaseInitializer
         {
             DataSource = _paths.DatabasePath,
             Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared,
             ForeignKeys = true
         }.ToString();
 
@@ -1115,6 +1114,13 @@ public sealed class SqliteDatabase : IDatabaseInitializer
 
             ALTER TABLE group_chat_settings
                 DROP COLUMN pause_on_user_mention;
+            """),
+        new(24, """
+            CREATE TABLE scenario_edit_drafts (
+                id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                saved_at TEXT NOT NULL
+            );
             """)
     ];
 

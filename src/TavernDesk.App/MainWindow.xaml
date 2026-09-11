@@ -7,7 +7,7 @@
         Width="1440"
         Height="900"
         MinWidth="1080"
-        MinHeight="640"
+        MinHeight="500"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         Background="{DynamicResource AppicaShellCanvasBrush}">
@@ -272,6 +272,7 @@
 
                         <Button Margin="0,12,0,0"
                                 Command="{Binding StopAllGenerationCommand}"
+                                AutomationProperties.Name="{StaticResource Shell.StopAll.Label}"
                                 ToolTip="{StaticResource Shell.StopAll.ToolTip}"
                                 Style="{StaticResource AppicaShellStopButtonStyle}">
                             <StackPanel Orientation="Horizontal">

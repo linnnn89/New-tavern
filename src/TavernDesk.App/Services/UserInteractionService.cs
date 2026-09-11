@@ -32,6 +32,8 @@ public sealed record GroupChatDraft(
 
 public interface IUserInteractionService
 {
+    bool? ConfirmScenarioRecovery(CampaignScenarioEditDraft draft) => null;
+    bool ConfirmInterfaceScale(int percent) => false;
     void ShowWarning(string title, string message)
     {
         LocalizedMessageBox.Show(
@@ -73,6 +75,21 @@ public interface IUserInteractionService
 
 public sealed class UserInteractionService : IUserInteractionService
 {
+    public bool? ConfirmScenarioRecovery(CampaignScenarioEditDraft draft)
+    {
+        var dialog = new SafeChoiceDialog(LanguageRuntime.GetString("Recovery.Title"),
+            LanguageRuntime.Format("Recovery.Prompt", draft.Scenario.Title, draft.SavedAt.ToLocalTime()),
+            LanguageRuntime.GetString("Recovery.Accept"), LanguageRuntime.GetString("Recovery.Discard"))
+            { Owner = Application.Current.MainWindow };
+        // Closing the title bar preserves the draft; only the explicit discard button deletes it.
+        dialog.ShowDialog();
+        return dialog.Choice;
+    }
+
+    public bool ConfirmInterfaceScale(int percent) => new SafeChoiceDialog(
+        LanguageRuntime.GetString("ScaleConfirm.Title"), LanguageRuntime.Format("ScaleConfirm.Prompt", percent),
+        LanguageRuntime.GetString("ScaleConfirm.Accept"), LanguageRuntime.GetString("ScaleConfirm.Revert"), timed: true)
+        { Owner = Application.Current.MainWindow }.ShowDialog() == true;
     private readonly WindowPlacementService _windowPlacement;
 
     public UserInteractionService(WindowPlacementService windowPlacement)

@@ -56,7 +56,7 @@
                 </ListBox>
             </ScrollViewer>
 
-            <TabControl Grid.Column="2"
+            <TabControl x:Name="SettingsPages" Grid.Column="2" Visibility="Collapsed"
                         Style="{StaticResource SettingsContentTabControlStyle}"
                         SelectedValuePath="Tag"
                         SelectedValue="{Binding SelectedSettingsPage, Mode=TwoWay}">
@@ -923,11 +923,7 @@
                                    Foreground="{DynamicResource MutedTextBrush}" />
 
                         <Border Style="{StaticResource CardStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                            <StackPanel>
                                 <StackPanel Margin="0,0,18,0">
                                     <TextBlock Text="{StaticResource Settings.Interface.Language}"
                                                Style="{StaticResource SectionTitleStyle}" />
@@ -940,24 +936,20 @@
                                                TextWrapping="Wrap"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
-                                <ComboBox Grid.Column="1"
+                                <ComboBox AutomationProperties.Name="{StaticResource Settings.Interface.Language}" Margin="0,10,0,0"
                                           Width="190"
-                                          HorizontalAlignment="Right"
+                                          HorizontalAlignment="Left"
                                           VerticalAlignment="Center"
                                           ItemsSource="{Binding LanguageOptions}"
                                           DisplayMemberPath="NativeName"
                                           SelectedItem="{Binding SelectedLanguageOption, Mode=TwoWay}" />
-                            </Grid>
+                            </StackPanel>
                         </Border>
 
                         <Border Margin="0,12,0,0"
                                 Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <StackPanel>
                                     <StackPanel Margin="0,0,18,0">
                                         <TextBlock Text="{StaticResource Settings.Interface.Scale}"
                                                    Style="{StaticResource SectionTitleStyle}" />
@@ -968,14 +960,14 @@
                                                    Text="{StaticResource Settings.Interface.ScalePreviewHelp}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
-                                    <ComboBox Grid.Column="1"
+                                    <ComboBox AutomationProperties.Name="{StaticResource Settings.Interface.Scale}" Margin="0,10,0,0"
                                               Width="190"
-                                              HorizontalAlignment="Right"
+                                              HorizontalAlignment="Left"
                                               VerticalAlignment="Center"
                                               ItemsSource="{Binding AvailableInterfaceScaleOptions}"
                                               DisplayMemberPath="Label"
                                               SelectedItem="{Binding SelectedInterfaceScaleOption, Mode=TwoWay}" />
-                                </Grid>
+                                </StackPanel>
                                 <TextBlock Margin="0,12,0,0"
                                            Text="{Binding InterfaceScaleRecommendationText}"
                                            TextWrapping="Wrap"
@@ -990,7 +982,7 @@
                                            Style="{StaticResource SectionTitleStyle}" />
                                 <TextBlock Margin="0,7,0,4"
                                            Text="{StaticResource Settings.Interface.Font}" />
-                                <ComboBox ItemsSource="{Binding AvailableInterfaceFontFamilies}"
+                                <ComboBox AutomationProperties.Name="{StaticResource Settings.Interface.Font}" ItemsSource="{Binding AvailableInterfaceFontFamilies}"
                                           SelectedItem="{Binding InterfaceFontFamily}"
                                           IsTextSearchEnabled="True" />
 
@@ -999,7 +991,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="54" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider Minimum="10"
+                                    <Slider AutomationProperties.Name="{StaticResource Settings.Interface.FontSizeHelp}" Minimum="10"
                                             Maximum="32"
                                             TickFrequency="1"
                                             IsSnapToTickEnabled="True"
@@ -1026,11 +1018,7 @@
 
                         <Border Margin="0,12,0,0"
                                  Style="{StaticResource CardStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                            <StackPanel>
                                 <StackPanel Margin="0,0,18,0">
                                     <TextBlock Text="{StaticResource Settings.Interface.Theme}"
                                                Style="{StaticResource SectionTitleStyle}" />
@@ -1042,14 +1030,14 @@
                                                Text="{StaticResource Settings.Interface.ThemePreviewHelp}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
-                                <ComboBox Grid.Column="1"
+                                <ComboBox AutomationProperties.Name="{StaticResource Settings.Interface.Theme}" Margin="0,10,0,0"
                                           Width="190"
-                                          HorizontalAlignment="Right"
+                                          HorizontalAlignment="Left"
                                           VerticalAlignment="Center"
                                           ItemsSource="{Binding AvailableInterfaceThemeOptions}"
                                           DisplayMemberPath="Label"
                                           SelectedItem="{Binding SelectedInterfaceThemeOption, Mode=TwoWay}" />
-                            </Grid>
+                            </StackPanel>
                         </Border>
 
                         <StackPanel Margin="0,12,0,0"
@@ -1215,6 +1203,8 @@
                 </ScrollViewer>
             </TabItem>
             </TabControl>
+            <ContentControl Grid.Column="2" Content="{Binding SelectedContent, ElementName=SettingsPages}"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
         </Grid>
     </Grid>
 </UserControl>

@@ -1,10 +1,11 @@
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 
 namespace TavernDesk.Infrastructure.Storage;
 
-public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioRepository
+public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioRepository, ICampaignScenarioDraftRepository
 {
     private readonly SqliteDatabase _database;
     private readonly AppDataPaths _paths;
@@ -80,6 +81,59 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
         CampaignScenario scenario,
         IReadOnlyList<CampaignScenarioWorldbookBinding> bindings,
         CancellationToken cancellationToken = default)
+        => await SaveCoreAsync(scenario, bindings, null, cancellationToken);
+
+    public Task CommitEditDraftAsync(CampaignScenarioEditDraft draft, CancellationToken cancellationToken = default)
+        => SaveCoreAsync(draft.Scenario, draft.Bindings, draft, cancellationToken);
+
+    public async Task<IReadOnlyList<CampaignScenarioEditDraft>> ListEditDraftsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT payload FROM scenario_edit_drafts ORDER BY saved_at DESC;";
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var result = new List<CampaignScenarioEditDraft>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var draft = JsonSerializer.Deserialize<CampaignScenarioEditDraft>(reader.GetString(0))
+                ?? throw new InvalidDataException("Invalid scenario recovery draft.");
+            draft.Scenario.CoverPath = _paths.ResolveManagedPath(draft.Scenario.CoverPath,
+                AppDataPaths.CampaignScenarioCardsDirectoryName, draft.Scenario.Id);
+            result.Add(draft);
+        }
+        return result;
+    }
+
+    public async Task WriteEditDraftAsync(CampaignScenarioEditDraft draft, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(draft.Id);
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO scenario_edit_drafts(id,payload,saved_at) VALUES($id,$payload,$time) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,saved_at=excluded.saved_at;";
+        command.Parameters.AddWithValue("$id", draft.Id);
+        var payload = JsonSerializer.SerializeToNode(draft)!;
+        payload["Scenario"]!["CoverPath"] = _paths.ToManagedStoredPath(draft.Scenario.CoverPath,
+            AppDataPaths.CampaignScenarioCardsDirectoryName, draft.Scenario.Id);
+        command.Parameters.AddWithValue("$payload", payload.ToJsonString());
+        command.Parameters.AddWithValue("$time", draft.SavedAt.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task DeleteEditDraftAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM scenario_edit_drafts WHERE id=$id;";
+        command.Parameters.AddWithValue("$id", id);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private async Task SaveCoreAsync(CampaignScenario scenario,
+        IReadOnlyList<CampaignScenarioWorldbookBinding> bindings,
+        CampaignScenarioEditDraft? recovery, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scenario);
         ArgumentException.ThrowIfNullOrWhiteSpace(scenario.Title);
@@ -97,6 +151,17 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
         await using var connection = _database.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction();
+        if (recovery is not null)
+        {
+            await using var check = connection.CreateCommand();
+            check.Transaction = transaction;
+            check.CommandText = "SELECT updated_at FROM campaign_scenarios WHERE id=$id;";
+            check.Parameters.AddWithValue("$id", scenario.Id);
+            var current = await check.ExecuteScalarAsync(cancellationToken) as string;
+            var expected = scenario.Id == recovery.Id ? recovery.BaseUpdatedAt : null;
+            if (current is null ? expected is not null : expected is null || DateTimeOffset.Parse(current) != expected)
+                throw new InvalidOperationException("The saved scenario changed. Recover this draft as a new scenario to keep both versions.");
+        }
         await UpsertAsync(scenario, connection, transaction, cancellationToken);
         var worldbooks = new SqliteWorldbookRepository(_database, _paths);
         var sortIndex = 100;
@@ -121,6 +186,14 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
                     WorldbookScopeKind.Campaign, scenario.Id,
                     connection, transaction, cancellationToken);
             }
+        }
+        if (recovery is not null)
+        {
+            await using var clear = connection.CreateCommand();
+            clear.Transaction = transaction;
+            clear.CommandText = "DELETE FROM scenario_edit_drafts WHERE id=$id;";
+            clear.Parameters.AddWithValue("$id", recovery.Id);
+            await clear.ExecuteNonQueryAsync(cancellationToken);
         }
         await transaction.CommitAsync(cancellationToken);
     }

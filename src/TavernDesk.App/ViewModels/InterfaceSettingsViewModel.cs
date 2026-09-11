@@ -35,6 +35,10 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
     ];
 
     private readonly IAppSettingsRepository? _appSettings;
+    private readonly Func<int, bool>? _confirmScale;
+    private bool _loadingScale;
+    private bool _scalePending;
+    public Task PendingScaleChange { get; private set; } = Task.CompletedTask;
     private readonly IInterfaceScaleRecommendationProvider? _interfaceScaleRecommendationProvider;
     private bool _chatAutoScrollEnabled =
         InterfaceSettingsRuntime.DefaultChatAutoScroll;
@@ -57,9 +61,11 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
 
     public InterfaceSettingsViewModel(
         IAppSettingsRepository? appSettings = null,
-        IInterfaceScaleRecommendationProvider? interfaceScaleRecommendationProvider = null)
+        IInterfaceScaleRecommendationProvider? interfaceScaleRecommendationProvider = null,
+        Func<int, bool>? confirmScale = null)
     {
         _appSettings = appSettings;
+        _confirmScale = confirmScale;
         _interfaceScaleRecommendationProvider = interfaceScaleRecommendationProvider;
         SaveInterfaceSettingsCommand = new AsyncRelayCommand(
             SaveInterfaceSettingsAsync,
@@ -105,6 +111,8 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
                 return;
             }
 
+            if (_scalePending) return;
+            var previous = _selectedInterfaceScaleOption;
             var normalized = ResolveInterfaceScaleOption(value.Percent);
             if (!SetProperty(ref _selectedInterfaceScaleOption, normalized))
             {
@@ -112,6 +120,11 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
             }
 
             OnPropertyChanged(nameof(InterfaceScalePercent));
+            if (!_loadingScale && _confirmScale is not null)
+            {
+                PendingScaleChange = PreviewScaleAsync(previous, normalized);
+                return;
+            }
             InterfaceSettingsRuntime.ApplyScale(normalized.Percent);
             InterfaceSettingsStatus = LanguageRuntime.Format(
                 "Settings.ScalePreviewFormat",
@@ -120,6 +133,38 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
     }
 
     public int InterfaceScalePercent => SelectedInterfaceScaleOption.Percent;
+
+    private async Task PreviewScaleAsync(InterfaceScaleOption previous, InterfaceScaleOption preview)
+    {
+        _scalePending = true;
+        // Let ComboBox finish selection and close its popup before opening a modal confirmation.
+        await Task.Yield();
+        var accepted = false;
+        try
+        {
+            InterfaceSettingsRuntime.ApplyScale(preview.Percent);
+            accepted = _confirmScale!(preview.Percent);
+            if (accepted && _appSettings is not null)
+                await _appSettings.SetAsync(InterfaceScalePercentSettingKey, preview.Percent.ToString(CultureInfo.InvariantCulture));
+            InterfaceSettingsStatus = LanguageRuntime.GetString(accepted ? "ScaleConfirm.Saved" : "ScaleConfirm.Reverted");
+        }
+        catch (Exception exception)
+        {
+            accepted = false;
+            InterfaceSettingsStatus = LanguageRuntime.ErrorMessage(exception);
+        }
+        finally
+        {
+            if (!accepted)
+            {
+                _selectedInterfaceScaleOption = previous;
+                OnPropertyChanged(nameof(SelectedInterfaceScaleOption));
+                OnPropertyChanged(nameof(InterfaceScalePercent));
+                InterfaceSettingsRuntime.ApplyScale(previous.Percent);
+            }
+            _scalePending = false;
+        }
+    }
 
     public InterfaceThemeOption SelectedInterfaceThemeOption
     {
@@ -173,6 +218,14 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
 
     public async Task LoadAsync()
     {
+        await PendingScaleChange;
+        _loadingScale = true;
+        try { await LoadCoreAsync(); }
+        finally { _loadingScale = false; }
+    }
+
+    private async Task LoadCoreAsync()
+    {
         if (_appSettings is null)
         {
             InterfaceSettingsRuntime.Apply(
@@ -219,6 +272,7 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
 
     private async Task SaveInterfaceSettingsAsync()
     {
+        await PendingScaleChange;
         if (_appSettings is null)
         {
             InterfaceSettingsStatus = LanguageRuntime.GetString("Settings.Interface.RepositoryUnavailable");
@@ -311,10 +365,8 @@ public sealed class InterfaceSettingsViewModel : ViewModelBase
             return ResolveInterfaceScaleOption(savedValue);
         }
 
-        var recommendation = _interfaceScaleRecommendationProvider?.GetRecommendation();
-        var option = ResolveInterfaceScaleOption(
-            recommendation?.Percent
-            ?? InterfaceSettingsRuntime.DefaultScalePercent);
+        // Display recommendations are informative; a new workspace starts at the tested 100% baseline.
+        var option = ResolveInterfaceScaleOption(InterfaceSettingsRuntime.DefaultScalePercent);
         if (_appSettings is not null)
         {
             await _appSettings.SetAsync(

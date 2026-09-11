@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Windows.Threading;
 using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 using TavernDesk.Core.Abstractions;
@@ -11,6 +14,17 @@ public sealed class CampaignScenarioEditorViewModel : ViewModelBase
     private readonly ICampaignScenarioRepository _scenarios;
     private readonly IWorldbookService? _worldbooks;
     private CampaignScenario? _source;
+    private readonly ICampaignScenarioDraftRepository? _drafts;
+    private readonly SemaphoreSlim _draftGate = new(1, 1);
+    private readonly DispatcherTimer _draftTimer;
+    private bool _loading;
+    private bool _dirty;
+    private string _baselineHash = "";
+    private string _draftId = "";
+    private DateTimeOffset? _baseUpdatedAt;
+    private string _draftStatus = "";
+    public bool HasActiveEdit => _source is not null;
+    public string DraftStatus { get => _draftStatus; private set => SetProperty(ref _draftStatus, value); }
     private bool _isCreatingScenario;
     private string _scenarioTitle = string.Empty;
     private string _scenarioSummary = string.Empty;
@@ -32,6 +46,26 @@ public sealed class CampaignScenarioEditorViewModel : ViewModelBase
     {
         _scenarios = scenarios;
         _worldbooks = worldbooks;
+        _drafts = scenarios as ICampaignScenarioDraftRepository;
+        _draftTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _draftTimer.Tick += async (_, _) =>
+        {
+            if (!_dirty || _loading) return;
+            try { await FlushDraftAsync(); }
+            catch (Exception exception) { DraftStatus = LanguageRuntime.Format("Recovery.Failed", exception.Message); }
+        };
+        PropertyChanged += (_, args) =>
+        {
+            if (!_loading && HasActiveEdit && args.PropertyName?.StartsWith("Scenario", StringComparison.Ordinal) == true)
+                _dirty = true;
+        };
+        ScenarioWorldbookBindings.CollectionChanged += (_, args) =>
+        {
+            if (args.NewItems is not null)
+                foreach (CampaignWorldbookBindingItem item in args.NewItems)
+                    item.PropertyChanged += (_, _) => { if (!_loading) _dirty = true; };
+            if (!_loading) _dirty = true;
+        };
         NarrativePermissionChoices =
         [
             new CampaignNarrativePermissionChoice(
@@ -142,23 +176,115 @@ public sealed class CampaignScenarioEditorViewModel : ViewModelBase
     public async Task LoadAsync(CampaignScenario scenario, bool isCreating = false)
     {
         ArgumentNullException.ThrowIfNull(scenario);
-        _source = scenario;
-        IsCreatingScenario = isCreating;
-        ScenarioTitle = scenario.Title;
-        ScenarioSummary = scenario.Summary;
-        ScenarioWorldSetting = scenario.WorldSetting;
-        ScenarioPublicRules = scenario.PublicRules;
-        ScenarioGmInstructions = scenario.GmInstructions;
-        ScenarioNewNpcPermission = FindNarrativePermission(
-            scenario.NewNpcPermission);
-        ScenarioRelationshipChangePermission = FindNarrativePermission(
-            scenario.RelationshipChangePermission);
-        ScenarioIndependentPlotPermission = FindNarrativePermission(
-            scenario.IndependentPlotPermission);
-        ScenarioOpeningSetup = scenario.OpeningSetup;
-        ScenarioOpeningNarration = scenario.OpeningNarration;
-        ScenarioLegacyExamplesArchive = scenario.LegacyExamplesArchive;
-        await LoadScenarioWorldbookBindingsAsync(scenario.Id);
+        await FlushDraftAsync();
+        _loading = true;
+        try
+        {
+            _source = scenario;
+            _draftId = scenario.Id;
+            _baseUpdatedAt = isCreating ? null : scenario.UpdatedAt;
+            IsCreatingScenario = isCreating;
+            ScenarioTitle = scenario.Title;
+            ScenarioSummary = scenario.Summary;
+            ScenarioWorldSetting = scenario.WorldSetting;
+            ScenarioPublicRules = scenario.PublicRules;
+            ScenarioGmInstructions = scenario.GmInstructions;
+            ScenarioNewNpcPermission = FindNarrativePermission(
+                scenario.NewNpcPermission);
+            ScenarioRelationshipChangePermission = FindNarrativePermission(
+                scenario.RelationshipChangePermission);
+            ScenarioIndependentPlotPermission = FindNarrativePermission(
+                scenario.IndependentPlotPermission);
+            ScenarioOpeningSetup = scenario.OpeningSetup;
+            ScenarioOpeningNarration = scenario.OpeningNarration;
+            ScenarioLegacyExamplesArchive = scenario.LegacyExamplesArchive;
+            await LoadScenarioWorldbookBindingsAsync(scenario.Id);
+            _baselineHash = ContentHash(CaptureDraft());
+            _dirty = false;
+            DraftStatus = LanguageRuntime.GetString("Recovery.Ready");
+            _draftTimer.Start();
+        }
+        finally { _loading = false; }
+    }
+
+    public async Task RestoreDraftAsync(CampaignScenarioEditDraft draft)
+    {
+        await LoadAsync(draft.Scenario, draft.BaseUpdatedAt is null);
+        _loading = true;
+        try
+        {
+            foreach (var item in ScenarioWorldbookBindings)
+                item.IsBound = draft.Bindings.Any(binding => binding.WorldbookId == item.Worldbook.Id && binding.IsBound);
+            _draftId = draft.Id;
+            _baseUpdatedAt = draft.BaseUpdatedAt;
+            _baselineHash = draft.BaselineHash;
+            // If the original changed or disappeared, keep both versions by saving the recovery under a new identity.
+            var original = await _scenarios.GetAsync(draft.Id);
+            if (original?.UpdatedAt != draft.BaseUpdatedAt)
+            {
+                _source = CreateScenario(trim: false, id: Guid.NewGuid().ToString("N"));
+                IsCreatingScenario = true;
+                DraftStatus = LanguageRuntime.GetString("Recovery.ConflictCopy");
+            }
+            else DraftStatus = LanguageRuntime.GetString("Recovery.Restored");
+            _dirty = false;
+        }
+        finally { _loading = false; }
+    }
+
+    public async Task FlushDraftAsync()
+    {
+        // Closing must also wait for a write already in flight, even after it captured the dirty flag.
+        if (_drafts is null || !HasActiveEdit || _loading) return;
+        await _draftGate.WaitAsync();
+        try
+        {
+            if (!HasActiveEdit || !_dirty || _loading) return;
+            var draft = CaptureDraft();
+            _dirty = false;
+            try
+            {
+                if (ContentHash(draft) == _baselineHash)
+                    await Task.Run(() => _drafts.DeleteEditDraftAsync(draft.Id));
+                else
+                    await Task.Run(() => _drafts.WriteEditDraftAsync(draft));
+                DraftStatus = LanguageRuntime.GetString("Recovery.Saved");
+            }
+            catch { _dirty = true; throw; }
+        }
+        finally { _draftGate.Release(); }
+    }
+
+    public async Task DiscardDraftAsync()
+    {
+        await _draftGate.WaitAsync();
+        try
+        {
+            if (_drafts is not null && HasActiveEdit)
+                await Task.Run(() => _drafts.DeleteEditDraftAsync(_draftId));
+            EndEdit();
+        }
+        finally { _draftGate.Release(); }
+    }
+
+    private static string ContentHash(CampaignScenarioEditDraft draft)
+    {
+        var scenario = draft.Scenario;
+        return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            scenario.Title, scenario.Summary, scenario.WorldSetting, scenario.PublicRules,
+            scenario.GmInstructions, scenario.NewNpcPermission, scenario.RelationshipChangePermission,
+            scenario.IndependentPlotPermission, scenario.OpeningSetup, scenario.OpeningNarration,
+            scenario.LegacyExamplesArchive, draft.Bindings
+        })));
+    }
+
+    private CampaignScenarioEditDraft CaptureDraft()
+    {
+        var scenario = CreateScenario(trim: false);
+        var bindings = ScenarioWorldbookBindings.Select(item => new CampaignScenarioWorldbookBinding(
+            item.Worldbook.Id, item.IsBound, item.Worldbook.Revision)).ToArray();
+        return new(_draftId, scenario, bindings, _baseUpdatedAt, _baselineHash, DateTimeOffset.UtcNow);
     }
 
     private async Task LoadScenarioWorldbookBindingsAsync(string scenarioId)
@@ -195,36 +321,54 @@ public sealed class CampaignScenarioEditorViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(ScenarioTitle))
             throw new InvalidOperationException(LanguageRuntime.GetString("Campaigns.Scenario.TitleRequired"));
 
-        // Save a detached draft so a failed transaction cannot mutate the library item.
-        var draft = new CampaignScenario
+        await FlushDraftAsync();
+        await _draftGate.WaitAsync(cancellationToken);
+        try
         {
-            Id = _source.Id,
-            CreatedAt = _source.CreatedAt,
+            var recovery = CaptureDraft() with { Scenario = CreateScenario(trim: true) };
+            if (_drafts is not null)
+                await Task.Run(() => _drafts.CommitEditDraftAsync(recovery, cancellationToken), cancellationToken);
+            else
+                await _scenarios.SaveWithWorldbookBindingsAsync(recovery.Scenario, recovery.Bindings, cancellationToken);
+            _source = recovery.Scenario;
+            _baseUpdatedAt = _source.UpdatedAt;
+            _draftId = _source.Id;
+            _baselineHash = ContentHash(CaptureDraft());
+            _dirty = false;
+            return _source;
+        }
+        finally { _draftGate.Release(); }
+    }
+
+    private CampaignScenario CreateScenario(bool trim, string? id = null)
+    {
+        string Text(string value) => trim ? value.Trim() : value;
+        return new CampaignScenario
+        {
+            Id = id ?? _source!.Id,
+            CreatedAt = _source!.CreatedAt,
             UpdatedAt = _source.UpdatedAt,
             SourceCardJson = _source.SourceCardJson,
             SourceFileName = _source.SourceFileName,
             CoverPath = _source.CoverPath,
-            Title = ScenarioTitle.Trim(),
-            Summary = ScenarioSummary.Trim(),
-            WorldSetting = ScenarioWorldSetting.Trim(),
-            PublicRules = ScenarioPublicRules.Trim(),
-            GmInstructions = ScenarioGmInstructions.Trim(),
+            Title = Text(ScenarioTitle),
+            Summary = Text(ScenarioSummary),
+            WorldSetting = Text(ScenarioWorldSetting),
+            PublicRules = Text(ScenarioPublicRules),
+            GmInstructions = Text(ScenarioGmInstructions),
             NewNpcPermission = ScenarioNewNpcPermission.Value,
             RelationshipChangePermission = ScenarioRelationshipChangePermission.Value,
             IndependentPlotPermission = ScenarioIndependentPlotPermission.Value,
-            OpeningSetup = ScenarioOpeningSetup.Trim(),
-            OpeningNarration = ScenarioOpeningNarration.Trim(),
-            LegacyExamplesArchive = ScenarioLegacyExamplesArchive.Trim()
+            OpeningSetup = Text(ScenarioOpeningSetup),
+            OpeningNarration = Text(ScenarioOpeningNarration),
+            LegacyExamplesArchive = Text(ScenarioLegacyExamplesArchive)
         };
-        var bindings = ScenarioWorldbookBindings.Select(item => new CampaignScenarioWorldbookBinding(
-            item.Worldbook.Id, item.IsBound, item.Worldbook.Revision)).ToArray();
-        await _scenarios.SaveWithWorldbookBindingsAsync(draft, bindings, cancellationToken);
-        _source = draft;
-        return draft;
     }
 
     public void EndEdit()
     {
+        _draftTimer.Stop();
+        _dirty = false;
         _source = null;
         IsCreatingScenario = false;
     }

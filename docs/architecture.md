@@ -60,7 +60,7 @@ flowchart LR
 
 ## 3. 数据与持久化边界
 
-当前数据库版本为 schema v23。维护者通常不需要记住每一列，只需先按职责定位：
+当前数据库版本为 schema v24。维护者通常不需要记住每一列，只需先按职责定位：
 
 | 数据域 | 主要对象 | 核心约束 |
 | --- | --- | --- |
@@ -240,12 +240,21 @@ flowchart LR
     View[剧本编辑页面] --> Parent[CampaignsViewModel]
     Parent --> Editor[CampaignScenarioEditorViewModel]
     Editor --> Port[ICampaignScenarioRepository]
+    Editor --> Recovery[ICampaignScenarioDraftRepository]
+    Recovery --> DraftTable[scenario_edit_drafts 本机恢复草稿]
+    Recovery --> Transaction
     Port --> Transaction[SQLite 同一连接与事务]
     Transaction --> Body[剧本主体]
     Transaction --> Mounts[本次提交的世界书挂载选择]
 ```
 
-`SaveWithWorldbookBindingsAsync` 将剧本主体与本次提交的挂载新增、更新和删除放入同一事务；未提交的世界书与其他作用域不变。不引入通用工作单元，也不改变 schema。任一写入失败时全部回滚，新建剧本不会留下空记录；编辑器保留草稿供重试。保存成功后刷新剧本库并退出编辑，返回剧本库则放弃未保存修改。原始卡片元数据和已开始跑团的冻结快照沿用既有边界。
+`SaveWithWorldbookBindingsAsync` 将剧本主体与本次提交的挂载新增、更新和删除放入同一事务；未提交的世界书与其他作用域不变。不引入通用工作单元。任一写入失败时全部回滚，新建剧本不会留下空记录；编辑器保留草稿供重试。保存成功后刷新剧本库并退出编辑，返回剧本库则放弃未保存修改。原始卡片元数据和已开始跑团的冻结快照沿用既有边界。
+
+恢复草稿通过 `ICampaignScenarioDraftRepository` 持久化到 schema v24 的 `scenario_edit_drafts` 表，与正式剧本分开。编辑器每秒检查变化，后台串行写入；正常关闭和页面离开会等待正在进行的写入并补写最后的编辑。自动保存失败显示状态，正常退出补写失败则保留窗口。未输入标题也能保留草稿；正文保留原始空白。恢复提示的关闭/Esc 保留草稿，明确丢弃才清除。正式保存通过 `CommitEditDraftAsync` 在同一事务中检查原记录时间戳、写入剧本与绑定并删除草稿；冲突保留数据，重新恢复时另存为新剧本。来源卡片仍不被覆盖。
+
+界面兼容性以应用内 100% 为基线，新资料库默认 100%，已有设置保留。`SafeChoiceDialog` 使用独立于应用缩放的固定字号，拥有主窗口并置顶；切换比例后按单调时钟计时 10 秒，确认才持久化该比例，取消、关闭和超时回退。其他界面设置仍需显式保存。主窗口最小高度为 500 个逻辑单位，恢复窗口尺寸时不超过工作区；设置页用独立 `ContentControl` 呈现选中内容，使辅助功能能访问内部控件，界面选项改为上下排列。
+
+普通聊天选择会话时，消息、会话和候选项在同一后台任务中读取，因为 Microsoft.Data.Sqlite 的异步 API 仍同步执行 I/O。SQLite 继续使用 WAL，连接采用默认缓存方式，不再启用 shared cache。界面每应用 50 条历史消息让出调度器，并再次检查取消、选择版本和会话 ID；发送门禁继续等待全部关联状态就绪。这里未引入历史分页或新的缓存层。
 
 ## 7. 代码定位
 

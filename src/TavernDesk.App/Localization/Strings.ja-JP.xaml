@@ -549,7 +549,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Interface.LanguageRestartHelp">保存後に TavernDesk を再起動すると反映されます。キャラクターカード、チャット内容、モデルへ送るプロンプトは翻訳しません。</sys:String>
     <sys:String x:Key="Settings.Interface.Scale">表示倍率</sys:String>
     <sys:String x:Key="Settings.Interface.ScaleHelp">文字、ボタン、ナビゲーション、その他の UI 要素の大きさを変更します。</sys:String>
-    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">TavernDesk だけに影響し、Windows の表示倍率と組み合わされます。選択するとすぐプレビューします。</sys:String>
+    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒以内に確認しない場合、元の倍率に戻ります。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">グローバルフォント</sys:String>
     <sys:String x:Key="Settings.Interface.Font">フォント</sys:String>
     <sys:String x:Key="Settings.Interface.FontSizeHelp">文字サイズは 10～32。チャット本文は1段階大きく表示します。</sys:String>
@@ -1561,4 +1561,20 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Dashboard.StartChat">相手を選んで会話を開始</sys:String>
     <sys:String x:Key="Dashboard.OpenCharacters">キャラクターを管理</sys:String>
     <sys:String x:Key="Dashboard.OpenConversations">会話を開く</sys:String>
+    <sys:String x:Key="Recovery.Title">未保存のシナリオを復元</sys:String>
+    <sys:String x:Key="Recovery.Prompt">未完了の編集：{0}&#10;保存日時：{1:g}&#10;復元しますか？破棄しても保存済みシナリオは削除されません。閉じると後で選択できます。</sys:String>
+    <sys:String x:Key="Recovery.Accept">編集を復元</sys:String>
+    <sys:String x:Key="Recovery.Discard">下書きを破棄</sys:String>
+    <sys:String x:Key="Recovery.Ready">編集は毎秒ローカルに保持されます。ライブラリへの保存は「シナリオを保存」で行います。</sys:String>
+    <sys:String x:Key="Recovery.Saved">復元用の下書きをローカルに保持しました</sys:String>
+    <sys:String x:Key="Recovery.Restored">前回の編集を復元しました。確認してから保存してください。</sys:String>
+    <sys:String x:Key="Recovery.ConflictCopy">元のシナリオは変更または削除されています。復元内容は新しいシナリオとして保存されます。</sys:String>
+    <sys:String x:Key="Recovery.Failed">下書きを保持できませんでした：{0}。ウィンドウを閉じずに再試行してください。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Title">表示倍率の確認</sys:String>
+    <sys:String x:Key="ScaleConfirm.Prompt">表示倍率 {0}% をプレビューしています。この設定を維持しますか？</sys:String>
+    <sys:String x:Key="ScaleConfirm.Accept">この倍率を維持</sys:String>
+    <sys:String x:Key="ScaleConfirm.Revert">元の倍率に戻す</sys:String>
+    <sys:String x:Key="ScaleConfirm.Countdown">{0} 秒以内に確認しない場合、元の倍率に戻ります。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Saved">表示倍率を確認して保存しました。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Reverted">元の表示倍率に戻しました。</sys:String>
 </ResourceDictionary>

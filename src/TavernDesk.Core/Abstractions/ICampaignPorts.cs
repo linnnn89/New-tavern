@@ -23,6 +23,14 @@ public interface ICampaignScenarioRepository
         CancellationToken cancellationToken = default);
 }
 
+public interface ICampaignScenarioDraftRepository
+{
+    Task<IReadOnlyList<CampaignScenarioEditDraft>> ListEditDraftsAsync(CancellationToken cancellationToken = default);
+    Task WriteEditDraftAsync(CampaignScenarioEditDraft draft, CancellationToken cancellationToken = default);
+    Task DeleteEditDraftAsync(string id, CancellationToken cancellationToken = default);
+    Task CommitEditDraftAsync(CampaignScenarioEditDraft draft, CancellationToken cancellationToken = default);
+}
+
 public interface ICampaignScenarioCardImporter
 {
     Task<CampaignScenarioImportResult> ImportAsync(

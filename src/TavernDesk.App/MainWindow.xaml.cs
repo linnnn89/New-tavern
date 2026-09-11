@@ -49,6 +49,7 @@ public partial class MainWindow : Window
 
     private async Task ConfirmAndCloseAsync(MainWindowViewModel viewModel)
     {
+        IsEnabled = false;
         try
         {
             if (!await viewModel.ConfirmCanCloseAsync())
@@ -70,6 +71,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (IsVisible) IsEnabled = true;
             _closeConfirmationInProgress = false;
         }
     }

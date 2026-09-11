@@ -66,6 +66,7 @@
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Padding" Value="0" />
                                         <Setter Property="Margin" Value="0,2" />
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
                                     </Style>
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
@@ -167,6 +168,15 @@
         </Grid>
 
         <Grid Visibility="{Binding IsScenarioEditor, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                            <Setter Property="IsEnabled" Value="False" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="30,22,30,30">
                     <Grid>
@@ -176,7 +186,9 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="{Binding ScenarioEditorTitle}" Style="{StaticResource PageTitleStyle}" />
-                            <TextBlock Text="{Binding ScenarioEditorDescription}"
+                            <TextBlock Text="{Binding ScenarioEditor.DraftStatus}" TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" Foreground="{DynamicResource MutedTextBrush}" />
+                            <TextBlock Text="{Binding ScenarioEditorDescription}" TextWrapping="Wrap"
                                        Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1"
@@ -213,12 +225,12 @@
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.ScenarioTitleHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Text="{Binding ScenarioTitle, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.ScenarioTitle}" Text="{Binding ScenarioTitle, UpdateSourceTrigger=PropertyChanged}" />
                                             <TextBlock Margin="0,18,0,0" Text="{StaticResource Campaigns.Edit.Summary}" Style="{StaticResource SectionTitleStyle}" />
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.SummaryHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Height="110"
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.Summary}" Height="110"
                                                      AcceptsReturn="True"
                                                      TextWrapping="Wrap"
                                                      VerticalContentAlignment="Top"
@@ -234,7 +246,7 @@
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.WorldHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Height="220"
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.World}" Height="220"
                                                      AcceptsReturn="True"
                                                      TextWrapping="Wrap"
                                                      VerticalContentAlignment="Top"
@@ -244,7 +256,7 @@
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.PublicRulesHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Height="220"
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.PublicRules}" Height="220"
                                                      AcceptsReturn="True"
                                                      TextWrapping="Wrap"
                                                      VerticalContentAlignment="Top"
@@ -260,7 +272,7 @@
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.GmInstructionsHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Height="220"
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.GmInstructions}" Height="220"
                                                      AcceptsReturn="True"
                                                      TextWrapping="Wrap"
                                                      VerticalContentAlignment="Top"
@@ -270,7 +282,7 @@
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.OpeningSetupHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Height="180"
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.OpeningSetup}" Height="180"
                                                      AcceptsReturn="True"
                                                      TextWrapping="Wrap"
                                                      VerticalContentAlignment="Top"
@@ -280,7 +292,7 @@
                                             <TextBlock Margin="0,4,0,7"
                                                        Text="{StaticResource Campaigns.Edit.OpeningNarrationHelp}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
-                                            <TextBox Height="180"
+                                            <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.OpeningNarration}" Height="180"
                                                      AcceptsReturn="True"
                                                      TextWrapping="Wrap"
                                                      VerticalContentAlignment="Top"
@@ -300,7 +312,7 @@
                                                        Foreground="{DynamicResource MutedTextBrush}" />
 
                                             <TextBlock Text="{StaticResource Campaigns.Edit.AddNpc}" />
-                                            <ComboBox Margin="0,6,0,0"
+                                            <ComboBox AutomationProperties.Name="{StaticResource Campaigns.Edit.AddNpc}" Margin="0,6,0,0"
                                                       ItemsSource="{Binding NarrativePermissionChoices}"
                                                       SelectedItem="{Binding ScenarioNewNpcPermission}"
                                                       DisplayMemberPath="Name" />
@@ -310,7 +322,7 @@
                                                        Foreground="{DynamicResource MutedTextBrush}" />
 
                                             <TextBlock Text="{StaticResource Campaigns.Edit.ChangeRelationship}" />
-                                            <ComboBox Margin="0,6,0,0"
+                                            <ComboBox AutomationProperties.Name="{StaticResource Campaigns.Edit.ChangeRelationship}" Margin="0,6,0,0"
                                                       ItemsSource="{Binding NarrativePermissionChoices}"
                                                       SelectedItem="{Binding ScenarioRelationshipChangePermission}"
                                                       DisplayMemberPath="Name" />
@@ -320,7 +332,7 @@
                                                        Foreground="{DynamicResource MutedTextBrush}" />
 
                                             <TextBlock Text="{StaticResource Campaigns.Edit.StartSubplot}" />
-                                            <ComboBox Margin="0,6,0,0"
+                                            <ComboBox AutomationProperties.Name="{StaticResource Campaigns.Edit.StartSubplot}" Margin="0,6,0,0"
                                                       ItemsSource="{Binding NarrativePermissionChoices}"
                                                       SelectedItem="{Binding ScenarioIndependentPlotPermission}"
                                                       DisplayMemberPath="Name" />
@@ -339,7 +351,7 @@
                                                     <TextBlock Text="{StaticResource Campaigns.Edit.LegacyArchiveHelp}"
                                                                Foreground="{DynamicResource MutedTextBrush}"
                                                                TextWrapping="Wrap" />
-                                                    <TextBox Margin="0,8,0,0"
+                                                    <TextBox AutomationProperties.Name="{StaticResource Campaigns.Edit.LegacyArchive}" Margin="0,8,0,0"
                                                              Height="180"
                                                              AcceptsReturn="True"
                                                              TextWrapping="Wrap"

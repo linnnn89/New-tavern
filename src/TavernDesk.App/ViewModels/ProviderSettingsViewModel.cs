@@ -97,7 +97,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                     ?? (appSettings is null
                         ? null
                         : new PlayerPersonaManagerViewModel(appSettings, interaction));
-        Interface = new InterfaceSettingsViewModel(appSettings, interfaceScaleRecommendationProvider);
+        Interface = new InterfaceSettingsViewModel(appSettings, interfaceScaleRecommendationProvider, interaction.ConfirmInterfaceScale);
         // Keep existing settings bindings synchronized with the owned editor.
         Interface.PropertyChanged += (_, args) => OnPropertyChanged(args.PropertyName);
         Prompts = new PromptSettingsViewModel(globalPrompts, fileDialog);

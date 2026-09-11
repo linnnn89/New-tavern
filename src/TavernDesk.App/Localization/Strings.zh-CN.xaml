@@ -556,7 +556,7 @@
     <sys:String x:Key="Settings.Interface.LanguageRestartHelp">保存后重启 TavernDesk 生效；不会翻译角色卡、聊天内容或发送给模型的提示词。</sys:String>
     <sys:String x:Key="Settings.Interface.Scale">界面缩放</sys:String>
     <sys:String x:Key="Settings.Interface.ScaleHelp">更改文字、按钮、导航和其他界面元素的大小。</sys:String>
-    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">只影响 TavernDesk，并会与 Windows 显示缩放叠加。选择后立即预览。</sys:String>
+    <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒内未确认，将自动恢复原比例。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">全局字体</sys:String>
     <sys:String x:Key="Settings.Interface.Font">字体</sys:String>
     <sys:String x:Key="Settings.Interface.FontSizeHelp">字号范围 10–32；聊天正文会在此基础上增加一级。</sys:String>
@@ -1540,4 +1540,20 @@
     <sys:String x:Key="Dashboard.StartChat">选择角色开始聊天</sys:String>
     <sys:String x:Key="Dashboard.OpenCharacters">管理角色</sys:String>
     <sys:String x:Key="Dashboard.OpenConversations">打开会话</sys:String>
+    <sys:String x:Key="Recovery.Title">恢复未保存的剧本</sys:String>
+    <sys:String x:Key="Recovery.Prompt">发现上次未完成的编辑：{0}&#10;保留时间：{1:g}&#10;是否恢复？丢弃只会清除恢复草稿，不会删除正式剧本。关闭此窗口可稍后处理。</sys:String>
+    <sys:String x:Key="Recovery.Accept">恢复编辑</sys:String>
+    <sys:String x:Key="Recovery.Discard">丢弃草稿</sys:String>
+    <sys:String x:Key="Recovery.Ready">编辑将每秒自动保留到本机；正式保存仍需点击保存剧本。</sys:String>
+    <sys:String x:Key="Recovery.Saved">恢复草稿已保留到本机</sys:String>
+    <sys:String x:Key="Recovery.Restored">已恢复上次编辑，请检查后保存。</sys:String>
+    <sys:String x:Key="Recovery.ConflictCopy">原剧本已变更或被删除；本次恢复将另存为新剧本，保留两个版本。</sys:String>
+    <sys:String x:Key="Recovery.Failed">草稿保留失败：{0}。请保留此窗口并重试。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Title">确认界面缩放</sys:String>
+    <sys:String x:Key="ScaleConfirm.Prompt">已预览 {0}% 缩放。是否保留此比例？</sys:String>
+    <sys:String x:Key="ScaleConfirm.Accept">保留此缩放</sys:String>
+    <sys:String x:Key="ScaleConfirm.Revert">恢复原比例</sys:String>
+    <sys:String x:Key="ScaleConfirm.Countdown">{0} 秒内未确认，将自动恢复原比例。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Saved">缩放比例已确认并保存。</sys:String>
+    <sys:String x:Key="ScaleConfirm.Reverted">已恢复之前的缩放比例。</sys:String>
 </ResourceDictionary>

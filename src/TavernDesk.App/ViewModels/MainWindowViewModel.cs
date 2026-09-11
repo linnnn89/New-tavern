@@ -351,6 +351,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         await Campaigns.LoadAsync();
         CurrentPage = Campaigns;
         CurrentSection = LanguageRuntime.GetString("Runtime.Section.Campaigns");
+        await Campaigns.OfferScenarioRecoveryAsync();
     }
 
     private async Task ShowWorldbooksAsync()
@@ -401,7 +402,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         CurrentSection = LanguageRuntime.GetString("Runtime.Section.Prompts");
     }
 
-    public Task<bool> ConfirmCanCloseAsync() => ConfirmPageChangeAsync();
+    public async Task<bool> ConfirmCanCloseAsync()
+    {
+        await Campaigns.ScenarioEditor.FlushDraftAsync();
+        return await ConfirmPageChangeAsync();
+    }
 
     private async Task OpenCharacterChatAsync(Character character)
     {
