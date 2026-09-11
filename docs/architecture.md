@@ -142,6 +142,21 @@ sequenceDiagram
 
 ### 4.3 普通聊天上下文
 
+`ChatContextPreviewViewModel` 由每个聊天窗口持有，统一管理 150 ms 预览刷新、取消、版本校验、分段/API 预览和预算展示。`ChatViewModel` 在会话资料就绪后捕获请求快照，继续拥有会话加载与发送编排；原有 XAML 绑定通过只读属性转发，不传入整个主 ViewModel，也不创建新的全局状态。
+
+```mermaid
+flowchart LR
+    UI[ChatViewModel 捕获当前输入与会话快照] --> Factory[ChatRequestFactory]
+    Factory --> Request[ContextAssemblyRequest]
+    Request --> Preview[ChatContextPreviewViewModel]
+    Preview -->|150 ms 合并或立即刷新| Assembler[现有 ContextAssembler]
+    Assembler -->|结果或错误| Guard[窗口存活 / 会话身份 / 请求版本校验]
+    Guard --> Display[分段 / API 预览 / Token 预算]
+    Send[实际发送的组装结果] -->|优先展示并使旧预览失效| Preview
+```
+
+切换会话或开始新的预览会取消前次请求并推进版本，A→B→A 也不能接收旧 A 的结果或错误。实际请求预算优先于预览估算；同一会话完成后的重新加载保留实际预算，用户编辑输入或切换到其他会话后允许新预览更新预算。关闭窗口停止发布，并等待仍未完成的预览（包括被新请求取代但未响应取消的工作），不取消应用级 Provider 生成。
+
 当前稳定顺序为：
 
 ```text
@@ -158,7 +173,7 @@ sequenceDiagram
 → Token 估算与发送门禁
 ```
 
-固定前缀尽量靠前，逐轮变化内容靠后，以便兼容 Provider 前缀缓存。上下文检查器与实际 API 请求必须使用同一个 `ContextAssemblyResult`。已知 OpenAI tokenizer 使用内置词表，未知模型明确标记为启发式估算；服务端模板仍可能造成误差，因此不能把本地估算描述为精确计费结果。
+固定前缀尽量靠前，逐轮变化内容靠后，以便兼容 Provider 前缀缓存。预览和发送复用相同的请求映射与上下文组装器；预览禁用远程语义召回，实际发送按配置执行，因此两次估算可能不同，发送预算展示优先采用实际请求的组装结果。已知 OpenAI tokenizer 使用内置词表，未知模型明确标记为启发式估算；服务端模板仍可能造成误差，因此不能把本地估算描述为精确计费结果。
 
 ### 4.4 记忆与检索
 
@@ -210,6 +225,7 @@ sequenceDiagram
 | 角色书架 | `src/TavernDesk.App/ViewModels/CharactersViewModel.cs` |
 | 普通聊天 | `src/TavernDesk.App/ViewModels/ChatViewModel.cs` |
 | 会话列表与请求构造 | `src/TavernDesk.App/ViewModels/ConversationBrowserViewModel.cs`、`src/TavernDesk.App/Services/ChatRequestFactory.cs` |
+| 聊天上下文预览与预算展示 | `src/TavernDesk.App/ViewModels/ChatContextPreviewViewModel.cs` |
 | 流式快照与显示 | `src/TavernDesk.Infrastructure/Context/ConversationGenerationSessionStore.cs`、`src/TavernDesk.App/Presentation/GenerationSessionUpdateQueue.cs`、`MarkdownMessagePresenter.cs`、`MarkdownMessageBlocks.cs` |
 | 普通上下文 | `src/TavernDesk.Infrastructure/Context/BasicContextAssembler.cs` |
 | Provider | `src/TavernDesk.Infrastructure/Providers/` |
@@ -267,6 +283,7 @@ sequenceDiagram
 
 以下是工作记录中的最近可信快照，不代表任何未提交工作区修改已经通过同等验证：
 
+- 2026-09-11（预览职责拆分）：Release 私有测试 `301/301`，其中新增 3 项可控异步场景，覆盖旧输入与 A→B→A、实际预算优先级和关闭后的迟到结果/错误。真实 WPF 窗口配合专用虚构资料、可控预览组装器和本地流式替身，验证快速输入合并、迟到 A 预览不覆盖 B、实际预算不被迟到预览覆盖、待处理预览窗口关闭后零属性通知，并复验发送、切换、停止、持久化及浅/深色主题；绑定与 Dispatcher 错误均为零。未调用真实 Provider。
 - 2026-09-11：本次流式显示与聊天职责拆分的 Release 私有测试 `298/298`、四语资源校验和隔离启动初始化通过。真实 WPF 窗口使用专用虚构资料与本地流式替身，验证发送、会话切换、重新附着、关闭第二窗口、停止及浅/深色主题，绑定与 Dispatcher 错误均为零。完整套件首次有一项固定 300 ms 等待的加载测试未及时完成，改为等待实际就绪状态并保留超时后复验通过。
 - 同次本机流式对比覆盖 16K/64K/128K 正文和 64K 代码，最终文本均一致。128K 正文的生产线程分配从约 128.5 MiB 降至 0.67 MiB，累计正文绑定更新耗时从约 18.3 s 降至 0.28 s；64K 代码的累计布局耗时从约 1.23 s 降至 0.20 s。固定片段与发送节奏下各单次运行，快照改为在显示端按需生成，因此生产线程分配不等于全进程分配；结果不代表真实 Provider 延迟或所有硬件的收益。五组新旧渲染行距比较一致。
 - 2026-08-14：群聊回复归属抬头清洗、固定顺序/头像强制接话、四语静态校验、Release 构建、280 项私有测试、长历史离线脚本和根启动探针通过；未调用真实 Provider。
