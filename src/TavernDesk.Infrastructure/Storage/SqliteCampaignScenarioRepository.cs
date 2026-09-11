@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 
@@ -70,12 +71,69 @@ public sealed class SqliteCampaignScenarioRepository : ICampaignScenarioReposito
         CampaignScenario scenario,
         CancellationToken cancellationToken = default)
     {
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await UpsertAsync(scenario, connection, null, cancellationToken);
+    }
+
+    public async Task SaveWithWorldbookBindingsAsync(
+        CampaignScenario scenario,
+        IReadOnlyList<CampaignScenarioWorldbookBinding> bindings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scenario);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scenario.Title);
+        ArgumentNullException.ThrowIfNull(bindings);
+        var choices = bindings.ToArray();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var choice in choices)
+        {
+            ArgumentNullException.ThrowIfNull(choice);
+            ArgumentException.ThrowIfNullOrWhiteSpace(choice.WorldbookId);
+            if (!ids.Add(choice.WorldbookId))
+                throw new ArgumentException("Duplicate worldbook binding.", nameof(bindings));
+        }
+
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
+        await UpsertAsync(scenario, connection, transaction, cancellationToken);
+        var worldbooks = new SqliteWorldbookRepository(_database, _paths);
+        var sortIndex = 100;
+        foreach (var choice in choices)
+        {
+            if (choice.IsBound)
+            {
+                await worldbooks.UpsertMountAsync(new WorldbookMount
+                {
+                    WorldbookId = choice.WorldbookId,
+                    ScopeKind = WorldbookScopeKind.Campaign,
+                    ScopeId = scenario.Id,
+                    SortIndex = sortIndex,
+                    IsEnabled = true,
+                    MountedRevision = choice.MountedRevision
+                }, connection, transaction, cancellationToken);
+                sortIndex += 10;
+            }
+            else
+            {
+                await worldbooks.RemoveMountAsync(choice.WorldbookId,
+                    WorldbookScopeKind.Campaign, scenario.Id,
+                    connection, transaction, cancellationToken);
+            }
+        }
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task UpsertAsync(
+        CampaignScenario scenario, SqliteConnection connection,
+        SqliteTransaction? transaction, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(scenario);
         ArgumentException.ThrowIfNullOrWhiteSpace(scenario.Title);
         scenario.UpdatedAt = DateTimeOffset.Now;
-        await using var connection = _database.CreateConnection();
-        await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO campaign_scenarios(
                 id, title, summary, world_setting, public_rules,

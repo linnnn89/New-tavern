@@ -14,6 +14,13 @@ public interface ICampaignScenarioRepository
     Task UpsertAsync(
         CampaignScenario scenario,
         CancellationToken cancellationToken = default);
+
+    // Applies the submitted binding choices and scenario body in one transaction.
+    // Bindings outside the submitted set and other scopes remain unchanged.
+    Task SaveWithWorldbookBindingsAsync(
+        CampaignScenario scenario,
+        IReadOnlyList<CampaignScenarioWorldbookBinding> bindings,
+        CancellationToken cancellationToken = default);
 }
 
 public interface ICampaignScenarioCardImporter

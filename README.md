@@ -93,6 +93,7 @@ Campaign mode is a separate runtime, not group chat with an extra GM prompt.
 - Recorded `1d20` action rolls plus optional public dice expressions.
 - Deterministic validation before a GM result advances the round or updates persistent campaign state.
 - Campaign-specific public and GM memory, context budgets, cancellation, and explicit retries.
+- Scenario content and worldbook bindings save together. A failed save keeps the draft for retry; returning to the library discards unsaved edits.
 
 ### Desktop experience
 
