@@ -1,8 +1,10 @@
 # TavernDesk 架构与维护指南
 
-状态日期：2026-08-14（北京时间）
+状态日期：2026-09-11（北京时间）
 
 本文面向第一次阅读源码的维护者，说明当前系统如何分层、哪些边界不能破坏，以及从哪里开始定位代码。产品功能与安装方式以仓库根目录 README 为准；跑团规则见 [`campaign_mode_design.md`](campaign_mode_design.md)，跑团上下文与记忆参数见 [`TavernDesk-R2-B-Campaign-Context-Budget.md`](TavernDesk-R2-B-Campaign-Context-Budget.md)。
+
+本地维护约定：`New-tavern` 是日常开发、验证和发布的主目录；`TavernDesk` 目录仅用于实验分支。实验成果经验证并合入主线后，正式构建从 `New-tavern` 生成。目录名不代表 Git 包含关系，检查同步时同时核对提交、实际文件和未提交改动。
 
 ## 1. 一页结论
 
@@ -105,6 +107,9 @@ sequenceDiagram
     participant Reply as ChatReplyExecutor
     participant Coordinator as GenerationCoordinator
     participant Provider as ProviderGateway
+    participant Sessions as GenerationSessionStore
+    participant Queue as GenerationSessionUpdateQueue
+    participant Renderer as MarkdownMessagePresenter
     participant Store as ConversationRepository
 
     UI->>Context: 构造同一份预览/请求结果
@@ -114,18 +119,26 @@ sequenceDiagram
     Coordinator->>Provider: 发起流式请求
     Provider-->>Coordinator: reasoning 信号、正文、usage
     Coordinator-->>Reply: 正文片段
-    Reply-->>UI: 通过已有共享会话发布进度
+    Reply->>Sessions: 追加正文，发布带版本的延迟快照
+    Sessions-->>Queue: 共享进度通知
+    Queue->>Queue: 普通正文按 120 ms 合并
+    Queue-->>UI: 按需读取所选版本的完整正文
+    UI->>Renderer: 更新正文绑定
+    Renderer->>Renderer: 复用未变化的正文与代码控件
     Reply->>Store: 事务提交消息和首个候选
     Reply-->>UI: 保存、空回复、中断或无效回复结果
 ```
 
-- 普通正文快照按 120 毫秒合并后才调度 UI，按 conversation / operation / message 隔离；首段、思考及完成等状态及时刷新，保留完整正文。此阶段仍使用完整 Markdown 渲染，不代表已实现增量解析。
+- 普通正文通知按 120 毫秒合并，消费时才生成完整字符串，按 conversation / operation / message 隔离；首段、思考及完成等状态及时刷新。会话切换可直接读取当前快照，旧通知保留当时的正文前缀，不会读到下一条回复。
+- Markdown 仍使用原有轻量语法，每次更新扫描全文；复用未变化的 WPF 控件，正文和代码文本以每组最多 32 个物理行为单位更新。完整替换消息、切换主题及字号变化会更新相应内容。这是增量更新显示控件，不是增量解析器；单个超长物理行仍可能有较高的布局成本。
 - 不同会话可并发生成；同一会话拒绝重入。
 - 多个窗口可以附着同一会话生成快照；关闭一个展示窗口不等于取消请求。
 - 助手消息与首个候选必须在同一事务提交，不能留下“有消息、无候选”的半状态。
 - 停止、Provider 错误和正常完成竞争时，第一个终态胜出；迟到片段不得再次提交数据。
 
 2026-09-05 起，单条新回复的流接收、正文检查与消息/首候选提交由 `Infrastructure/Context/ChatReplyExecutor.cs` 执行。该类不依赖 WPF、ViewModel 或界面回调；应用装配共享实例，继续使用原有协调器和会话存储。`ChatViewModel` 保留上下文准备、操作登记/收尾、界面文案、群聊接力及记忆触发。群聊仍调用同一单条回复入口，原有归属清洗规则不变；重新生成只复用流读取，候选替换提交仍保留原规则。执行类不会提前结束整次发送/接力会话，不新增状态存储、队列或框架。
+
+2026-09-11 起，会话分组、筛选、展开状态和角色缓存归 `ConversationBrowserViewModel`；上下文请求映射、Provider 请求构造和 API 预览归 `ChatRequestFactory`。`ChatViewModel` 继续拥有窗口选择、取消和业务编排。共享会话存储新增可选的延迟通知接口，旧 `SessionChanged` 订阅及 `Get` 返回值保持完整快照语义；显示队列负责订阅和释放，未引入第二级节流、数据库变更或新的渲染依赖。
 
 ### 4.3 普通聊天上下文
 
@@ -196,6 +209,8 @@ sequenceDiagram
 | 主窗口与服务装配 | `src/TavernDesk.App/ViewModels/MainWindowViewModel.cs`、`src/TavernDesk.Infrastructure/InfrastructureServices.cs` |
 | 角色书架 | `src/TavernDesk.App/ViewModels/CharactersViewModel.cs` |
 | 普通聊天 | `src/TavernDesk.App/ViewModels/ChatViewModel.cs` |
+| 会话列表与请求构造 | `src/TavernDesk.App/ViewModels/ConversationBrowserViewModel.cs`、`src/TavernDesk.App/Services/ChatRequestFactory.cs` |
+| 流式快照与显示 | `src/TavernDesk.Infrastructure/Context/ConversationGenerationSessionStore.cs`、`src/TavernDesk.App/Presentation/GenerationSessionUpdateQueue.cs`、`MarkdownMessagePresenter.cs`、`MarkdownMessageBlocks.cs` |
 | 普通上下文 | `src/TavernDesk.Infrastructure/Context/BasicContextAssembler.cs` |
 | Provider | `src/TavernDesk.Infrastructure/Providers/` |
 | 错误日志与 API 测试记录 | `src/TavernDesk.Infrastructure/Diagnostics/`、`ProviderGatewayRouter.cs` |
@@ -252,6 +267,8 @@ sequenceDiagram
 
 以下是工作记录中的最近可信快照，不代表任何未提交工作区修改已经通过同等验证：
 
+- 2026-09-11：本次流式显示与聊天职责拆分的 Release 私有测试 `298/298`、四语资源校验和隔离启动初始化通过。真实 WPF 窗口使用专用虚构资料与本地流式替身，验证发送、会话切换、重新附着、关闭第二窗口、停止及浅/深色主题，绑定与 Dispatcher 错误均为零。完整套件首次有一项固定 300 ms 等待的加载测试未及时完成，改为等待实际就绪状态并保留超时后复验通过。
+- 同次本机流式对比覆盖 16K/64K/128K 正文和 64K 代码，最终文本均一致。128K 正文的生产线程分配从约 128.5 MiB 降至 0.67 MiB，累计正文绑定更新耗时从约 18.3 s 降至 0.28 s；64K 代码的累计布局耗时从约 1.23 s 降至 0.20 s。固定片段与发送节奏下各单次运行，快照改为在显示端按需生成，因此生产线程分配不等于全进程分配；结果不代表真实 Provider 延迟或所有硬件的收益。五组新旧渲染行距比较一致。
 - 2026-08-14：群聊回复归属抬头清洗、固定顺序/头像强制接话、四语静态校验、Release 构建、280 项私有测试、长历史离线脚本和根启动探针通过；未调用真实 Provider。
 - 2026-08-11：四语静态校验、Debug/Release 构建和隔离存储 smoke 通过；English 首次启动与实际 EXE 人工短验收完成；发布目录与根启动探针已核对。
 - 2026-08-09：当时的完整 Release 测试为 `188/188`，另有 SQLite 事务回滚定向回归；发布探针通过。

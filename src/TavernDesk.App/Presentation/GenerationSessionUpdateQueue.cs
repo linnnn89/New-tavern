@@ -10,9 +10,10 @@ public sealed class GenerationSessionUpdateQueue : IDisposable
     private readonly Dispatcher? _dispatcher;
     private readonly DispatcherTimer? _timer;
     private readonly Action<ConversationGenerationSession> _apply;
+    private IConversationGenerationSessionStore? _store;
     private readonly Dictionary<(string Conversation, string? Operation, string? Message),
-        (long Sequence, ConversationGenerationSession Session)> _pending = new();
-    private readonly Dictionary<string, ConversationGenerationSession> _latest = new();
+        (long Sequence, ConversationGenerationSessionUpdate Session)> _pending = new();
+    private readonly Dictionary<string, ConversationGenerationSessionUpdate> _latest = new();
     private long _sequence;
     private bool _timerActive;
     private bool _timerStartQueued;
@@ -34,11 +35,27 @@ public sealed class GenerationSessionUpdateQueue : IDisposable
         }
     }
 
-    public void Post(ConversationGenerationSession session)
+    public GenerationSessionUpdateQueue(IConversationGenerationSessionStore store,
+        Dispatcher? dispatcher, Action<ConversationGenerationSession> apply, TimeSpan? interval = null)
+        : this(dispatcher, apply, interval)
+    {
+        _store = store;
+        if (store is IConversationGenerationSessionUpdates updates)
+            updates.SessionUpdated += OnSessionUpdated;
+        else
+            store.SessionChanged += OnSessionChanged;
+    }
+
+    private void OnSessionUpdated(object? sender, ConversationGenerationSessionUpdate update) => Post(update);
+    private void OnSessionChanged(object? sender, ConversationGenerationSession session) => Post(session);
+
+    public void Post(ConversationGenerationSession session) => Post(new ConversationGenerationSessionUpdate(session));
+
+    public void Post(ConversationGenerationSessionUpdate session)
     {
         if (_dispatcher is null)
         {
-            if (!_disposed) _apply(session);
+            if (!_disposed) _apply(session.GetSnapshot());
             return;
         }
         if (_dispatcher.HasShutdownStarted) return;
@@ -48,7 +65,7 @@ public sealed class GenerationSessionUpdateQueue : IDisposable
             if (_disposed) return;
             _latest.TryGetValue(session.ConversationId, out var previous);
             urgent = !session.IsBusy || !session.SawContent || session.IsThinking
-                || session.FinishReason is not null || session.Usage is not null
+                || session.HasCompletion
                 || previous is null || !previous.SawContent
                 || previous.OperationId != session.OperationId || previous.MessageId != session.MessageId;
             if (session.IsBusy) _latest[session.ConversationId] = session;
@@ -84,7 +101,7 @@ public sealed class GenerationSessionUpdateQueue : IDisposable
 
     private void Drain()
     {
-        ConversationGenerationSession[] snapshots;
+        ConversationGenerationSessionUpdate[] snapshots;
         lock (_sync)
         {
             _timer!.Stop();
@@ -97,12 +114,17 @@ public sealed class GenerationSessionUpdateQueue : IDisposable
         foreach (var snapshot in snapshots)
         {
             if (_disposed) return;
-            _apply(snapshot);
+            _apply(snapshot.GetSnapshot());
         }
     }
 
     public void Dispose()
     {
+        if (_store is IConversationGenerationSessionUpdates updates)
+            updates.SessionUpdated -= OnSessionUpdated;
+        else if (_store is not null)
+            _store.SessionChanged -= OnSessionChanged;
+        _store = null;
         lock (_sync)
         {
             _disposed = true;

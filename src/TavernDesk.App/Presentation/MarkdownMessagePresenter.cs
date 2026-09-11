@@ -17,6 +17,7 @@ public sealed class MarkdownMessagePresenter : UserControl
 
     private readonly StackPanel _root = new();
     private bool _isWatchingInterfaceSettings;
+    private readonly List<MarkdownMessageBlock> _blocks = new();
 
     public MarkdownMessagePresenter()
     {
@@ -67,105 +68,117 @@ public sealed class MarkdownMessagePresenter : UserControl
     {
         if (target is MarkdownMessagePresenter presenter)
         {
-            presenter.Rebuild();
+            presenter.UpdateMarkdown();
         }
     }
 
     private void Rebuild()
     {
+        _blocks.Clear();
         _root.Children.Clear();
-        var source = MarkdownText ?? string.Empty;
-        if (source.Length == 0)
-        {
-            return;
-        }
-
-        var isDark = string.Equals(
-            InterfaceSettingsRuntime.ThemeName,
-            InterfaceSettingsRuntime.DarkThemeName,
-            StringComparison.Ordinal);
-        var inlineCodeBrush = CreateBrush(
-            isDark ? Color.FromRgb(0x2B, 0x31, 0x3A) : Color.FromRgb(0xEE, 0xF2, 0xF7));
-        var blockCodeBrush = CreateBrush(
-            isDark ? Color.FromRgb(0x24, 0x29, 0x31) : Color.FromRgb(0xF4, 0xF6, 0xFA));
-        var blockCodeBorderBrush = CreateBrush(
-            isDark ? Color.FromRgb(0x3A, 0x42, 0x4E) : Color.FromRgb(0xE1, 0xE6, 0xEE));
-        var quoteBrush = CreateBrush(
-            isDark ? Color.FromRgb(0x8B, 0xA4, 0xC7) : Color.FromRgb(0x5B, 0x74, 0x99));
-
-        var lines = source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        TextBlock? paragraph = null;
-        for (var index = 0; index < lines.Length; index++)
-        {
-            var line = lines[index];
-            if (line.StartsWith("```", StringComparison.Ordinal))
-            {
-                FlushParagraph(ref paragraph);
-                var code = new System.Text.StringBuilder();
-                index++;
-                while (index < lines.Length
-                       && !lines[index].StartsWith("```", StringComparison.Ordinal))
-                {
-                    if (code.Length > 0)
-                    {
-                        code.Append('\n');
-                    }
-
-                    code.Append(lines[index]);
-                    index++;
-                }
-
-                _root.Children.Add(new Border
-                {
-                    Margin = new Thickness(0, 8, 0, 8),
-                    Padding = new Thickness(12, 10, 12, 10),
-                    CornerRadius = new CornerRadius(8),
-                    Background = blockCodeBrush,
-                    BorderBrush = blockCodeBorderBrush,
-                    BorderThickness = new Thickness(1),
-                    Child = CreateMonospaceBlock(code.ToString())
-                });
-                continue;
-            }
-
-            paragraph ??= CreateParagraph();
-            if (paragraph.Inlines.Count > 0)
-            {
-                paragraph.Inlines.Add(new LineBreak());
-            }
-
-            if (line.StartsWith("> ", StringComparison.Ordinal))
-            {
-                paragraph.Inlines.Add(new Run(line[2..])
-                {
-                    FontStyle = FontStyles.Italic,
-                    Foreground = quoteBrush
-                });
-                continue;
-            }
-
-            if (line.StartsWith("- ", StringComparison.Ordinal)
-                || line.StartsWith("* ", StringComparison.Ordinal))
-            {
-                paragraph.Inlines.Add(new Run("• " + line[2..]));
-                continue;
-            }
-
-            AppendInlineMarkdown(paragraph, line, inlineCodeBrush);
-        }
-
-        FlushParagraph(ref paragraph);
+        UpdateMarkdown();
     }
 
-    private void FlushParagraph(ref TextBlock? paragraph)
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs args)
     {
-        if (paragraph is null)
-        {
-            return;
-        }
+        base.OnPropertyChanged(args);
+        if (args.Property == FontSizeProperty && _root is not null) Rebuild();
+    }
 
-        _root.Children.Add(paragraph);
-        paragraph = null;
+    private void UpdateMarkdown()
+    {
+        var blocks = MarkdownMessageBlocks.Parse(MarkdownText ?? string.Empty);
+        var isDark = string.Equals(InterfaceSettingsRuntime.ThemeName,
+            InterfaceSettingsRuntime.DarkThemeName, StringComparison.Ordinal);
+        var inlineCodeBrush = CreateBrush(isDark ? Color.FromRgb(0x2B, 0x31, 0x3A) : Color.FromRgb(0xEE, 0xF2, 0xF7));
+        var blockCodeBrush = CreateBrush(isDark ? Color.FromRgb(0x24, 0x29, 0x31) : Color.FromRgb(0xF4, 0xF6, 0xFA));
+        var blockCodeBorderBrush = CreateBrush(isDark ? Color.FromRgb(0x3A, 0x42, 0x4E) : Color.FromRgb(0xE1, 0xE6, 0xEE));
+        var quoteBrush = CreateBrush(isDark ? Color.FromRgb(0x8B, 0xA4, 0xC7) : Color.FromRgb(0x5B, 0x74, 0x99));
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            var block = blocks[index];
+            var old = index < _blocks.Count ? _blocks[index] : (MarkdownMessageBlock?)null;
+            if (old == block) continue;
+            if (old is { } previous && previous.IsCode == block.IsCode)
+            {
+                if (block.IsCode)
+                {
+                    UpdateCodeBlock((Border)_root.Children[index], block.Text);
+                    continue;
+                }
+                if (previous.Text == block.Text && previous.ContinuesParagraph == block.ContinuesParagraph)
+                {
+                    ((TextBlock)_root.Children[index]).Margin = ParagraphMargin(block.EndsParagraph);
+                    continue;
+                }
+            }
+
+            FrameworkElement element;
+            if (block.IsCode)
+            {
+                var border = new Border
+                {
+                    Margin = new Thickness(0, 8, 0, 8), Padding = new Thickness(12, 10, 12, 10),
+                    CornerRadius = new CornerRadius(8), Background = blockCodeBrush,
+                    BorderBrush = blockCodeBorderBrush, BorderThickness = new Thickness(1),
+                    Child = new StackPanel()
+                };
+                UpdateCodeBlock(border, block.Text);
+                element = border;
+            }
+            else
+            {
+                var paragraph = CreateParagraph();
+                paragraph.Margin = ParagraphMargin(block.EndsParagraph);
+                // A continuation beginning with a blank line must retain that line.
+                if (block.ContinuesParagraph) paragraph.Inlines.Add(new Run(string.Empty));
+                foreach (var line in block.Text.Split('\n'))
+                {
+                    if (paragraph.Inlines.Count > 0) paragraph.Inlines.Add(new LineBreak());
+                    if (line.StartsWith("> ", StringComparison.Ordinal))
+                        paragraph.Inlines.Add(new Run(line[2..]) { FontStyle = FontStyles.Italic, Foreground = quoteBrush });
+                    else if (line.StartsWith("- ", StringComparison.Ordinal) || line.StartsWith("* ", StringComparison.Ordinal))
+                        paragraph.Inlines.Add(new Run("• " + line[2..]));
+                    else AppendInlineMarkdown(paragraph, line, inlineCodeBrush);
+                }
+                // The first line continues the previous group's layout, not an extra line.
+                if (block.ContinuesParagraph && paragraph.Inlines.FirstInline is Run first)
+                {
+                    var leadingBreak = first.NextInline;
+                    paragraph.Inlines.Remove(first);
+                    if (leadingBreak is LineBreak) paragraph.Inlines.Remove(leadingBreak);
+                    if (paragraph.Inlines.Count == 0) paragraph.Inlines.Add(new Run(string.Empty));
+                }
+                element = paragraph;
+            }
+            if (index < _root.Children.Count) _root.Children.RemoveAt(index);
+            _root.Children.Insert(index, element);
+        }
+        while (_root.Children.Count > blocks.Count) _root.Children.RemoveAt(_root.Children.Count - 1);
+        _blocks.Clear();
+        _blocks.AddRange(blocks);
+    }
+
+    private static Thickness ParagraphMargin(bool last) => new(0, 0, 0, last ? 6 : 0);
+
+    private void UpdateCodeBlock(Border border, string text)
+    {
+        var panel = (StackPanel)border.Child;
+        var lines = text.Split('\n');
+        var count = (lines.Length + MarkdownMessageBlocks.LinesPerBlock - 1) / MarkdownMessageBlocks.LinesPerBlock;
+        for (var index = 0; index < count; index++)
+        {
+            var start = index * MarkdownMessageBlocks.LinesPerBlock;
+            var content = string.Join('\n', lines, start, Math.Min(MarkdownMessageBlocks.LinesPerBlock, lines.Length - start));
+            if (index < panel.Children.Count)
+            {
+                var existing = (TextBlock)panel.Children[index];
+                if (existing.Text != content) existing.Text = content;
+            }
+            else panel.Children.Add(CreateMonospaceBlock(content));
+        }
+        while (panel.Children.Count > count) panel.Children.RemoveAt(panel.Children.Count - 1);
     }
 
     private TextBlock CreateParagraph()
