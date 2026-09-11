@@ -57,7 +57,7 @@ It is built for long-running character interactions rather than one-off prompts:
 - **Memory you can inspect.** Long-term memory is stored per character, group, or campaign. Updates can be previewed, edited, checkpointed, and saved instead of disappearing into an opaque global memory layer.
 - **Chat and campaigns stay separate.** A campaign has its own scenario, participant snapshots, event stream, GM state, and memory. It does not silently rewrite a character's ordinary chat history.
 - **Structured multi-character play.** Campaign mode supports AI or human GMs, human and AI players, three turn-flow presets, per-seat model routing, dice records, validation, cancellation, and retryable failures.
-- **Visible context assembly.** The context inspector shows token estimates, request segments, worldbook matches, retrieval diagnostics, exclusions, and the API request structure before generation.
+- **Visible context assembly.** The context inspector shows token estimates, request segments, worldbook matches, retrieval diagnostics, exclusions, and the API request structure before generation. Chat previews follow the current input and conversation; late results cannot replace a newer preview. Once a request is assembled for sending, its budget takes priority until you edit the input or switch conversations.
 - **Bring your own provider and data.** Use a supported cloud endpoint, a local LM Studio server, or Grok CLI subscription login. Your library remains in your own Windows data directory.
 - **Compatible character assets.** Import and export SillyTavern-style PNG, JSON, and CHARX character cards while preserving supported embedded data and attached resources.
 

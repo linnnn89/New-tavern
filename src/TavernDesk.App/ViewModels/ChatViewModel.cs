@@ -40,19 +40,16 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private readonly ConcurrentDictionary<string, byte> _pendingSessionRefreshes = new();
     private readonly TimeSpan _groupAutoRelayDelay;
     private readonly ConversationBrowserViewModel _conversationBrowser;
+    private readonly ChatContextPreviewViewModel _contextPreview;
     private readonly PlayerPersonaManagerViewModel _personas;
     private ConversationListItemViewModel? _selectedConversation;
     private CancellationTokenSource? _selectionCancellation;
-    private CancellationTokenSource? _contextCancellation;
     private Task _selectionLoadTask = Task.CompletedTask;
-    private Task _contextRefreshTask = Task.CompletedTask;
     private long _selectionVersion;
-    private long _contextVersion;
     private string? _loadedSelectionId;
     private bool _isSelectionLoading;
     private string _conversationSearchText = string.Empty;
     private string _composerText = string.Empty;
-    private string? _actualBudgetConversationId;
     private bool _isProgrammaticComposerChange;
     private string _status = LanguageRuntime.GetString("Chat.Status.Offline");
     private string _personaName = "USER";
@@ -66,13 +63,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     private string _characterPromptStatus =
         LanguageRuntime.GetString("Chat.CharacterPrompt.Select");
     private string _activeModelText = LanguageRuntime.GetString("Chat.Model.Unassigned");
-    private string _apiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.Select");
     private ChatSendMode _sendMode = ChatSendMode.SendAndGenerate;
     private ChatDisplayMode _displayMode = ChatDisplayMode.Bubble;
     private ModelFunctionAssignment? _chatAssignment;
     private ModelFunctionAssignment? _groupChatAssignment;
-    private TokenEstimate _tokenEstimate;
-    private GroupContextBudgetResult? _groupContextBudgetResult;
     private string _groupAutoRelayCountdownText = string.Empty;
     private bool _isGroupAutoRelayCountdownVisible;
     private CancellationTokenSource? _groupAutoRelayCountdownCancellation;
@@ -157,12 +151,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             ScheduleContextRefresh);
         Memory.BodyChanged += OnMemoryBodyChanged;
         Memory.BodySaved += OnMemoryBodySaved;
-        var budget = BudgetFor(ConversationMode.SingleCharacter);
-        _tokenEstimate = new TokenEstimate(
-            0,
-            budget.ReservedOutputTokens,
-            budget.ContextLimit,
-            IsExact: false);
+        _contextPreview = new ChatContextPreviewViewModel(
+            contextAssembler, BudgetFor(ConversationMode.SingleCharacter));
 
         SelectConversationCommand = new RelayCommand(parameter =>
         {
@@ -193,13 +183,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         ExportChatArchiveCommand = new AsyncRelayCommand(
             ExportChatArchiveAsync,
             () => SelectedConversation is not null);
+        _contextPreview.PropertyChanged += OnContextPreviewPropertyChanged;
+        _contextPreview.PreviewApplied += OnContextPreviewApplied;
         _generationCoordinator.StateChanged += OnGenerationStateChanged;
         _sessionUpdates = new GenerationSessionUpdateQueue(generationSessions, Application.Current?.Dispatcher, ApplyGenerationSession);
     }
 
     public ObservableCollection<CharacterConversationGroupViewModel> ConversationGroups => _conversationBrowser.Groups;
     public ObservableCollection<ChatMessageItemViewModel> Messages { get; } = [];
-    public ObservableCollection<ContextSegment> ContextSegments { get; } = [];
+    public ObservableCollection<ContextSegment> ContextSegments => _contextPreview.ContextSegments;
     public MemoryWorkflowViewModel Memory { get; }
     public GroupChatViewModel Group { get; }
     public RetrievalViewModel Retrieval { get; }
@@ -330,7 +322,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
             if (!_isProgrammaticComposerChange)
             {
-                _actualBudgetConversationId = null;
+                _contextPreview.ReleaseActualBudget();
                 if (SelectedConversation?.Mode == ConversationMode.Group
                     && string.Equals(
                         Group.ConversationId,
@@ -350,54 +342,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         }
     }
 
-    public string EstimatedTokenText
-    {
-        get
-        {
-            var budget = CurrentUiBudget;
-            var sourceLabel = LanguageRuntime.BackendMessage(
-                budget.SourceLabel,
-                "Chat.Model.DefaultBudgetSource");
-            var accuracy = _tokenEstimate.IsExact
-                ? LanguageRuntime.GetString("Chat.Token.Exact")
-                : LanguageRuntime.GetString("Chat.Token.Estimated");
-            return _tokenEstimate.ExceedsLimit
-                ? LanguageRuntime.Format(
-                    "Chat.Token.OverLimitFormat",
-                    accuracy,
-                    _tokenEstimate.InputTokens,
-                    _tokenEstimate.ReservedOutputTokens,
-                    _tokenEstimate.ContextLimit,
-                    sourceLabel)
-                : LanguageRuntime.Format(
-                    "Chat.Token.EstimateFormat",
-                    accuracy,
-                    _tokenEstimate.InputTokens,
-                    _tokenEstimate.ReservedOutputTokens,
-                    sourceLabel);
-        }
-    }
-
-    public int EstimatedInputTokens => _tokenEstimate.InputTokens;
-    public string EstimatedTokenHeadline =>
-        $"{_tokenEstimate.InputTokens + _tokenEstimate.ReservedOutputTokens:N0} / {_tokenEstimate.ContextLimit:N0}";
-    public double EstimatedTokenUsagePercent => _tokenEstimate.ContextLimit <= 0
-        ? 0
-        : Math.Clamp(
-            100d * (_tokenEstimate.InputTokens + _tokenEstimate.ReservedOutputTokens)
-            / _tokenEstimate.ContextLimit,
-            0,
-            100);
-    public string EstimatedTokenUsageLevel =>
-        EstimatedTokenUsagePercent >= 90 ? "Danger"
-        : EstimatedTokenUsagePercent >= 70 ? "Warning"
-        : "Normal";
-    public bool IsEstimatedOverLimit =>
-        _tokenEstimate.ExceedsLimit
-        || _groupContextBudgetResult is { CanSend: false };
-
-    public GroupContextBudgetResult? ContextBudgetResult =>
-        _groupContextBudgetResult;
+    public string EstimatedTokenText => _contextPreview.EstimatedTokenText;
+    public int EstimatedInputTokens => _contextPreview.EstimatedInputTokens;
+    public string EstimatedTokenHeadline => _contextPreview.EstimatedTokenHeadline;
+    public double EstimatedTokenUsagePercent => _contextPreview.EstimatedTokenUsagePercent;
+    public string EstimatedTokenUsageLevel => _contextPreview.EstimatedTokenUsageLevel;
+    public bool IsEstimatedOverLimit => _contextPreview.IsEstimatedOverLimit;
+    public GroupContextBudgetResult? ContextBudgetResult => _contextPreview.ContextBudgetResult;
 
     public bool IsModelThinking =>
         SelectedConversation is not null
@@ -522,11 +473,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         private set => SetProperty(ref _activeModelText, value);
     }
 
-    public string ApiRequestPreview
-    {
-        get => _apiRequestPreview;
-        private set => SetProperty(ref _apiRequestPreview, value);
-    }
+    public string ApiRequestPreview => _contextPreview.ApiRequestPreview;
 
     public ChatSendMode SendMode
     {
@@ -802,9 +749,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _selectionCancellation?.Cancel();
         _selectionCancellation?.Dispose();
         _selectionCancellation = null;
-        _contextCancellation?.Cancel();
-        _contextCancellation?.Dispose();
-        _contextCancellation = null;
+
         if (SelectedConversation is not null)
         {
             SelectedConversation.IsSelected = false;
@@ -814,23 +759,14 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _loadedSelectionId = null;
         _isSelectionLoading = false;
         Messages.Clear();
-        ContextSegments.Clear();
-        ApiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.SafeSelect");
+        _contextPreview.BeginSelection(SelectedConversation?.Id, CurrentUiBudget);
         ForgetUnsavedGroupMemoryBody();
         Memory.Clear();
         Group.Clear();
         Retrieval.Clear();
         Presets.Clear();
         ApplyCharacterPrompts(null);
-        _groupContextBudgetResult = null;
-        _actualBudgetConversationId = null;
-        OnPropertyChanged(nameof(ContextBudgetResult));
-        var budget = CurrentUiBudget;
-        RefreshTokenEstimate(new TokenEstimate(
-            0,
-            budget.ReservedOutputTokens,
-            budget.ContextLimit,
-            IsExact: false));
+
         SendLocalCommand.RaiseCanExecuteChanged();
     }
 
@@ -845,23 +781,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         _loadedSelectionId = null;
         _isSelectionLoading = true;
         Messages.Clear();
-        ContextSegments.Clear();
-        ApiRequestPreview = LanguageRuntime.GetString("Chat.ApiPreview.SafeSelect");
+        _contextPreview.BeginSelection(conversation.Id, CurrentUiBudget);
         ForgetUnsavedGroupMemoryBody();
         Memory.Clear();
         Group.Clear();
         Retrieval.Clear();
         Presets.Clear();
         ApplyCharacterPrompts(null);
-        if (!string.Equals(
-                _actualBudgetConversationId,
-                conversation.Id,
-                StringComparison.Ordinal))
-        {
-            _groupContextBudgetResult = null;
-            _actualBudgetConversationId = null;
-            OnPropertyChanged(nameof(ContextBudgetResult));
-        }
         SendLocalCommand.RaiseCanExecuteChanged();
         RefreshContinueGenerationCommands();
         _selectionLoadTask = LoadSelectionAsync(
@@ -2665,7 +2591,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var functionName = mode == ConversationMode.Group
             ? LanguageRuntime.GetString("Chat.Function.Group")
             : LanguageRuntime.GetString("Chat.Function.Character");
-        _contextBudget.UpdateBudget(BudgetFor(mode));
+        var budget = BudgetFor(mode);
+        _contextBudget.UpdateBudget(budget);
+        _contextPreview.UpdateBudgetSource(budget);
         if (assignment is null)
         {
             ActiveModelText =
@@ -2687,87 +2615,34 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(EstimatedTokenText));
     }
 
-    private void ScheduleContextRefresh()
+    private void ScheduleContextRefresh() => _ = RefreshContextEstimateAsync(immediate: false);
+
+    private Task RefreshContextEstimateAsync(bool immediate, CancellationToken cancellationToken = default)
     {
-        _contextCancellation?.Cancel();
-        _contextCancellation?.Dispose();
-        _contextCancellation = new CancellationTokenSource();
-        var version = ++_contextVersion;
-        _contextRefreshTask = RefreshContextEstimateAsync(
-            immediate: false,
-            version,
-            _contextCancellation.Token);
+        if (_disposed || SelectedConversation is not { } selected || !IsSelectionReady(selected.Id))
+            return Task.CompletedTask;
+        var request = CreateContextRequest(selected.Id, ComposerText, null,
+            CreateContextSnapshot(CurrentUiBudget), allowRemoteSemanticRetrieval: false);
+        return _contextPreview.RefreshAsync(request, immediate, cancellationToken);
     }
 
-    private async Task RefreshContextEstimateAsync(
-        bool immediate,
-        long? requestedVersion = null,
-        CancellationToken cancellationToken = default)
+    private void OnContextPreviewPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        var selected = SelectedConversation;
-        if (selected is null)
+        if (_disposed) return;
+        if (args.PropertyName == nameof(ChatContextPreviewViewModel.ErrorStatus))
         {
+            if (_contextPreview.ErrorStatus.Length > 0) Status = _contextPreview.ErrorStatus;
             return;
         }
-
-        var version = requestedVersion ?? ++_contextVersion;
-        try
-        {
-            if (!immediate)
-            {
-                await Task.Delay(150, cancellationToken);
-            }
-
-            var result = await AssembleContextAsync(
-                selected.Id,
-                ComposerText,
-                historyBeforeSequenceNo: null,
-                cancellationToken,
-                allowRemoteSemanticRetrieval: false);
-            if (cancellationToken.IsCancellationRequested
-                || version != _contextVersion
-                || SelectedConversation?.Id != selected.Id)
-            {
-                return;
-            }
-
-            ContextSegments.Clear();
-            foreach (var segment in result.Segments)
-            {
-                ContextSegments.Add(segment);
-            }
-
-            PublishPreviewContextBudget(selected.Id, result);
-            ApiRequestPreview = ChatRequestFactory.RenderApiRequestPreview(result);
-            SendLocalCommand.RaiseCanExecuteChanged();
-            Retrieval.UpdateFromContext(result);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            if (version == _contextVersion)
-            {
-                Status = LanguageRuntime.Format("Chat.ContextEstimate.FailedFormat", LanguageRuntime.ErrorMessage(exception));
-            }
-        }
+        OnPropertyChanged(args.PropertyName);
+        if (args.PropertyName == nameof(IsEstimatedOverLimit)) SendLocalCommand.RaiseCanExecuteChanged();
     }
 
-    private Task<ContextAssemblyResult> AssembleContextAsync(
-        string conversationId,
-        string userInput,
-        long? historyBeforeSequenceNo,
-        CancellationToken cancellationToken = default,
-        bool allowRemoteSemanticRetrieval = true)
+    private void OnContextPreviewApplied(object? sender, ContextAssemblyResult result)
     {
-        return AssembleContextAsync(
-            conversationId,
-            userInput,
-            historyBeforeSequenceNo,
-            CreateContextSnapshot(CurrentUiBudget),
-            cancellationToken,
-            allowRemoteSemanticRetrieval: allowRemoteSemanticRetrieval);
+        if (_disposed) return;
+        Retrieval.UpdateFromContext(result);
+        SendLocalCommand.RaiseCanExecuteChanged();
     }
 
     private Task<ContextAssemblyResult> AssembleContextAsync(
@@ -2780,11 +2655,17 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         bool allowRemoteSemanticRetrieval = true)
     {
         return _contextAssembler.AssembleAsync(
-            ChatRequestFactory.CreateContextRequest(conversationId, userInput, historyBeforeSequenceNo,
-                snapshot, GetInvalidGroupMemoryScopes(conversationId),
-                _unsavedGroupMemoryBodies.ContainsKey(conversationId), continuationInstruction,
-                allowRemoteSemanticRetrieval), cancellationToken);
+            CreateContextRequest(conversationId, userInput, historyBeforeSequenceNo,
+                snapshot, continuationInstruction, allowRemoteSemanticRetrieval), cancellationToken);
     }
+
+    private ContextAssemblyRequest CreateContextRequest(string conversationId, string userInput,
+        long? historyBeforeSequenceNo, ContextInputSnapshot snapshot,
+        string? continuationInstruction = null, bool allowRemoteSemanticRetrieval = true) =>
+        ChatRequestFactory.CreateContextRequest(conversationId, userInput, historyBeforeSequenceNo,
+            snapshot, GetInvalidGroupMemoryScopes(conversationId),
+            _unsavedGroupMemoryBodies.ContainsKey(conversationId), continuationInstruction,
+            allowRemoteSemanticRetrieval);
 
     private ContextInputSnapshot CreateContextSnapshot(
         ContextBudget budget,
@@ -2927,57 +2808,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             _ => LanguageRuntime.Format("Chat.Finish.OtherFormat", finishReason)
         };
 
-    private void RefreshTokenEstimate(TokenEstimate estimate)
-    {
-        _tokenEstimate = estimate;
-        OnPropertyChanged(nameof(EstimatedInputTokens));
-        OnPropertyChanged(nameof(EstimatedTokenText));
-        OnPropertyChanged(nameof(EstimatedTokenHeadline));
-        OnPropertyChanged(nameof(EstimatedTokenUsagePercent));
-        OnPropertyChanged(nameof(EstimatedTokenUsageLevel));
-        OnPropertyChanged(nameof(IsEstimatedOverLimit));
-        SendLocalCommand.RaiseCanExecuteChanged();
-    }
-
-    private void PublishActualContextBudget(
-        string conversationId,
-        ContextAssemblyResult result)
-    {
-        if (SelectedConversation?.Id != conversationId)
-        {
-            return;
-        }
-
-        _actualBudgetConversationId = conversationId;
-        _contextCancellation?.Cancel();
-        _contextVersion++;
-        ApplyContextBudget(result);
-    }
-
-    private void PublishPreviewContextBudget(
-        string conversationId,
-        ContextAssemblyResult result)
-    {
-        // Once a real request has produced an actual budget, a slower preview
-        // must not overwrite it with an estimate from an older input snapshot.
-        if (SelectedConversation?.Id != conversationId
-            || string.Equals(
-                _actualBudgetConversationId,
-                conversationId,
-                StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        ApplyContextBudget(result);
-    }
-
-    private void ApplyContextBudget(ContextAssemblyResult result)
-    {
-        _groupContextBudgetResult = result.GroupBudget;
-        OnPropertyChanged(nameof(ContextBudgetResult));
-        RefreshTokenEstimate(result.Estimate);
-    }
+    private void PublishActualContextBudget(string conversationId, ContextAssemblyResult result) =>
+        _contextPreview.PublishActualBudget(conversationId, result);
 
     private void SetComposerTextProgrammatically(string value)
     {
@@ -3162,7 +2994,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         BeginDispose();
-        await Task.WhenAll(_selectionLoadTask, _contextRefreshTask);
+        await Task.WhenAll(_selectionLoadTask, _contextPreview.DisposeAsync().AsTask());
     }
 
     private void BeginDispose()
@@ -3182,8 +3014,9 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Memory.BodySaved -= OnMemoryBodySaved;
         _selectionCancellation?.Cancel();
         _selectionCancellation?.Dispose();
-        _contextCancellation?.Cancel();
-        _contextCancellation?.Dispose();
+        _contextPreview.PropertyChanged -= OnContextPreviewPropertyChanged;
+        _contextPreview.PreviewApplied -= OnContextPreviewApplied;
+        _contextPreview.Dispose();
     }
 
     private sealed record SendSnapshot(
