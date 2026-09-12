@@ -295,7 +295,7 @@
                             <Popup x:Name="ChatArchiveMenuPopup"
                                    PlacementTarget="{Binding ElementName=ChatArchiveMenuButton}"
                                    Placement="Bottom"
-                                   StaysOpen="False"
+                                   StaysOpen="True"
                                    AllowsTransparency="True"
                                    PopupAnimation="Fade"
                                    DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
@@ -391,7 +391,7 @@
                                             <Button.ContextMenu>
                                                 <ContextMenu Width="220"
                                                              MaxWidth="240"
-                                                             StaysOpen="False"
+                                                             StaysOpen="True"
                                                              Opened="GroupMemberContextMenu_OnOpened"
                                                              Closed="GroupMemberContextMenu_OnClosed"
                                                              DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
@@ -648,7 +648,7 @@
                                        DataContext="{Binding}"
                                        PlacementTarget="{Binding ElementName=MessageBubble}"
                                        Placement="MousePoint"
-                                       StaysOpen="False"
+                                       StaysOpen="True"
                                        AllowsTransparency="True"
                                        PopupAnimation="Fade">
                                     <Border Width="178"
