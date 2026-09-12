@@ -1204,6 +1204,7 @@
     </Style>
 
     <Style TargetType="{x:Type ContextMenu}">
+        <Setter Property="StaysOpen" Value="True" />
         <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
