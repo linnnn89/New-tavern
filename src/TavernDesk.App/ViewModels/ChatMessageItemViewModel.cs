@@ -24,6 +24,9 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
     private string _personaMacroValue;
     private string _characterMacroValue;
     private bool _isToolbarOpen;
+    private readonly Func<bool>? _speechActive;
+    private readonly Func<string>? _speechStatus;
+    private readonly Func<bool>? _canSpeak;
 
     public ChatMessageItemViewModel(
         ChatMessage message,
@@ -40,9 +43,19 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
         string? senderLabel = null,
         string? personaName = null,
         string? characterName = null,
-        string? avatarPath = null)
+        string? avatarPath = null,
+        Action<ChatMessageItemViewModel>? speak = null,
+        Action<ChatMessageItemViewModel>? speechSettings = null,
+        Func<bool>? speechActive = null,
+        Func<string>? speechStatus = null,
+        Func<bool>? canSpeak = null)
     {
         Message = message;
+        _speechActive = speechActive;
+        _speechStatus = speechStatus;
+        _canSpeak = canSpeak;
+        SpeakCommand = new RelayCommand(() => speak?.Invoke(this), () => speak is not null && SenderKind == MessageSenderKind.Character && (_canSpeak?.Invoke() ?? true));
+        SpeechSettingsCommand = new RelayCommand(() => speechSettings?.Invoke(this));
         _edit = edit;
         _delete = delete;
         _fork = fork;
@@ -134,6 +147,18 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
     public AsyncRelayCommand PreviousCandidateCommand { get; }
     public AsyncRelayCommand NextCandidateCommand { get; }
     public RelayCommand CopyCommand { get; }
+    public RelayCommand SpeakCommand { get; }
+    public RelayCommand SpeechSettingsCommand { get; }
+    public string SpeechGlyph => _speechActive?.Invoke() == true ? "\uE71A" : "\uE767";
+    public string SpeechStatus => _speechStatus?.Invoke() ?? "";
+    public string SpeechToolTip => LanguageRuntime.GetString(_canSpeak?.Invoke() == false ? "Speech.WaitForReply" : "Speech.Speak");
+    public void RefreshSpeech()
+    {
+        OnPropertyChanged(nameof(SpeechGlyph));
+        OnPropertyChanged(nameof(SpeechStatus));
+        OnPropertyChanged(nameof(SpeechToolTip));
+        SpeakCommand.RaiseCanExecuteChanged();
+    }
 
     public void RefreshContent()
     {

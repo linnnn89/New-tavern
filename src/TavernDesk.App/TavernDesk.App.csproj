@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" Version="3.1.0" />
     <ProjectReference Include="..\TavernDesk.Core\TavernDesk.Core.csproj" />
     <ProjectReference Include="..\TavernDesk.Infrastructure\TavernDesk.Infrastructure.csproj" />
   </ItemGroup>

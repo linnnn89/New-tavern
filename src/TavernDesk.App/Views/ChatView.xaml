@@ -642,6 +642,37 @@
                                             PreviewMouseLeftButtonDown="MessagePlus_OnPreviewMouseLeftButtonDown"
                                             Click="MessagePlus_OnClick"
                                             MouseLeave="MessagePlus_OnMouseLeave" />
+                                    <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SenderKind}" Value="Character">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <Button Command="{Binding SpeakCommand}"
+                                                AutomationProperties.AutomationId="SpeakMessage"
+                                                AutomationProperties.Name="{StaticResource Speech.Speak}"
+                                                ToolTip="{Binding SpeechToolTip}" ToolTipService.ShowOnDisabled="True"
+                                                Width="30" Height="28" Padding="3"
+                                                Style="{StaticResource AppicaMessageHoverButtonStyle}">
+                                            <TextBlock Text="{Binding SpeechGlyph}" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="15" />
+                                        </Button>
+                                        <Button Command="{Binding SpeechSettingsCommand}"
+                                                AutomationProperties.AutomationId="MessageSpeechSettings"
+                                                AutomationProperties.Name="{StaticResource Speech.Title}"
+                                                ToolTip="{StaticResource Speech.Title}"
+                                                Width="28" Height="28" Padding="3"
+                                                Style="{StaticResource AppicaMessageHoverButtonStyle}">
+                                            <TextBlock Text="&#xE713;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="12" />
+                                        </Button>
+                                        <TextBlock Text="{Binding SpeechStatus}" MaxWidth="280" TextWrapping="Wrap"
+                                                   Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11"
+                                                   Foreground="{DynamicResource MutedTextBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <Popup IsOpen="{Binding IsToolbarOpen, Mode=TwoWay}"

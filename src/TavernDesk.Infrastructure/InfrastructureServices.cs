@@ -10,6 +10,7 @@ using TavernDesk.Infrastructure.Providers;
 using TavernDesk.Infrastructure.Security;
 using TavernDesk.Infrastructure.Storage;
 using TavernDesk.Infrastructure.Worldbooks;
+using TavernDesk.Infrastructure.Speech;
 
 namespace TavernDesk.Infrastructure;
 
@@ -65,6 +66,8 @@ public sealed class InfrastructureServices
         GenerationSessions = new ConversationGenerationSessionStore();
         CampaignOperationGate = new CampaignOperationGate();
         Secrets = new WindowsDpapiSecretStore(Paths);
+        SpeechSettings = new SpeechSettingsService(Settings, Secrets);
+        SpeechSynthesizer = new FishAudioSpeechSynthesizer(Secrets);
         var openAiCompatibleGateway =
             new OpenAiCompatibleProviderGateway(Providers, Secrets);
         var grokCliGateway = new GrokCliProviderGateway(Providers, Paths);
@@ -185,6 +188,8 @@ public sealed class InfrastructureServices
     public IConversationGenerationCoordinator GenerationCoordinator { get; }
     public IConversationGenerationSessionStore GenerationSessions { get; }
     public ISecretStore Secrets { get; }
+    public SpeechSettingsService SpeechSettings { get; }
+    public ISpeechSynthesizer SpeechSynthesizer { get; }
     public IProviderGateway ProviderGateway { get; }
     public ChatReplyExecutor ChatReplies { get; }
     public IEmbeddingProviderGateway EmbeddingProviderGateway { get; }

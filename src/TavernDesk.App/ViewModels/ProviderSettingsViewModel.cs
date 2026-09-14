@@ -80,9 +80,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         AppDataLocationService? dataLocation = null,
         PlayerPersonaManagerViewModel? personas = null,
         IInterfaceScaleRecommendationProvider? interfaceScaleRecommendationProvider = null,
-        ITavernDeskDiagnostics? diagnostics = null)
+        ITavernDeskDiagnostics? diagnostics = null,
+        TavernDesk.Infrastructure.Speech.SpeechSettingsService? speechSettings = null)
     {
         _repository = repository;
+        Speech = speechSettings is null ? null : new SpeechSettingsViewModel(speechSettings);
         _models = models;
         _assignments = assignments;
         _secrets = secrets;
@@ -156,6 +158,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     }
 
     public ObservableCollection<ProviderProfile> Profiles { get; } = [];
+    public SpeechSettingsViewModel? Speech { get; }
     public ObservableCollection<ProviderModel> VisibleCatalogModels { get; } = [];
     public ObservableCollection<ProviderModel> VisibleAssignmentModels { get; } = [];
     public ObservableCollection<ModelFunctionAssignmentOverview> AssignmentOverview { get; } = [];
@@ -517,6 +520,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public async Task LoadAsync()
     {
+        if (Speech is not null) await Speech.LoadAsync();
         LoadDataRootSettings();
         await LoadDiagnosticsSettingsAsync();
         await Interface.LoadAsync();
@@ -551,6 +555,18 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     public async Task<bool> ConfirmCanLeaveAsync()
     {
+        if (Speech?.IsSaving == true) return false;
+        if (Speech?.HasUnsavedChanges == true)
+        {
+            switch (_interaction.ConfirmUnsavedProviderChanges(LanguageRuntime.GetString("Speech.Title")))
+            {
+                case UnsavedChangesDecision.Cancel: return false;
+                case UnsavedChangesDecision.Save:
+                    if (!await Speech.SaveAsync()) return false;
+                    break;
+                case UnsavedChangesDecision.Discard: await Speech.LoadAsync(true); break;
+            }
+        }
         if (!HasUnsavedChanges)
         {
             return true;
@@ -1724,7 +1740,8 @@ public enum SettingsPage
     Personas,
     DefaultBehavior,
     Interface,
-    Data
+    Data,
+    Speech
 }
 
 public sealed record ModelFunctionOption(

@@ -12,6 +12,7 @@ namespace TavernDesk.App.Services;
 public sealed class ChatViewModelFactory
 {
     private readonly InfrastructureServices _services;
+    public SpeechPlaybackService Speech { get; }
     private readonly IUserInteractionService _interaction;
     private readonly IFileDialogService _fileDialog;
     private readonly PlayerPersonaManagerViewModel _personas;
@@ -23,6 +24,7 @@ public sealed class ChatViewModelFactory
         PlayerPersonaManagerViewModel? personas = null)
     {
         _services = services;
+        Speech = new SpeechPlaybackService(services.SpeechSynthesizer, services.SpeechSettings, new WindowsSpeechAudioOutput());
         _interaction = interaction;
         _fileDialog = fileDialog;
         _personas = personas ?? new PlayerPersonaManagerViewModel(services.Settings, interaction);
@@ -66,7 +68,9 @@ public sealed class ChatViewModelFactory
             OpenConversationWindow,
             _personas,
             TimeSpan.FromSeconds(5),
-            _services.ChatReplies);
+            _services.ChatReplies,
+            Speech,
+            _services.SpeechSettings);
         viewModel.OpenCharacterCard = OpenCharacterCard;
         viewModel.OpenPromptSettings = OpenPromptSettings;
         return viewModel;
