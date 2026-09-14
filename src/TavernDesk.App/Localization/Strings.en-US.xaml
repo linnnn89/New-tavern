@@ -1638,6 +1638,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Speech.LatencyInvalid">Latency must be normal, balanced, or low.</sys:String>
     <sys:String x:Key="Speech.VoiceInvalid">{0} must not exceed 128 characters.</sys:String>
     <sys:String x:Key="Speech.KeyConflict">Choose either entering a new API key or clearing the saved key, not both.</sys:String>
+    <sys:String x:Key="Speech.ConnectionChanged">The API address or key changed in another window. Your edits have not been saved. Reload the settings, check the address, then re-enter the key or make your changes again.</sys:String>
     <sys:String x:Key="Speech.KeySaveFailed">The new key could not be encrypted or written. Saved settings are unchanged. Check secret directory permissions and the error log.</sys:String>
     <sys:String x:Key="Speech.SettingsWriteFailed">Speech settings could not be written. Saved settings are unchanged. Check data directory permissions, free space, and the error log.</sys:String>
     <sys:String x:Key="Speech.SettingsReadFailed">Speech settings could not be read. Check access to the data directory and the error log.</sys:String>

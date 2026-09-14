@@ -1617,6 +1617,7 @@
     <sys:String x:Key="Speech.LatencyInvalid">延迟模式必须为 normal、balanced 或 low。</sys:String>
     <sys:String x:Key="Speech.VoiceInvalid">{0}不能超过 128 个字符。</sys:String>
     <sys:String x:Key="Speech.KeyConflict">不能同时填写新 API Key 和勾选清除密钥，请选择一种操作。</sys:String>
+    <sys:String x:Key="Speech.ConnectionChanged">API 地址或密钥已在其他窗口更新，本次修改尚未保存。请重载设置并核对地址，再重新输入密钥或修改设置。</sys:String>
     <sys:String x:Key="Speech.KeySaveFailed">新密钥加密或写入失败，原配置未改变。请检查密钥目录权限，详情见错误日志。</sys:String>
     <sys:String x:Key="Speech.SettingsWriteFailed">语音设置写入失败，已保存的配置未改变。请检查数据目录权限和可用空间，详情见错误日志。</sys:String>
     <sys:String x:Key="Speech.SettingsReadFailed">无法读取语音设置。请检查数据目录是否可访问，详情见错误日志。</sys:String>
