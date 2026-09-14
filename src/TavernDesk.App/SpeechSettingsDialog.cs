@@ -18,7 +18,7 @@ public sealed class SpeechSettingsDialog : Window
         vm.SetForm(settings);
         Content = new SpeechSettingsView { DataContext = vm };
         var closed = false;
-        vm.Saved += (_, _) => { if (!closed) DialogResult = true; };
+        vm.Saved += (_, _) => { if (!closed && !vm.HasSaveWarning) DialogResult = true; };
         Closed += (_, _) => { closed = true; vm.PendingApiKey = ""; };
     }
 }

@@ -1632,4 +1632,14 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Speech.Recommended">Recommended defaults</sys:String>
     <sys:String x:Key="Speech.DefaultsRestored">Recommended values restored; key and voices kept. Save to apply.</sys:String>
     <sys:String x:Key="Speech.WaitForReply">Wait for conversation generation or loading to finish.</sys:String>
+    <sys:String x:Key="Speech.InvalidField">Check {0}: enter a valid number within the indicated range.</sys:String>
+    <sys:String x:Key="Speech.ModelInvalid">The synthesis model ID must contain 1–128 ASCII characters with no whitespace or control characters.</sys:String>
+    <sys:String x:Key="Speech.ApiUrlInvalid">Enter a complete HTTPS URL (HTTP is allowed for local services), without credentials, query parameters, or a fragment.</sys:String>
+    <sys:String x:Key="Speech.LatencyInvalid">Latency must be normal, balanced, or low.</sys:String>
+    <sys:String x:Key="Speech.VoiceInvalid">{0} must not exceed 128 characters.</sys:String>
+    <sys:String x:Key="Speech.KeyConflict">Choose either entering a new API key or clearing the saved key, not both.</sys:String>
+    <sys:String x:Key="Speech.KeySaveFailed">The new key could not be encrypted or written. Saved settings are unchanged. Check secret directory permissions and the error log.</sys:String>
+    <sys:String x:Key="Speech.SettingsWriteFailed">Speech settings could not be written. Saved settings are unchanged. Check data directory permissions, free space, and the error log.</sys:String>
+    <sys:String x:Key="Speech.SettingsReadFailed">Speech settings could not be read. Check access to the data directory and the error log.</sys:String>
+    <sys:String x:Key="Speech.SettingsSavedCleanupPending">Speech settings and the new key state were saved, but the old encrypted key could not be removed. The new settings are active. See the error log.</sys:String>
 </ResourceDictionary>

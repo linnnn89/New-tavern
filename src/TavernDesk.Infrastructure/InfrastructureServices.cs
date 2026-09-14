@@ -66,7 +66,7 @@ public sealed class InfrastructureServices
         GenerationSessions = new ConversationGenerationSessionStore();
         CampaignOperationGate = new CampaignOperationGate();
         Secrets = new WindowsDpapiSecretStore(Paths);
-        SpeechSettings = new SpeechSettingsService(Settings, Secrets);
+        SpeechSettings = new SpeechSettingsService(Settings, Secrets, Diagnostics);
         SpeechSynthesizer = new FishAudioSpeechSynthesizer(Secrets);
         var openAiCompatibleGateway =
             new OpenAiCompatibleProviderGateway(Providers, Secrets);

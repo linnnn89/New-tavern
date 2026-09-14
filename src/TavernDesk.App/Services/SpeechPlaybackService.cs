@@ -105,7 +105,10 @@ public sealed class SpeechPlaybackService
         }
         catch (Exception error)
         {
-            if (version == _version) Status = LanguageRuntime.GetString("Speech." + (error is SpeechException speech ? speech.Code : "Failed"));
+            if (version == _version)
+                Status = error is SpeechException { Field: { } field } fieldError
+                    ? LanguageRuntime.Format("Speech." + fieldError.Code, LanguageRuntime.GetString("Speech." + field))
+                    : LanguageRuntime.GetString("Speech." + (error is SpeechException speech ? speech.Code : "Failed"));
         }
         finally
         {
@@ -136,6 +139,9 @@ public sealed class SpeechPlaybackService
         // The chat renderer treats angle brackets as visible text, not HTML.
         text = Regex.Replace(text, @"<\|[^>]*\|>", "", RegexOptions.None, timeout);
         text = Regex.Replace(text, @"(?m)^\s{0,3}#{1,6}\s+", "", RegexOptions.None, timeout);
-        return text.Replace("*", "").Replace("`", "").Trim();
+        // Match the presenter's paired bold/code syntax in one pass, keeping literals inside inline code intact.
+        return Regex.Replace(text, @"`([^`\r\n]*)`|\*\*([^\r\n]*?)\*\*",
+            match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value,
+            RegexOptions.None, timeout).Trim();
     }
 }
