@@ -9,6 +9,7 @@ using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure.Group;
 using TavernDesk.Infrastructure.Context;
+using TavernDesk.Infrastructure.Speech;
 
 namespace TavernDesk.App.ViewModels;
 
@@ -18,6 +19,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         "当前用户并未发送回复，但是要求你继续书写聊天发给用户。";
 
     private readonly IConversationRepository _repository;
+    private readonly SpeechPlaybackService? _speech;
+    private readonly SpeechSettingsService? _speechSettings;
     private readonly ICharacterRepository _characters;
     private readonly IContextAssembler _contextAssembler;
     private readonly IContextBudgetProvider _contextBudget;
@@ -99,10 +102,15 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         Func<string, Task>? openConversationWindow = null,
         PlayerPersonaManagerViewModel? personas = null,
         TimeSpan? groupAutoRelayDelay = null,
-        ChatReplyExecutor? chatReplies = null)
+        ChatReplyExecutor? chatReplies = null,
+        SpeechPlaybackService? speech = null,
+        SpeechSettingsService? speechSettings = null)
     {
         _conversationBrowser = new ConversationBrowserViewModel(repository, characters, generationCoordinator, openConversationWindow, DeleteConversationAsync);
         _repository = repository;
+        _speech = speech;
+        _speechSettings = speechSettings;
+        if (_speech is not null) _speech.Changed += OnSpeechChanged;
         _characters = characters;
         _groupChats = groupChats;
         _groupMemory = groupMemory;
@@ -651,6 +659,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return;
         }
 
+        _speech?.StopConversation(conversationId);
         if (isSelected)
         {
             // Stop selection/context reloads before deleting the database row;
@@ -737,6 +746,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
         if (SelectedConversation is not null)
         {
+            StopVisibleSpeech();
             SelectedConversation.IsSelected = false;
         }
 
@@ -749,6 +759,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void ClearSelection()
     {
+        StopVisibleSpeech();
         _selectionCancellation?.Cancel();
         _selectionCancellation?.Dispose();
         _selectionCancellation = null;
@@ -980,6 +991,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void StartSend()
     {
+        StopVisibleSpeech();
         var selected = SelectedConversation;
         if (selected is null
             || !IsSelectionReady(selected.Id)
@@ -1881,12 +1893,57 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             characterName: EffectiveCharacterMacroName(message),
             avatarPath: message.SenderKind == MessageSenderKind.Character
                 ? _conversationBrowser.Characters.GetValueOrDefault(message.SenderId)?.AvatarPath
-                : null);
+                : null,
+            speak: _speech is null ? null : item => { _ = SpeakMessageAsync(item); },
+            speechSettings: item => { _ = ConfigureSpeechAsync(item); },
+            speechActive: () => _speech?.IsActive == true && _speech.MessageKey == SpeechKey(message),
+            speechStatus: () => _speech?.MessageKey == SpeechKey(message) ? _speech.Status : "",
+            canSpeak: () => CanSpeakMessage(message));
+
+    private static string SpeechKey(ChatMessage message) => message.ConversationId + ":" + message.Id;
+
+    private void OnSpeechChanged(object? sender, EventArgs args)
+    {
+        foreach (var item in Messages) item.RefreshSpeech();
+    }
+
+    private void StopVisibleSpeech()
+    {
+        if (SelectedConversation is { } selected) _speech?.StopConversation(selected.Id);
+    }
+
+    private bool CanSpeakMessage(ChatMessage message) => !_disposed && _speech is not null
+        && ((_speech.IsActive && _speech.MessageKey == SpeechKey(message))
+            || (IsSelectionReady(message.ConversationId) && !IsCurrentConversationBusy));
+
+    private async Task SpeakMessageAsync(ChatMessageItemViewModel item)
+    {
+        if (_speech is null || _disposed || item.SenderKind != MessageSenderKind.Character) return;
+        if (_speech.IsActive && _speech.MessageKey == SpeechKey(item.Message))
+        { _speech.Stop(); return; }
+        if (!CanSpeakMessage(item.Message)) return;
+        await _speech.ToggleAsync(SpeechKey(item.Message), item.Message.SenderId, item.DisplayContent);
+    }
+
+    private async Task ConfigureSpeechAsync(ChatMessageItemViewModel item)
+    {
+        if (_speechSettings is null || _disposed) return;
+        try
+        {
+            var settings = await _speechSettings.LoadAsync();
+            if (_disposed) return;
+            var dialog = new SpeechSettingsDialog(_speechSettings, settings, item.Message.SenderId, item.SenderLabel)
+            { Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(window => window.IsActive) };
+            if (dialog.ShowDialog() == true) _speech?.Stop();
+        }
+        catch { Status = LanguageRuntime.GetString("Speech.SettingsInvalid"); }
+    }
 
     private async Task ActivateCandidateAsync(
         ChatMessageItemViewModel item,
         MessageCandidate candidate)
     {
+        _speech?.Stop(SpeechKey(item.Message));
         await _repository.ActivateCandidateAsync(
             item.Id,
             candidate.CandidateIndex);
@@ -1957,6 +2014,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         foreach (var message in Messages)
         {
             message.ContinueCommand.RaiseCanExecuteChanged();
+            message.RefreshSpeech();
         }
     }
 
@@ -1970,6 +2028,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private async Task EditMessageAsync(ChatMessageItemViewModel item)
     {
+        _speech?.Stop(SpeechKey(item.Message));
         item.CloseTools();
         var edited = await _interaction.EditTextAsync(
             LanguageRuntime.GetString("Chat.Message.EditTitle"),
@@ -1997,6 +2056,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private async Task DeleteMessageAsync(ChatMessageItemViewModel item)
     {
+        _speech?.Stop(SpeechKey(item.Message));
         item.CloseTools();
         var decision = _interaction.ConfirmMessageDeletion();
         if (decision == DeleteMessageDecision.Cancel)
@@ -2037,6 +2097,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private async Task RegenerateMessageAsync(ChatMessageItemViewModel item)
     {
+        _speech?.Stop(SpeechKey(item.Message));
         item.CloseTools();
         if (SelectedConversation is null
             || !IsSelectionReady(SelectedConversation.Id)
@@ -2858,6 +2919,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     private void ApplyGenerationSession(ConversationGenerationSession session)
     {
+        if (session.IsBusy) _speech?.StopConversation(session.ConversationId);
         // Live progress belongs to the shared session; each window renders it
         // without being called back by the reply executor.
         if (session.IsThinking)
@@ -2876,6 +2938,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(CanEditGroupMembers));
         Group.RefreshGenerationState();
         SendLocalCommand.RaiseCanExecuteChanged();
+        RefreshContinueGenerationCommands();
         ApplyLiveSession(session);
         if (!session.IsBusy && session.OperationId is not null)
         {
@@ -2989,6 +3052,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             Group.RefreshGenerationState();
             StopGenerationCommand.RaiseCanExecuteChanged();
             SendLocalCommand.RaiseCanExecuteChanged();
+            RefreshContinueGenerationCommands();
         }
     }
 
@@ -3023,6 +3087,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         // Disposing a window releases UI subscriptions and local preview loads;
         // provider generation is application-owned and continues for other views.
         _disposed = true;
+        StopVisibleSpeech();
+        if (_speech is not null) _speech.Changed -= OnSpeechChanged;
         _sessionUpdates.Dispose();
         _generationCoordinator.StateChanged -= OnGenerationStateChanged;
         _personas.PropertyChanged -= OnPersonaManagerPropertyChanged;

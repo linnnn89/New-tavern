@@ -26,6 +26,7 @@ public partial class App : Application
     private static DateTimeOffset _lastReportedUnhandledExceptionAt;
     private static bool _isShowingUnhandledException;
     private SingleInstanceGate? _singleInstanceGate;
+    private SpeechPlaybackService? _speech;
     private ITavernDeskDiagnostics _diagnostics = NullTavernDeskDiagnostics.Instance;
     private IsolatedTestStartup? _testStartup;
     private string? _testImportedCharacterId;
@@ -135,6 +136,7 @@ public partial class App : Application
             var conversationWindows = new ConversationWindowService(
                 chatViewModels,
                 windowPlacement);
+            _speech = chatViewModels.Speech;
             chatViewModels.OpenConversationWindow =
                 conversationWindows.OpenAsync;
             var viewModel = new MainWindowViewModel(
@@ -200,6 +202,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _speech?.Stop();
         _singleInstanceGate?.Dispose();
         _singleInstanceGate = null;
         DispatcherUnhandledException -= OnDispatcherUnhandledException;
