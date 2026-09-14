@@ -38,8 +38,11 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     private SpeechSettingsForm _form = new();
     private string? _baseline;
     private SpeechSettings? _loadedSettings;
+    private bool _restoreRecommended;
     private string _pendingApiKey = "";
     private string _status = "";
+    private string? _validationField;
+    private string _validationMessage = "";
     private bool _hasSavedKey;
     private bool _isSaving;
     private string _modelSelection = "s2.1-pro-free";
@@ -50,8 +53,10 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
         ReloadCommand = new AsyncRelayCommand(() => LoadAsync(true));
         RecommendedCommand = new RelayCommand(() =>
         {
+            _restoreRecommended = true;
             Form = new SpeechSettingsForm { DefaultVoiceId = Form.DefaultVoiceId, CharacterVoiceId = Form.CharacterVoiceId, ClearKey = Form.ClearKey };
             ModelSelection = Form.Model;
+            ClearValidation();
             Status = LanguageRuntime.GetString("Speech.DefaultsRestored");
         });
     }
@@ -73,15 +78,18 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     public string CharacterName { get; }
     public string PendingApiKey { get => _pendingApiKey; set => SetProperty(ref _pendingApiKey, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
+    public string? ValidationField { get => _validationField; private set => SetProperty(ref _validationField, value); }
+    public string ValidationMessage { get => _validationMessage; private set => SetProperty(ref _validationMessage, value); }
     public bool IsSaving { get => _isSaving; private set { if (SetProperty(ref _isSaving, value)) OnPropertyChanged(nameof(CanEdit)); } }
     public bool CanEdit => !IsSaving;
     public bool HasSaveWarning { get; private set; }
     public string KeyStatus => LanguageRuntime.GetString(_hasSavedKey ? "Speech.KeySaved" : "Speech.KeyMissing");
-    public bool HasUnsavedChanges => _baseline is not null && (_baseline != JsonSerializer.Serialize(Form) || PendingApiKey.Length > 0);
+    public bool HasUnsavedChanges => _restoreRecommended || PendingApiKey.Length > 0 || _baseline is not null && _baseline != JsonSerializer.Serialize(Form);
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand ReloadCommand { get; }
     public RelayCommand RecommendedCommand { get; }
     public event EventHandler? Saved;
+    public event EventHandler? ValidationFailed;
 
     public async Task LoadAsync(bool discard = false)
     {
@@ -92,6 +100,8 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
 
     public void SetForm(SpeechSettings value)
     {
+        _restoreRecommended = false;
+        ClearValidation();
         _loadedSettings = new SpeechSettings
         {
             Model = value.Model, DefaultVoiceId = value.DefaultVoiceId, Speed = value.Speed,
@@ -123,8 +133,10 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
         if (IsSaving) return false;
         IsSaving = true;
         HasSaveWarning = false;
+        ClearValidation();
         try
         {
+            if (_loadedSettings is null) throw new SpeechException("SettingsReadFailed");
             var f = Form;
             static double D(string text, string field) => double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) && double.IsFinite(value)
                 ? value : throw new SpeechException("InvalidField", field);
@@ -143,15 +155,44 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
                     ConditionOnPreviousChunks = f.ConditionOnPreviousChunks, QualityGuard = f.QualityGuard
                 }
             };
-            var result = await _service.SaveAsync(edited, _characterId, f.CharacterVoiceId, PendingApiKey, f.ClearKey, _loadedSettings);
+            var result = await _service.SaveAsync(edited, _characterId, f.CharacterVoiceId, PendingApiKey, f.ClearKey, _loadedSettings, _restoreRecommended);
             SetForm(result.Settings);
             HasSaveWarning = result.CleanupPending;
             Status = LanguageRuntime.GetString(HasSaveWarning ? "Speech.SettingsSavedCleanupPending" : "Speech.SettingsSaved");
             Saved?.Invoke(this, EventArgs.Empty);
             return true;
         }
-        catch (Exception error) { Status = ErrorText(error, "SettingsWriteFailed"); return false; }
-        finally { IsSaving = false; }
+        catch (Exception error)
+        {
+            Status = ErrorText(error, "SettingsWriteFailed");
+            ValidationField = error is SpeechException speech ? speech.Field switch
+            {
+                "DefaultVoice" => nameof(SpeechSettingsForm.DefaultVoiceId),
+                "CharacterVoice" => nameof(SpeechSettingsForm.CharacterVoiceId),
+                { } field => field,
+                _ => speech.Code switch
+                {
+                    "ModelInvalid" => nameof(SpeechSettingsForm.Model),
+                    "ApiUrlInvalid" or "ConnectionChanged" => nameof(SpeechSettingsForm.ApiUrl),
+                    "LatencyInvalid" => nameof(SpeechSettingsForm.Latency),
+                    "KeyConflict" or "KeySaveFailed" => "ApiKey",
+                    _ => null
+                }
+            } : null;
+            ValidationMessage = ValidationField is null ? "" : Status;
+            return false;
+        }
+        finally
+        {
+            IsSaving = false;
+            if (ValidationField is not null) ValidationFailed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void ClearValidation()
+    {
+        ValidationField = null;
+        ValidationMessage = "";
     }
 
     private static string ErrorText(Exception error, string fallback) => error is SpeechException speech

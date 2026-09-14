@@ -70,29 +70,37 @@ public sealed class SpeechSettingsService(IAppSettingsRepository settings, ISecr
             SetVoice(current, characterId, characterVoice); }, newKey, false);
 
     public Task<SpeechSettingsSaveResult> SaveAsync(SpeechSettings edited, string? characterId, string characterVoice, string newKey,
-        bool clearKey = false, SpeechSettings? baseline = null) =>
+        bool clearKey = false, SpeechSettings? baseline = null, bool restoreRecommended = false) =>
         UpdateAsync(current =>
         {
+            // Endpoint and credentials form one connection. Check its loaded version before merging
+            // or writing a secret, while still allowing unrelated voice/parameter edits to merge.
+            if (baseline is not null
+                && (clearKey || !string.IsNullOrWhiteSpace(newKey) || restoreRecommended || edited.Options.ApiUrl.Trim() != baseline.Options.ApiUrl)
+                && (current.Options.ApiUrl != baseline.Options.ApiUrl || current.SecretReference != baseline.SecretReference))
+                throw new SpeechException("ConnectionChanged");
             // A form owns only fields changed since it was loaded, including fields in Options.
             // Compare and merge under the same gate as the write so stale role windows cannot restore a paid model.
             T Merge<T>(T editedValue, T original, T latest) => baseline is null || !EqualityComparer<T>.Default.Equals(editedValue, original) ? editedValue : latest;
+            // Restoring defaults is an explicit edit even if the displayed value equals the loaded value.
+            T Global<T>(T editedValue, T original, T latest) => restoreRecommended ? editedValue : Merge(editedValue, original, latest);
             var original = baseline ?? edited;
-            current.Model = Merge(edited.Model, original.Model, current.Model);
+            current.Model = Global(edited.Model, original.Model, current.Model);
             current.DefaultVoiceId = Merge(edited.DefaultVoiceId.Trim(), original.DefaultVoiceId, current.DefaultVoiceId);
-            current.Speed = Merge(edited.Speed, original.Speed, current.Speed);
+            current.Speed = Global(edited.Speed, original.Speed, current.Speed);
             var e = edited.Options; var b = original.Options; var c = current.Options;
             current.Options = c with
             {
-                ApiUrl = Merge(e.ApiUrl.Trim(), b.ApiUrl, c.ApiUrl),
-                Temperature = Merge(e.Temperature, b.Temperature, c.Temperature), TopP = Merge(e.TopP, b.TopP, c.TopP),
-                Volume = Merge(e.Volume, b.Volume, c.Volume), NormalizeLoudness = Merge(e.NormalizeLoudness, b.NormalizeLoudness, c.NormalizeLoudness),
-                Normalize = Merge(e.Normalize, b.Normalize, c.Normalize), ChunkLength = Merge(e.ChunkLength, b.ChunkLength, c.ChunkLength),
-                Latency = Merge(e.Latency, b.Latency, c.Latency), MaxNewTokens = Merge(e.MaxNewTokens, b.MaxNewTokens, c.MaxNewTokens),
-                RepetitionPenalty = Merge(e.RepetitionPenalty, b.RepetitionPenalty, c.RepetitionPenalty),
-                MinChunkLength = Merge(e.MinChunkLength, b.MinChunkLength, c.MinChunkLength),
-                ConditionOnPreviousChunks = Merge(e.ConditionOnPreviousChunks, b.ConditionOnPreviousChunks, c.ConditionOnPreviousChunks),
-                EarlyStopThreshold = Merge(e.EarlyStopThreshold, b.EarlyStopThreshold, c.EarlyStopThreshold),
-                QualityGuard = Merge(e.QualityGuard, b.QualityGuard, c.QualityGuard)
+                ApiUrl = Global(e.ApiUrl.Trim(), b.ApiUrl, c.ApiUrl),
+                Temperature = Global(e.Temperature, b.Temperature, c.Temperature), TopP = Global(e.TopP, b.TopP, c.TopP),
+                Volume = Global(e.Volume, b.Volume, c.Volume), NormalizeLoudness = Global(e.NormalizeLoudness, b.NormalizeLoudness, c.NormalizeLoudness),
+                Normalize = Global(e.Normalize, b.Normalize, c.Normalize), ChunkLength = Global(e.ChunkLength, b.ChunkLength, c.ChunkLength),
+                Latency = Global(e.Latency, b.Latency, c.Latency), MaxNewTokens = Global(e.MaxNewTokens, b.MaxNewTokens, c.MaxNewTokens),
+                RepetitionPenalty = Global(e.RepetitionPenalty, b.RepetitionPenalty, c.RepetitionPenalty),
+                MinChunkLength = Global(e.MinChunkLength, b.MinChunkLength, c.MinChunkLength),
+                ConditionOnPreviousChunks = Global(e.ConditionOnPreviousChunks, b.ConditionOnPreviousChunks, c.ConditionOnPreviousChunks),
+                EarlyStopThreshold = Global(e.EarlyStopThreshold, b.EarlyStopThreshold, c.EarlyStopThreshold),
+                QualityGuard = Global(e.QualityGuard, b.QualityGuard, c.QualityGuard)
             };
             if (characterId is not null && (baseline is null || characterVoice.Trim() != baseline.CharacterVoices.GetValueOrDefault(characterId, "")))
                 SetVoice(current, characterId, characterVoice);

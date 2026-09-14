@@ -72,6 +72,12 @@ It is built for long-running character interactions rather than one-off prompts:
 - Bubble and novel display modes. In bubble mode, user messages stay on the right and character messages stay on the left, including group chats.
 - Persona selection, alternate greetings, system prompts, post-history instructions, and per-character model assignments.
 
+### Manual character speech (Fish Audio)
+
+- Click the speaker below a character message in an ordinary or group conversation to generate and play speech; click again to stop. Configure the endpoint, encrypted API key, synthesis model and default voice in Settings → Voice, or use the gear beside a message for a character voice override. Settings operations do not call TTS. The recommended model is `s2.1-pro-free`.
+- Concurrent settings windows merge only their edited fields, preserving newer models, parameters and voice assignments. If another window changes the endpoint or key, a stale editor must reload and check the connection before changing the endpoint, replacing/clearing a key or restoring defaults. Failed saves retain the draft; reloading discards unsaved edits. Restoring recommended values explicitly resets the model, endpoint and synthesis parameters on save, even if the old form already displayed those values; it preserves keys and unedited voices.
+- Save, Reload and Restore recommended values stay in a fixed footer. Invalid inputs show an adjacent explanation, scroll into view and receive keyboard focus; advanced settings expand when needed. Inputs expose accessible names and associated labels. Storage failures are reported separately. A committed save remains successful if cleanup of the old encrypted key fails, with a separate warning. See the [voice configuration details](./README.zh-CN.md#手动角色语音fish-audio) for supported parameters and playback behavior.
+
 ### Memory, context, and worldbooks
 
 - Character, group, and campaign memory with editable drafts, checkpoints, compression, and configurable update intervals.
