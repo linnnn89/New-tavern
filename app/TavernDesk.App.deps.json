@@ -9,6 +9,7 @@
     ".NETCoreApp,Version=v10.0/win-x64": {
       "TavernDesk.App/1.0.0": {
         "dependencies": {
+          "NAudio.Wasapi": "3.1.0",
           "TavernDesk.Core": "1.0.0",
           "TavernDesk.Infrastructure": "1.0.0",
           "runtimepack.Microsoft.NETCore.App.Runtime.win-x64": "10.0.11",
@@ -1057,6 +1058,28 @@
           }
         }
       },
+      "NAudio.Core/3.1.0": {
+        "dependencies": {
+          "System.Numerics.Tensors": "9.0.0"
+        },
+        "runtime": {
+          "lib/net9.0/NAudio.Core.dll": {
+            "assemblyVersion": "3.1.0.0",
+            "fileVersion": "3.1.0.0"
+          }
+        }
+      },
+      "NAudio.Wasapi/3.1.0": {
+        "dependencies": {
+          "NAudio.Core": "3.1.0"
+        },
+        "runtime": {
+          "lib/net9.0/NAudio.Wasapi.dll": {
+            "assemblyVersion": "3.1.0.0",
+            "fileVersion": "3.1.0.0"
+          }
+        }
+      },
       "SQLitePCLRaw.bundle_e_sqlite3/2.1.12": {
         "dependencies": {
           "SQLitePCLRaw.lib.e_sqlite3": "2.1.12",
@@ -1092,6 +1115,14 @@
           "lib/net6.0-windows7.0/SQLitePCLRaw.provider.e_sqlite3.dll": {
             "assemblyVersion": "2.1.12.3116",
             "fileVersion": "2.1.12.3116"
+          }
+        }
+      },
+      "System.Numerics.Tensors/9.0.0": {
+        "runtime": {
+          "lib/net9.0/System.Numerics.Tensors.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.24.52809"
           }
         }
       },
@@ -1201,6 +1232,20 @@
       "path": "microsoft.ml.tokenizers.data.o200kbase/2.0.0",
       "hashPath": "microsoft.ml.tokenizers.data.o200kbase.2.0.0.nupkg.sha512"
     },
+    "NAudio.Core/3.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8Hrd3Uqb2wEB64eZYF+0vl9xBadeSn6JnFDsHuGrw87ucJ+pB7u5NzVpHl8OlCNvIvH+sD9b2h4JOqXBuZGYwg==",
+      "path": "naudio.core/3.1.0",
+      "hashPath": "naudio.core.3.1.0.nupkg.sha512"
+    },
+    "NAudio.Wasapi/3.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-iTG+oBJaiID344yz84PrTiVF98av5SsuOUu7ICskcUd6f5ShHDMskG9sE4XUM05Vdlwy88bMQDDC3e+85Mv8yw==",
+      "path": "naudio.wasapi/3.1.0",
+      "hashPath": "naudio.wasapi.3.1.0.nupkg.sha512"
+    },
     "SQLitePCLRaw.bundle_e_sqlite3/2.1.12": {
       "type": "package",
       "serviceable": true,
@@ -1228,6 +1273,13 @@
       "sha512": "sha512-W3oH4XIfCzFrgUSDKHhN6N+dgzA5YHOR2VxX8GB6Qy7CyrJJgxPEG8NirgYWlPQC5P2jz2knSsexWu4tDUL33g==",
       "path": "sqlitepclraw.provider.e_sqlite3/2.1.12",
       "hashPath": "sqlitepclraw.provider.e_sqlite3.2.1.12.nupkg.sha512"
+    },
+    "System.Numerics.Tensors/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A==",
+      "path": "system.numerics.tensors/9.0.0",
+      "hashPath": "system.numerics.tensors.9.0.0.nupkg.sha512"
     },
     "TavernDesk.Core/1.0.0": {
       "type": "project",

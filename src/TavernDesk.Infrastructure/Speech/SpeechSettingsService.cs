@@ -17,12 +17,60 @@ public sealed class SpeechSettings
 
 public sealed record SpeechSettingsSaveResult(SpeechSettings Settings, bool CleanupPending);
 
-public sealed class SpeechSettingsService(IAppSettingsRepository settings, ISecretStore secrets, ITavernDeskDiagnostics? diagnostics = null)
+public sealed class SpeechSettingsService(IAppSettingsRepository settings, ISecretStore secrets, ITavernDeskDiagnostics? diagnostics = null,
+    HttpClient? testClient = null, SpeechAudioCache? audioCache = null)
 {
+    public SpeechAudioCache? AudioCache { get; } = audioCache;
     private const string Key = "speech.fish.v1";
     private readonly SemaphoreSlim _gate = new(1, 1);
     public static IReadOnlyList<string> Models { get; } = ["s2.1-pro", "s2.1-pro-free", "s2-pro", "s1", "drama-3-preview"];
     public event EventHandler? Saved;
+
+    public async Task<long> TestConnectionAsync(SpeechSettings edited, string voice, string newKey,
+        bool clearKey, SpeechSettings baseline, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        var log = new SpeechFailureLog(diagnostics ?? NullTavernDeskDiagnostics.Instance, "Hello. This is a voice connection test.")
+            { Credential = newKey.Trim() };
+        log.Context["stage"] = "connection_test";
+        try { return await TestConnectionCoreAsync(edited, voice, newKey, clearKey, baseline, timeout.Token); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception error) { log.Write(error); throw; }
+    }
+
+    private async Task<long> TestConnectionCoreAsync(SpeechSettings edited, string voice, string newKey,
+        bool clearKey, SpeechSettings baseline, CancellationToken cancellationToken)
+    {
+        Validate(edited.Model, edited.Speed, edited.Options);
+        if (string.IsNullOrWhiteSpace(voice)) throw new SpeechException("NotConfigured");
+        if (voice.Length > 128) throw new SpeechException("VoiceInvalid", "DefaultVoice");
+        if (clearKey) throw new SpeechException(string.IsNullOrWhiteSpace(newKey) ? "NotConfigured" : "KeyConflict");
+        string? key;
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var current = await LoadAsync(cancellationToken);
+            if (!string.IsNullOrWhiteSpace(newKey)) key = newKey.Trim();
+            else
+            {
+                // Never send a saved credential to an edited URL or reuse a stale
+                // form's credential after another settings window changed it.
+                if (edited.Options.ApiUrl != current.Options.ApiUrl || baseline.Options.ApiUrl != current.Options.ApiUrl
+                    || baseline.SecretReference != current.SecretReference)
+                    throw new SpeechException("TestNewKeyRequired");
+                key = await secrets.ReadAsync(current.SecretReference, cancellationToken);
+            }
+        }
+        finally { _gate.Release(); }
+        if (string.IsNullOrWhiteSpace(key)) throw new SpeechException("NotConfigured");
+        var request = new SpeechRequest("Hello. This is a voice connection test.", edited.Model, voice.Trim(), edited.Speed, "", edited.Options);
+        var synthesizer = new FishAudioSpeechSynthesizer(secrets, testClient, diagnostics);
+        long bytes = 0;
+        await foreach (var chunk in synthesizer.TestAsync(request, key, cancellationToken)) bytes += chunk.Length;
+        cancellationToken.ThrowIfCancellationRequested();
+        return bytes;
+    }
 
     public static void Validate(string model, double speed, SpeechOptions options)
     {

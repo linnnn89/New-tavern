@@ -45,12 +45,16 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     private string _validationMessage = "";
     private bool _hasSavedKey;
     private bool _isSaving;
+    private CancellationTokenSource? _testCancellation;
     private string _modelSelection = "s2.1-pro-free";
     public SpeechSettingsViewModel(SpeechSettingsService service, string? characterId = null, string characterName = "")
     {
         _service = service; _characterId = characterId; CharacterName = characterName;
         SaveCommand = new AsyncRelayCommand(async () => { await SaveAsync(); });
         ReloadCommand = new AsyncRelayCommand(() => LoadAsync(true));
+        TestCommand = new AsyncRelayCommand(TestConnectionAsync);
+        CancelTestCommand = new RelayCommand(CancelTest);
+        RefreshCacheCommand = new AsyncRelayCommand(RefreshCacheUsageAsync);
         RecommendedCommand = new RelayCommand(() =>
         {
             _restoreRecommended = true;
@@ -81,19 +85,34 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     public string? ValidationField { get => _validationField; private set => SetProperty(ref _validationField, value); }
     public string ValidationMessage { get => _validationMessage; private set => SetProperty(ref _validationMessage, value); }
     public bool IsSaving { get => _isSaving; private set { if (SetProperty(ref _isSaving, value)) OnPropertyChanged(nameof(CanEdit)); } }
-    public bool CanEdit => !IsSaving;
+    public bool IsTesting => _testCancellation is not null;
+    public bool CanEdit => !IsSaving && !IsTesting;
     public bool HasSaveWarning { get; private set; }
     public string KeyStatus => LanguageRuntime.GetString(_hasSavedKey ? "Speech.KeySaved" : "Speech.KeyMissing");
     public bool HasUnsavedChanges => _restoreRecommended || PendingApiKey.Length > 0 || _baseline is not null && _baseline != JsonSerializer.Serialize(Form);
     public AsyncRelayCommand SaveCommand { get; }
     public AsyncRelayCommand ReloadCommand { get; }
     public RelayCommand RecommendedCommand { get; }
+    public AsyncRelayCommand TestCommand { get; }
+    public RelayCommand CancelTestCommand { get; }
+    public AsyncRelayCommand RefreshCacheCommand { get; }
+    public string CacheDirectory => _service.AudioCache?.DirectoryPath ?? "";
+    private string _cacheUsage = "";
+    public string CacheUsage { get => _cacheUsage; private set => SetProperty(ref _cacheUsage, value); }
+    private async Task RefreshCacheUsageAsync()
+    {
+        var usage = _service.AudioCache is { } cache ? await cache.GetUsageAsync() : null;
+        CacheUsage = usage is { Available: true }
+            ? LanguageRuntime.Format("Speech.CacheUsage", usage.Bytes / 1048576d, usage.Files)
+            : LanguageRuntime.GetString("Speech.CacheUnavailable");
+    }
     public event EventHandler? Saved;
     public event EventHandler? ValidationFailed;
 
     public async Task LoadAsync(bool discard = false)
     {
-        if (IsSaving || !discard && HasUnsavedChanges) return;
+        await RefreshCacheUsageAsync();
+        if (!CanEdit || !discard && HasUnsavedChanges) return;
         try { SetForm(await _service.LoadAsync()); Status = ""; }
         catch (Exception error) { Status = ErrorText(error, "SettingsReadFailed"); }
     }
@@ -130,7 +149,7 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
 
     public async Task<bool> SaveAsync()
     {
-        if (IsSaving) return false;
+        if (!CanEdit) return false;
         IsSaving = true;
         HasSaveWarning = false;
         ClearValidation();
@@ -138,23 +157,7 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
         {
             if (_loadedSettings is null) throw new SpeechException("SettingsReadFailed");
             var f = Form;
-            static double D(string text, string field) => double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) && double.IsFinite(value)
-                ? value : throw new SpeechException("InvalidField", field);
-            static int I(string text, string field) => int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var value)
-                ? value : throw new SpeechException("InvalidField", field);
-            var edited = new SpeechSettings
-            {
-                Model = f.Model, DefaultVoiceId = f.DefaultVoiceId, Speed = D(f.Speed, "Speed"),
-                Options = new SpeechOptions
-                {
-                    ApiUrl = f.ApiUrl, Volume = D(f.Volume, "Volume"), Temperature = D(f.Temperature, "Temperature"), TopP = D(f.TopP, "TopP"),
-                    ChunkLength = I(f.ChunkLength, "ChunkLength"), MinChunkLength = I(f.MinChunkLength, "MinChunkLength"), Latency = f.Latency,
-                    MaxNewTokens = I(f.MaxNewTokens, "MaxNewTokens"), RepetitionPenalty = D(f.RepetitionPenalty, "RepetitionPenalty"),
-                    EarlyStopThreshold = D(f.EarlyStopThreshold, "EarlyStopThreshold"),
-                    Normalize = f.Normalize, NormalizeLoudness = f.NormalizeLoudness,
-                    ConditionOnPreviousChunks = f.ConditionOnPreviousChunks, QualityGuard = f.QualityGuard
-                }
-            };
+            var edited = ReadEditedSettings();
             var result = await _service.SaveAsync(edited, _characterId, f.CharacterVoiceId, PendingApiKey, f.ClearKey, _loadedSettings, _restoreRecommended);
             SetForm(result.Settings);
             HasSaveWarning = result.CleanupPending;
@@ -187,6 +190,62 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
             IsSaving = false;
             if (ValidationField is not null) ValidationFailed?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    public void CancelTest() => _testCancellation?.Cancel();
+
+    public async Task TestConnectionAsync()
+    {
+        if (!CanEdit) return;
+        using var cancellation = new CancellationTokenSource();
+        _testCancellation = cancellation;
+        OnPropertyChanged(nameof(IsTesting)); OnPropertyChanged(nameof(CanEdit));
+        Status = LanguageRuntime.GetString("Speech.Testing");
+        ClearValidation();
+        try
+        {
+            if (_loadedSettings is null) throw new SpeechException("SettingsReadFailed");
+            var edited = ReadEditedSettings();
+            var voice = IsCharacterEditor && !string.IsNullOrWhiteSpace(Form.CharacterVoiceId)
+                ? Form.CharacterVoiceId : Form.DefaultVoiceId;
+            var bytes = await _service.TestConnectionAsync(edited, voice, PendingApiKey, Form.ClearKey, _loadedSettings, cancellation.Token);
+            Status = LanguageRuntime.Format("Speech.TestSucceeded", bytes);
+        }
+        catch (OperationCanceledException)
+        {
+            Status = LanguageRuntime.GetString(cancellation.IsCancellationRequested ? "Speech.Stopped" : "Speech.Timeout");
+        }
+        catch (Exception error)
+        {
+            Status = ErrorText(error, "Failed") + " " + LanguageRuntime.GetString("Speech.TestFailureLog");
+        }
+        finally
+        {
+            _testCancellation = null;
+            OnPropertyChanged(nameof(IsTesting)); OnPropertyChanged(nameof(CanEdit));
+        }
+    }
+
+    private SpeechSettings ReadEditedSettings()
+    {
+        var f = Form;
+        static double D(string text, string field) => double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) && double.IsFinite(value)
+            ? value : throw new SpeechException("InvalidField", field);
+        static int I(string text, string field) => int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var value)
+            ? value : throw new SpeechException("InvalidField", field);
+        return new SpeechSettings
+        {
+            Model = f.Model, DefaultVoiceId = f.DefaultVoiceId, Speed = D(f.Speed, "Speed"),
+            Options = new SpeechOptions
+            {
+                ApiUrl = f.ApiUrl, Volume = D(f.Volume, "Volume"), Temperature = D(f.Temperature, "Temperature"), TopP = D(f.TopP, "TopP"),
+                ChunkLength = I(f.ChunkLength, "ChunkLength"), MinChunkLength = I(f.MinChunkLength, "MinChunkLength"), Latency = f.Latency,
+                MaxNewTokens = I(f.MaxNewTokens, "MaxNewTokens"), RepetitionPenalty = D(f.RepetitionPenalty, "RepetitionPenalty"),
+                EarlyStopThreshold = D(f.EarlyStopThreshold, "EarlyStopThreshold"),
+                Normalize = f.Normalize, NormalizeLoudness = f.NormalizeLoudness,
+                ConditionOnPreviousChunks = f.ConditionOnPreviousChunks, QualityGuard = f.QualityGuard
+            }
+        };
     }
 
     private void ClearValidation()
