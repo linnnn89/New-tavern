@@ -65,6 +65,14 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
     private bool _isSelectedFunctionUnassigned;
     private int _catalogLoadVersion;
     private int _assignmentLoadVersion;
+    private bool _isAssignmentLoading;
+    public bool IsAssignmentLoading
+    {
+        get => _isAssignmentLoading;
+        private set { if (SetProperty(ref _isAssignmentLoading, value)) SaveAssignmentCommand.RaiseCanExecuteChanged(); }
+    }
+    public string AssignmentTargetTitle => LanguageRuntime.Format("Settings.Assignments.EditingFormat", SelectedFunction.Label);
+    public string SaveAssignmentButtonText => LanguageRuntime.Format("Settings.Assignments.SaveToFormat", SelectedFunction.Label);
 
     public ProviderSettingsViewModel(
         IProviderProfileRepository repository,
@@ -135,7 +143,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SaveAssignmentCommand = new AsyncRelayCommand(
             SaveAssignmentAsync,
             () => AssignmentProvider is not null
-                  && SelectedAssignmentModel is not null);
+                  && SelectedAssignmentModel is not null && !IsAssignmentLoading);
         ToggleReasoningCommand = new AsyncRelayCommand(
             ToggleReasoningAsync,
             parameter => parameter is ModelFunctionAssignmentOverview
@@ -313,8 +321,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         get => _selectedFunction;
         set
         {
-            if (SetProperty(ref _selectedFunction, value))
+            if (value is not null && SetProperty(ref _selectedFunction, value))
             {
+                OnPropertyChanged(nameof(AssignmentTargetTitle));
+                OnPropertyChanged(nameof(SaveAssignmentButtonText));
                 OnPropertyChanged(nameof(IsEmbeddingFunctionSelected));
                 IsSelectedFunctionUnassigned = false;
                 var version = ++_assignmentLoadVersion;
@@ -1237,12 +1247,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     private async Task RefreshModelsAsync()
     {
-        if (CatalogProvider is null)
+        var provider = CatalogProvider;
+        if (provider is null)
         {
             return;
         }
 
-        if (!_persistedProfileIds.Contains(CatalogProvider.Id))
+        if (!_persistedProfileIds.Contains(provider.Id))
         {
             Status = LanguageRuntime.GetString("Settings.Models.SaveProviderFirst");
             return;
@@ -1250,9 +1261,9 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
         try
         {
-            Status = LanguageRuntime.Format("Settings.Models.RequestingFormat", CatalogProvider.Name);
+            Status = LanguageRuntime.Format("Settings.Models.RequestingFormat", provider.Name);
             var descriptors = (await _gateway.RefreshModelsAsync(
-                    CatalogProvider.Id))
+                    provider.Id))
                 .ToList();
             string? embeddingStatus = null;
             if (_gateway is IEmbeddingModelCatalogGateway embeddingGateway)
@@ -1261,7 +1272,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 {
                     var dedicatedEmbeddingDescriptors =
                         await embeddingGateway.RefreshEmbeddingModelsAsync(
-                            CatalogProvider.Id);
+                            provider.Id);
                     descriptors.AddRange(dedicatedEmbeddingDescriptors);
                 }
                 catch (HttpRequestException exception)
@@ -1278,17 +1289,18 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 .GroupBy(model => model.ModelId.Trim(), StringComparer.Ordinal)
                 .Select(group => group.First())
                 .ToList();
-            await _models.ReplaceAsync(CatalogProvider.Id, descriptors);
+            await _models.ReplaceAsync(provider.Id, descriptors);
 
-            await LoadCatalogSafeAsync(++_catalogLoadVersion);
+            if (CatalogProvider?.Id == provider.Id) await LoadCatalogSafeAsync(++_catalogLoadVersion);
+            await RefreshAssignmentCatalogAsync(provider.Id);
             Status = embeddingStatus is null
                 ? LanguageRuntime.Format(
                     "Settings.Models.RefreshedFormat",
-                    CatalogProvider.Name,
+                    provider.Name,
                     descriptors.Count)
                 : LanguageRuntime.Format(
                     "Settings.Models.RefreshedWithNoticeFormat",
-                    CatalogProvider.Name,
+                    provider.Name,
                     descriptors.Count,
                     embeddingStatus);
         }
@@ -1328,13 +1340,14 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     private async Task<bool> SaveCustomModelCoreAsync(string modelId)
     {
-        if (CatalogProvider is null)
+        var provider = CatalogProvider;
+        if (provider is null)
         {
             Status = LanguageRuntime.GetString("Settings.Models.SelectProvider");
             return false;
         }
 
-        if (!_persistedProfileIds.Contains(CatalogProvider.Id))
+        if (!_persistedProfileIds.Contains(provider.Id))
         {
             Status = LanguageRuntime.GetString("Settings.Models.SaveBeforeCustom");
             return false;
@@ -1358,7 +1371,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         {
             await _models.UpsertAsync(new ProviderModel
             {
-                ProviderId = CatalogProvider.Id,
+                ProviderId = provider.Id,
                 ModelId = normalizedModelId,
                 DisplayName = normalizedModelId,
                 ContextLimit = 32768,
@@ -1370,6 +1383,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
             CatalogSearchText = normalizedModelId;
             await LoadCatalogSafeAsync(++_catalogLoadVersion);
+            await RefreshAssignmentCatalogAsync(provider.Id);
             SelectedCatalogModel = VisibleCatalogModels.FirstOrDefault(model =>
                 model.ModelId == normalizedModelId
                 && model.ModelKind == ModelCatalogKind.Custom);
@@ -1447,6 +1461,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         SelectedCatalogModel.MaxOutputTokens = maxOutput;
         SelectedCatalogModel.UpdatedAt = DateTimeOffset.Now;
         await _models.UpsertAsync(SelectedCatalogModel);
+        await RefreshAssignmentCatalogAsync(SelectedCatalogModel.ProviderId);
         Status = LanguageRuntime.Format(
             "Settings.Models.LimitsSavedFormat",
             SelectedCatalogModel.ModelId);
@@ -1454,6 +1469,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     private async Task LoadFunctionAssignmentSafeAsync(int version)
     {
+        IsAssignmentLoading = true;
         try
         {
             var assignment = await _assignments.GetAsync(SelectedFunction.Value);
@@ -1496,6 +1512,25 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             IsSelectedFunctionUnassigned = false;
             Status = LanguageRuntime.Format("Settings.Assignments.ReadFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
+        finally { if (version == _assignmentLoadVersion) IsAssignmentLoading = false; }
+    }
+
+    private async Task RefreshAssignmentCatalogAsync(string providerId)
+    {
+        if (AssignmentProvider?.Id != providerId) return;
+        var loading = IsAssignmentLoading;
+        var version = ++_assignmentLoadVersion;
+        if (loading) { await LoadFunctionAssignmentSafeAsync(version); return; }
+        var selectedId = SelectedAssignmentModel?.ModelId;
+        var context = AssignmentContextLimit;
+        var output = AssignmentMaxOutputTokens;
+        await LoadAssignmentModelsSafeAsync(version, selectedId);
+        if (version != _assignmentLoadVersion) return;
+        if (selectedId is not null && SelectedAssignmentModel?.ModelId != selectedId)
+            SelectedAssignmentModel = null;
+        // Catalog metadata refresh must not overwrite the user's request limits.
+        AssignmentContextLimit = context;
+        AssignmentMaxOutputTokens = output;
     }
 
     private async Task RefreshAssignmentOverviewAsync()
@@ -1533,6 +1568,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         int version,
         string? preferredModelId)
     {
+        IsAssignmentLoading = true;
         try
         {
             var provider = AssignmentProvider;
@@ -1554,6 +1590,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
                 "Settings.Assignments.ModelsReadFailedFormat",
                 LanguageRuntime.ErrorMessage(exception));
         }
+        finally { if (version == _assignmentLoadVersion) IsAssignmentLoading = false; }
     }
 
     private void ApplyAssignmentFilter(string? preferredModelId = null)
@@ -1576,7 +1613,10 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     private async Task SaveAssignmentAsync()
     {
-        if (AssignmentProvider is null || SelectedAssignmentModel is null)
+        var function = SelectedFunction;
+        var provider = AssignmentProvider;
+        var model = SelectedAssignmentModel;
+        if (IsAssignmentLoading || provider is null || model is null)
         {
             Status = LanguageRuntime.GetString("Settings.Assignments.SelectProviderModel");
             return;
@@ -1586,7 +1626,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         int maxOutput;
         double temperature;
         double topP;
-        if (IsEmbeddingFunctionSelected)
+        if ((function.Value == ModelFunctionKind.Embedding))
         {
             // The existing assignment table requires generation columns.
             // Embedding does not use them; neutral persisted values preserve
@@ -1625,36 +1665,36 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             }
         }
 
-        var previous = await _assignments.GetAsync(SelectedFunction.Value);
+        var previous = await _assignments.GetAsync(function.Value);
         var reasoningAvailable =
-            !IsEmbeddingFunctionSelected
+            !(function.Value == ModelFunctionKind.Embedding)
             &&
             ModelFeatureSupport.SupportsOpenRouterDeepSeekReasoning(
-                AssignmentProvider,
-                SelectedAssignmentModel.ModelId);
+                provider,
+                model.ModelId);
         var assignment = new ModelFunctionAssignment
         {
-            FunctionKind = SelectedFunction.Value,
-            ProviderId = AssignmentProvider.Id,
-            ModelId = SelectedAssignmentModel.ModelId,
+            FunctionKind = function.Value,
+            ProviderId = provider.Id,
+            ModelId = model.ModelId,
             ContextLimit = contextLimit,
             MaxOutputTokens = maxOutput,
             Temperature = temperature,
             TopP = topP,
             ReasoningEnabled =
                 reasoningAvailable
-                && previous?.ProviderId == AssignmentProvider.Id
-                && previous.ModelId == SelectedAssignmentModel.ModelId
+                && previous?.ProviderId == provider.Id
+                && previous.ModelId == model.ModelId
                 && previous.ReasoningEnabled,
             UpdatedAt = DateTimeOffset.Now
         };
         await _assignments.UpsertAsync(assignment);
-        IsSelectedFunctionUnassigned = false;
+        if (SelectedFunction.Value == function.Value) IsSelectedFunctionUnassigned = false;
         await RefreshAssignmentOverviewAsync();
         Status = LanguageRuntime.Format(
             "Settings.Assignments.SavedFormat",
-            SelectedFunction.Label,
-            AssignmentProvider.Name,
+            function.Label,
+            provider.Name,
             assignment.ModelId);
     }
 

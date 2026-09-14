@@ -73,15 +73,33 @@ public sealed class SpeechSettingsView : UserControl
         Check(advanced, "Normalize", "Normalize"); Check(advanced, "NormalizeLoudness", "NormalizeLoudness");
         Check(advanced, "ConditionOnPreviousChunks", "ConditionOnPreviousChunks"); Check(advanced, "QualityGuard", "QualityGuard");
         fields.Children.Add(Note("FormatHint"));
+        var cachePanel = new StackPanel { Margin = new Thickness(0,14,0,0) };
+        panel.Children.Add(cachePanel);
+        cachePanel.Children.Add(Note("CacheTitle", 16));
+        var cachePath = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        cachePath.SetBinding(TextBlock.TextProperty, new Binding("CacheDirectory"));
+        cachePanel.Children.Add(cachePath);
+        var cacheUsage = new TextBlock { Margin = new Thickness(0,5,0,5) };
+        cacheUsage.SetBinding(TextBlock.TextProperty, new Binding("CacheUsage"));
+        cachePanel.Children.Add(cacheUsage);
+        cachePanel.Children.Add(Note("CacheHint"));
+        AddButton(cachePanel, L("RefreshCache"), "RefreshCacheCommand", "SpeechRefreshCache");
         var footer = new StackPanel { Margin = new Thickness(20, 0, 20, 12), MaxWidth = 780 };
         Grid.SetRow(footer, 1);
         layout.Children.Add(footer);
+        footer.Children.Add(Note("TestHint"));
         var buttons = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,8,0,4) };
         buttons.SetBinding(IsEnabledProperty, new Binding("CanEdit"));
         footer.Children.Add(buttons);
+        AddButton(buttons, L("TestConnection"), "TestCommand", "SpeechTestConnection");
         AddButton(buttons, L("Recommended"), "RecommendedCommand", "SpeechRecommended");
         AddButton(buttons, L("Reload"), "ReloadCommand", "SpeechReload");
         AddButton(buttons, LanguageRuntime.GetString("Common.SaveChanges"), "SaveCommand", "SpeechSave");
+        var cancelTest = new Button { Content = L("CancelTest"), HorizontalAlignment = HorizontalAlignment.Right };
+        cancelTest.SetBinding(Button.CommandProperty, new Binding("CancelTestCommand"));
+        cancelTest.SetBinding(VisibilityProperty, new Binding("IsTesting") { Converter = new BooleanToVisibilityConverter() });
+        AutomationProperties.SetAutomationId(cancelTest, "SpeechCancelTest");
+        footer.Children.Add(cancelTest);
         var status = Note("ManualOnly"); status.SetBinding(TextBlock.TextProperty, new Binding("Status")); footer.Children.Add(status);
         AutomationProperties.SetAutomationId(status, "SpeechStatus");
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
@@ -101,7 +119,7 @@ public sealed class SpeechSettingsView : UserControl
                 if (IsLoaded && ReferenceEquals(DataContext, vm)) { SyncPassword(); SyncValidation(); }
             }
         };
-        Unloaded += (_, _) => Observe(null);
+        Unloaded += (_, _) => { _observedViewModel?.CancelTest(); Observe(null); };
     }
     private static void AddButton(Panel panel, string text, string command, string id)
     {
@@ -113,6 +131,7 @@ public sealed class SpeechSettingsView : UserControl
         if (ReferenceEquals(_observedViewModel, viewModel)) return;
         if (_observedViewModel is not null)
         {
+            _observedViewModel.CancelTest();
             _observedViewModel.PropertyChanged -= OnChanged;
             _observedViewModel.ValidationFailed -= OnValidationFailed;
         }

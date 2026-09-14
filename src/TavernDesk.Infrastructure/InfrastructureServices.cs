@@ -19,7 +19,8 @@ public sealed class InfrastructureServices
     public InfrastructureServices(
         string? dataRoot = null,
         ITavernDeskDiagnostics? diagnostics = null,
-        AppDataConfiguration? dataConfiguration = null)
+        AppDataConfiguration? dataConfiguration = null,
+        SpeechAudioCache? speechAudioCache = null)
     {
         Diagnostics = diagnostics ?? NullTavernDeskDiagnostics.Instance;
         DataConfiguration = dataConfiguration ?? new AppDataConfiguration();
@@ -66,8 +67,8 @@ public sealed class InfrastructureServices
         GenerationSessions = new ConversationGenerationSessionStore();
         CampaignOperationGate = new CampaignOperationGate();
         Secrets = new WindowsDpapiSecretStore(Paths);
-        SpeechSettings = new SpeechSettingsService(Settings, Secrets, Diagnostics);
-        SpeechSynthesizer = new FishAudioSpeechSynthesizer(Secrets);
+        SpeechSettings = new SpeechSettingsService(Settings, Secrets, Diagnostics, audioCache: speechAudioCache);
+        SpeechSynthesizer = new FishAudioSpeechSynthesizer(Secrets, diagnostics: Diagnostics);
         var openAiCompatibleGateway =
             new OpenAiCompatibleProviderGateway(Providers, Secrets);
         var grokCliGateway = new GrokCliProviderGateway(Providers, Paths);

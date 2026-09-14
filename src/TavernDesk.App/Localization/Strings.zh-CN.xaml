@@ -1012,7 +1012,7 @@
     <sys:String x:Key="Settings.Theme.Cupertino">macOS 冰霜银白</sys:String>
     <sys:String x:Key="Settings.Theme.Material">Material 莫奈暖灰</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">未保存 API Key。</sys:String>
-    <sys:String x:Key="Settings.Status.Intro">保存接入商不会联网；只有主动点击“刷新模型目录”才会请求对应 API。</sys:String>
+    <sys:String x:Key="Settings.Status.Intro">保存接入商不会联网；刷新模型目录或测试语音连通性时才会请求对应 API。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Pending">暂时无法计算缩放建议。</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">界面语言、缩放、聊天自动滚动、字体和字号会保存到本地设置。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">个人资料目录由 Windows 用户级配置管理。</sys:String>
@@ -1557,7 +1557,7 @@
     <sys:String x:Key="ScaleConfirm.Saved">缩放比例已确认并保存。</sys:String>
     <sys:String x:Key="ScaleConfirm.Reverted">已恢复之前的缩放比例。</sys:String>
     <sys:String x:Key="Speech.Title">Fish Audio 语音设置</sys:String>
-    <sys:String x:Key="Speech.ManualOnly">仅点击消息下方的小喇叭后才生成语音。设置保存不会发起合成请求。</sys:String>
+    <sys:String x:Key="Speech.ManualOnly">点击消息小喇叭或“测试连通性”时才请求语音。保存设置不会发起合成请求。</sys:String>
     <sys:String x:Key="Speech.ApiKey">Fish Audio API Key</sys:String>
     <sys:String x:Key="Speech.KeepKey">留空保留已保存的密钥。密钥使用 Windows DPAPI 加密保存。</sys:String>
     <sys:String x:Key="Speech.Model">合成模型</sys:String>
@@ -1624,4 +1624,19 @@
     <sys:String x:Key="Speech.SettingsWriteFailed">语音设置写入失败，已保存的配置未改变。请检查数据目录权限和可用空间，详情见错误日志。</sys:String>
     <sys:String x:Key="Speech.SettingsReadFailed">无法读取语音设置。请检查数据目录是否可访问，详情见错误日志。</sys:String>
     <sys:String x:Key="Speech.SettingsSavedCleanupPending">语音设置和新密钥状态已保存，但旧加密密钥未能清理；当前配置已生效。详情见错误日志。</sys:String>
+    <sys:String x:Key="Speech.TestConnection">测试连通性</sys:String>
+    <sys:String x:Key="Speech.CancelTest">取消测试</sys:String>
+    <sys:String x:Key="Speech.Testing">正在测试 TTS 接口…</sys:String>
+    <sys:String x:Key="Speech.TestSucceeded">连通性测试成功，收到 {0} 字节音频；未播放，未保存设置。</sys:String>
+    <sys:String x:Key="Speech.TestHint">使用当前填写的配置发送固定测试短句；可能消耗额度，不发送聊天正文，不保存设置。</sys:String>
+    <sys:String x:Key="Speech.TestFailureLog">请求或播放异常会写入脱敏错误日志。</sys:String>
+    <sys:String x:Key="Speech.TestNewKeyRequired">地址或已保存连接已变化；请在密钥框重新输入本次测试使用的密钥。</sys:String>
+    <sys:String x:Key="Settings.Assignments.AssignTo">分配给</sys:String>
+    <sys:String x:Key="Settings.Assignments.EditingFormat">正在编辑：{0}</sys:String>
+    <sys:String x:Key="Settings.Assignments.SaveToFormat">保存到{0}</sys:String>
+    <sys:String x:Key="Speech.CacheTitle">本次运行的音频缓存</sys:String>
+    <sys:String x:Key="Speech.CacheUsage">已用 {0:F1} / 120 MiB，共 {1} 个文件</sys:String>
+    <sys:String x:Key="Speech.CacheUnavailable">缓存不可用；语音仍可直接生成播放。</sys:String>
+    <sys:String x:Key="Speech.CacheHint">缓存独立存放在“我的文档”，超过 120 MiB 时删除最旧音频，下次启动清空。只缓存完整播放成功的音频。</sys:String>
+    <sys:String x:Key="Speech.RefreshCache">刷新缓存占用</sys:String>
 </ResourceDictionary>
