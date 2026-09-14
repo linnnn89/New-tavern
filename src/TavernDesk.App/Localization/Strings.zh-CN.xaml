@@ -1611,4 +1611,14 @@
     <sys:String x:Key="Speech.Recommended">恢复推荐值</sys:String>
     <sys:String x:Key="Speech.DefaultsRestored">已填入推荐值，保留密钥和音色；点击保存后生效。</sys:String>
     <sys:String x:Key="Speech.WaitForReply">会话生成或加载中，完成后可朗读。</sys:String>
+    <sys:String x:Key="Speech.InvalidField">请检查{0}：请输入符合标注范围的有效数值。</sys:String>
+    <sys:String x:Key="Speech.ModelInvalid">合成模型 ID 必须为 1–128 个 ASCII 字符，不能包含空白或控制字符。</sys:String>
+    <sys:String x:Key="Speech.ApiUrlInvalid">API 地址必须是完整 HTTPS URL（本机服务可用 HTTP），不能包含用户名、密码、查询参数或片段。</sys:String>
+    <sys:String x:Key="Speech.LatencyInvalid">延迟模式必须为 normal、balanced 或 low。</sys:String>
+    <sys:String x:Key="Speech.VoiceInvalid">{0}不能超过 128 个字符。</sys:String>
+    <sys:String x:Key="Speech.KeyConflict">不能同时填写新 API Key 和勾选清除密钥，请选择一种操作。</sys:String>
+    <sys:String x:Key="Speech.KeySaveFailed">新密钥加密或写入失败，原配置未改变。请检查密钥目录权限，详情见错误日志。</sys:String>
+    <sys:String x:Key="Speech.SettingsWriteFailed">语音设置写入失败，已保存的配置未改变。请检查数据目录权限和可用空间，详情见错误日志。</sys:String>
+    <sys:String x:Key="Speech.SettingsReadFailed">无法读取语音设置。请检查数据目录是否可访问，详情见错误日志。</sys:String>
+    <sys:String x:Key="Speech.SettingsSavedCleanupPending">语音设置和新密钥状态已保存，但旧加密密钥未能清理；当前配置已生效。详情见错误日志。</sys:String>
 </ResourceDictionary>

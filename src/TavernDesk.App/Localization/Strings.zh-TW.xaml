@@ -1632,4 +1632,14 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Speech.Recommended">還原建議值</sys:String>
     <sys:String x:Key="Speech.DefaultsRestored">已填入建議值，保留金鑰與音色；儲存後生效。</sys:String>
     <sys:String x:Key="Speech.WaitForReply">對話生成或載入中，完成後可朗讀。</sys:String>
+    <sys:String x:Key="Speech.InvalidField">請檢查{0}：請輸入符合標示範圍的有效數值。</sys:String>
+    <sys:String x:Key="Speech.ModelInvalid">合成模型 ID 必須為 1–128 個 ASCII 字元，不能包含空白或控制字元。</sys:String>
+    <sys:String x:Key="Speech.ApiUrlInvalid">API 位址必須是完整 HTTPS URL（本機服務可用 HTTP），不能包含使用者名稱、密碼、查詢參數或片段。</sys:String>
+    <sys:String x:Key="Speech.LatencyInvalid">延遲模式必須為 normal、balanced 或 low。</sys:String>
+    <sys:String x:Key="Speech.VoiceInvalid">{0}不能超過 128 個字元。</sys:String>
+    <sys:String x:Key="Speech.KeyConflict">不能同時填寫新 API Key 並勾選清除金鑰，請選擇一種操作。</sys:String>
+    <sys:String x:Key="Speech.KeySaveFailed">新金鑰加密或寫入失敗，原設定未改變。請檢查金鑰目錄權限，詳情見錯誤記錄。</sys:String>
+    <sys:String x:Key="Speech.SettingsWriteFailed">語音設定寫入失敗，已儲存的設定未改變。請檢查資料目錄權限與可用空間，詳情見錯誤記錄。</sys:String>
+    <sys:String x:Key="Speech.SettingsReadFailed">無法讀取語音設定。請檢查資料目錄是否可存取，詳情見錯誤記錄。</sys:String>
+    <sys:String x:Key="Speech.SettingsSavedCleanupPending">語音設定與新金鑰狀態已儲存，但舊加密金鑰未能清理；目前設定已生效。詳情見錯誤記錄。</sys:String>
 </ResourceDictionary>

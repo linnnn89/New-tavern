@@ -62,7 +62,7 @@ public sealed class SpeechSettingsView : UserControl
         fields.Children.Add(buttons);
         AddButton(buttons, L("Recommended"), "RecommendedCommand", "SpeechRecommended");
         AddButton(buttons, L("Reload"), "ReloadCommand", "SpeechReload");
-        AddButton(buttons, LanguageRuntime.GetString("Common.Save"), "SaveCommand", "SpeechSave");
+        AddButton(buttons, LanguageRuntime.GetString("Common.SaveChanges"), "SaveCommand", "SpeechSave");
         var status = Note("ManualOnly"); status.SetBinding(TextBlock.TextProperty, new Binding("Status")); panel.Children.Add(status);
         _password.PasswordChanged += (_, _) => { if (DataContext is SpeechSettingsViewModel vm) vm.PendingApiKey = _password.Password; };
         DataContextChanged += (_, e) =>

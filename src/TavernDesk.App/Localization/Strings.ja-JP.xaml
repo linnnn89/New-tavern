@@ -1632,4 +1632,14 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Speech.Recommended">推奨値に戻す</sys:String>
     <sys:String x:Key="Speech.DefaultsRestored">推奨値を入力しました。キーと音色は維持されます。保存すると適用されます。</sys:String>
     <sys:String x:Key="Speech.WaitForReply">会話の生成または読込が完了してから再生できます。</sys:String>
+    <sys:String x:Key="Speech.InvalidField">{0}を確認してください。指定範囲内の有効な数値を入力してください。</sys:String>
+    <sys:String x:Key="Speech.ModelInvalid">合成モデル ID は空白や制御文字を含まない 1–128 文字の ASCII 文字列にしてください。</sys:String>
+    <sys:String x:Key="Speech.ApiUrlInvalid">完全な HTTPS URL を入力してください（ローカルサービスは HTTP も可）。認証情報、クエリ、フラグメントは使用できません。</sys:String>
+    <sys:String x:Key="Speech.LatencyInvalid">遅延モードは normal、balanced、low のいずれかを指定してください。</sys:String>
+    <sys:String x:Key="Speech.VoiceInvalid">{0}は 128 文字以内にしてください。</sys:String>
+    <sys:String x:Key="Speech.KeyConflict">新しい API キーの入力と保存済みキーの削除は、どちらか一方を選んでください。</sys:String>
+    <sys:String x:Key="Speech.KeySaveFailed">新しいキーの暗号化または書き込みに失敗しました。保存済み設定は変更されていません。キー保存先の権限とエラーログを確認してください。</sys:String>
+    <sys:String x:Key="Speech.SettingsWriteFailed">音声設定を書き込めませんでした。保存済み設定は変更されていません。データ保存先の権限、空き容量、エラーログを確認してください。</sys:String>
+    <sys:String x:Key="Speech.SettingsReadFailed">音声設定を読み込めませんでした。データ保存先へのアクセスとエラーログを確認してください。</sys:String>
+    <sys:String x:Key="Speech.SettingsSavedCleanupPending">音声設定と新しいキーの状態は保存されましたが、古い暗号化キーを削除できませんでした。新しい設定は有効です。詳細はエラーログを確認してください。</sys:String>
 </ResourceDictionary>

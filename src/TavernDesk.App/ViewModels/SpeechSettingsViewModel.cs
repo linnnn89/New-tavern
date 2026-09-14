@@ -37,6 +37,7 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     private readonly string? _characterId;
     private SpeechSettingsForm _form = new();
     private string? _baseline;
+    private SpeechSettings? _loadedSettings;
     private string _pendingApiKey = "";
     private string _status = "";
     private bool _hasSavedKey;
@@ -74,6 +75,7 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public bool IsSaving { get => _isSaving; private set { if (SetProperty(ref _isSaving, value)) OnPropertyChanged(nameof(CanEdit)); } }
     public bool CanEdit => !IsSaving;
+    public bool HasSaveWarning { get; private set; }
     public string KeyStatus => LanguageRuntime.GetString(_hasSavedKey ? "Speech.KeySaved" : "Speech.KeyMissing");
     public bool HasUnsavedChanges => _baseline is not null && (_baseline != JsonSerializer.Serialize(Form) || PendingApiKey.Length > 0);
     public AsyncRelayCommand SaveCommand { get; }
@@ -85,11 +87,17 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     {
         if (IsSaving || !discard && HasUnsavedChanges) return;
         try { SetForm(await _service.LoadAsync()); Status = ""; }
-        catch { Status = LanguageRuntime.GetString("Speech.SettingsInvalid"); }
+        catch (Exception error) { Status = ErrorText(error, "SettingsReadFailed"); }
     }
 
     public void SetForm(SpeechSettings value)
     {
+        _loadedSettings = new SpeechSettings
+        {
+            Model = value.Model, DefaultVoiceId = value.DefaultVoiceId, Speed = value.Speed,
+            SecretReference = value.SecretReference, Options = value.Options,
+            CharacterVoices = new(value.CharacterVoices, StringComparer.Ordinal)
+        };
         static string N(double number) => number.ToString(CultureInfo.CurrentCulture);
         var o = value.Options;
         Form = new SpeechSettingsForm
@@ -114,30 +122,41 @@ public sealed class SpeechSettingsViewModel : ViewModelBase
     {
         if (IsSaving) return false;
         IsSaving = true;
+        HasSaveWarning = false;
         try
         {
             var f = Form;
-            static double D(string text) => double.Parse(text, NumberStyles.Float, CultureInfo.CurrentCulture);
-            static int I(string text) => int.Parse(text, NumberStyles.Integer, CultureInfo.CurrentCulture);
+            static double D(string text, string field) => double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) && double.IsFinite(value)
+                ? value : throw new SpeechException("InvalidField", field);
+            static int I(string text, string field) => int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var value)
+                ? value : throw new SpeechException("InvalidField", field);
             var edited = new SpeechSettings
             {
-                Model = f.Model, DefaultVoiceId = f.DefaultVoiceId, Speed = D(f.Speed),
+                Model = f.Model, DefaultVoiceId = f.DefaultVoiceId, Speed = D(f.Speed, "Speed"),
                 Options = new SpeechOptions
                 {
-                    ApiUrl = f.ApiUrl, Volume = D(f.Volume), Temperature = D(f.Temperature), TopP = D(f.TopP),
-                    ChunkLength = I(f.ChunkLength), MinChunkLength = I(f.MinChunkLength), Latency = f.Latency,
-                    MaxNewTokens = I(f.MaxNewTokens), RepetitionPenalty = D(f.RepetitionPenalty), EarlyStopThreshold = D(f.EarlyStopThreshold),
+                    ApiUrl = f.ApiUrl, Volume = D(f.Volume, "Volume"), Temperature = D(f.Temperature, "Temperature"), TopP = D(f.TopP, "TopP"),
+                    ChunkLength = I(f.ChunkLength, "ChunkLength"), MinChunkLength = I(f.MinChunkLength, "MinChunkLength"), Latency = f.Latency,
+                    MaxNewTokens = I(f.MaxNewTokens, "MaxNewTokens"), RepetitionPenalty = D(f.RepetitionPenalty, "RepetitionPenalty"),
+                    EarlyStopThreshold = D(f.EarlyStopThreshold, "EarlyStopThreshold"),
                     Normalize = f.Normalize, NormalizeLoudness = f.NormalizeLoudness,
                     ConditionOnPreviousChunks = f.ConditionOnPreviousChunks, QualityGuard = f.QualityGuard
                 }
             };
-            await _service.SaveAsync(edited, _characterId, f.CharacterVoiceId, PendingApiKey, f.ClearKey);
-            SetForm(await _service.LoadAsync());
-            Status = LanguageRuntime.GetString("Speech.SettingsSaved");
+            var result = await _service.SaveAsync(edited, _characterId, f.CharacterVoiceId, PendingApiKey, f.ClearKey, _loadedSettings);
+            SetForm(result.Settings);
+            HasSaveWarning = result.CleanupPending;
+            Status = LanguageRuntime.GetString(HasSaveWarning ? "Speech.SettingsSavedCleanupPending" : "Speech.SettingsSaved");
             Saved?.Invoke(this, EventArgs.Empty);
             return true;
         }
-        catch { Status = LanguageRuntime.GetString("Speech.SettingsInvalid"); return false; }
+        catch (Exception error) { Status = ErrorText(error, "SettingsWriteFailed"); return false; }
         finally { IsSaving = false; }
     }
+
+    private static string ErrorText(Exception error, string fallback) => error is SpeechException speech
+        ? speech.Field is { } field
+            ? LanguageRuntime.Format("Speech." + speech.Code, LanguageRuntime.GetString("Speech." + field))
+            : LanguageRuntime.GetString("Speech." + speech.Code)
+        : LanguageRuntime.GetString("Speech." + fallback);
 }

@@ -27,7 +27,8 @@ public interface ISpeechSynthesizer
     IAsyncEnumerable<ReadOnlyMemory<byte>> SynthesizeAsync(SpeechRequest request, CancellationToken cancellationToken);
 }
 
-public sealed class SpeechException(string code) : Exception(code)
+public sealed class SpeechException(string code, string? field = null) : Exception(code)
 {
     public string Code { get; } = code;
+    public string? Field { get; } = field;
 }
