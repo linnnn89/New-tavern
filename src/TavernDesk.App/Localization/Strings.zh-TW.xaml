@@ -1639,6 +1639,8 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Speech.VoiceInvalid">{0}不能超過 128 個字元。</sys:String>
     <sys:String x:Key="Speech.KeyConflict">不能同時填寫新 API Key 並勾選清除金鑰，請選擇一種操作。</sys:String>
     <sys:String x:Key="Speech.ConnectionChanged">API 位址或金鑰已在其他視窗更新，本次修改尚未儲存。請重新載入設定並核對位址，再重新輸入金鑰或修改設定。</sys:String>
+    <sys:String x:Key="Speech.UnsavedTitle">未儲存的語音設定</sys:String>
+    <sys:String x:Key="Speech.UnsavedMessage">語音設定或新輸入的 API Key 尚未儲存。&#10;&#10;選擇「是」儲存後關閉，「否」放棄修改，「取消」繼續編輯。</sys:String>
     <sys:String x:Key="Speech.KeySaveFailed">新金鑰加密或寫入失敗，原設定未改變。請檢查金鑰目錄權限，詳情見錯誤記錄。</sys:String>
     <sys:String x:Key="Speech.SettingsWriteFailed">語音設定寫入失敗，已儲存的設定未改變。請檢查資料目錄權限與可用空間，詳情見錯誤記錄。</sys:String>
     <sys:String x:Key="Speech.SettingsReadFailed">無法讀取語音設定。請檢查資料目錄是否可存取，詳情見錯誤記錄。</sys:String>
