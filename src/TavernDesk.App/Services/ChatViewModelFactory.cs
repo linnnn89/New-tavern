@@ -24,7 +24,7 @@ public sealed class ChatViewModelFactory
         PlayerPersonaManagerViewModel? personas = null)
     {
         _services = services;
-        Speech = new SpeechPlaybackService(services.SpeechSynthesizer, services.SpeechSettings, new WindowsSpeechAudioOutput());
+        Speech = new SpeechPlaybackService(services.SpeechSynthesizer, services.SpeechSettings, new WindowsSpeechAudioOutput(), services.Diagnostics, services.SpeechSettings.AudioCache);
         _interaction = interaction;
         _fileDialog = fileDialog;
         _personas = personas ?? new PlayerPersonaManagerViewModel(services.Settings, interaction);

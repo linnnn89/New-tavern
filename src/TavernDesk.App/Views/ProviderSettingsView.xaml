@@ -368,21 +368,15 @@
                     <Border Style="{StaticResource CardStyle}" Padding="14">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="210" />
                                 <ColumnDefinition Width="240" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <ComboBox ItemsSource="{Binding FunctionOptions}"
-                                      SelectedItem="{Binding SelectedFunction}"
-                                      DisplayMemberPath="Label"
-                                      ToolTip="{StaticResource Settings.Assignments.SelectFunctionToolTip}" />
-                            <ComboBox Grid.Column="1"
-                                      Margin="12,0,0,0"
+                            <ComboBox Grid.Column="0"
                                       ItemsSource="{Binding Profiles}"
                                       SelectedItem="{Binding AssignmentProvider}"
                                       DisplayMemberPath="Name"
                                       ToolTip="{StaticResource Settings.Assignments.SelectProviderToolTip}" />
-                            <TextBox Grid.Column="2"
+                            <TextBox Grid.Column="1"
                                      Margin="12,0,0,0"
                                      Text="{Binding AssignmentSearchText, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="{StaticResource Settings.Assignments.SearchModelToolTip}" />
@@ -428,6 +422,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="1.05*" />
                                     <RowDefinition Height="1.35*" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0">
                                     <TextBlock Text="{StaticResource Settings.Assignments.Overview}" Style="{StaticResource SectionTitleStyle}" />
@@ -595,14 +590,25 @@
                                         </Border>
                                     </StackPanel>
 
-                                    <Button Width="180"
-                                            Margin="0,14,0,0"
-                                            HorizontalAlignment="Right"
-                                            Content="{StaticResource Settings.Assignments.Save}"
-                                            Command="{Binding SaveAssignmentCommand}"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
                                     </StackPanel>
                                 </ScrollViewer>
+                                <Border Grid.Row="3" Padding="10" Margin="0,10,0,0"
+                                        Background="{DynamicResource AccentSoftBrush}" CornerRadius="10">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding AssignmentTargetTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Right">
+                                            <TextBlock Text="{StaticResource Settings.Assignments.AssignTo}" VerticalAlignment="Center" Margin="0,0,8,6" />
+                                            <ComboBox Width="190" Margin="0,0,8,6"
+                                                      ItemsSource="{Binding FunctionOptions}" SelectedItem="{Binding SelectedFunction}"
+                                                      DisplayMemberPath="Label" AutomationProperties.AutomationId="AssignmentFunction"
+                                                      ToolTip="{StaticResource Settings.Assignments.SelectFunctionToolTip}" />
+                                            <Button MinWidth="160" Margin="0,0,0,6" Padding="12,8"
+                                                    Content="{Binding SaveAssignmentButtonText}" Command="{Binding SaveAssignmentCommand}"
+                                                    AutomationProperties.AutomationId="SaveFunctionAssignment"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>

@@ -1036,7 +1036,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Settings.Theme.Cupertino">macOS フロストシルバー</sys:String>
     <sys:String x:Key="Settings.Theme.Material">Material モネウォーム</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">API キーは未保存です。</sys:String>
-    <sys:String x:Key="Settings.Status.Intro">プロバイダー保存では接続しません。「モデルカタログを更新」を押した場合だけ API を要求します。</sys:String>
+    <sys:String x:Key="Settings.Status.Intro">接続先の保存では通信しません。モデル一覧の更新や音声接続テストで対応する API を呼び出します。</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Pending">倍率の推奨をまだ計算できません。</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">表示言語、倍率、自動スクロール、フォント、文字サイズをローカル設定に保存します。</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">個人データディレクトリは Windows ユーザー別設定で管理します。</sys:String>
@@ -1578,7 +1578,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="ScaleConfirm.Saved">表示倍率を確認して保存しました。</sys:String>
     <sys:String x:Key="ScaleConfirm.Reverted">元の表示倍率に戻しました。</sys:String>
     <sys:String x:Key="Speech.Title">Fish Audio 音声設定</sys:String>
-    <sys:String x:Key="Speech.ManualOnly">メッセージのスピーカーを押したときだけ音声を生成します。設定の保存では生成しません。</sys:String>
+    <sys:String x:Key="Speech.ManualOnly">メッセージのスピーカーまたは接続テストを押すと音声をリクエストします。設定の保存では生成しません。</sys:String>
     <sys:String x:Key="Speech.ApiKey">Fish Audio API キー</sys:String>
     <sys:String x:Key="Speech.KeepKey">空欄で既存のキーを保持します。Windows DPAPI で暗号化して保存します。</sys:String>
     <sys:String x:Key="Speech.Model">音声合成モデル</sys:String>
@@ -1645,4 +1645,19 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Speech.SettingsWriteFailed">音声設定を書き込めませんでした。保存済み設定は変更されていません。データ保存先の権限、空き容量、エラーログを確認してください。</sys:String>
     <sys:String x:Key="Speech.SettingsReadFailed">音声設定を読み込めませんでした。データ保存先へのアクセスとエラーログを確認してください。</sys:String>
     <sys:String x:Key="Speech.SettingsSavedCleanupPending">音声設定と新しいキーの状態は保存されましたが、古い暗号化キーを削除できませんでした。新しい設定は有効です。詳細はエラーログを確認してください。</sys:String>
+    <sys:String x:Key="Speech.TestConnection">接続テスト</sys:String>
+    <sys:String x:Key="Speech.CancelTest">テストを中止</sys:String>
+    <sys:String x:Key="Speech.Testing">TTS 接続をテスト中…</sys:String>
+    <sys:String x:Key="Speech.TestSucceeded">接続成功：音声 {0} バイトを受信しました。再生・設定保存は行いません。</sys:String>
+    <sys:String x:Key="Speech.TestHint">現在の入力値で固定の短文を送信します。クレジットを消費する場合があります。チャット本文の送信や設定保存は行いません。</sys:String>
+    <sys:String x:Key="Speech.TestFailureLog">リクエストや再生の例外は、機密情報を除去したエラーログに記録されます。</sys:String>
+    <sys:String x:Key="Speech.TestNewKeyRequired">URL または保存済み接続が変更されました。テスト用のキーを再入力してください。</sys:String>
+    <sys:String x:Key="Settings.Assignments.AssignTo">割り当て先</sys:String>
+    <sys:String x:Key="Settings.Assignments.EditingFormat">編集中：{0}</sys:String>
+    <sys:String x:Key="Settings.Assignments.SaveToFormat">{0}に保存</sys:String>
+    <sys:String x:Key="Speech.CacheTitle">今回の起動中の音声キャッシュ</sys:String>
+    <sys:String x:Key="Speech.CacheUsage">使用量 {0:F1} / 120 MiB、{1} ファイル</sys:String>
+    <sys:String x:Key="Speech.CacheUnavailable">キャッシュは利用できません。音声の生成と再生は可能です。</sys:String>
+    <sys:String x:Key="Speech.CacheHint">ドキュメント内の独立フォルダーに保存します。120 MiB を超えると古い音声から削除し、次回起動時に消去します。再生が完了した音声のみ保存します。</sys:String>
+    <sys:String x:Key="Speech.RefreshCache">キャッシュ使用量を更新</sys:String>
 </ResourceDictionary>

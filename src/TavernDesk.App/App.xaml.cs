@@ -85,7 +85,12 @@ public partial class App : Application
                     LanguageRuntime.GetString("Interaction.ChangeDataRoot.Title"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-            var services = new InfrastructureServices(explicitRoot, _diagnostics, dataConfiguration);
+            var cacheRoot = _testStartup is not null
+                ? Path.Combine(_testStartup.Root, "audio-cache")
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TavernDesk-AudioCache");
+            var audioCache = new TavernDesk.Infrastructure.Speech.SpeechAudioCache(cacheRoot, _diagnostics);
+            await Task.Run(audioCache.Initialize);
+            var services = new InfrastructureServices(explicitRoot, _diagnostics, dataConfiguration, audioCache);
             var databaseExistedAtStartup = File.Exists(services.Paths.DatabasePath);
             var pendingLanguagePath = Path.Combine(
                 services.Paths.RootDirectory,

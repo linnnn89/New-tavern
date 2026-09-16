@@ -1036,7 +1036,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Settings.Theme.Cupertino">macOS Cupertino Frost</sys:String>
     <sys:String x:Key="Settings.Theme.Material">Material Monet Warm</sys:String>
     <sys:String x:Key="Settings.Key.NotSaved">No API key saved.</sys:String>
-    <sys:String x:Key="Settings.Status.Intro">Saving a provider does not connect to the network. Its API is requested only when you explicitly select Refresh Model Catalog.</sys:String>
+    <sys:String x:Key="Settings.Status.Intro">Saving providers does not access the network. Refreshing model catalogs or testing speech connections calls the corresponding API.</sys:String>
     <sys:String x:Key="Settings.ScaleRecommendation.Pending">No scale recommendation is available yet.</sys:String>
     <sys:String x:Key="Settings.Interface.Intro">Interface language, scale, chat autoscroll, font, and font size are saved to local settings.</sys:String>
     <sys:String x:Key="Settings.DataRoot.Intro">The personal data directory is managed by Windows per-user configuration.</sys:String>
@@ -1578,7 +1578,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="ScaleConfirm.Saved">Scale confirmed and saved.</sys:String>
     <sys:String x:Key="ScaleConfirm.Reverted">Previous scale restored.</sys:String>
     <sys:String x:Key="Speech.Title">Fish Audio voice settings</sys:String>
-    <sys:String x:Key="Speech.ManualOnly">Speech is generated only when you click a message's speaker button. Saving settings does not synthesize audio.</sys:String>
+    <sys:String x:Key="Speech.ManualOnly">Speech requests run when you click a message speaker or Test connection. Saving settings does not synthesize audio.</sys:String>
     <sys:String x:Key="Speech.ApiKey">Fish Audio API Key</sys:String>
     <sys:String x:Key="Speech.KeepKey">Leave blank to keep the saved key. Keys are encrypted with Windows DPAPI.</sys:String>
     <sys:String x:Key="Speech.Model">Synthesis model</sys:String>
@@ -1645,4 +1645,19 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Speech.SettingsWriteFailed">Speech settings could not be written. Saved settings are unchanged. Check data directory permissions, free space, and the error log.</sys:String>
     <sys:String x:Key="Speech.SettingsReadFailed">Speech settings could not be read. Check access to the data directory and the error log.</sys:String>
     <sys:String x:Key="Speech.SettingsSavedCleanupPending">Speech settings and the new key state were saved, but the old encrypted key could not be removed. The new settings are active. See the error log.</sys:String>
+    <sys:String x:Key="Speech.TestConnection">Test connection</sys:String>
+    <sys:String x:Key="Speech.CancelTest">Cancel test</sys:String>
+    <sys:String x:Key="Speech.Testing">Testing the TTS endpoint…</sys:String>
+    <sys:String x:Key="Speech.TestSucceeded">Connection test succeeded: received {0} audio bytes. No playback or settings saved.</sys:String>
+    <sys:String x:Key="Speech.TestHint">Uses the current form to send a fixed test sentence. May consume credits. No chat text is sent or settings saved.</sys:String>
+    <sys:String x:Key="Speech.TestFailureLog">Request or playback exceptions are recorded in the redacted error log.</sys:String>
+    <sys:String x:Key="Speech.TestNewKeyRequired">The URL or saved connection changed. Enter the key again for this test.</sys:String>
+    <sys:String x:Key="Settings.Assignments.AssignTo">Assign to</sys:String>
+    <sys:String x:Key="Settings.Assignments.EditingFormat">Editing: {0}</sys:String>
+    <sys:String x:Key="Settings.Assignments.SaveToFormat">Save to {0}</sys:String>
+    <sys:String x:Key="Speech.CacheTitle">Audio cache for this session</sys:String>
+    <sys:String x:Key="Speech.CacheUsage">Used {0:F1} / 120 MiB, {1} files</sys:String>
+    <sys:String x:Key="Speech.CacheUnavailable">Cache unavailable. Speech can still be generated and played.</sys:String>
+    <sys:String x:Key="Speech.CacheHint">Stored separately in Documents. Oldest audio is removed at 120 MiB; the cache is cleared on the next launch. Only fully played audio is cached.</sys:String>
+    <sys:String x:Key="Speech.RefreshCache">Refresh cache usage</sys:String>
 </ResourceDictionary>
