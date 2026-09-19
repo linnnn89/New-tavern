@@ -1183,8 +1183,9 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.CharacterPrompt.Select">個別チャットを選択すると、そのカードのプロンプトを直接表示・編集できます。</sys:String>
     <sys:String x:Key="Chat.Model.Unassigned">チャット機能にモデル未割り当て</sys:String>
     <sys:String x:Key="Chat.ApiPreview.Select">会話を選択すると今回の役割と内容構造を表示します。API キーは表示しません。</sys:String>
-    <sys:String x:Key="Chat.SendMode.SendAndGenerate">送信＋生成</sys:String>
+    <sys:String x:Key="Chat.SendMode.SendAndGenerate">送信して生成</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">保存のみ</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">送信モードの切り替え（送信して生成 / 保存のみ）</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">吹き出し</sys:String>
     <sys:String x:Key="Chat.Display.Novel">小説</sys:String>
     <sys:String x:Key="Chat.SelectConversation">会話を選択してください。</sys:String>

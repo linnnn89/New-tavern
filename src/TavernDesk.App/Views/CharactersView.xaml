@@ -456,9 +456,8 @@
                                     Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Margin="8,0,0,0"
                                     Content="{StaticResource Characters.Delete}"
-                                    Foreground="{DynamicResource DangerBrush}"
                                     Command="{Binding DeleteCharacterCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                    Style="{StaticResource DestructiveButtonStyle}" />
                         </WrapPanel>
                     </Grid>
 
@@ -864,18 +863,11 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Button HorizontalAlignment="Left"
-                                    Padding="12,8"
+                                    Padding="14,8"
+                                    Content="{StaticResource Characters.Home}"
                                     Command="{Binding ShowCharacterOverviewCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}"
-                                    ToolTip="{StaticResource Characters.BackHomeToolTip}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,7,0"
-                                               Text="←"
-                                               FontSize="16" />
-                                    <TextBlock Text="{StaticResource Characters.Home}"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
+                                    ToolTip="{StaticResource Characters.BackHomeToolTip}" />
                             <Button Grid.Column="2"
                                     Content="{StaticResource Characters.ExportCard}"
                                     Command="{Binding ExportCommand}"

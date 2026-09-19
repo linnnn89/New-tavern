@@ -877,6 +877,8 @@
                             <KeyBinding Key="Enter"
                                         Modifiers="Control"
                                         Command="{Binding SendLocalCommand}" />
+                            <KeyBinding Key="Esc"
+                                        Command="{Binding StopGenerationCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
                     <Grid Grid.Row="1" Margin="0,8,0,0">
@@ -885,22 +887,16 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Width="176">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center">
                             <TextBlock Text="{Binding ActiveModelText}"
+                                       MaxWidth="320"
+                                       Margin="0,0,10,0"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
                                        Style="{StaticResource AppicaComposerMetaTextStyle}" />
-                             <ComboBox Height="34"
-                                       Margin="0,3,0,0"
-                                       FontSize="13"
-                                       ItemsSource="{Binding SendModes}"
-                                      ItemTemplate="{StaticResource ChatCompactOptionTemplate}"
-                                      SelectedValuePath="Value"
-                                      SelectedValue="{Binding SendMode}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1"
-                                    Margin="14,0"
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal">
-                            <Border Style="{StaticResource AppicaTokenCapsuleStyle}">
+                            <Border VerticalAlignment="Center"
+                                    Style="{StaticResource AppicaTokenCapsuleStyle}">
                                 <Border.ToolTip>
                                     <StackPanel MaxWidth="360">
                                         <TextBlock Text="{Binding EstimatedTokenText}"
@@ -917,17 +913,29 @@
                             </Border>
                         </StackPanel>
                         <StackPanel Grid.Column="2"
-                                    VerticalAlignment="Bottom"
+                                    VerticalAlignment="Center"
                                     Orientation="Horizontal">
-                            <Button Width="72"
-                                    Margin="0,0,8,0"
-                                    Content="{StaticResource Common.Stop}"
-                                    Command="{Binding StopGenerationCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Width="88"
-                                    Content="{StaticResource Chat.Send}"
-                                    Command="{Binding SendLocalCommand}"
-                                    Style="{StaticResource PrimaryButtonStyle}" />
+                            <ComboBox Height="36"
+                                      Width="126"
+                                      Margin="0,0,8,0"
+                                      FontSize="13"
+                                      ItemsSource="{Binding SendModes}"
+                                      ItemTemplate="{StaticResource ChatCompactOptionTemplate}"
+                                      SelectedValuePath="Value"
+                                      SelectedValue="{Binding SendMode}"
+                                      ToolTip="{StaticResource Chat.SendModeToolTip}" />
+                            <Grid Width="88" Height="36">
+                                <Button Content="{StaticResource Chat.Send}"
+                                        Command="{Binding SendLocalCommand}"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        ToolTip="{StaticResource Chat.ComposerToolTip}"
+                                        Visibility="{Binding IsCurrentConversationGenerating, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                <Button Content="{StaticResource Common.Stop}"
+                                        Command="{Binding StopGenerationCommand}"
+                                        Style="{StaticResource DestructiveButtonStyle}"
+                                        ToolTip="{StaticResource Chat.StopGenerationToolTip}"
+                                        Visibility="{Binding IsCurrentConversationGenerating, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            </Grid>
                         </StackPanel>
                     </Grid>
                 </Grid>

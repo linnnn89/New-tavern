@@ -1183,8 +1183,9 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Chat.CharacterPrompt.Select">Select an individual chat to view and edit prompts on that character card directly.</sys:String>
     <sys:String x:Key="Chat.Model.Unassigned">No model assigned to chat</sys:String>
     <sys:String x:Key="Chat.ApiPreview.Select">Select a conversation to display the role and content structure for this request. The API key is never shown.</sys:String>
-    <sys:String x:Key="Chat.SendMode.SendAndGenerate">Send + generate</sys:String>
+    <sys:String x:Key="Chat.SendMode.SendAndGenerate">Send &amp; generate</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">Save only</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">Switch send mode (Send &amp; generate / Save only)</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">Bubbles</sys:String>
     <sys:String x:Key="Chat.Display.Novel">Novel</sys:String>
     <sys:String x:Key="Chat.SelectConversation">Select a conversation.</sys:String>

@@ -249,8 +249,7 @@
                             <Button Content="{StaticResource Worldbook.Delete}"
                                     Margin="8,0,0,0"
                                     Command="{Binding DeleteCommand}"
-                                    Foreground="{DynamicResource DangerBrush}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                    Style="{StaticResource DestructiveButtonStyle}" />
                         </StackPanel>
                     </Grid>
 

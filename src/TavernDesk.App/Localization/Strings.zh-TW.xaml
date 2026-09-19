@@ -1183,8 +1183,9 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.CharacterPrompt.Select">選擇個人聊天後可直接檢視和修改該角色卡的提示詞。</sys:String>
     <sys:String x:Key="Chat.Model.Unassigned">聊天功能尚未指派模型</sys:String>
     <sys:String x:Key="Chat.ApiPreview.Select">選擇會話後顯示本次請求的角色與內容結構；不會顯示 API Key。</sys:String>
-    <sys:String x:Key="Chat.SendMode.SendAndGenerate">傳送並生成</sys:String>
+    <sys:String x:Key="Chat.SendMode.SendAndGenerate">發送並生成</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">僅儲存訊息</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">切換發送模式（發送並生成 / 僅儲存訊息）</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">氣泡</sys:String>
     <sys:String x:Key="Chat.Display.Novel">小說</sys:String>
     <sys:String x:Key="Chat.SelectConversation">請選擇一次對話。</sys:String>

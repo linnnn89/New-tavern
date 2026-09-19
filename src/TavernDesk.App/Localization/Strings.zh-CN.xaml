@@ -1194,6 +1194,7 @@
     <sys:String x:Key="Chat.ApiPreview.Select">选择会话后显示本次请求的角色与内容结构；不会显示 API Key。</sys:String>
     <sys:String x:Key="Chat.SendMode.SendAndGenerate">发送并生成</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">仅保存消息</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">切换发送模式（发送并生成 / 仅保存消息）</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">气泡</sys:String>
     <sys:String x:Key="Chat.Display.Novel">小说</sys:String>
     <sys:String x:Key="Chat.SelectConversation">请选择一次对话。</sys:String>
