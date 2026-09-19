@@ -20,7 +20,7 @@
                     <Button Content="{StaticResource Campaigns.NewScenario}"
                             Command="{Binding NewScenarioCommand}"
                             ToolTip="{StaticResource Campaigns.NewScenarioToolTip}"
-                            Style="{StaticResource PrimaryButtonStyle}" />
+                            Style="{StaticResource SecondaryButtonStyle}" />
                     <Button Content="{StaticResource Campaigns.ImportScenario}"
                             Margin="8,0,0,0"
                             Command="{Binding ImportScenarioCommand}"

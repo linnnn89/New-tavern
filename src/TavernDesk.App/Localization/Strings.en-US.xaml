@@ -167,11 +167,11 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Characters.ImportCard">Import character card</sys:String>
     <sys:String x:Key="Characters.Empty.Title">This shelf is empty</sys:String>
     <sys:String x:Key="Characters.Empty.Hint">Import a PNG, JSON, or CHARX character card, or add characters from another shelf.</sys:String>
-    <sys:String x:Key="Characters.BackToShelf">← Back to character library</sys:String>
+    <sys:String x:Key="Characters.BackToShelf">Back to character library</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">Current layout:</sys:String>
     <sys:String x:Key="Characters.LayoutHelp"> Vertical covers preserve their aspect ratio when cropped. Hover to enlarge and reveal Chat and Edit shortcuts.</sys:String>
     <sys:String x:Key="Characters.MyShelves">My shelves</sys:String>
-    <sys:String x:Key="Characters.NewShelf">+ New shelf</sys:String>
+    <sys:String x:Key="Characters.NewShelf">New shelf</sys:String>
     <sys:String x:Key="Characters.Rename">Rename</sys:String>
     <sys:String x:Key="Characters.Batch.ToolTip">Enter or leave multi-select organization mode</sys:String>
     <sys:String x:Key="Characters.Batch.Start">Select</sys:String>
@@ -214,7 +214,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Characters.MessageExample">Dialogue example (mes_example)</sys:String>
     <sys:String x:Key="Characters.AlternateGreetings">Alternate greetings</sys:String>
     <sys:String x:Key="Characters.Greeting">Greeting</sys:String>
-    <sys:String x:Key="Characters.AppendGreeting">+ Add greeting</sys:String>
+    <sys:String x:Key="Characters.AppendGreeting">Add greeting</sys:String>
     <sys:String x:Key="Characters.Tab.Prompts">Prompts</sys:String>
     <sys:String x:Key="Characters.SystemPrompt">System prompt</sys:String>
     <sys:String x:Key="Characters.PostHistoryInstructions">Post-history instructions</sys:String>
@@ -237,7 +237,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Characters.SaveSettings">Save character settings</sys:String>
     <!-- Chat -->
     <sys:String x:Key="Chat.Title">Chat</sys:String>
-    <sys:String x:Key="Chat.NewGroup">+ Group</sys:String>
+    <sys:String x:Key="Chat.NewGroup">New Group</sys:String>
     <sys:String x:Key="Chat.SearchToolTip">Filter by character, conversation title, or latest message</sys:String>
     <sys:String x:Key="Chat.OpenNewWindow">Open chat in new window</sys:String>
     <sys:String x:Key="Chat.DeleteConversation">Delete entire chat</sys:String>
@@ -301,7 +301,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Chat.Tab.Memory">Memory</sys:String>
     <sys:String x:Key="Chat.Memory.BodyTab">Body</sys:String>
     <sys:String x:Key="Chat.Memory.TargetTokens">Target tokens</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveBody">Save body directly</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveBody">Save Memory</sys:String>
     <sys:String x:Key="Chat.Memory.AdvancedWorkflowTab">Advanced workflow</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">Incremental update and compression</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">Single-character chats count user turns with their character replies. Group chats count complete saved messages, including character-only automatic relays. The default threshold is 20; groups also trigger at the pending token threshold. Successful updates save the memory body and advance the checkpoint.</sys:String>
@@ -432,11 +432,11 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Campaigns.Lobby.ImportChatMemory">Import chat memory</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraft">Save lobby draft</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraftToolTip">Save the scenario, characters, GM, participation mode, and model choices without starting the campaign.</sys:String>
-    <sys:String x:Key="Campaigns.Lobby.Start">Start and freeze configuration</sys:String>
+    <sys:String x:Key="Campaigns.Lobby.Start">Start Campaign</sys:String>
     <sys:String x:Key="Campaigns.Lobby.StartToolTip">Validate and freeze the scenario, character snapshots, memory, and initial models, then generate the GM opening and enter round 1.</sys:String>
     <sys:String x:Key="Campaigns.Play.Settings">Campaign settings</sys:String>
     <sys:String x:Key="Campaigns.Play.SettingsToolTip">Manage the context budget and enhanced campaign memory for this campaign.</sys:String>
-    <sys:String x:Key="Campaigns.Play.Refresh">↻ Refresh</sys:String>
+    <sys:String x:Key="Campaigns.Play.Refresh">Refresh</sys:String>
     <sys:String x:Key="Campaigns.Play.RefreshToolTip">Reload the current campaign from the local database without calling a model or adding records.</sys:String>
     <sys:String x:Key="Campaigns.Play.BackToolTip">Leave the play page and return to the scenario library. This campaign is autosaved and can be continued at any time.</sys:String>
     <sys:String x:Key="Campaigns.Play.PlayerSeats">Player seats</sys:String>
@@ -629,70 +629,56 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <!-- Confirmation and interaction dialogs -->
     <sys:String x:Key="Interaction.CustomModel.Title">Add custom model</sys:String>
     <sys:String x:Key="Interaction.CustomModel.Prompt">Enter a model ID or name. Saving writes only to the local model catalog and makes no network request.</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Message">Choose a deletion range:
+    <!-- Semantic dialog actions -->
+    <sys:String x:Key="Interaction.Action.Save">Save</sys:String>
+    <sys:String x:Key="Interaction.Action.Discard">Discard Changes</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCharacter">Delete Character</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteConversation">Delete Chat</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteShelf">Delete Shelf</sys:String>
+    <sys:String x:Key="Interaction.Action.DeletePreset">Delete Preset</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteProvider">Delete Provider</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteWorldbook">Delete Worldbook</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCampaign">Delete Campaign</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearKey">Clear Key</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearLogs">Clear Logs</sys:String>
+    <sys:String x:Key="Interaction.Action.CopyCurrentData">Copy Existing Data</sys:String>
+    <sys:String x:Key="Interaction.Action.KeepTargetAsIs">Use Target As Is</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedAndFollowing">Delete Following</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedOnly">Delete Selected Only</sys:String>
 
-“Yes” = permanently delete this message and all later messages
-“No” = permanently delete only this message
-“Cancel” = do not delete</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Title">Deletion range</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">Permanently delete this message and all later messages?
-
-This cannot be undone.</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">Permanently delete this message?
-
-This cannot be undone.</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.Title">Confirm permanent deletion</sys:String>
-    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">Character settings for “{0}” have not been saved.
-
-Select “Yes” to save and continue, “No” to discard changes, or “Cancel” to stay here.</sys:String>
-    <sys:String x:Key="Interaction.UnsavedCharacter.Title">Unsaved character settings</sys:String>
-    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">Provider settings or a pending API key for “{0}” have not been saved.
-
-Select “Yes” to save and continue, “No” to discard changes, or “Cancel” to stay here.</sys:String>
-    <sys:String x:Key="Interaction.UnsavedProvider.Title">Unsaved model settings</sys:String>
-    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">Campaign “{0}” has not started. Save it as a lobby draft before leaving?
-
-Select “Yes” to save the draft, “No” to discard this lobby content, or “Cancel” to stay here.</sys:String>
-    <sys:String x:Key="Interaction.UnstartedCampaign.Title">Campaign not started</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Message">Select the deletion range. This action cannot be undone.</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Title">Delete Message</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">Permanently delete this message and all later messages?&#10;&#10;This cannot be undone.</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">Permanently delete this message?&#10;&#10;This cannot be undone.</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.Title">Delete Message</sys:String>
+    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">Character settings for “{0}” have unsaved changes. Do you want to save before leaving?</sys:String>
+    <sys:String x:Key="Interaction.UnsavedCharacter.Title">Unsaved Character Settings</sys:String>
+    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">Provider settings for “{0}” have unsaved changes. Do you want to save before leaving?</sys:String>
+    <sys:String x:Key="Interaction.UnsavedProvider.Title">Unsaved Provider Settings</sys:String>
+    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">Campaign “{0}” has not started. Save it as a lobby draft before leaving?</sys:String>
+    <sys:String x:Key="Interaction.UnstartedCampaign.Title">Campaign Not Started</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.NoChats">This character has no chat history.</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.ChatCountFormat">{0} chats linked to this character will be kept and shown under Deleted Characters.</sys:String>
-    <sys:String x:Key="Interaction.DeleteCharacter.MessageFormat">Remove “{0}” from the character shelf?
-
-{1}
-The imported working copy of the character card is kept, and the original source file is unchanged.</sys:String>
-    <sys:String x:Key="Interaction.DeleteCharacter.Title">Delete character card</sys:String>
-    <sys:String x:Key="Interaction.DeleteConversation.MessageFormat">Permanently delete chat “{0}”?
-
-All messages, candidate replies, and local chat cache for this conversation will be deleted and cannot be recovered.
-The character card, overall character memory, and other chats are unaffected.</sys:String>
-    <sys:String x:Key="Interaction.DeleteConversation.Title">Delete chat history</sys:String>
-    <sys:String x:Key="Interaction.DeleteShelf.MessageFormat">Delete shelf “{0}”?
-
-The character cards themselves will not be deleted.</sys:String>
-    <sys:String x:Key="Interaction.DeleteShelf.Title">Delete custom shelf</sys:String>
-    <sys:String x:Key="Interaction.DeletePreset.MessageFormat">Delete preset “{0}”?
-
-Its global, character, and conversation mounts will also be removed.</sys:String>
-    <sys:String x:Key="Interaction.DeletePreset.Title">Delete preset</sys:String>
-    <sys:String x:Key="Interaction.DeleteProvider.MessageFormat">Delete provider “{0}”?
-
-Its model catalog, feature assignments, and DPAPI key saved locally by TavernDesk will be permanently cleared. This cannot be undone.</sys:String>
-    <sys:String x:Key="Interaction.DeleteProvider.Title">Delete provider</sys:String>
-    <sys:String x:Key="Interaction.DeleteWorldbook.MessageFormat">Delete worldbook “{0}”?
-
-The saved working copy of the original JSON and its derived embedding index will be deleted. The original user file is unchanged.</sys:String>
-    <sys:String x:Key="Interaction.DeleteWorldbook.Title">Delete worldbook</sys:String>
-    <sys:String x:Key="Interaction.DeleteCampaign.MessageFormat">Permanently delete campaign “{0}”?
-
-All seats and {1} campaign records in this campaign will be deleted and cannot be recovered.
-Scenario cards, character cards, and other campaigns will not be deleted.</sys:String>
-    <sys:String x:Key="Interaction.DeleteCampaign.Title">Confirm permanent campaign deletion</sys:String>
+    <sys:String x:Key="Interaction.DeleteCharacter.MessageFormat">Remove “{0}” from the character shelf?&#10;&#10;{1}&#10;The imported working copy of the character card is kept, and the original source file is unchanged.</sys:String>
+    <sys:String x:Key="Interaction.DeleteCharacter.Title">Delete Character Card</sys:String>
+    <sys:String x:Key="Interaction.DeleteConversation.MessageFormat">Permanently delete chat “{0}”?&#10;&#10;All messages, candidate replies, and local chat cache for this conversation will be deleted and cannot be recovered.&#10;The character card, overall character memory, and other chats are unaffected.</sys:String>
+    <sys:String x:Key="Interaction.DeleteConversation.Title">Delete Chat History</sys:String>
+    <sys:String x:Key="Interaction.DeleteShelf.MessageFormat">Delete shelf “{0}”?&#10;&#10;The character cards themselves will not be deleted.</sys:String>
+    <sys:String x:Key="Interaction.DeleteShelf.Title">Delete Custom Shelf</sys:String>
+    <sys:String x:Key="Interaction.DeletePreset.MessageFormat">Delete preset “{0}”?&#10;&#10;Its global, character, and conversation mounts will also be removed.</sys:String>
+    <sys:String x:Key="Interaction.DeletePreset.Title">Delete Preset</sys:String>
+    <sys:String x:Key="Interaction.DeleteProvider.MessageFormat">Delete provider “{0}”?&#10;&#10;Its model catalog, feature assignments, and DPAPI key saved locally by TavernDesk will be permanently cleared. This cannot be undone.</sys:String>
+    <sys:String x:Key="Interaction.DeleteProvider.Title">Delete Provider</sys:String>
+    <sys:String x:Key="Interaction.DeleteWorldbook.MessageFormat">Delete worldbook “{0}”?&#10;&#10;The saved working copy of the original JSON and its derived embedding index will be deleted. The original user file is unchanged.</sys:String>
+    <sys:String x:Key="Interaction.DeleteWorldbook.Title">Delete Worldbook</sys:String>
+    <sys:String x:Key="Interaction.DeleteCampaign.MessageFormat">Permanently delete campaign “{0}”?&#10;&#10;All seats and {1} campaign records in this campaign will be deleted and cannot be recovered.&#10;Scenario cards, character cards, and other campaigns will not be deleted.</sys:String>
+    <sys:String x:Key="Interaction.DeleteCampaign.Title">Confirm Permanent Campaign Deletion</sys:String>
     <sys:String x:Key="Interaction.ClearKey.MessageFormat">Clear the API key for “{0}” stored in Windows DPAPI?</sys:String>
-    <sys:String x:Key="Interaction.ClearKey.Title">Clear API key</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">Change the personal data directory on the next startup. Copy the database, chats, character cards, scenarios and attachments as well?&#10;&#10;Yes: copy the latest saved data on startup and keep the old directory. No: use the new directory on startup without copying data. Cancel: keep the existing schedule.&#10;&#10;Current: {0}&#10;New directory: {1}</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.Title">Change personal data directory</sys:String>
+    <sys:String x:Key="Interaction.ClearKey.Title">Clear API Key</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">The profile directory will be switched on the next startup. Do you want to copy the database, chats, character cards, and attachments to the new directory?&#10;&#10;Current: {0}&#10;New directory: {1}</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.Title">Change Personal Data Directory</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">This permanently deletes every child file and folder inside the following directory while keeping the directory itself:&#10;&#10;{0}&#10;&#10;Continue?</sys:String>
-    <sys:String x:Key="Interaction.Diagnostics.Clear.Title">Clear API test output</sys:String>
+    <sys:String x:Key="Interaction.Diagnostics.Clear.Title">Clear API Test Output</sys:String>
     <!-- Conversation and message runtime text -->
     <sys:String x:Key="Conversation.New">New conversation</sys:String>
     <sys:String x:Key="Conversation.Yesterday">Yesterday</sys:String>

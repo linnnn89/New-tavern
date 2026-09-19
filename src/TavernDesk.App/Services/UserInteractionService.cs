@@ -143,76 +143,68 @@ public sealed class UserInteractionService : IUserInteractionService
 
     public DeleteMessageDecision ConfirmMessageDeletion()
     {
-        var range = LocalizedMessageBox.Show(
+        var actions = new[]
+        {
+            new DialogAction(
+                LanguageRuntime.GetString("Interaction.DeleteMessage.SelectedAndFollowing"),
+                MessageBoxResult.Yes,
+                DialogButtonRole.Destructive),
+            new DialogAction(
+                LanguageRuntime.GetString("Interaction.DeleteMessage.SelectedOnly"),
+                MessageBoxResult.No,
+                DialogButtonRole.Secondary),
+            new DialogAction(
+                LanguageRuntime.GetString("Common.Cancel"),
+                MessageBoxResult.Cancel,
+                DialogButtonRole.Secondary,
+                IsDefault: true,
+                IsCancel: true)
+        };
+        var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.GetString("Interaction.DeleteMessageRange.Message"),
             LanguageRuntime.GetString("Interaction.DeleteMessageRange.Title"),
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Warning);
-        if (range == MessageBoxResult.Cancel)
-        {
-            return DeleteMessageDecision.Cancel;
-        }
+            actions,
+            MessageBoxImage.Warning,
+            MessageBoxResult.Cancel);
 
-        var decision = range == MessageBoxResult.Yes
-            ? DeleteMessageDecision.SelectedAndFollowing
-            : DeleteMessageDecision.SelectedOnly;
-
-        var final = LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            decision == DeleteMessageDecision.SelectedAndFollowing
-                ? LanguageRuntime.GetString("Interaction.DeleteMessage.ConfirmTail")
-                : LanguageRuntime.GetString("Interaction.DeleteMessage.ConfirmSingle"),
-            LanguageRuntime.GetString("Interaction.DeleteMessage.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        return final == MessageBoxResult.Yes
-            ? decision
-            : DeleteMessageDecision.Cancel;
-    }
-
-    public UnsavedChangesDecision ConfirmUnsavedCharacterChanges(string characterName)
-    {
-        var result = LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.UnsavedCharacter.MessageFormat", characterName),
-            LanguageRuntime.GetString("Interaction.UnsavedCharacter.Title"),
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question);
         return result switch
         {
-            MessageBoxResult.Yes => UnsavedChangesDecision.Save,
-            MessageBoxResult.No => UnsavedChangesDecision.Discard,
-            _ => UnsavedChangesDecision.Cancel
+            MessageBoxResult.Yes => DeleteMessageDecision.SelectedAndFollowing,
+            MessageBoxResult.No => DeleteMessageDecision.SelectedOnly,
+            _ => DeleteMessageDecision.Cancel
         };
     }
 
-    public UnsavedChangesDecision ConfirmUnsavedProviderChanges(string providerName)
+    private static UnsavedChangesDecision ConfirmUnsavedChangesDialog(
+        string title,
+        string message)
     {
-        var result = LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.UnsavedProvider.MessageFormat", providerName),
-            LanguageRuntime.GetString("Interaction.UnsavedProvider.Title"),
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question);
-        return result switch
+        var actions = new[]
         {
-            MessageBoxResult.Yes => UnsavedChangesDecision.Save,
-            MessageBoxResult.No => UnsavedChangesDecision.Discard,
-            _ => UnsavedChangesDecision.Cancel
+            new DialogAction(
+                LanguageRuntime.GetString("Interaction.Action.Save"),
+                MessageBoxResult.Yes,
+                DialogButtonRole.Primary,
+                IsDefault: true),
+            new DialogAction(
+                LanguageRuntime.GetString("Interaction.Action.Discard"),
+                MessageBoxResult.No,
+                DialogButtonRole.Destructive),
+            new DialogAction(
+                LanguageRuntime.GetString("Common.Cancel"),
+                MessageBoxResult.Cancel,
+                DialogButtonRole.Secondary,
+                IsCancel: true)
         };
-    }
-
-    public UnsavedChangesDecision ConfirmUnsavedCampaignLobby(
-        string campaignTitle)
-    {
         var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.UnstartedCampaign.MessageFormat", campaignTitle),
-            LanguageRuntime.GetString("Interaction.UnstartedCampaign.Title"),
-            MessageBoxButton.YesNoCancel,
+            message,
+            title,
+            actions,
             MessageBoxImage.Question,
-            MessageBoxResult.No);
+            MessageBoxResult.Cancel);
+
         return result switch
         {
             MessageBoxResult.Yes => UnsavedChangesDecision.Save,
@@ -220,86 +212,130 @@ public sealed class UserInteractionService : IUserInteractionService
             _ => UnsavedChangesDecision.Cancel
         };
     }
+
+    private static bool ConfirmDestructiveAction(
+        string title,
+        string message,
+        string destructiveActionLabel)
+    {
+        var actions = new[]
+        {
+            new DialogAction(
+                destructiveActionLabel,
+                MessageBoxResult.Yes,
+                DialogButtonRole.Destructive),
+            new DialogAction(
+                LanguageRuntime.GetString("Common.Cancel"),
+                MessageBoxResult.No,
+                DialogButtonRole.Secondary,
+                IsDefault: true,
+                IsCancel: true)
+        };
+        return LocalizedMessageBox.Show(
+            Application.Current.MainWindow,
+            message,
+            title,
+            actions,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
+    }
+
+    public UnsavedChangesDecision ConfirmUnsavedCharacterChanges(string characterName) =>
+        ConfirmUnsavedChangesDialog(
+            LanguageRuntime.GetString("Interaction.UnsavedCharacter.Title"),
+            LanguageRuntime.Format("Interaction.UnsavedCharacter.MessageFormat", characterName));
+
+    public UnsavedChangesDecision ConfirmUnsavedProviderChanges(string providerName) =>
+        ConfirmUnsavedChangesDialog(
+            LanguageRuntime.GetString("Interaction.UnsavedProvider.Title"),
+            LanguageRuntime.Format("Interaction.UnsavedProvider.MessageFormat", providerName));
+
+    public UnsavedChangesDecision ConfirmUnsavedCampaignLobby(string campaignTitle) =>
+        ConfirmUnsavedChangesDialog(
+            LanguageRuntime.GetString("Interaction.UnstartedCampaign.Title"),
+            LanguageRuntime.Format("Interaction.UnstartedCampaign.MessageFormat", campaignTitle));
 
     public bool ConfirmCharacterDeletion(string characterName, int conversationCount) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
+        ConfirmDestructiveAction(
+            LanguageRuntime.GetString("Interaction.DeleteCharacter.Title"),
             LanguageRuntime.Format(
                 "Interaction.DeleteCharacter.MessageFormat",
                 characterName,
                 conversationCount == 0
                     ? LanguageRuntime.GetString("Interaction.DeleteCharacter.NoChats")
                     : LanguageRuntime.Format("Interaction.DeleteCharacter.ChatCountFormat", conversationCount)),
-            LanguageRuntime.GetString("Interaction.DeleteCharacter.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.GetString("Interaction.Action.DeleteCharacter"));
 
     public bool ConfirmConversationDeletion(string conversationTitle) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.DeleteConversation.MessageFormat", conversationTitle),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.DeleteConversation.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.DeleteConversation.MessageFormat", conversationTitle),
+            LanguageRuntime.GetString("Interaction.Action.DeleteConversation"));
 
     public bool ConfirmShelfDeletion(string shelfName) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.DeleteShelf.MessageFormat", shelfName),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.DeleteShelf.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.DeleteShelf.MessageFormat", shelfName),
+            LanguageRuntime.GetString("Interaction.Action.DeleteShelf"));
 
     public bool ConfirmPresetDeletion(string presetName) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.DeletePreset.MessageFormat", presetName),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.DeletePreset.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.DeletePreset.MessageFormat", presetName),
+            LanguageRuntime.GetString("Interaction.Action.DeletePreset"));
 
     public bool ConfirmProviderDeletion(string providerName) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.DeleteProvider.MessageFormat", providerName),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.DeleteProvider.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.DeleteProvider.MessageFormat", providerName),
+            LanguageRuntime.GetString("Interaction.Action.DeleteProvider"));
 
     public bool ConfirmWorldbookDeletion(string worldbookName) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.DeleteWorldbook.MessageFormat", worldbookName),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.DeleteWorldbook.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.DeleteWorldbook.MessageFormat", worldbookName),
+            LanguageRuntime.GetString("Interaction.Action.DeleteWorldbook"));
 
     public bool ConfirmCampaignDeletion(string campaignTitle, int eventCount) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.DeleteCampaign.MessageFormat", campaignTitle, eventCount),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.DeleteCampaign.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.DeleteCampaign.MessageFormat", campaignTitle, eventCount),
+            LanguageRuntime.GetString("Interaction.Action.DeleteCampaign"));
 
     public bool ConfirmSecretClear(string providerName) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
-            LanguageRuntime.Format("Interaction.ClearKey.MessageFormat", providerName),
+        ConfirmDestructiveAction(
             LanguageRuntime.GetString("Interaction.ClearKey.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            LanguageRuntime.Format("Interaction.ClearKey.MessageFormat", providerName),
+            LanguageRuntime.GetString("Interaction.Action.ClearKey"));
 
     public DataRootMigrationDecision ConfirmDataRootMigration(
         string currentRoot,
         string newRoot)
     {
+        var actions = new[]
+        {
+            new DialogAction(
+                LanguageRuntime.GetString("Interaction.Action.CopyCurrentData"),
+                MessageBoxResult.Yes,
+                DialogButtonRole.Primary,
+                IsDefault: true),
+            new DialogAction(
+                LanguageRuntime.GetString("Interaction.Action.KeepTargetAsIs"),
+                MessageBoxResult.No,
+                DialogButtonRole.Secondary),
+            new DialogAction(
+                LanguageRuntime.GetString("Common.Cancel"),
+                MessageBoxResult.Cancel,
+                DialogButtonRole.Secondary,
+                IsCancel: true)
+        };
         var result = LocalizedMessageBox.Show(
             Application.Current.MainWindow,
             LanguageRuntime.Format("Interaction.ChangeDataRoot.MessageFormat", currentRoot, newRoot),
             LanguageRuntime.GetString("Interaction.ChangeDataRoot.Title"),
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question);
+            actions,
+            MessageBoxImage.Question,
+            MessageBoxResult.Cancel);
         return result switch
         {
             MessageBoxResult.Yes => DataRootMigrationDecision.CopyCurrentData,
@@ -309,15 +345,12 @@ public sealed class UserInteractionService : IUserInteractionService
     }
 
     public bool ConfirmClearApiTestOutput(string outputDirectory) =>
-        LocalizedMessageBox.Show(
-            Application.Current.MainWindow,
+        ConfirmDestructiveAction(
+            LanguageRuntime.GetString("Interaction.Diagnostics.Clear.Title"),
             LanguageRuntime.Format(
                 "Interaction.Diagnostics.Clear.MessageFormat",
                 outputDirectory),
-            LanguageRuntime.GetString("Interaction.Diagnostics.Clear.Title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No) == MessageBoxResult.Yes;
+            LanguageRuntime.GetString("Interaction.Action.ClearLogs"));
 
     public async Task<GroupChatDraft?> CreateGroupChatAsync(
         IReadOnlyList<Character> characters)
