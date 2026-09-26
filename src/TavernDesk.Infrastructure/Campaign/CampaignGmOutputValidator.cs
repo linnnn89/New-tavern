@@ -26,20 +26,27 @@ public sealed class CampaignGmOutputValidator : ICampaignGmOutputValidator
         var evaluationIndex = normalized.LastIndexOf(
             CampaignNarrativeProtocol.EvaluationHeader,
             StringComparison.Ordinal);
-        if (declarationIndex < 0
-            || evaluationIndex < 0
-            || declarationIndex >= evaluationIndex)
+        if (declarationIndex < 0)
         {
             return Invalid(
                 content,
-                "GM 缺少位于最终评定章节之前的叙事权限声明。");
+                "未提供可选叙事权限声明。");
+        }
+
+        // Only a standalone legacy section is metadata. A title quoted inside
+        // prose must not cause narrative text to be removed.
+        if ((declarationIndex > 0 && normalized[declarationIndex - 1] != '\n')
+            || (evaluationIndex >= 0 && declarationIndex >= evaluationIndex))
+        {
+            return Invalid(content, "无法确定可选声明的边界，保留原文。");
         }
 
         var jsonStart = declarationIndex
                         + CampaignNarrativeProtocol.DeclarationHeader.Length;
-        var json = normalized[jsonStart..evaluationIndex].Trim();
+        var jsonEnd = evaluationIndex >= 0 ? evaluationIndex : normalized.Length;
+        var json = normalized[jsonStart..jsonEnd].Trim();
         var before = normalized[..declarationIndex].TrimEnd();
-        var evaluation = normalized[evaluationIndex..].TrimStart();
+        var evaluation = evaluationIndex >= 0 ? normalized[evaluationIndex..].TrimStart() : string.Empty;
         var display = $"{before}\n\n{evaluation}".Trim();
         CampaignGmNarrativeDelta? delta;
         try
@@ -48,7 +55,10 @@ public sealed class CampaignGmOutputValidator : ICampaignGmOutputValidator
         }
         catch (JsonException)
         {
-            return Invalid(display, "GM 叙事权限声明不是有效 JSON。");
+            // Without a closing section, malformed metadata cannot be safely
+            // separated from trailing prose. Prefer preserving the user's text.
+            return Invalid(evaluationIndex >= 0 ? display : content,
+                "GM 叙事权限声明不是有效 JSON。");
         }
 
         if (delta is null || delta.SchemaVersion != 1)
