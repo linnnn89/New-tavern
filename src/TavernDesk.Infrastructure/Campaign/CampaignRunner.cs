@@ -473,7 +473,7 @@ public sealed partial class CampaignRunner : ICampaignRunner
             authority);
         if (resolution.GenerationStatus == CampaignGenerationStatus.Completed)
         {
-            // A protocol retry stays in the current GM step so the user can
+            // A failed attempt's retry stays in the current GM step so the user can
             // compare the original failed attempt and the successful retry.
             // Only the explicitly selected candidate commits the next round.
             if (attemptNo <= 1)
@@ -512,10 +512,11 @@ public sealed partial class CampaignRunner : ICampaignRunner
                        ?? throw new InvalidOperationException(
                            "所选 GM 候选不存在或已经离开当前回合。");
         if (candidate.GenerationStatus != CampaignGenerationStatus.Completed
-            || !HasValidGmEvaluationTail(candidate.Content))
+            || candidate.EndReason != CampaignEndReason.Normal
+            || string.IsNullOrWhiteSpace(candidate.Content))
         {
             throw new InvalidOperationException(
-                "只能采用通过协议校验的 GM 候选；失败候选不会进入下一次 API 请求。");
+                "只能采用正常完成且正文非空的 GM 候选；失败候选不会进入下一次 API 请求。");
         }
 
         await AdvanceAfterResolutionAsync(
@@ -731,9 +732,8 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 .GetState(generationOperationId)
                 .Status;
             campaignEvent.Content = buffer.ToString();
-            // GM text is never promoted directly from the stream buffer. The
-            // protocol tail and narrative authority must both validate before
-            // the attempt can become a completed campaign fact.
+            // Legacy declarations are optional metadata. Their validity controls
+            // state projection only, never whether a completed narrative is accepted.
             var authorityValidation = campaignEvent.Kind
                                       == CampaignEventKind.GmResolution
                                       && narrativeAuthority is not null
@@ -771,36 +771,24 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
                 campaignEvent.EndReason = CampaignEndReason.OutputLimit;
             }
-            else if (buffer.Length == 0)
+            else if (!string.IsNullOrWhiteSpace(completion.FinishReason)
+                     && !string.Equals(completion.FinishReason, "stop", StringComparison.OrdinalIgnoreCase))
             {
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
                 campaignEvent.EndReason = CampaignEndReason.ProviderError;
             }
-            else if (campaignEvent.Kind == CampaignEventKind.GmResolution
-                     && !HasValidGmEvaluationTail(campaignEvent.Content))
+            else if (string.IsNullOrWhiteSpace(authorityValidation?.DisplayContent ?? campaignEvent.Content))
             {
                 campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
-                campaignEvent.EndReason = CampaignEndReason.ProtocolViolation;
-            }
-            else if (authorityValidation is { IsValid: false })
-            {
-                campaignEvent.Content = authorityValidation.DisplayContent;
-                campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
-                campaignEvent.EndReason =
-                    CampaignEndReason.NarrativeAuthorityViolation;
-                campaignEvent.StructuredDataJson = JsonSerializer.Serialize(new
-                {
-                    narrative_validation_error =
-                        authorityValidation.FailureReason
-                });
+                campaignEvent.EndReason = CampaignEndReason.ProviderError;
             }
             else
             {
-                if (authorityValidation is { IsValid: true })
+                if (authorityValidation is not null)
                 {
                     campaignEvent.Content = authorityValidation.DisplayContent;
                     campaignEvent.StructuredDataJson =
-                        authorityValidation.StructuredDataJson;
+                        authorityValidation.IsValid ? authorityValidation.StructuredDataJson : "{}";
                 }
 
                 if (campaignEvent.Kind == CampaignEventKind.PlayerIntent)
@@ -818,6 +806,12 @@ public sealed partial class CampaignRunner : ICampaignRunner
                 campaignEvent.IsLocked = campaignEvent.Kind != CampaignEventKind.GmResolution
                                           || campaignEvent.AttemptNo <= 1;
             }
+        }
+        catch (ProviderStreamDisconnectedException)
+        {
+            campaignEvent.Content = buffer.ToString();
+            campaignEvent.GenerationStatus = CampaignGenerationStatus.Failed;
+            campaignEvent.EndReason = CampaignEndReason.StreamDisconnected;
         }
         catch (ProviderOutputLoopException)
         {

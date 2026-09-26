@@ -138,139 +138,183 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="110" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                                <TextBlock Grid.ColumnSpan="2"
-                                           Text="{StaticResource Settings.Providers.Configuration}"
-                                           FontSize="24"
-                                           FontWeight="SemiBold" />
+                            <ScrollViewer Grid.Row="0"
+                                          Padding="22,18,22,16"
+                                          VerticalScrollBarVisibility="Auto">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="1" Margin="0,18,0,0" VerticalAlignment="Center" Text="{StaticResource Settings.Providers.Name}" />
-                                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,18,0,0"
-                                         Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
-
-                                <TextBlock Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center" Text="{StaticResource Settings.Providers.ConnectionMode}" />
-                                <Border Grid.Row="2"
-                                        Grid.Column="1"
-                                        Margin="0,14,0,0"
-                                        MinHeight="36"
-                                        Padding="10,6"
-                                        VerticalAlignment="Center"
-                                        Background="{DynamicResource SurfaceAltBrush}"
-                                        BorderBrush="{DynamicResource BorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="10">
-                                    <TextBlock VerticalAlignment="Center"
-                                               Text="{Binding ConnectionKindLabel}"
+                                    <TextBlock Grid.ColumnSpan="2"
+                                               Text="{StaticResource Settings.Providers.Configuration}"
+                                               FontSize="24"
                                                FontWeight="SemiBold" />
-                                </Border>
 
-                                <TextBlock Grid.Row="3"
-                                           Margin="0,14,0,0"
-                                           VerticalAlignment="Center"
-                                           Text="{StaticResource Settings.Providers.Address}"
-                                           Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                <StackPanel Grid.Row="3"
+                                    <TextBlock Grid.Row="1" Margin="0,18,0,0" VerticalAlignment="Center" Text="{StaticResource Settings.Providers.Name}" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Margin="0,18,0,0"
+                                             Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <TextBlock Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center" Text="{StaticResource Settings.Providers.ConnectionMode}" />
+                                    <Border Grid.Row="2"
                                             Grid.Column="1"
                                             Margin="0,14,0,0"
-                                            Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <TextBox Text="{Binding Editor.BaseUrl, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="{StaticResource Settings.Providers.AddressToolTip}" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               Text="{StaticResource Settings.Providers.AddressHelp}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                </StackPanel>
-
-                                <Border Grid.Row="3"
-                                        Grid.ColumnSpan="2"
-                                        Margin="0,14,0,0"
-                                        Padding="12"
-                                        Background="{DynamicResource AccentSoftBrush}"
-                                        BorderBrush="{DynamicResource AccentBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="10"
-                                        Visibility="{Binding IsGrokCliSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <StackPanel>
-                                        <TextBlock Text="{StaticResource Settings.Providers.GrokAddress}"
+                                            MinHeight="36"
+                                            Padding="10,6"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource SurfaceAltBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="10">
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Text="{Binding ConnectionKindLabel}"
                                                    FontWeight="SemiBold" />
+                                    </Border>
+
+                                    <TextBlock Grid.Row="3"
+                                               Margin="0,14,0,0"
+                                               VerticalAlignment="Center"
+                                               Text="{StaticResource Settings.Providers.Address}"
+                                               Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <StackPanel Grid.Row="3"
+                                                Grid.Column="1"
+                                                Margin="0,14,0,0"
+                                                Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBox Text="{Binding Editor.BaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="{StaticResource Settings.Providers.AddressToolTip}" />
                                         <TextBlock Margin="0,4,0,0"
-                                                   Text="{StaticResource Settings.Providers.GrokAuthHelp}"
+                                                   Text="{StaticResource Settings.Providers.AddressHelp}"
                                                    Foreground="{DynamicResource MutedTextBrush}"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
-                                </Border>
 
-                                <TextBlock Grid.Row="4"
-                                           Margin="0,14,0,0"
-                                           VerticalAlignment="Center"
-                                           Text="{StaticResource Settings.Providers.NewApiKey}"
-                                           Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                <PasswordBox x:Name="ApiKeyBox"
-                                             Grid.Row="4"
-                                             Grid.Column="1"
-                                             Margin="0,14,0,0"
-                                             MinHeight="36"
-                                             Padding="10,6"
-                                             PasswordChanged="ApiKeyBox_OnPasswordChanged"
-                                             ToolTip="{StaticResource Settings.Providers.ApiKeyToolTip}"
-                                             Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <Border Grid.Row="3"
+                                            Grid.ColumnSpan="2"
+                                            Margin="0,14,0,0"
+                                            Padding="12"
+                                            Background="{DynamicResource AccentSoftBrush}"
+                                            BorderBrush="{DynamicResource AccentBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Visibility="{Binding IsGrokCliSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <StackPanel>
+                                            <TextBlock Text="{StaticResource Settings.Providers.GrokAddress}"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       Text="{StaticResource Settings.Providers.GrokAuthHelp}"
+                                                       Foreground="{DynamicResource MutedTextBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
 
-                                <TextBlock Grid.Row="5" Margin="0,14,0,0" VerticalAlignment="Center" Text="{StaticResource Settings.Providers.Timeout}" />
-                                <TextBox Grid.Row="5" Grid.Column="1" Margin="0,14,0,0"
-                                         Text="{Binding Editor.RequestTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Grid.Row="4"
+                                               Margin="0,14,0,0"
+                                               VerticalAlignment="Center"
+                                               Text="{StaticResource Settings.Providers.NewApiKey}"
+                                               Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <PasswordBox x:Name="ApiKeyBox"
+                                                 Grid.Row="4"
+                                                 Grid.Column="1"
+                                                 Margin="0,14,0,0"
+                                                 MinHeight="36"
+                                                 Padding="10,6"
+                                                 PasswordChanged="ApiKeyBox_OnPasswordChanged"
+                                                 ToolTip="{StaticResource Settings.Providers.ApiKeyToolTip}"
+                                                 Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                                <CheckBox Grid.Row="6"
-                                          Grid.Column="1"
-                                          Margin="0,14,0,0"
-                                          Content="{StaticResource Settings.Providers.Enable}"
-                                          IsChecked="{Binding Editor.IsEnabled}" />
+                                    <TextBlock Grid.Row="5" Margin="0,14,0,0" VerticalAlignment="Center" Text="{StaticResource Settings.Providers.Timeout}" />
+                                    <TextBox Grid.Row="5" Grid.Column="1" Margin="0,14,0,0"
+                                             Text="{Binding Editor.RequestTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,22,0,0">
-                                    <Border Padding="12"
+                                    <CheckBox Grid.Row="6"
+                                              Grid.Column="1"
+                                              Margin="0,14,0,0"
+                                              Content="{StaticResource Settings.Providers.Enable}"
+                                              IsChecked="{Binding Editor.IsEnabled}" />
+
+                                    <Border Grid.Row="7" Grid.ColumnSpan="2"
+                                            Margin="0,22,0,0"
+                                            Padding="12"
                                             Background="{DynamicResource SurfaceAltBrush}"
                                             CornerRadius="10">
                                         <StackPanel>
-                                            <TextBlock Text="{Binding KeyStatus}" />
-                                             <TextBlock Margin="0,6,0,0"
+                                            <TextBlock Text="{Binding KeyStatus}" FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,6,0,0"
                                                        Text="{Binding CredentialHelpText}"
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </Border>
-                                    <TextBlock Margin="0,12,0,0"
-                                               Text="{StaticResource Settings.Providers.SaveOffline}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                    <WrapPanel Margin="0,12,0,0"
-                                               HorizontalAlignment="Right">
+                                </Grid>
+                            </ScrollViewer>
+
+                            <!-- Docked Action Footer with Apple-Style Trust Badge -->
+                            <Border Grid.Row="1"
+                                    Background="{DynamicResource SurfaceAltBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="0,1,0,0"
+                                    CornerRadius="0,0,14,14"
+                                    Padding="20,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Trust Badge -->
+                                    <Border HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource SurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="8,4">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Path Width="11" Height="11"
+                                                  Margin="0,0,6,0"
+                                                  VerticalAlignment="Center"
+                                                  Fill="{DynamicResource MutedTextBrush}"
+                                                  Data="M6,1 L1.5,3.25 L1.5,7 C1.5,10.15 3.42,13.06 6,14 C8.58,13.06 10.5,10.15 10.5,7 L10.5,3.25 L6,1 Z" />
+                                            <TextBlock Text="{StaticResource Settings.Providers.SaveOffline}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource MutedTextBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Action Buttons -->
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
                                         <Button Margin="0,0,8,0"
                                                 Content="{StaticResource Settings.Providers.ClearKey}"
                                                 Command="{Binding ClearKeyCommand}"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                                Style="{StaticResource DestructiveButtonStyle}" />
                                         <Button Content="{StaticResource Settings.Providers.Save}"
-                                                 Command="{Binding SaveCommand}"
-                                                 Style="{StaticResource PrimaryButtonStyle}" />
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Grid>
-                        </ScrollViewer>
+                                                Command="{Binding SaveCommand}"
+                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
                     </Border>
                 </Grid>
             </TabItem>

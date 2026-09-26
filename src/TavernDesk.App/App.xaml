@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ThemeMode="System"
              xmlns:views="clr-namespace:TavernDesk.App.Views"
-             xmlns:viewModels="clr-namespace:TavernDesk.App.ViewModels">
+             xmlns:viewModels="clr-namespace:TavernDesk.App.ViewModels"
+             xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -14,6 +15,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <presentation:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
             <DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
                 <views:DashboardView />
             </DataTemplate>

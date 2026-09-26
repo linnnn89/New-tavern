@@ -171,11 +171,11 @@
     <sys:String x:Key="Characters.ImportCard">导入角色卡</sys:String>
     <sys:String x:Key="Characters.Empty.Title">书架还是空的</sys:String>
     <sys:String x:Key="Characters.Empty.Hint">导入 PNG / JSON / CHARX 角色卡，或从其他书架把角色加进来。</sys:String>
-    <sys:String x:Key="Characters.BackToShelf">← 返回角色书架</sys:String>
+    <sys:String x:Key="Characters.BackToShelf">返回角色书架</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">当前排列：</sys:String>
     <sys:String x:Key="Characters.LayoutHelp">　竖向封面按原比例裁切；悬停放大并提供聊天、编辑两个快捷入口。</sys:String>
     <sys:String x:Key="Characters.MyShelves">我的书架</sys:String>
-    <sys:String x:Key="Characters.NewShelf">+ 新建书架</sys:String>
+    <sys:String x:Key="Characters.NewShelf">新建书架</sys:String>
     <sys:String x:Key="Characters.Rename">重命名</sys:String>
     <sys:String x:Key="Characters.Batch.ToolTip">进入或退出角色多选整理模式</sys:String>
     <sys:String x:Key="Characters.Batch.Start">批量</sys:String>
@@ -218,7 +218,7 @@
     <sys:String x:Key="Characters.MessageExample">对话示例（mes_example）</sys:String>
     <sys:String x:Key="Characters.AlternateGreetings">备选开场白</sys:String>
     <sys:String x:Key="Characters.Greeting">开场白</sys:String>
-    <sys:String x:Key="Characters.AppendGreeting">+ 追加开场白</sys:String>
+    <sys:String x:Key="Characters.AppendGreeting">追加开场白</sys:String>
     <sys:String x:Key="Characters.Tab.Prompts">提示词</sys:String>
     <sys:String x:Key="Characters.SystemPrompt">系统提示词</sys:String>
     <sys:String x:Key="Characters.PostHistoryInstructions">历史后指令</sys:String>
@@ -242,7 +242,7 @@
 
     <!-- Chat -->
     <sys:String x:Key="Chat.Title">聊天</sys:String>
-    <sys:String x:Key="Chat.NewGroup">+ 群聊</sys:String>
+    <sys:String x:Key="Chat.NewGroup">新建群聊</sys:String>
     <sys:String x:Key="Chat.SearchToolTip">按角色、会话标题或最近消息过滤</sys:String>
     <sys:String x:Key="Chat.OpenNewWindow">在新窗口聊天</sys:String>
     <sys:String x:Key="Chat.DeleteConversation">删除整个聊天记录</sys:String>
@@ -306,7 +306,7 @@
     <sys:String x:Key="Chat.Tab.Memory">记忆</sys:String>
     <sys:String x:Key="Chat.Memory.BodyTab">正文</sys:String>
     <sys:String x:Key="Chat.Memory.TargetTokens">目标 tokens</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveBody">直接保存正文</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveBody">保存记忆</sys:String>
     <sys:String x:Key="Chat.Memory.AdvancedWorkflowTab">高级工作流</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">增量更新与压缩</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">单聊按用户轮次（含对应角色回复）计数；群聊按完整保存的消息计数，包含没有新用户消息的角色自动接力。默认阈值为 20；群聊还会在待处理内容达到 Token 阈值时触发。更新成功后自动保存正文并推进检查点。</sys:String>
@@ -438,11 +438,11 @@
     <sys:String x:Key="Campaigns.Lobby.ImportChatMemory">导入聊天记忆</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraft">保存大厅草稿</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraftToolTip">保存当前剧本、角色、GM、参与方式与模型选择；暂不开始游玩。</sys:String>
-    <sys:String x:Key="Campaigns.Lobby.Start">开始本局并冻结配置</sys:String>
+    <sys:String x:Key="Campaigns.Lobby.Start">开始跑团</sys:String>
     <sys:String x:Key="Campaigns.Lobby.StartToolTip">校验并冻结剧本、角色快照、记忆与初始模型，然后生成 GM 开场并进入第 1 回合。</sys:String>
     <sys:String x:Key="Campaigns.Play.Settings">跑团设置</sys:String>
     <sys:String x:Key="Campaigns.Play.SettingsToolTip">管理当前跑团的上下文预算与升级版跑团记忆。</sys:String>
-    <sys:String x:Key="Campaigns.Play.Refresh">↻ 刷新</sys:String>
+    <sys:String x:Key="Campaigns.Play.Refresh">刷新</sys:String>
     <sys:String x:Key="Campaigns.Play.RefreshToolTip">从本地数据库重新载入当前跑团；不会调用模型或新增记录。</sys:String>
     <sys:String x:Key="Campaigns.Play.BackToolTip">离开游玩页并返回剧本库；本局记录已自动保存，可随时继续。</sys:String>
     <sys:String x:Key="Campaigns.Play.PlayerSeats">玩家席位</sys:String>
@@ -639,16 +639,33 @@
     <!-- Confirmation and interaction dialogs -->
     <sys:String x:Key="Interaction.CustomModel.Title">添加自定义模型</sys:String>
     <sys:String x:Key="Interaction.CustomModel.Prompt">输入模型 ID 或名称。保存后只写入本地模型目录，不会发起网络请求。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Message">选择删除范围：&#10;&#10;“是”＝永久删除当前消息及其后的全部消息&#10;“否”＝只永久删除当前消息&#10;“取消”＝不删除</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Title">删除范围</sys:String>
+    <!-- Semantic dialog actions -->
+    <sys:String x:Key="Interaction.Action.Save">保存</sys:String>
+    <sys:String x:Key="Interaction.Action.Discard">放弃修改</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCharacter">删除角色</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteConversation">删除对话</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteShelf">删除书架</sys:String>
+    <sys:String x:Key="Interaction.Action.DeletePreset">删除预设</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteProvider">删除接入商</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteWorldbook">删除世界书</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCampaign">删除跑团</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearKey">清除 Key</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearLogs">清空输出</sys:String>
+    <sys:String x:Key="Interaction.Action.CopyCurrentData">复制现有数据</sys:String>
+    <sys:String x:Key="Interaction.Action.KeepTargetAsIs">仅指向新目录</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedAndFollowing">删除此条及后续</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedOnly">仅删除此条</sys:String>
+
+    <sys:String x:Key="Interaction.DeleteMessageRange.Message">请选择要删除的消息范围。删除后无法恢复。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Title">删除消息</sys:String>
     <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">确认永久删除当前消息及其后的全部消息？&#10;&#10;删除后无法恢复。</sys:String>
     <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">确认永久删除当前消息？&#10;&#10;删除后无法恢复。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.Title">确认永久删除</sys:String>
-    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">“{0}”的角色设定尚未保存。&#10;&#10;选择“是”保存后继续，“否”放弃修改，“取消”留在当前界面。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.Title">删除消息</sys:String>
+    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">“{0}”的角色设定尚未保存。是否在离开前保存修改？</sys:String>
     <sys:String x:Key="Interaction.UnsavedCharacter.Title">未保存的角色设定</sys:String>
-    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">“{0}”的接入商设置或待保存 API Key 尚未保存。&#10;&#10;选择“是”保存后继续，“否”放弃修改，“取消”留在当前界面。</sys:String>
+    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">“{0}”的接入商设置尚未保存。是否在离开前保存修改？</sys:String>
     <sys:String x:Key="Interaction.UnsavedProvider.Title">未保存的模型设置</sys:String>
-    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">跑团“{0}”尚未开始。是否在离开前保存为大厅草稿？&#10;&#10;选择“是”保存草稿；选择“否”不保存本次大厅内容；选择“取消”留在当前界面。</sys:String>
+    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">跑团“{0}”尚未开始。是否在离开前保存为大厅草稿？</sys:String>
     <sys:String x:Key="Interaction.UnstartedCampaign.Title">未开始的跑团</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.NoChats">该角色目前没有聊天记录。</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.ChatCountFormat">与该角色绑定的 {0} 条聊天会被保留，并显示在“已删除角色”下。</sys:String>
@@ -668,7 +685,7 @@
     <sys:String x:Key="Interaction.DeleteCampaign.Title">确认永久删除跑团</sys:String>
     <sys:String x:Key="Interaction.ClearKey.MessageFormat">清除“{0}”保存在 Windows DPAPI 中的 API Key？</sys:String>
     <sys:String x:Key="Interaction.ClearKey.Title">清除 API Key</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">下次启动时切换个人资料目录。是否同时复制当前数据库、聊天记录、角色卡、剧本和附件？&#10;&#10;“是”：下次启动时复制最新资料，保留旧目录；“否”：下次启动时使用新目录，不复制资料；“取消”：保留现有安排。&#10;&#10;当前：{0}&#10;新目录：{1}</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">下次启动时将切换个人资料目录。是否同时将当前数据库、聊天记录、角色卡和附件复制到新目录？&#10;&#10;当前：{0}&#10;新目录：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">切换个人资料目录</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">将永久删除以下目录中的全部子文件和子文件夹，但保留目录本身：&#10;&#10;{0}&#10;&#10;是否继续？</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.Title">清空 API 测试输出</sys:String>
@@ -1177,6 +1194,7 @@
     <sys:String x:Key="Chat.ApiPreview.Select">选择会话后显示本次请求的角色与内容结构；不会显示 API Key。</sys:String>
     <sys:String x:Key="Chat.SendMode.SendAndGenerate">发送并生成</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">仅保存消息</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">切换发送模式（发送并生成 / 仅保存消息）</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">气泡</sys:String>
     <sys:String x:Key="Chat.Display.Novel">小说</sys:String>
     <sys:String x:Key="Chat.SelectConversation">请选择一次对话。</sys:String>

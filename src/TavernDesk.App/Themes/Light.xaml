@@ -1411,6 +1411,41 @@
         <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
     </Style>
 
+    <Style x:Key="DestructiveButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource ModernButtonBaseStyle}">
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="2000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+        <Setter Property="ToolTipService.ShowDuration" Value="12000" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+    </Style>
+
+    <Style x:Key="TonalButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource ModernButtonBaseStyle}">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentSoftBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="2000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+        <Setter Property="ToolTipService.ShowDuration" Value="12000" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+    </Style>
+
+
     <Style x:Key="SidebarToggleButtonStyle" TargetType="Button">
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />

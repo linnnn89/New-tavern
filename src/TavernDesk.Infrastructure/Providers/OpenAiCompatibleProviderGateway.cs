@@ -353,6 +353,13 @@ public sealed class OpenAiCompatibleProviderGateway :
                     tail.Content);
             }
 
+            // Some compatible providers omit [DONE] but supply finish_reason.
+            // EOF alone must never promote a partial reply to a completed turn.
+            if (string.IsNullOrWhiteSpace(finishReason))
+            {
+                throw new ProviderStreamDisconnectedException();
+            }
+
             yield return new ProviderStreamEvent(
                 ProviderStreamEventKind.Completed,
                 Usage: usage,

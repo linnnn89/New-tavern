@@ -6,6 +6,22 @@ using TavernDesk.App.Localization;
 
 namespace TavernDesk.App;
 
+public enum DialogButtonRole
+{
+    Primary,
+    Secondary,
+    Tonal,
+    Destructive
+}
+
+public sealed record DialogAction(
+    string Label,
+    MessageBoxResult Result,
+    DialogButtonRole Role = DialogButtonRole.Secondary,
+    bool IsDefault = false,
+    bool IsCancel = false,
+    string? AutomationId = null);
+
 public static class LocalizedMessageBox
 {
     public static MessageBoxResult Show(
@@ -69,6 +85,45 @@ public static class LocalizedMessageBox
         }
     }
 
+    public static MessageBoxResult Show(
+        string message,
+        string title,
+        IReadOnlyList<DialogAction> actions,
+        MessageBoxImage image,
+        MessageBoxResult fallbackResult = MessageBoxResult.Cancel) =>
+        Show(null, message, title, actions, image, fallbackResult);
+
+    public static MessageBoxResult Show(
+        Window? owner,
+        string message,
+        string title,
+        IReadOnlyList<DialogAction> actions,
+        MessageBoxImage image,
+        MessageBoxResult fallbackResult = MessageBoxResult.Cancel)
+    {
+        try
+        {
+            var dialog = new LocalizedMessageBoxWindow(
+                message,
+                title,
+                actions,
+                image,
+                fallbackResult);
+            if (owner is not null)
+            {
+                dialog.Owner = owner;
+                dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            }
+
+            dialog.ShowDialog();
+            return dialog.Result;
+        }
+        catch
+        {
+            return fallbackResult;
+        }
+    }
+
     private sealed class LocalizedMessageBoxWindow : Window
     {
         public LocalizedMessageBoxWindow(
@@ -77,6 +132,32 @@ public static class LocalizedMessageBox
             MessageBoxButton buttons,
             MessageBoxImage image,
             MessageBoxResult defaultResult)
+        {
+            var (actions, fallback) = MapStandardButtons(buttons, defaultResult);
+            InitializeDialog(message, title, actions, image, fallback);
+        }
+
+        public LocalizedMessageBoxWindow(
+            string message,
+            string title,
+            IReadOnlyList<DialogAction> actions,
+            MessageBoxImage image,
+            MessageBoxResult fallbackResult)
+        {
+            ArgumentNullException.ThrowIfNull(actions);
+            if (actions.Count == 0)
+            {
+                actions = [new DialogAction(LanguageRuntime.GetString("Common.OK"), MessageBoxResult.OK, DialogButtonRole.Primary, IsDefault: true)];
+            }
+            InitializeDialog(message, title, actions, image, fallbackResult);
+        }
+
+        private void InitializeDialog(
+            string message,
+            string title,
+            IReadOnlyList<DialogAction> actions,
+            MessageBoxImage image,
+            MessageBoxResult fallbackResult)
         {
             ArgumentNullException.ThrowIfNull(message);
             ArgumentNullException.ThrowIfNull(title);
@@ -87,9 +168,7 @@ public static class LocalizedMessageBox
             SizeToContent = SizeToContent.WidthAndHeight;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-            var results = ResultsFor(buttons);
-            var resolvedDefault = ResolveDefault(results, defaultResult);
-            Result = ResolveFallback(buttons);
+            Result = fallbackResult;
 
             var root = new Grid();
             root.SetResourceReference(
@@ -102,7 +181,7 @@ public static class LocalizedMessageBox
             Grid.SetRow(body, 0);
             root.Children.Add(body);
 
-            var footer = BuildFooter(results, resolvedDefault);
+            var footer = BuildFooter(actions);
             Grid.SetRow(footer, 1);
             root.Children.Add(footer);
 
@@ -199,9 +278,7 @@ public static class LocalizedMessageBox
             return badge;
         }
 
-        private Border BuildFooter(
-            IReadOnlyList<MessageBoxResult> results,
-            MessageBoxResult defaultResult)
+        private Border BuildFooter(IReadOnlyList<DialogAction> actions)
         {
             var panel = new StackPanel
             {
@@ -210,37 +287,38 @@ public static class LocalizedMessageBox
             };
 
             Button? defaultButton = null;
-            foreach (var result in results)
+            foreach (var action in actions)
             {
-                var isDefault = result == defaultResult;
                 var button = new Button
                 {
                     MinWidth = 104,
                     Margin = panel.Children.Count == 0
                         ? new Thickness(0)
                         : new Thickness(10, 0, 0, 0),
-                    Content = LabelFor(result),
-                    IsCancel = result == MessageBoxResult.Cancel,
-                    IsDefault = isDefault
+                    Content = action.Label,
+                    IsCancel = action.IsCancel,
+                    IsDefault = action.IsDefault
                 };
-                AutomationProperties.SetAutomationId(
-                    button,
-                    $"LocalizedMessageBox.{result}");
-                AutomationProperties.SetName(
-                    button,
-                    button.Content?.ToString() ?? string.Empty);
-                button.SetResourceReference(
-                    FrameworkElement.StyleProperty,
-                    isDefault
-                        ? "PrimaryButtonStyle"
-                        : "SecondaryButtonStyle");
+                var autoId = action.AutomationId ?? $"LocalizedMessageBox.{action.Result}";
+                AutomationProperties.SetAutomationId(button, autoId);
+                AutomationProperties.SetName(button, action.Label);
+
+                var styleKey = action.Role switch
+                {
+                    DialogButtonRole.Destructive => "DestructiveButtonStyle",
+                    DialogButtonRole.Primary => "PrimaryButtonStyle",
+                    DialogButtonRole.Tonal => "TonalButtonStyle",
+                    _ => "SecondaryButtonStyle"
+                };
+                button.SetResourceReference(FrameworkElement.StyleProperty, styleKey);
+
                 button.Click += (_, _) =>
                 {
-                    Result = result;
+                    Result = action.Result;
                     Close();
                 };
                 panel.Children.Add(button);
-                if (isDefault)
+                if (action.IsDefault)
                 {
                     defaultButton = button;
                 }
@@ -264,6 +342,31 @@ public static class LocalizedMessageBox
                 Border.BorderBrushProperty,
                 "BorderBrush");
             return footer;
+        }
+
+        private static (IReadOnlyList<DialogAction> Actions, MessageBoxResult Fallback) MapStandardButtons(
+            MessageBoxButton buttons,
+            MessageBoxResult defaultResult)
+        {
+            var fallback = ResolveFallback(buttons);
+            var results = ResultsFor(buttons);
+            var resolvedDefault = ResolveDefault(results, defaultResult);
+
+            var actions = new List<DialogAction>(results.Count);
+            foreach (var r in results)
+            {
+                var isDefault = r == resolvedDefault;
+                var isCancel = r == MessageBoxResult.Cancel;
+                var role = isDefault ? DialogButtonRole.Primary : DialogButtonRole.Secondary;
+                actions.Add(new DialogAction(
+                    LabelFor(r),
+                    r,
+                    role,
+                    IsDefault: isDefault,
+                    IsCancel: isCancel,
+                    AutomationId: $"LocalizedMessageBox.{r}"));
+            }
+            return (actions, fallback);
         }
 
         private static IReadOnlyList<MessageBoxResult> ResultsFor(
