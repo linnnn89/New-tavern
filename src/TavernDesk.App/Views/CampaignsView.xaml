@@ -16,46 +16,104 @@
                     <TextBlock Text="{StaticResource Campaigns.Description}"
                                Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
-                <StackPanel Grid.Row="1" Margin="0,18,0,16" Orientation="Horizontal">
-                    <Button Content="{StaticResource Campaigns.NewScenario}"
-                            Command="{Binding NewScenarioCommand}"
-                            ToolTip="{StaticResource Campaigns.NewScenarioToolTip}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Content="{StaticResource Campaigns.ImportScenario}"
-                            Margin="8,0,0,0"
-                            Command="{Binding ImportScenarioCommand}"
-                            ToolTip="{StaticResource Campaigns.ImportScenarioToolTip}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Content="{StaticResource Campaigns.EditScenario}"
-                            Margin="8,0,0,0"
-                            Command="{Binding EditScenarioCommand}"
-                            ToolTip="{StaticResource Campaigns.EditScenarioToolTip}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Content="{StaticResource Campaigns.StartNew}"
-                            Margin="24,0,0,0"
-                            Command="{Binding OpenScenarioLobbyCommand}"
-                            ToolTip="{StaticResource Campaigns.StartNewToolTip}"
-                            Style="{StaticResource PrimaryButtonStyle}" />
-                    <Button Content="{StaticResource Campaigns.Continue}"
-                            Margin="24,0,0,0"
-                            Command="{Binding ContinueCampaignCommand}"
-                            ToolTip="{StaticResource Campaigns.ContinueToolTip}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
-                </StackPanel>
-                <Grid Grid.Row="2">
+                <Grid Grid.Row="2" Margin="{DynamicResource LabelGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.05*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="1.35*" />
+                        <ColumnDefinition Width="1.6*" />
+                        <ColumnDefinition Width="{DynamicResource PaneGapWidth}" />
+                        <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{StaticResource Campaigns.SavedCampaigns}" Style="{StaticResource SectionTitleStyle}" />
+                            <WrapPanel Grid.Row="1" Margin="{DynamicResource LabelGap}">
+                                <Button Content="{StaticResource Campaigns.Continue}"
+                                        Margin="{DynamicResource NoInset}"
+                                        Command="{Binding ContinueCampaignCommand}"
+                                        ToolTip="{StaticResource Campaigns.ContinueToolTip}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                        </WrapPanel>
+                            <ListBox AutomationProperties.AutomationId="SavedCampaignList" Grid.Row="2"
+                                     Margin="0,12,0,0"
+                                     HorizontalContentAlignment="Stretch"
+                                     ItemsSource="{Binding Campaigns}"
+                                     SelectedItem="{Binding SelectedCampaign}"
+                                     ToolTip="{StaticResource Campaigns.SavedCampaignsToolTip}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="6"
+                                              Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="{StaticResource Campaigns.Rename}"
+                                                              Command="{Binding PlacementTarget.Tag.RenameCampaignCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator />
+                                                    <MenuItem Header="{StaticResource Campaigns.DeleteCampaign}"
+                                                              Command="{Binding PlacementTarget.Tag.DeleteCampaignCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                <TextBlock Foreground="{DynamicResource MutedTextBrush}">
+                                                    <Run Text="{StaticResource Campaigns.RoundPrefix}" />
+                                                    <Run Text="{Binding CurrentRound, Mode=OneWay}" />
+                                                    <Run Text=" · " />
+                                                    <Run Text="{Binding ParticipantCount, Mode=OneWay}" />
+                                                    <Run Text="{StaticResource Campaigns.SeatSuffix}" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding StatusLabel}" />
+                                                <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
+                                                           FontSize="{DynamicResource FontSizeCaption}"
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <TextBlock Text="{StaticResource Campaigns.ScenarioLibrary}" Style="{StaticResource SectionTitleStyle}" />
-                            <ListBox Grid.Row="1"
+                            <WrapPanel Grid.Row="1" Margin="{DynamicResource LabelGap}">
+                                <Button Content="{StaticResource Campaigns.NewScenario}"
+                                        Command="{Binding NewScenarioCommand}"
+                                        ToolTip="{StaticResource Campaigns.NewScenarioToolTip}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Content="{StaticResource Campaigns.ImportScenario}"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding ImportScenarioCommand}"
+                                        ToolTip="{StaticResource Campaigns.ImportScenarioToolTip}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Content="{StaticResource Campaigns.EditScenario}"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding EditScenarioCommand}"
+                                        ToolTip="{StaticResource Campaigns.EditScenarioToolTip}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Content="{StaticResource Campaigns.StartNew}"
+                                        Margin="{DynamicResource TrailingActionGap}"
+                                        Command="{Binding OpenScenarioLobbyCommand}"
+                                        ToolTip="{StaticResource Campaigns.StartNewToolTip}"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                        </WrapPanel>
+                            <ListBox AutomationProperties.AutomationId="ScenarioLibraryList" Grid.Row="2"
                                      Margin="0,12,0,0"
                                      HorizontalContentAlignment="Stretch"
                                      ItemsSource="{Binding Scenarios}"
@@ -100,60 +158,6 @@
                                                            Foreground="{DynamicResource MutedTextBrush}" />
                                             </Grid>
                                         </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
-                    </Border>
-                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="{StaticResource Campaigns.SavedCampaigns}" Style="{StaticResource SectionTitleStyle}" />
-                            <ListBox Grid.Row="1"
-                                     Margin="0,12,0,0"
-                                     HorizontalContentAlignment="Stretch"
-                                     ItemsSource="{Binding Campaigns}"
-                                     SelectedItem="{Binding SelectedCampaign}"
-                                     ToolTip="{StaticResource Campaigns.SavedCampaignsToolTip}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="6"
-                                              Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
-                                            <Grid.ContextMenu>
-                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                    <MenuItem Header="{StaticResource Campaigns.Rename}"
-                                                              Command="{Binding PlacementTarget.Tag.RenameCampaignCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                              CommandParameter="{Binding}" />
-                                                    <Separator />
-                                                    <MenuItem Header="{StaticResource Campaigns.DeleteCampaign}"
-                                                              Command="{Binding PlacementTarget.Tag.DeleteCampaignCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                              CommandParameter="{Binding}" />
-                                                </ContextMenu>
-                                            </Grid.ContextMenu>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                                <TextBlock Foreground="{DynamicResource MutedTextBrush}">
-                                                    <Run Text="{StaticResource Campaigns.RoundPrefix}" />
-                                                    <Run Text="{Binding CurrentRound, Mode=OneWay}" />
-                                                    <Run Text=" · " />
-                                                    <Run Text="{Binding ParticipantCount, Mode=OneWay}" />
-                                                    <Run Text="{StaticResource Campaigns.SeatSuffix}" />
-                                                </TextBlock>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                                                <TextBlock Text="{Binding StatusLabel}" />
-                                                <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
-                                                           FontSize="{DynamicResource FontSizeCaption}"
-                                                           Foreground="{DynamicResource MutedTextBrush}" />
-                                            </StackPanel>
-                                        </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
