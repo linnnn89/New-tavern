@@ -1,0 +1,38 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <!--
+        Theme-independent spacing, corner radius, minimum height and motion tokens.
+        Theme colors are supplied by InterfaceSettingsRuntime and Light.xaml.
+        New views use these keys; existing views migrate during the visual refresh.
+        These values are constant across theme and font settings.
+    -->
+
+    <!-- Spacing: 4pt adjustments on an 8pt grid. -->
+    <system:Double x:Key="Space1">4</system:Double>
+    <system:Double x:Key="Space2">8</system:Double>
+    <system:Double x:Key="Space3">12</system:Double>
+    <system:Double x:Key="Space4">16</system:Double>
+    <system:Double x:Key="Space5">24</system:Double>
+    <system:Double x:Key="Space6">32</system:Double>
+    <system:Double x:Key="Space7">48</system:Double>
+    <system:Double x:Key="Space8">64</system:Double>
+
+    <!-- Corners: controls, cards, dialogs, pills. -->
+    <CornerRadius x:Key="RadiusSm">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">10</CornerRadius>
+    <CornerRadius x:Key="RadiusLg">14</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+
+    <!--
+        Use these values for MinHeight rather than Height so larger fonts can expand controls.
+    -->
+    <system:Double x:Key="ControlHeightSm">28</system:Double>
+    <system:Double x:Key="ControlHeightMd">36</system:Double>
+    <system:Double x:Key="ControlHeightLg">44</system:Double>
+
+    <!-- Motion: hover, collapse and panel transitions. -->
+    <Duration x:Key="MotionFast">0:0:0.12</Duration>
+    <Duration x:Key="MotionNormal">0:0:0.2</Duration>
+    <CubicEase x:Key="MotionEaseOut" EasingMode="EaseOut" />
+</ResourceDictionary>

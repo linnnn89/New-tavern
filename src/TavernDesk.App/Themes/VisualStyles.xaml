@@ -1,0 +1,170 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="TokenUsageTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding EstimatedTokenUsageLevel}" Value="Warning">
+                <Setter Property="Foreground" Value="{DynamicResource WarningFg}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding EstimatedTokenUsageLevel}" Value="Danger">
+                <Setter Property="Foreground" Value="{DynamicResource DangerFg}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="IconGlyphStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AppicaShellIconFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+    </Style>
+
+    <Style x:Key="ListItemSelectableStyle" TargetType="ListBoxItem">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="{DynamicResource NavInset}" />
+        <Setter Property="MinHeight" Value="{DynamicResource ControlHeightMd}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid Background="Transparent">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                CornerRadius="{DynamicResource RadiusMd}" />
+                        <Border x:Name="Indicator" Width="{DynamicResource NavIndicatorWidth}"
+                                Height="{DynamicResource NavIndicatorHeight}" HorizontalAlignment="Left"
+                                Margin="{DynamicResource IndicatorInset}" VerticalAlignment="Center"
+                                CornerRadius="{DynamicResource NavIndicatorRadius}"
+                                Background="{DynamicResource NavItemIndicatorBrush}" Visibility="Collapsed" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center" />
+                        <Border x:Name="FocusRing" Margin="{DynamicResource FocusInset}"
+                                CornerRadius="{DynamicResource RadiusSm}" Opacity="0" IsHitTestVisible="False"
+                                BorderBrush="{DynamicResource FocusRing}" BorderThickness="{DynamicResource FocusThickness}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlHover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ListItemSelected}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource TextDisabled}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="InlineNoticeStyle" TargetType="Border">
+        <Setter Property="Padding" Value="{DynamicResource InsetMd}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Background" Value="{DynamicResource InfoBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InfoBorder}" />
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Style.Triggers>
+            <Trigger Property="Tag" Value="Warning">
+                <Setter Property="Background" Value="{DynamicResource WarningBg}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource WarningBorder}" />
+            </Trigger>
+            <Trigger Property="Tag" Value="Danger">
+                <Setter Property="Background" Value="{DynamicResource DangerBg}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource DangerBorder}" />
+            </Trigger>
+            <Trigger Property="Tag" Value="Success">
+                <Setter Property="Background" Value="{DynamicResource SuccessBg}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="InspectorActivityTabStyle" TargetType="TabItem">
+        <Setter Property="MinWidth" Value="{DynamicResource InspectorRailWidth}" />
+        <Setter Property="MinHeight" Value="{DynamicResource ControlHeightLg}" />
+        <Setter Property="ToolTip" Value="{Binding Header, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding Header, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid Background="Transparent">
+                        <Border x:Name="Chrome" Margin="{DynamicResource FocusInset}"
+                                Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RadiusSm}" />
+                        <Border x:Name="Indicator" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                Width="{DynamicResource NavIndicatorWidth}" Height="{DynamicResource NavIndicatorHeight}"
+                                Background="{DynamicResource NavItemIndicatorBrush}"
+                                CornerRadius="{DynamicResource NavIndicatorRadius}" Visibility="Collapsed" />
+                        <TextBlock Text="{TemplateBinding Tag}" FontFamily="{DynamicResource AppicaShellIconFont}"
+                                   FontSize="{DynamicResource FontSizeTitle}" Foreground="{TemplateBinding Foreground}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border x:Name="FocusRing" Margin="{DynamicResource FocusInset}" Opacity="0"
+                                BorderBrush="{DynamicResource FocusRing}" BorderThickness="{DynamicResource FocusThickness}"
+                                CornerRadius="{DynamicResource RadiusSm}" IsHitTestVisible="False" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlHover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ListItemSelected}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentFg}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="InspectorActivityControlStyle" TargetType="TabControl">
+        <Setter Property="TabStripPlacement" Value="Left" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBase}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource InspectorActivityTabStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid KeyboardNavigation.TabNavigation="Local">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{DynamicResource SurfaceSunken}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <TabPanel x:Name="HeaderPanel" IsItemsHost="True" VerticalAlignment="Top"
+                                          KeyboardNavigation.TabIndex="1" KeyboardNavigation.TabNavigation="Once" />
+                            </ScrollViewer>
+                        </Border>
+                        <Border Grid.Column="1" Background="{TemplateBinding Background}">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <TextBlock Text="{Binding SelectedItem.Header, RelativeSource={RelativeSource TemplatedParent}}"
+                                           Margin="{DynamicResource InsetMd}" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" />
+                                <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1" ContentSource="SelectedContent"
+                                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

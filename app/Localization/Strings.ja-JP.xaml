@@ -157,6 +157,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Worldbook.Delete">削除</sys:String>
     <sys:String x:Key="Worldbook.EntryName">項目名</sys:String>
     <sys:String x:Key="Worldbook.SaveEntryName">項目名を保存</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">● 未保存の変更があります</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">キーワード：{0}</sys:String>
     <!-- Characters -->
     <sys:String x:Key="Characters.Title">キャラクターライブラリ</sys:String>
@@ -167,11 +168,11 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Characters.ImportCard">キャラクターカードをインポート</sys:String>
     <sys:String x:Key="Characters.Empty.Title">この本棚は空です</sys:String>
     <sys:String x:Key="Characters.Empty.Hint">PNG / JSON / CHARX のキャラクターカードをインポートするか、別の本棚から追加してください。</sys:String>
-    <sys:String x:Key="Characters.BackToShelf">← キャラクターライブラリへ戻る</sys:String>
+    <sys:String x:Key="Characters.BackToShelf">キャラクターライブラリへ戻る</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">現在のレイアウト：</sys:String>
     <sys:String x:Key="Characters.LayoutHelp"> 縦長の表紙は縦横比を保ってトリミングされます。ポイントすると拡大し、チャットと編集のショートカットを表示します。</sys:String>
     <sys:String x:Key="Characters.MyShelves">マイ棚</sys:String>
-    <sys:String x:Key="Characters.NewShelf">+ 新しい棚</sys:String>
+    <sys:String x:Key="Characters.NewShelf">新しい棚</sys:String>
     <sys:String x:Key="Characters.Rename">名前を変更</sys:String>
     <sys:String x:Key="Characters.Batch.ToolTip">複数選択の整理モードを開始または終了します</sys:String>
     <sys:String x:Key="Characters.Batch.Start">選択</sys:String>
@@ -214,7 +215,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Characters.MessageExample">会話例（mes_example）</sys:String>
     <sys:String x:Key="Characters.AlternateGreetings">別の挨拶</sys:String>
     <sys:String x:Key="Characters.Greeting">挨拶</sys:String>
-    <sys:String x:Key="Characters.AppendGreeting">+ 挨拶を追加</sys:String>
+    <sys:String x:Key="Characters.AppendGreeting">挨拶を追加</sys:String>
     <sys:String x:Key="Characters.Tab.Prompts">プロンプト</sys:String>
     <sys:String x:Key="Characters.SystemPrompt">システムプロンプト</sys:String>
     <sys:String x:Key="Characters.PostHistoryInstructions">履歴後指示</sys:String>
@@ -237,7 +238,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Characters.SaveSettings">キャラクター設定を保存</sys:String>
     <!-- Chat -->
     <sys:String x:Key="Chat.Title">チャット</sys:String>
-    <sys:String x:Key="Chat.NewGroup">+ グループ</sys:String>
+    <sys:String x:Key="Chat.NewGroup">新しいグループ</sys:String>
     <sys:String x:Key="Chat.SearchToolTip">キャラクター、会話タイトル、最新メッセージで絞り込みます</sys:String>
     <sys:String x:Key="Chat.OpenNewWindow">新しいウィンドウでチャットを開く</sys:String>
     <sys:String x:Key="Chat.DeleteConversation">チャット全体を削除</sys:String>
@@ -301,7 +302,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Chat.Tab.Memory">メモリ</sys:String>
     <sys:String x:Key="Chat.Memory.BodyTab">本文</sys:String>
     <sys:String x:Key="Chat.Memory.TargetTokens">目標 tokens</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveBody">本文を直接保存</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveBody">記憶を保存</sys:String>
     <sys:String x:Key="Chat.Memory.AdvancedWorkflowTab">高度なワークフロー</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">増分更新と圧縮</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">個別チャットはキャラクター返信を含むユーザーターン単位、グループチャットはユーザーの新規発言がないキャラクター自動リレーも含む保存済みメッセージ単位で数えます。既定のしきい値は 20 で、グループは未処理内容が Token しきい値に達した場合も実行します。更新成功後は本文を自動保存し、チェックポイントを進めます。</sys:String>
@@ -432,11 +433,11 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Campaigns.Lobby.ImportChatMemory">チャットメモリをインポート</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraft">ロビー下書きを保存</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraftToolTip">シナリオ、キャラクター、GM、参加方法、モデル選択を保存し、まだ開始しません。</sys:String>
-    <sys:String x:Key="Campaigns.Lobby.Start">開始して設定を固定</sys:String>
+    <sys:String x:Key="Campaigns.Lobby.Start">セッションを開始</sys:String>
     <sys:String x:Key="Campaigns.Lobby.StartToolTip">シナリオ、キャラクタースナップショット、メモリ、初期モデルを検証して固定し、GM の導入を生成して第1ラウンドに入ります。</sys:String>
     <sys:String x:Key="Campaigns.Play.Settings">キャンペーン設定</sys:String>
     <sys:String x:Key="Campaigns.Play.SettingsToolTip">現在のキャンペーンのコンテキスト予算と拡張メモリを管理します。</sys:String>
-    <sys:String x:Key="Campaigns.Play.Refresh">↻ 更新</sys:String>
+    <sys:String x:Key="Campaigns.Play.Refresh">更新</sys:String>
     <sys:String x:Key="Campaigns.Play.RefreshToolTip">ローカルデータベースから現在のキャンペーンを再読み込みします。モデル呼び出しや記録追加は行いません。</sys:String>
     <sys:String x:Key="Campaigns.Play.BackToolTip">プレイ画面を離れてライブラリへ戻ります。記録は自動保存され、いつでも再開できます。</sys:String>
     <sys:String x:Key="Campaigns.Play.PlayerSeats">プレイヤー席</sys:String>
@@ -552,7 +553,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒以内に確認しない場合、元の倍率に戻ります。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">グローバルフォント</sys:String>
     <sys:String x:Key="Settings.Interface.Font">フォント</sys:String>
-    <sys:String x:Key="Settings.Interface.FontSizeHelp">文字サイズは 10～32。チャット本文は1段階大きく表示します。</sys:String>
+    <sys:String x:Key="Settings.Interface.FontSizeHelp">文字サイズは 10～30。チャット本文は1段階大きく表示します。</sys:String>
     <sys:String x:Key="Settings.Interface.FontPreview">フォントプレビュー：TavernDesk チャット Aa 123</sys:String>
     <sys:String x:Key="Settings.Interface.Theme">テーマ</sys:String>
     <sys:String x:Key="Settings.Interface.ThemeHelp">既定のライトまたはチャコールダークを選べます。色と質感だけが変わり、ウィンドウ構造や操作ロジックは変わりません。</sys:String>
@@ -629,67 +630,53 @@ Choose the TavernDesk interface language.
     <!-- Confirmation and interaction dialogs -->
     <sys:String x:Key="Interaction.CustomModel.Title">カスタムモデルを追加</sys:String>
     <sys:String x:Key="Interaction.CustomModel.Prompt">モデル ID または名前を入力してください。保存してもローカルカタログに書き込むだけで、ネットワークリクエストは行いません。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Message">削除範囲を選択：
+    <!-- Semantic dialog actions -->
+    <sys:String x:Key="Interaction.Action.Save">保存</sys:String>
+    <sys:String x:Key="Interaction.Action.Discard">変更を破棄</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCharacter">キャラクターを削除</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteConversation">チャットを削除</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteShelf">棚を削除</sys:String>
+    <sys:String x:Key="Interaction.Action.DeletePreset">プリセットを削除</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteProvider">プロバイダーを削除</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteWorldbook">ワールドブックを削除</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCampaign">セッションを削除</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearKey">キーを消去</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearLogs">出力を消去</sys:String>
+    <sys:String x:Key="Interaction.Action.CopyCurrentData">既存データをコピー</sys:String>
+    <sys:String x:Key="Interaction.Action.KeepTargetAsIs">新しい場所をそのまま使用</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedAndFollowing">このメッセージ以降を削除</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedOnly">このメッセージのみ削除</sys:String>
 
-「はい」= このメッセージ以降を完全削除
-「いいえ」= このメッセージだけを完全削除
-「キャンセル」= 削除しない</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Title">削除範囲</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">このメッセージ以降を完全に削除しますか？
-
-元に戻せません。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">このメッセージを完全に削除しますか？
-
-元に戻せません。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.Title">完全削除の確認</sys:String>
-    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">「{0}」のキャラクター設定は未保存です。
-
-「はい」で保存して続行、「いいえ」で変更破棄、「キャンセル」でこの画面に残ります。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Message">削除する範囲を選択してください。削除したメッセージは復元できません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Title">メッセージを削除</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">このメッセージ以降を完全に削除しますか？&#10;&#10;元に戻せません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">このメッセージを完全に削除しますか？&#10;&#10;元に戻せません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.Title">メッセージを削除</sys:String>
+    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">「{0}」のキャラクター設定が未保存です。移動する前に保存しますか？</sys:String>
     <sys:String x:Key="Interaction.UnsavedCharacter.Title">未保存のキャラクター設定</sys:String>
-    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">「{0}」のプロバイダー設定または保留中の API キーは未保存です。
-
-「はい」で保存して続行、「いいえ」で変更破棄、「キャンセル」でこの画面に残ります。</sys:String>
+    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">「{0}」のプロバイダー設定が未保存です。移動する前に保存しますか？</sys:String>
     <sys:String x:Key="Interaction.UnsavedProvider.Title">未保存のモデル設定</sys:String>
-    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">キャンペーン「{0}」は未開始です。離れる前にロビー下書きとして保存しますか？
-
-「はい」で保存、「いいえ」で今回のロビー内容を破棄、「キャンセル」でこの画面に残ります。</sys:String>
+    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">キャンペーン「{0}」は未開始です。移動する前にロビー下書きとして保存しますか？</sys:String>
     <sys:String x:Key="Interaction.UnstartedCampaign.Title">未開始のキャンペーン</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.NoChats">このキャラクターにはチャット履歴がありません。</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.ChatCountFormat">このキャラクターに紐づく {0} 件のチャットは保持され、「削除済みキャラクター」に表示されます。</sys:String>
-    <sys:String x:Key="Interaction.DeleteCharacter.MessageFormat">キャラクター棚から「{0}」を削除しますか？
-
-{1}
-インポート作業コピーは保持され、元ファイルは変更されません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteCharacter.MessageFormat">キャラクター棚から「{0}」を削除しますか？&#10;&#10;{1}&#10;インポート作業コピーは保持され、元ファイルは変更されません。</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.Title">キャラクターカードを削除</sys:String>
-    <sys:String x:Key="Interaction.DeleteConversation.MessageFormat">チャット「{0}」を完全に削除しますか？
-
-この会話の全メッセージ、候補返信、ローカルキャッシュが削除され、元に戻せません。
-キャラクターカード、全体メモリ、他のチャットには影響しません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteConversation.MessageFormat">チャット「{0}」を完全に削除しますか？&#10;&#10;この会話の全メッセージ、候補返信、ローカルキャッシュが削除され、元に戻せません。&#10;キャラクターカード、全体メモリ、他のチャットには影響しません。</sys:String>
     <sys:String x:Key="Interaction.DeleteConversation.Title">チャット履歴を削除</sys:String>
-    <sys:String x:Key="Interaction.DeleteShelf.MessageFormat">棚「{0}」を削除しますか？
-
-キャラクターカード自体は削除されません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteShelf.MessageFormat">棚「{0}」を削除しますか？&#10;&#10;キャラクターカード自体は削除されません。</sys:String>
     <sys:String x:Key="Interaction.DeleteShelf.Title">カスタム棚を削除</sys:String>
-    <sys:String x:Key="Interaction.DeletePreset.MessageFormat">プリセット「{0}」を削除しますか？
-
-グローバル、キャラクター、会話へのマウントも削除されます。</sys:String>
+    <sys:String x:Key="Interaction.DeletePreset.MessageFormat">プリセット「{0}」を削除しますか？&#10;&#10;グローバル、キャラクター、会話へのマウントも削除されます。</sys:String>
     <sys:String x:Key="Interaction.DeletePreset.Title">プリセットを削除</sys:String>
-    <sys:String x:Key="Interaction.DeleteProvider.MessageFormat">プロバイダー「{0}」を削除しますか？
-
-モデルカタログ、機能割り当て、TavernDesk がローカル保存した DPAPI キーも完全に消去されます。元に戻せません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteProvider.MessageFormat">プロバイダー「{0}」を削除しますか？&#10;&#10;モデルカタログ、機能割り当て、TavernDesk がローカル保存した DPAPI キーも完全に消去されます。元に戻せません。</sys:String>
     <sys:String x:Key="Interaction.DeleteProvider.Title">プロバイダーを削除</sys:String>
-    <sys:String x:Key="Interaction.DeleteWorldbook.MessageFormat">ワールドブック「{0}」を削除しますか？
-
-保存済みの元 JSON 作業コピーと派生 Embedding 索引を削除します。ユーザーの元ファイルは変更しません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteWorldbook.MessageFormat">ワールドブック「{0}」を削除しますか？&#10;&#10;保存済みの元 JSON 作業コピーと派生 Embedding 索引を削除します。ユーザーの元ファイルは変更しません。</sys:String>
     <sys:String x:Key="Interaction.DeleteWorldbook.Title">ワールドブックを削除</sys:String>
-    <sys:String x:Key="Interaction.DeleteCampaign.MessageFormat">キャンペーン「{0}」を完全に削除しますか？
-
-全席と {1} 件のキャンペーン記録が削除され、元に戻せません。
-シナリオカード、キャラクターカード、他のキャンペーンは削除されません。</sys:String>
+    <sys:String x:Key="Interaction.DeleteCampaign.MessageFormat">キャンペーン「{0}」を完全に削除しますか？&#10;&#10;全席と {1} 件のキャンペーン記録が削除され、元に戻せません。&#10;シナリオカード、キャラクターカード、他のキャンペーンは削除されません。</sys:String>
     <sys:String x:Key="Interaction.DeleteCampaign.Title">キャンペーン完全削除の確認</sys:String>
     <sys:String x:Key="Interaction.ClearKey.MessageFormat">Windows DPAPI に保存された「{0}」の API キーをクリアしますか？</sys:String>
     <sys:String x:Key="Interaction.ClearKey.Title">API キーをクリア</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">次回起動時に個人データディレクトリを切り替えます。データベース、チャット、キャラクターカード、シナリオ、添付もコピーしますか？&#10;&#10;「はい」：次回起動時に最新データをコピーし、旧ディレクトリを保持。「いいえ」：コピーせず次回起動時に新ディレクトリを使用。「キャンセル」：既存の予約を保持。&#10;&#10;現在：{0}&#10;新ディレクトリ：{1}</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">次回の起動時にプロファイルディレクトリが切り替わります。現在のデータベース、チャット、キャラクター、添付ファイルを新しいディレクトリにコピーしますか？&#10;&#10;現在：{0}&#10;新ディレクトリ：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">個人データディレクトリを切り替え</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">次のディレクトリ内にあるすべての子ファイルと子フォルダーを完全に削除します。ディレクトリ自体は残します：&#10;&#10;{0}&#10;&#10;続行しますか？</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.Title">API テスト出力をクリア</sys:String>
@@ -1197,8 +1184,9 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.CharacterPrompt.Select">個別チャットを選択すると、そのカードのプロンプトを直接表示・編集できます。</sys:String>
     <sys:String x:Key="Chat.Model.Unassigned">チャット機能にモデル未割り当て</sys:String>
     <sys:String x:Key="Chat.ApiPreview.Select">会話を選択すると今回の役割と内容構造を表示します。API キーは表示しません。</sys:String>
-    <sys:String x:Key="Chat.SendMode.SendAndGenerate">送信＋生成</sys:String>
+    <sys:String x:Key="Chat.SendMode.SendAndGenerate">送信して生成</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">保存のみ</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">送信モードの切り替え（送信して生成 / 保存のみ）</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">吹き出し</sys:String>
     <sys:String x:Key="Chat.Display.Novel">小説</sys:String>
     <sys:String x:Key="Chat.SelectConversation">会話を選択してください。</sys:String>
@@ -1660,4 +1648,9 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Speech.CacheUnavailable">キャッシュは利用できません。音声の生成と再生は可能です。</sys:String>
     <sys:String x:Key="Speech.CacheHint">ドキュメント内の独立フォルダーに保存します。120 MiB を超えると古い音声から削除し、次回起動時に消去します。再生が完了した音声のみ保存します。</sys:String>
     <sys:String x:Key="Speech.RefreshCache">キャッシュ使用量を更新</sys:String>
+    <sys:String x:Key="Chat.SearchPlaceholder">会話を検索</sys:String>
+    <sys:String x:Key="Characters.SearchPlaceholder">キャラクターを検索</sys:String>
+    <sys:String x:Key="Chat.ScrollToBottom">↓ 最下部へ</sys:String>
+    <sys:String x:Key="Chat.NewMessages">↓ 新しいメッセージ</sys:String>
+    <sys:String x:Key="Settings.BackToWorkspace">← ワークスペースに戻る</sys:String>
 </ResourceDictionary>

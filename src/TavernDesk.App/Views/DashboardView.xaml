@@ -1,239 +1,73 @@
 <UserControl x:Class="TavernDesk.App.Views.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer HorizontalContentAlignment="Stretch"
-                  HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
-        <Grid Margin="28,26,28,32"
-              HorizontalAlignment="Stretch">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <Border Grid.Row="0"
-                    Style="{StaticResource AppicaDashboardHeroStyle}">
+    <UserControl.Resources>
+        <DataTemplate x:Key="StatTileTemplate">
+            <Button Margin="{DynamicResource TileGap}"
+                    AutomationProperties.Name="{Binding ActionLabel}"
+                    ToolTip="{Binding ActionLabel}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource AppicaDashboardStatButtonStyle}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Destination}" Value="Characters">
+                                <Setter Property="Command" Value="{Binding DataContext.ShowCharactersCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Destination}" Value="Conversations">
+                                <Setter Property="Command" Value="{Binding DataContext.ShowChatCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Destination}" Value="Providers">
+                                <Setter Property="Command" Value="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{StaticResource Dashboard.Eyebrow}"
-                                   Style="{StaticResource AppicaDashboardHeroEyebrowStyle}" />
-                        <TextBlock Text="{Binding Title}"
-                                   Style="{StaticResource AppicaDashboardHeroTitleStyle}" />
-                        <TextBlock Text="{Binding Subtitle}"
-                                   Style="{StaticResource AppicaDashboardHeroSubtitleStyle}" />
-                        <StackPanel Margin="0,17,0,0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <Border Height="36"
-                                    Padding="12,0"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource AppicaShellSurfaceBrush}"
-                                    BorderBrush="{DynamicResource AppicaDashboardHeroBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="12">
-                                <StackPanel Orientation="Horizontal"
-                                            VerticalAlignment="Center">
-                                    <Ellipse Width="7"
-                                             Height="7"
-                                             Margin="0,0,7,0"
-                                             VerticalAlignment="Center"
-                                             Fill="{DynamicResource AppicaShellSuccessBrush}" />
-                                    <TextBlock VerticalAlignment="Center"
-                                               Text="{StaticResource Dashboard.LocalDataReady}"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppicaShellMutedBrush}" />
-                                </StackPanel>
-                            </Border>
-                            <Button Height="36"
-                                    MinHeight="36"
-                                    Margin="10,0,0,0"
-                                    Padding="12,0"
-                                    VerticalAlignment="Center"
-                                    VerticalContentAlignment="Center"
-                                    Command="{Binding ResumeLatestCommand}"
-                                    Content="{StaticResource Dashboard.ResumeRecent}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-                                        <Setter Property="MinHeight" Value="36" />
-                                        <Setter Property="Padding" Value="12,0" />
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasRecentConversation}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Count}" Style="{StaticResource AppicaDashboardStatMetricStyle}" />
+                        <TextBlock Text="{Binding Label}" Margin="{DynamicResource LabelGap}"
+                                   Style="{StaticResource AppicaDashboardStatLabelStyle}" TextWrapping="Wrap" />
                     </StackPanel>
-
-                    <Border Grid.Column="1"
-                            Style="{StaticResource AppicaDashboardHeroFeatureStyle}">
-                        <StackPanel VerticalAlignment="Center">
-                            <Border Width="42"
-                                    Height="42"
-                                    HorizontalAlignment="Left"
-                                    Background="#2A7BF0"
-                                    CornerRadius="12">
-                                <TextBlock Text="&#xE8B7;"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           FontFamily="{StaticResource AppicaShellIconFont}"
-                                           FontSize="21"
-                                           Foreground="White" />
-                            </Border>
-                            <TextBlock Margin="0,14,0,0"
-                                       Text="{StaticResource Dashboard.LocalFirst}"
-                                       FontSize="17"
-                                       FontWeight="SemiBold"
-                                       Foreground="White" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Text="{StaticResource Dashboard.LocalFirstDescription}"
-                                       FontSize="12"
-                                       LineHeight="18"
-                                       TextWrapping="Wrap"
-                                       Foreground="#DCEAFF" />
-                        </StackPanel>
-                    </Border>
+                    <TextBlock Grid.Column="1" Text="&#xE72A;" VerticalAlignment="Center"
+                               FontFamily="{StaticResource AppicaShellIconFont}"
+                               Foreground="{DynamicResource TextSecondary}" />
                 </Grid>
+            </Button>
+        </DataTemplate>
+    </UserControl.Resources>
+    <ScrollViewer HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="{DynamicResource PageInset}">
+            <Border Style="{StaticResource AppicaDashboardHeroStyle}" Margin="{DynamicResource SectionGap}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource AppicaDashboardHeroTitleStyle}" />
+                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource AppicaDashboardHeroSubtitleStyle}" />
+                    <Button HorizontalAlignment="Left" Margin="{DynamicResource LabelGap}"
+                            Command="{Binding ResumeLatestCommand}" Content="{StaticResource Dashboard.ResumeRecent}"
+                            MinHeight="{DynamicResource ControlHeightMd}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasRecentConversation}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
             </Border>
-
-            <UniformGrid Grid.Row="1"
-                         Margin="0,20,0,24"
-                         Columns="3">
-                <Button Margin="0,0,8,0"
-                        Command="{Binding DataContext.ShowCharactersCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                        ToolTip="{StaticResource Shell.Characters.ToolTip}"
-                        AutomationProperties.Name="{StaticResource Dashboard.OpenCharacters}"
-                        Cursor="Hand"
-                        Style="{StaticResource AppicaDashboardStatButtonStyle}">
-                    <StackPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <Border Width="34"
-                                    Height="34"
-                                    Margin="0,0,10,0"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource AppicaShellAccentSoftBrush}"
-                                    CornerRadius="10">
-                                <TextBlock Text="&#xE77B;"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           FontFamily="{StaticResource AppicaShellIconFont}"
-                                           FontSize="17"
-                                           Foreground="{DynamicResource AppicaShellAccentBrush}" />
-                            </Border>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{StaticResource Dashboard.Characters}"
-                                       Style="{StaticResource AppicaDashboardStatLabelStyle}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,16,0,0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <TextBlock VerticalAlignment="Bottom"
-                                       Text="{Binding CharacterCount}"
-                                       Style="{StaticResource AppicaDashboardStatMetricStyle}" />
-                            <TextBlock Margin="10,0,0,6"
-                                       VerticalAlignment="Bottom"
-                                       Text="{StaticResource Dashboard.CharacterShelf}"
-                                       FontSize="12"
-                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Button>
-
-                <Button Margin="4,0"
-                        Command="{Binding DataContext.ShowChatCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                        ToolTip="{StaticResource Shell.Chat.ToolTip}"
-                        AutomationProperties.Name="{StaticResource Dashboard.OpenConversations}"
-                        Cursor="Hand"
-                        Style="{StaticResource AppicaDashboardStatButtonStyle}">
-                    <StackPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <Border Width="34"
-                                    Height="34"
-                                    Margin="0,0,10,0"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource AppicaDashboardPurpleSoftBrush}"
-                                    CornerRadius="10">
-                                <TextBlock Text="&#xE8BD;"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           FontFamily="{StaticResource AppicaShellIconFont}"
-                                           FontSize="17"
-                                           Foreground="{DynamicResource AppicaDashboardPurpleBrush}" />
-                            </Border>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{StaticResource Dashboard.Conversations}"
-                                       Style="{StaticResource AppicaDashboardStatLabelStyle}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,16,0,0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <TextBlock VerticalAlignment="Bottom"
-                                       Text="{Binding ConversationCount}"
-                                       Style="{StaticResource AppicaDashboardStatMetricStyle}" />
-                            <TextBlock Margin="10,0,0,6"
-                                       VerticalAlignment="Bottom"
-                                       Text="{StaticResource Dashboard.ConversationsLocal}"
-                                       FontSize="12"
-                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Button>
-
-                <Button Margin="8,0,0,0"
-                        Command="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                        ToolTip="{StaticResource Shell.Settings.ToolTip}"
-                        AutomationProperties.Name="{StaticResource Dashboard.ConfigureModels}"
-                        Cursor="Hand"
-                        Style="{StaticResource AppicaDashboardStatButtonStyle}">
-                    <StackPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <Border Width="34"
-                                    Height="34"
-                                    Margin="0,0,10,0"
-                                    VerticalAlignment="Center"
-                                    Background="{DynamicResource AppicaDashboardGreenSoftBrush}"
-                                    CornerRadius="10">
-                                <TextBlock Text="&#xE713;"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           FontFamily="{StaticResource AppicaShellIconFont}"
-                                           FontSize="17"
-                                           Foreground="{DynamicResource AppicaDashboardGreenBrush}" />
-                            </Border>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{StaticResource Dashboard.Providers}"
-                                       Style="{StaticResource AppicaDashboardStatLabelStyle}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,16,0,0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <TextBlock VerticalAlignment="Bottom"
-                                       Text="{Binding ProviderCount}"
-                                       Style="{StaticResource AppicaDashboardStatMetricStyle}" />
-                            <TextBlock Margin="10,0,0,6"
-                                       VerticalAlignment="Bottom"
-                                       Text="{StaticResource Dashboard.ProviderSaveOffline}"
-                                       FontSize="12"
-                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Button>
-            </UniformGrid>
-
-            <Border Grid.Row="2" Padding="22" Margin="0,0,0,20">
+            <ItemsControl ItemsSource="{Binding Statistics}" ItemTemplate="{StaticResource StatTileTemplate}"
+                          Margin="{DynamicResource SectionGap}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <Border Padding="{DynamicResource InsetLg}" Margin="{DynamicResource SectionGap}">
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource AppicaDashboardRecentPanelStyle}">
                         <Style.Triggers>
@@ -244,33 +78,21 @@
                     </Style>
                 </Border.Style>
                 <StackPanel>
-                    <TextBlock Text="{StaticResource Dashboard.GetStarted}" FontSize="18" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AppicaShellTextBrush}" />
-                    <TextBlock Text="{StaticResource Dashboard.GetStartedHelp}" Margin="0,8,0,16" TextWrapping="Wrap"
-                               Foreground="{DynamicResource AppicaShellMutedBrush}" />
+                    <TextBlock Text="{StaticResource Dashboard.GetStarted}" FontSize="{DynamicResource FontSizeTitle}"
+                               FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" />
+                    <TextBlock Text="{StaticResource Dashboard.GetStartedHelp}" Margin="{DynamicResource ContentGap}"
+                               TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
                     <WrapPanel>
-                        <Button Content="{StaticResource Dashboard.ConfigureModels}" Margin="0,0,10,8"
-                                Command="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <Button Content="{StaticResource Dashboard.ImportCharacter}" Margin="0,0,10,8"
+                        <Button Content="{StaticResource Dashboard.ImportCharacter}" Margin="{DynamicResource TileGap}"
                                 Command="{Binding DataContext.ImportCharacterFromDashboardCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                 Style="{StaticResource PrimaryButtonStyle}" />
-                        <Button Content="{StaticResource Dashboard.StartChat}" Margin="0,0,0,8"
-                                Command="{Binding DataContext.ShowCharactersCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding CharacterCount}" Value="0">
-                                            <Setter Property="IsEnabled" Value="False" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                        <Button Content="{StaticResource Dashboard.ConfigureModels}" Margin="{DynamicResource TileGap}"
+                                Command="{Binding DataContext.ShowSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                Style="{StaticResource SecondaryButtonStyle}" />
                     </WrapPanel>
                 </StackPanel>
             </Border>
-            <Border Grid.Row="3">
+            <Border Margin="{DynamicResource SectionGap}">
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource AppicaDashboardRecentPanelStyle}">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -282,107 +104,33 @@
                     </Style>
                 </Border.Style>
                 <StackPanel>
-                    <Grid Height="62"
-                          Margin="20,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="{StaticResource Dashboard.RecentConversations}"
-                                       FontSize="17"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource AppicaShellTextBrush}" />
-                            <TextBlock Margin="0,3,0,0"
-                                       Text="{StaticResource Dashboard.ResumeConversation}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal">
-                            <Ellipse Width="6"
-                                     Height="6"
-                                     Margin="0,0,7,0"
-                                     Fill="{DynamicResource AppicaShellSuccessBrush}" />
-                            <TextBlock Text="{StaticResource Dashboard.LocalRecordsOnly}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource AppicaShellMutedBrush}" />
-                        </StackPanel>
-                    </Grid>
-
-                    <Border Height="1"
-                            Background="{DynamicResource AppicaShellDividerBrush}" />
-
-                    <ItemsControl ItemsSource="{Binding RecentConversations}"
-                                  HorizontalAlignment="Stretch"
-                                  HorizontalContentAlignment="Stretch">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel HorizontalAlignment="Stretch" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemContainerStyle>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="HorizontalAlignment" Value="Stretch" />
-                            </Style>
-                        </ItemsControl.ItemContainerStyle>
+                    <StackPanel Margin="{DynamicResource InsetMd}">
+                        <TextBlock Text="{StaticResource Dashboard.RecentConversations}"
+                                   FontSize="{DynamicResource FontSizeTitle}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}" />
+                        <TextBlock Text="{StaticResource Dashboard.ResumeConversation}" Margin="{DynamicResource LabelGap}"
+                                   Foreground="{DynamicResource TextSecondary}" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding RecentConversations}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Style="{StaticResource AppicaDashboardRecentRowButtonStyle}"
+                                        AutomationProperties.Name="{Binding Title}"
                                         PreviewMouseLeftButtonDown="RecentConversation_OnPreviewMouseLeftButtonDown"
-                                        Click="RecentConversation_OnClick"
-                                        MouseLeave="RecentConversation_OnMouseLeave">
+                                        Click="RecentConversation_OnClick" MouseLeave="RecentConversation_OnMouseLeave">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="46" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="28" />
+                                            <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-
-                                        <Border Width="36"
-                                                Height="36"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Center"
-                                                Background="{DynamicResource AppicaShellAccentSoftBrush}"
-                                                CornerRadius="10">
-                                            <TextBlock Text="&#xE8BD;"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       FontFamily="{StaticResource AppicaShellIconFont}"
-                                                       FontSize="16"
-                                                       Foreground="{DynamicResource AppicaShellAccentBrush}" />
-                                        </Border>
-
-                                        <StackPanel Grid.Column="1"
-                                                    VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Title}"
-                                                       FontSize="13"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource AppicaShellTextBrush}"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Margin="0,4,18,0"
-                                                       Text="{Binding LastMessagePreview}"
-                                                       MaxHeight="20"
-                                                       FontSize="11"
-                                                       Foreground="{DynamicResource AppicaShellMutedBrush}"
-                                                       TextTrimming="CharacterEllipsis" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding LastMessagePreview}" Margin="{DynamicResource LabelGap}"
+                                                       Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
-
-                                        <TextBlock Grid.Column="2"
-                                                   Margin="16,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
-                                                   FontSize="11"
-                                                   Foreground="{DynamicResource AppicaShellSubtleBrush}" />
-                                        <TextBlock Grid.Column="3"
-                                                   HorizontalAlignment="Right"
-                                                   VerticalAlignment="Center"
-                                                   Text="&#xE72A;"
-                                                   FontFamily="{StaticResource AppicaShellIconFont}"
-                                                   FontSize="13"
-                                                   Foreground="{DynamicResource AppicaShellSubtleBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
+                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"
+                                                   Margin="{DynamicResource InsetSm}" />
                                     </Grid>
                                 </Button>
                             </DataTemplate>
@@ -390,6 +138,21 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
-        </Grid>
+            <StackPanel Visibility="{Binding ShowCharacterShortcuts, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="{StaticResource Dashboard.StartChat}" FontWeight="SemiBold"
+                           Margin="{DynamicResource ContentGap}" Foreground="{DynamicResource TextPrimary}" />
+                <ItemsControl ItemsSource="{Binding DataContext.Characters.Characters, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource RecentCharactersConverter}}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding Name}" Margin="{DynamicResource TileGap}"
+                                    AutomationProperties.Name="{Binding Name}" ToolTip="{StaticResource Dashboard.StartChat}"
+                                    Command="{Binding DataContext.Characters.StartChatCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}" Style="{StaticResource SecondaryButtonStyle}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -12,7 +12,7 @@ using TavernDesk.Infrastructure.Providers;
 
 namespace TavernDesk.App.ViewModels;
 
-public sealed class CampaignsViewModel : ViewModelBase
+public sealed class CampaignsViewModel : ViewModelBase, IDisposable
 {
     private readonly ICampaignScenarioRepository _scenarios;
     private readonly ICampaignScenarioCardImporter _scenarioCards;
@@ -25,12 +25,10 @@ public sealed class CampaignsViewModel : ViewModelBase
     private readonly IModelCatalogRepository _models;
     private readonly IModelAssignmentRepository _assignments;
     private readonly IAppSettingsRepository _settings;
-    private readonly ICampaignMemoryRepository? _campaignMemories;
-    private readonly ICampaignMemoryUpdateService? _campaignMemoryUpdater;
-    private readonly ICampaignContextPlanner? _campaignContextPlanner;
     private readonly IFileDialogService _fileDialog;
     private readonly IUserInteractionService _interaction;
     private readonly ICampaignFlowEngine _flowEngine;
+    private bool _disposed;
     private Campaign? _draftCampaign;
     private CampaignAggregate? _game;
     private CampaignScenario? _selectedScenario;
@@ -55,32 +53,10 @@ public sealed class CampaignsViewModel : ViewModelBase
     private string _gmMaxOutputTokensText = "6000";
     private string _diceExpression = "1d20";
     private bool _isBusy;
-    private bool _isMemoryUpdating;
     private readonly Dictionary<string, CampaignGenerationProgress>
         _generationProgresses = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _activeMemoryOperations = new(
-        StringComparer.Ordinal);
-    private readonly Dictionary<string, int> _memoryTokensByOperation = new(
-        StringComparer.Ordinal);
-    private string _memoryProgressText = string.Empty;
-    private int _memoryReceivedTokens;
     private string? _selectedGmCandidateId;
     private bool _updatingCharacterSelection;
-    private bool _campaignMemoryPending;
-    private bool _campaignMemoryNeedsEstablish;
-    private string _campaignMemoryStatusText = LanguageRuntime.GetString("Campaigns.Memory.Unchecked");
-    private string? _campaignMemoryLastError;
-    private string _campaignContextTokenBudgetText = "15000";
-    private string _campaignPlayerHistoryBudgetText = "12000";
-    private string _campaignGmHistoryBudgetText = "20000";
-    private string _campaignMemoryUpdateIntervalRoundsText = "3";
-    private string _campaignMemoryPendingTokenThresholdText = "4000";
-    private string _campaignMemorySettingsStatusText = string.Empty;
-    private string _contextPreviewSummary = LanguageRuntime.GetString("Campaigns.ContextPreview.Hint");
-    private bool _contextPreviewBlocked;
-    private string? _contextPreviewBlockingReason;
-    private readonly Dictionary<string, string> _contextBlockedSeatReasons =
-        new(StringComparer.Ordinal);
     private CampaignGameUiState _gameUiState = CampaignGameUiState.Empty;
 
     public CampaignsViewModel(
@@ -114,22 +90,22 @@ public sealed class CampaignsViewModel : ViewModelBase
         _models = models;
         _assignments = assignments;
         _settings = settings;
-        _campaignMemories = campaignMemories;
-        _campaignMemoryUpdater = campaignMemoryUpdater;
-        _campaignContextPlanner = campaignContextPlanner;
         _fileDialog = fileDialog;
         _interaction = interaction;
         ScenarioEditor = new CampaignScenarioEditorViewModel(scenarios, worldbooks);
         ScenarioEditor.PropertyChanged += (_, args) => OnPropertyChanged(args.PropertyName);
         _flowEngine = flowEngine ?? CampaignFlowEngineFactory.CreateDefault();
 
+        ContextPreview = new CampaignContextPreviewViewModel(
+            campaignContextPlanner, scenarios, campaignMemories, _flowEngine,
+            game => !_disposed && ReferenceEquals(_game, game),
+            OnPreviewChanged);
+        SettingsPanel = new CampaignSettingsPanelViewModel(
+            campaigns, campaignMemories, campaignMemoryUpdater,
+            () => _game, () => IsGame, () => IsCampaignOperationBusy,
+            RunUiAsync, LoadGameAsync, value => StatusText = value,
+            () => { RefreshSeatActionStates(); RaiseGameProperties(); });
         _runner.ProgressChanged += OnCampaignGenerationProgressChanged;
-        if (_campaignMemoryUpdater is not null)
-        {
-            _campaignMemoryUpdater.ProgressChanged +=
-                OnCampaignMemoryProgressChanged;
-        }
-
         FlowChoices =
         [
             new CampaignFlowChoice(
@@ -177,7 +153,9 @@ public sealed class CampaignsViewModel : ViewModelBase
             EditScenarioAsync,
             () => SelectedScenario is not null);
         SaveScenarioCommand = new AsyncRelayCommand(SaveScenarioAsync);
-        OpenScenarioLobbyCommand = new AsyncRelayCommand(OpenScenarioLobbyAsync);
+        OpenScenarioLobbyCommand = new AsyncRelayCommand(
+            OpenScenarioLobbyAsync,
+            () => SelectedScenario is not null && !IsBusy);
         ContinueCampaignCommand = new AsyncRelayCommand(ContinueSelectedCampaignAsync);
         RenameCampaignCommand = new AsyncRelayCommand(RenameCampaignAsync);
         DeleteCampaignCommand = new AsyncRelayCommand(DeleteCampaignAsync);
@@ -201,19 +179,31 @@ public sealed class CampaignsViewModel : ViewModelBase
         RollDiceCommand = new AsyncRelayCommand(RollDiceAsync);
         RollDicePresetCommand = new AsyncRelayCommand(RollDicePresetAsync);
         RetryEventCommand = new AsyncRelayCommand(RetryEventAsync);
-        RetryCampaignMemoryCommand = new AsyncRelayCommand(
-            RetryCampaignMemoryAsync);
-        ToggleCampaignMemoryCommand = new AsyncRelayCommand(
-            ToggleCampaignMemoryAsync,
-            () => CanToggleCampaignMemory);
-        SaveCampaignMemorySettingsCommand = new AsyncRelayCommand(
-            SaveCampaignMemorySettingsAsync);
         ApplySeatRouteCommand = new AsyncRelayCommand(ApplySeatRouteAsync);
         ApplyGmRouteCommand = new AsyncRelayCommand(ApplyGmRouteAsync);
         OpenGlobalPromptCommand = new AsyncRelayCommand(OpenGlobalPromptAsync);
     }
 
     public CampaignScenarioEditorViewModel ScenarioEditor { get; }
+    public CampaignContextPreviewViewModel ContextPreview { get; }
+    public CampaignSettingsPanelViewModel SettingsPanel { get; }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        SettingsPanel.Dispose();
+        _runner.ProgressChanged -= OnCampaignGenerationProgressChanged;
+    }
+
+    private void OnPreviewChanged()
+    {
+        RefreshSeatActionStates();
+        OnPropertyChanged(nameof(CanGenerateBlindAiActions));
+        OnPropertyChanged(nameof(BlindAiActionHelpText));
+        OnPropertyChanged(nameof(CanResolve));
+        OnPropertyChanged(nameof(ResolveHelpText));
+    }
     public Task OfferScenarioRecoveryAsync() => RunUiAsync(async () =>
     {
         if (ScenarioEditor.HasActiveEdit || _scenarios is not ICampaignScenarioDraftRepository drafts) return;
@@ -237,8 +227,6 @@ public sealed class CampaignsViewModel : ViewModelBase
     public ObservableCollection<CampaignModelOption> ModelOptions { get; } = [];
     public ObservableCollection<CampaignSeatViewModel> Seats { get; } = [];
     public ObservableCollection<CampaignEventItemViewModel> Events { get; } = [];
-    public ObservableCollection<CampaignContextPreviewItemViewModel>
-        ContextPreviewItems { get; } = [];
     public ObservableCollection<CampaignWorldbookBindingItem>
         ScenarioWorldbookBindings => ScenarioEditor.ScenarioWorldbookBindings;
     public IReadOnlyList<CampaignFlowChoice> FlowChoices { get; }
@@ -270,9 +258,6 @@ public sealed class CampaignsViewModel : ViewModelBase
     public AsyncRelayCommand RollDiceCommand { get; }
     public AsyncRelayCommand RollDicePresetCommand { get; }
     public AsyncRelayCommand RetryEventCommand { get; }
-    public AsyncRelayCommand RetryCampaignMemoryCommand { get; }
-    public AsyncRelayCommand ToggleCampaignMemoryCommand { get; }
-    public AsyncRelayCommand SaveCampaignMemorySettingsCommand { get; }
     public AsyncRelayCommand ApplySeatRouteCommand { get; }
     public AsyncRelayCommand ApplyGmRouteCommand { get; }
     public AsyncRelayCommand OpenGlobalPromptCommand { get; }
@@ -294,7 +279,6 @@ public sealed class CampaignsViewModel : ViewModelBase
             "Campaigns.Lobby.RosterFormat",
             UserAlsoPlayer ? 1 : 0,
             SelectedAiPlayerCount);
-    public bool IsMemoryUpdating => _isMemoryUpdating;
     public bool IsRequestReceiving =>
         _generationProgresses.Values.Any(item =>
             item.Status == CampaignGenerationStatus.Streaming);
@@ -307,10 +291,6 @@ public sealed class CampaignsViewModel : ViewModelBase
         ? LanguageRuntime.Format(
             "Campaigns.Request.TokensFormat",
             _generationProgresses.Values.Sum(item => item.ReceivedTokens))
-        : string.Empty;
-    public string MemoryProgressText => _memoryProgressText;
-    public string MemoryReceivedTokenText => _isMemoryUpdating
-        ? LanguageRuntime.Format("Campaigns.Request.TokensFormat", _memoryReceivedTokens)
         : string.Empty;
     // Memory updates run in the background and must not disable local campaign
     // navigation or seat controls.  Provider-generation commands still use
@@ -326,7 +306,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         && (IsGmCandidatePending
             ? IsSelectedGmCandidateValid
             : !(_game?.Campaign.GmKind == CampaignGmKind.Ai
-                && _contextPreviewBlocked)
+                && ContextPreview.IsBlocked)
               && (_game?.Campaign.GmKind == CampaignGmKind.Ai
                   || !string.IsNullOrWhiteSpace(GmResolutionInput)));
     public bool HasUserSeat => _gameUiState.HasUserSeat;
@@ -341,7 +321,7 @@ public sealed class CampaignsViewModel : ViewModelBase
     public bool CanGenerateBlindAiActions =>
         !IsCampaignOperationBusy
         && _gameUiState.CanGenerateBlindAiActions
-        && !_contextPreviewBlocked;
+        && !ContextPreview.IsBlocked;
     public bool ShowResolveSection =>
         _gameUiState.ShowResolveSection;
     public string CurrentStepTitle => _gameUiState.CurrentStepTitle;
@@ -358,8 +338,8 @@ public sealed class CampaignsViewModel : ViewModelBase
             ? LanguageRuntime.GetString("Campaigns.UserAction.Required")
             : _gameUiState.UserActionHelpText;
     public string BlindAiActionHelpText =>
-        _contextPreviewBlocked
-            ? ContextBlockedHelpText()
+        ContextPreview.IsBlocked
+            ? ContextPreview.BlockedHelpText
             : _gameUiState.BlindAiActionHelpText;
     public string ResolveButtonText =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
@@ -376,8 +356,8 @@ public sealed class CampaignsViewModel : ViewModelBase
                 : LanguageRuntime.GetString("Campaigns.Resolve.CandidateInvalid")
         :
         _game?.Campaign.GmKind == CampaignGmKind.Ai
-        && _contextPreviewBlocked
-            ? ContextBlockedHelpText()
+        && ContextPreview.IsBlocked
+            ? ContextPreview.BlockedHelpText
         : _game?.Campaign.GmKind == CampaignGmKind.User
         && _gameUiState.ShowResolveSection
         && string.IsNullOrWhiteSpace(GmResolutionInput)
@@ -402,71 +382,6 @@ public sealed class CampaignsViewModel : ViewModelBase
     public string SaveStateText => _game is null
         ? string.Empty
         : LanguageRuntime.Format("Campaigns.Game.SavedFormat", _game.Campaign.StateVersion);
-    public string CampaignMemoryStatusText => _campaignMemoryStatusText;
-    public bool IsCampaignMemoryEnabled => _game?.Campaign.MemoryEnabled == true;
-    public string CampaignMemoryToggleText =>
-        IsCampaignMemoryEnabled
-            ? LanguageRuntime.GetString("Campaigns.Memory.ToggleOn")
-            : LanguageRuntime.GetString("Campaigns.Memory.ToggleOff");
-    public bool CanToggleCampaignMemory =>
-        IsGame && !IsCampaignOperationBusy && _game is not null;
-    public string CampaignMemoryActionText => _campaignMemoryNeedsEstablish
-        ? LanguageRuntime.GetString("Campaigns.Memory.Establish")
-        : LanguageRuntime.GetString("Campaigns.Memory.Retry");
-    public bool ShowCampaignMemoryAction =>
-        IsGame
-        && IsCampaignMemoryEnabled
-        && _campaignMemoryUpdater is not null
-        && (_campaignMemoryNeedsEstablish
-            || (!string.IsNullOrWhiteSpace(_campaignMemoryLastError)
-                && _campaignMemoryPending));
-    public string ContextPreviewSummary => _contextPreviewSummary;
-    public bool HasContextPreview => ContextPreviewItems.Count > 0;
-    public bool CanRetryCampaignMemory =>
-        ShowCampaignMemoryAction
-        && !IsCampaignOperationBusy
-        && !IsMemoryUpdating;
-
-    public string CampaignContextTokenBudgetText
-    {
-        get => _campaignContextTokenBudgetText;
-        set => SetProperty(ref _campaignContextTokenBudgetText, value);
-    }
-
-    public string CampaignPlayerHistoryBudgetText
-    {
-        get => _campaignPlayerHistoryBudgetText;
-        set => SetProperty(ref _campaignPlayerHistoryBudgetText, value);
-    }
-
-    public string CampaignGmHistoryBudgetText
-    {
-        get => _campaignGmHistoryBudgetText;
-        set => SetProperty(ref _campaignGmHistoryBudgetText, value);
-    }
-
-    public string CampaignMemoryUpdateIntervalRoundsText
-    {
-        get => _campaignMemoryUpdateIntervalRoundsText;
-        set => SetProperty(ref _campaignMemoryUpdateIntervalRoundsText, value);
-    }
-
-    public string CampaignMemoryPendingTokenThresholdText
-    {
-        get => _campaignMemoryPendingTokenThresholdText;
-        set => SetProperty(
-            ref _campaignMemoryPendingTokenThresholdText,
-            value);
-    }
-
-    public string CampaignMemorySettingsStatusText
-    {
-        get => _campaignMemorySettingsStatusText;
-        private set => SetProperty(
-            ref _campaignMemorySettingsStatusText,
-            value);
-    }
-
     private bool AiGmResolutionNeedsRetry =>
         _game?.Campaign.GmKind == CampaignGmKind.Ai
         && GetGmCandidates()
@@ -551,6 +466,7 @@ public sealed class CampaignsViewModel : ViewModelBase
             if (SetProperty(ref _selectedScenario, value))
             {
                 EditScenarioCommand.RaiseCanExecuteChanged();
+                OpenScenarioLobbyCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -760,6 +676,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         {
             if (SetProperty(ref _isBusy, value))
             {
+                OpenScenarioLobbyCommand.RaiseCanExecuteChanged();
                 RefreshSeatActionStates();
                 RaiseGameProperties();
             }
@@ -1596,26 +1513,6 @@ public sealed class CampaignsViewModel : ViewModelBase
         await OpenPromptSettings(key);
     }
 
-    public void PrepareCampaignMemorySettings()
-    {
-        if (_game is null)
-        {
-            return;
-        }
-
-        CampaignContextTokenBudgetText =
-            _game.Campaign.ContextTokenBudget.ToString();
-        CampaignPlayerHistoryBudgetText =
-            _game.Campaign.PlayerHistoryBudget.ToString();
-        CampaignGmHistoryBudgetText =
-            _game.Campaign.GmHistoryBudget.ToString();
-        CampaignMemoryUpdateIntervalRoundsText =
-            _game.Campaign.MemoryUpdateIntervalRounds.ToString();
-        CampaignMemoryPendingTokenThresholdText =
-            _game.Campaign.MemoryUpdatePendingTokenThreshold.ToString();
-        CampaignMemorySettingsStatusText = string.Empty;
-    }
-
     public async Task<bool> ConfirmCanLeaveAsync()
     {
         await ScenarioEditor.FlushDraftAsync();
@@ -1644,74 +1541,6 @@ public sealed class CampaignsViewModel : ViewModelBase
         _draftCampaign = null;
         ShowScreen("library");
         return true;
-    }
-
-    private async Task SaveCampaignMemorySettingsAsync()
-    {
-        if (_game is null)
-        {
-            return;
-        }
-
-        if (!TryParseSetting(
-                CampaignContextTokenBudgetText,
-                8_000,
-                200_000,
-                LanguageRuntime.GetString("Campaigns.MemorySetting.InputBudget"),
-                out var contextTokenBudget)
-            || !TryParseSetting(
-                CampaignPlayerHistoryBudgetText,
-                512,
-                200_000,
-                LanguageRuntime.GetString("Campaigns.MemorySetting.PlayerHistory"),
-                out var playerHistoryBudget)
-            || !TryParseSetting(
-                CampaignGmHistoryBudgetText,
-                512,
-                200_000,
-                LanguageRuntime.GetString("Campaigns.MemorySetting.GmHistory"),
-                out var gmHistoryBudget)
-            || !TryParseSetting(
-                CampaignMemoryUpdateIntervalRoundsText,
-                1,
-                50,
-                LanguageRuntime.GetString("Campaigns.MemorySetting.UpdateInterval"),
-                out var memoryUpdateIntervalRounds)
-            || !TryParseSetting(
-                CampaignMemoryPendingTokenThresholdText,
-                1_000,
-                50_000,
-                LanguageRuntime.GetString("Campaigns.MemorySetting.PendingThreshold"),
-                out var memoryUpdatePendingTokenThreshold))
-        {
-            return;
-        }
-
-        await RunUiAsync(async () =>
-        {
-            try
-            {
-                var campaignId = _game.Campaign.Id;
-                await _campaigns.UpdateContextSettingsAsync(
-                    campaignId,
-                    _game.Campaign.StateVersion,
-                    new CampaignContextSettingsUpdate(
-                        playerHistoryBudget,
-                        gmHistoryBudget,
-                        contextTokenBudget,
-                        memoryUpdateIntervalRounds,
-                        memoryUpdatePendingTokenThreshold));
-                await LoadGameAsync(campaignId);
-                PrepareCampaignMemorySettings();
-                CampaignMemorySettingsStatusText =
-                    LanguageRuntime.GetString("Campaigns.MemorySetting.Saved");
-                StatusText = LanguageRuntime.GetString("Campaigns.MemorySetting.StatusSaved");
-            }
-            catch (Exception exception)
-            {
-                CampaignMemorySettingsStatusText = LanguageRuntime.ErrorMessage(exception);
-            }
-        });
     }
 
     private bool CanMoveGmCandidate(int offset)
@@ -1746,198 +1575,6 @@ public sealed class CampaignsViewModel : ViewModelBase
         });
     }
 
-    private bool TryParseSetting(
-        string value,
-        int minimum,
-        int maximum,
-        string label,
-        out int result)
-    {
-        if (!int.TryParse(value, out result)
-            || result < minimum
-            || result > maximum)
-        {
-            CampaignMemorySettingsStatusText =
-                LanguageRuntime.Format(
-                    "Campaigns.MemorySetting.RangeFormat",
-                    label,
-                    minimum,
-                    maximum);
-            return false;
-        }
-
-        return true;
-    }
-
-    private async Task ToggleCampaignMemoryAsync()
-    {
-        if (_game is null)
-        {
-            return;
-        }
-
-        var campaignId = _game.Campaign.Id;
-        var enabled = !_game.Campaign.MemoryEnabled;
-        var expectedStateVersion = _game.Campaign.StateVersion;
-        await RunUiAsync(async () =>
-        {
-            await _campaigns.UpdateMemoryEnabledAsync(
-                campaignId,
-                expectedStateVersion,
-                enabled);
-            await LoadGameAsync(campaignId);
-            StatusText = enabled
-                ? LanguageRuntime.GetString("Campaigns.Memory.Enabled")
-                : LanguageRuntime.GetString("Campaigns.Memory.Disabled");
-        });
-    }
-
-    private async Task RetryCampaignMemoryAsync(object? _)
-    {
-        if (_game is null
-            || !_game.Campaign.MemoryEnabled
-            || _campaignMemoryUpdater is null)
-        {
-            return;
-        }
-
-        var campaignId = _game.Campaign.Id;
-        var latestResolution = LatestCompletedGmResolution(_game);
-        if (latestResolution is null)
-        {
-            _campaignMemoryPending = false;
-            SetCampaignMemoryStatus(
-                LanguageRuntime.GetString("Campaigns.Memory.NothingToEstablish"));
-            return;
-        }
-
-        await RunUiAsync(async () =>
-        {
-            _campaignMemoryLastError = null;
-            SetCampaignMemoryStatus(
-                LanguageRuntime.GetString("Campaigns.Memory.Updating"));
-            var result = await _campaignMemoryUpdater.UpdateAsync(
-                campaignId,
-                latestResolution.SequenceNo,
-                force: true,
-                CancellationToken.None);
-            if (!result.Succeeded)
-            {
-                _campaignMemoryLastError = result.ErrorMessage
-                                            ?? result.Status.ToString();
-            }
-
-            await RefreshCampaignMemoryStatusAsync();
-            StatusText = result.Succeeded
-                ? LanguageRuntime.GetString("Campaigns.Memory.Updated")
-                : LanguageRuntime.Format(
-                    "Campaigns.Memory.UpdateIncompleteFormat",
-                    _campaignMemoryLastError);
-        });
-    }
-
-    private async Task RefreshCampaignMemoryStatusAsync()
-    {
-        if (_game is null || !_game.Campaign.MemoryEnabled)
-        {
-            _campaignMemoryPending = false;
-            _campaignMemoryNeedsEstablish = false;
-            _campaignMemoryLastError = null;
-            SetCampaignMemoryStatus(
-                LanguageRuntime.GetString("Campaigns.Memory.UpgradeDisabled"));
-            return;
-        }
-
-        if (_campaignMemories is null)
-        {
-            _campaignMemoryPending = false;
-            _campaignMemoryNeedsEstablish = false;
-            SetCampaignMemoryStatus(
-                LanguageRuntime.GetString("Campaigns.Memory.NotEnabled"));
-            return;
-        }
-
-        var latestResolution = LatestCompletedGmResolution(_game);
-        var latestResolutionSequence = latestResolution?.SequenceNo ?? 0;
-        var gmCheckpointTask = _campaignMemories.GetCheckpointAsync(
-            _game.Campaign.Id,
-            CampaignMemoryScope.GameMaster);
-        var publicCheckpointTask = _campaignMemories.GetCheckpointAsync(
-            _game.Campaign.Id,
-            CampaignMemoryScope.Public);
-        await Task.WhenAll(gmCheckpointTask, publicCheckpointTask);
-        var gmSequence = gmCheckpointTask.Result?.LastEventSequence ?? 0;
-        var publicSequence = publicCheckpointTask.Result?.LastEventSequence ?? 0;
-        _campaignMemoryPending = latestResolutionSequence > gmSequence
-                                 || latestResolutionSequence > publicSequence;
-        _campaignMemoryNeedsEstablish = latestResolution is not null
-                                         && gmCheckpointTask.Result is null
-                                         && publicCheckpointTask.Result is null;
-        OnPropertyChanged(nameof(CanRetryCampaignMemory));
-        OnPropertyChanged(nameof(CampaignMemoryActionText));
-        OnPropertyChanged(nameof(ShowCampaignMemoryAction));
-        if (!string.IsNullOrWhiteSpace(_campaignMemoryLastError)
-            && _campaignMemoryPending)
-        {
-            SetCampaignMemoryStatus(
-                LanguageRuntime.Format(
-                    "Campaigns.Memory.UpdateFailedFormat",
-                    latestResolutionSequence));
-        }
-        else if (latestResolution is null)
-        {
-            SetCampaignMemoryStatus(
-                LanguageRuntime.GetString("Campaigns.Memory.NoResolution"));
-        }
-        else if (gmCheckpointTask.Result is null
-                 && publicCheckpointTask.Result is null)
-        {
-            SetCampaignMemoryStatus(
-                LanguageRuntime.Format(
-                    "Campaigns.Memory.NotEstablishedFormat",
-                    latestResolutionSequence));
-        }
-        else if (_campaignMemoryPending)
-        {
-            SetCampaignMemoryStatus(
-                LanguageRuntime.Format(
-                    "Campaigns.Memory.PendingFormat",
-                    gmSequence,
-                    publicSequence,
-                    latestResolutionSequence));
-        }
-        else
-        {
-            _campaignMemoryLastError = null;
-            SetCampaignMemoryStatus(
-                LanguageRuntime.Format(
-                    "Campaigns.Memory.UpdatedThroughFormat",
-                    latestResolutionSequence));
-        }
-    }
-
-    private static CampaignEvent? LatestCompletedGmResolution(
-        CampaignAggregate aggregate)
-    {
-        return aggregate.Events
-            .Where(item =>
-                item.Kind == CampaignEventKind.GmResolution
-                && item.IsLocked
-                && item.GenerationStatus == CampaignGenerationStatus.Completed)
-            .OrderBy(item => item.SequenceNo)
-            .LastOrDefault();
-    }
-
-    private void SetCampaignMemoryStatus(string value)
-    {
-        if (SetProperty(ref _campaignMemoryStatusText, value))
-        {
-            OnPropertyChanged(nameof(CanRetryCampaignMemory));
-            OnPropertyChanged(nameof(CampaignMemoryActionText));
-            OnPropertyChanged(nameof(ShowCampaignMemoryAction));
-        }
-    }
-
     private async Task LoadGameAsync(string campaignId)
     {
         // Generation progress is application-scoped and may outlive a page load.
@@ -1953,13 +1590,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         _game = await _campaigns.GetAsync(campaignId)
                 ?? throw new InvalidOperationException(
                     LanguageRuntime.GetString("Campaigns.Game.Missing"));
-        if (!string.Equals(previousCampaignId, campaignId, StringComparison.Ordinal))
-        {
-            _activeMemoryOperations.Clear();
-            _memoryTokensByOperation.Clear();
-            _memoryReceivedTokens = 0;
-            _isMemoryUpdating = false;
-        }
+        SettingsPanel.SwitchGame(previousCampaignId, campaignId);
         var flowSnapshot = _flowEngine.Inspect(_game);
         var currentGmCandidateIds = flowSnapshot.ResolutionPlan.CandidateResolutionIds
             .ToHashSet(StringComparer.Ordinal);
@@ -1987,7 +1618,7 @@ public sealed class CampaignsViewModel : ViewModelBase
         _gameUiState = CampaignGameUiState.Create(
             _game,
             flowSnapshot);
-        await RefreshCampaignMemoryStatusAsync();
+        await SettingsPanel.RefreshStatusAsync();
         SelectedGm = GmChoices.Single(item => item.Value == _game.Campaign.GmKind);
         SelectedGmRoute = FindRoute(
             _game.Campaign.GmProviderId,
@@ -2128,7 +1759,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                 canRetry));
         }
 
-        await RefreshContextPreviewAsync();
+        await ContextPreview.RefreshAsync(_game);
         ShowScreen("game");
         RaiseGameProperties();
     }
@@ -2159,269 +1790,6 @@ public sealed class CampaignsViewModel : ViewModelBase
 
         return replacedIds;
     }
-
-    private async Task RefreshContextPreviewAsync()
-    {
-        // Preview consumes the same planner used by generation but never invokes
-        // the provider. This preserves an inspectable, side-effect-free budget view.
-        ContextPreviewItems.Clear();
-        _contextBlockedSeatReasons.Clear();
-        _contextPreviewBlocked = false;
-        _contextPreviewBlockingReason = null;
-        OnPropertyChanged(nameof(HasContextPreview));
-        _contextPreviewSummary = LanguageRuntime.GetString("Campaigns.ContextPreview.Hint");
-        OnPropertyChanged(nameof(ContextPreviewSummary));
-
-        if (_game is null || _campaignContextPlanner is null)
-        {
-            return;
-        }
-
-        var campaignId = _game.Campaign.Id;
-        try
-        {
-            if (_game.Campaign.Phase == CampaignPhase.ReadyForResolution
-                && _game.Campaign.GmKind == CampaignGmKind.Ai)
-            {
-                var scenarioTask = _scenarios.GetAsync(_game.Campaign.StoryId);
-                var memoryTask = _game.Campaign.MemoryEnabled
-                    ? _campaignMemories?.GetBankAsync(
-                        campaignId,
-                        CampaignMemoryScope.GameMaster)
-                      ?? Task.FromResult<CampaignMemoryBank?>(null)
-                    : Task.FromResult<CampaignMemoryBank?>(null);
-                await Task.WhenAll(scenarioTask, memoryTask);
-                var plan = await _campaignContextPlanner.BuildGmPlanAsync(
-                    _game,
-                    _flowEngine.PlanResolution(_game),
-                    scenarioTask.Result,
-                    memoryTask.Result,
-                    includeLongTermMemory: _game.Campaign.MemoryEnabled);
-                AddContextPreviewItem("AI GM", plan);
-                SetContextPreviewBlock(plan);
-                _contextPreviewSummary = LanguageRuntime.Format(
-                    "Campaigns.ContextPreview.GmFormat",
-                    plan.Estimate.InputTokens,
-                    EffectiveInputBudget(plan),
-                    plan.Estimate.ReservedOutputTokens);
-            }
-            else if (_game.Campaign.Phase == CampaignPhase.AwaitingActions)
-            {
-                var memory = !_game.Campaign.MemoryEnabled || _campaignMemories is null
-                    ? null
-                    : await _campaignMemories.GetBankAsync(
-                        campaignId,
-                        CampaignMemoryScope.Public);
-                var aiParticipants = _game.Participants
-                    .Where(item => item.IsEnabled
-                                   && item.Kind == CampaignParticipantKind.Ai)
-                    .OrderBy(item => item.SortIndex)
-                    .ToArray();
-                var plans = await Task.WhenAll(aiParticipants.Select(
-                    participant =>
-                        _campaignContextPlanner.BuildPlayerPlanAsync(
-                            _game,
-                            participant,
-                            memory,
-                            includeLongTermMemory: _game.Campaign.MemoryEnabled)));
-                for (var index = 0; index < aiParticipants.Length; index++)
-                {
-                    AddContextPreviewItem(
-                        aiParticipants[index].DisplayName,
-                        plans[index]);
-                    if (plans[index].Status
-                        == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge)
-                    {
-                        _contextBlockedSeatReasons[aiParticipants[index].Id] =
-                            ContextBlockReason(plans[index]);
-                    }
-                }
-                _contextPreviewBlocked = plans.Any(plan =>
-                    plan.Status
-                    == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge);
-                _contextPreviewBlockingReason = plans
-                    .Where(plan => plan.Status
-                                   == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge)
-                    .Select(ContextBlockReason)
-                    .FirstOrDefault();
-
-                if (_flowEngine.Inspect(_game).ActionPlan.ExecutionMode
-                    == CampaignActionExecutionMode.Parallel)
-                {
-                    _contextPreviewSummary = LanguageRuntime.Format(
-                        "Campaigns.ContextPreview.BlindCostFormat",
-                        plans.Length,
-                        plans.Sum(plan => plan.Estimate.InputTokens),
-                        plans.Sum(plan => plan.Estimate.ReservedOutputTokens));
-                }
-                else
-                {
-                    _contextPreviewSummary = LanguageRuntime.Format(
-                        "Campaigns.ContextPreview.SeatsFormat",
-                        plans.Length);
-                }
-            }
-
-            if (_game?.Campaign.Id == campaignId)
-            {
-                RefreshSeatActionStates();
-                OnPropertyChanged(nameof(HasContextPreview));
-                OnPropertyChanged(nameof(ContextPreviewSummary));
-                OnPropertyChanged(nameof(CanGenerateBlindAiActions));
-                OnPropertyChanged(nameof(BlindAiActionHelpText));
-                OnPropertyChanged(nameof(CanResolve));
-                OnPropertyChanged(nameof(ResolveHelpText));
-            }
-        }
-        catch (Exception exception)
-        {
-            if (_game?.Campaign.Id != campaignId)
-            {
-                return;
-            }
-
-            ContextPreviewItems.Clear();
-            _contextBlockedSeatReasons.Clear();
-            _contextPreviewBlocked = false;
-            _contextPreviewBlockingReason = null;
-            _contextPreviewSummary = LanguageRuntime.Format(
-                "Campaigns.ContextPreview.UnavailableFormat",
-                LanguageRuntime.ErrorMessage(exception));
-            RefreshSeatActionStates();
-            OnPropertyChanged(nameof(HasContextPreview));
-            OnPropertyChanged(nameof(ContextPreviewSummary));
-            OnPropertyChanged(nameof(CanGenerateBlindAiActions));
-            OnPropertyChanged(nameof(BlindAiActionHelpText));
-            OnPropertyChanged(nameof(CanResolve));
-            OnPropertyChanged(nameof(ResolveHelpText));
-        }
-    }
-
-    private void SetContextPreviewBlock(CampaignContextPlan plan)
-    {
-        _contextPreviewBlocked =
-            plan.Status == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge;
-        _contextPreviewBlockingReason = plan.Status
-            == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge
-                ? ContextBlockReason(plan)
-                : null;
-    }
-
-    private void AddContextPreviewItem(
-        string title,
-        CampaignContextPlan plan)
-    {
-        var status = ContextPlanStatusText(plan);
-        var sections = plan.Sections
-            .Where(section => section.IsMandatory
-                             || section.EstimatedTokens > 0
-                             || (section.Kind == ContextSegmentKind.Memory
-                                 && !section.WasIncluded
-                                 && !section.WasTruncated))
-            .Select(section => new CampaignContextSectionItemViewModel(
-                ContextSectionTitle(section),
-                $"{section.EstimatedTokens:N0} tokens",
-                ContextSectionStateText(section)))
-            .ToArray();
-        ContextPreviewItems.Add(new CampaignContextPreviewItemViewModel(
-            title,
-            LanguageRuntime.Format(
-                "Campaigns.ContextPreview.ItemFormat",
-                plan.Estimate.InputTokens,
-                EffectiveInputBudget(plan),
-                plan.Estimate.ReservedOutputTokens),
-            status,
-            sections));
-    }
-
-    private static int EffectiveInputBudget(CampaignContextPlan plan) =>
-        Math.Max(
-            0,
-            plan.Estimate.ContextLimit
-            - plan.Estimate.ReservedOutputTokens);
-
-    private static string ContextPlanStatusText(CampaignContextPlan plan)
-    {
-        var status = plan.Status switch
-        {
-            CampaignContextPlanStatus.Ready => LanguageRuntime.GetString("Campaigns.ContextPlan.Ready"),
-            CampaignContextPlanStatus.HistoryTrimmed => LanguageRuntime.GetString("Campaigns.ContextPlan.Trimmed"),
-            CampaignContextPlanStatus.BlockedMandatoryContextTooLarge =>
-                LanguageRuntime.GetString("Campaigns.ContextPlan.Blocked"),
-            _ => plan.Status.ToString()
-        };
-        if (plan.Status == CampaignContextPlanStatus.BlockedMandatoryContextTooLarge
-            && !string.IsNullOrWhiteSpace(plan.BlockingReason))
-        {
-            status = LanguageRuntime.Format(
-                "Campaigns.ContextPlan.BlockedWithReasonFormat",
-                status,
-                ContextBlockReason(plan));
-        }
-
-        return plan.Estimate.IsExact
-            ? status
-            : LanguageRuntime.Format("Campaigns.ContextPlan.HeuristicFormat", status);
-    }
-
-    private static string ContextBlockReason(CampaignContextPlan plan) =>
-        LanguageRuntime.BackendMessage(
-            plan.BlockingReason,
-            "Campaigns.ContextPreview.DefaultBlock");
-
-    private static string ContextSectionTitle(
-        CampaignContextSectionEstimate section) =>
-        LanguageRuntime.GetString(section.Id switch
-        {
-            "player.global" => "Campaigns.ContextSection.PlayerGlobal",
-            "player.protocol" => "Campaigns.ContextSection.PlayerProtocol",
-            "player.world" => "Campaigns.ContextSection.PlayerWorld",
-            "player.identity" => "Campaigns.ContextSection.PlayerIdentity",
-            "player.character-card" => "Campaigns.ContextSection.PlayerCharacterCard",
-            "player.initial-memory" => "Campaigns.ContextSection.PlayerInitialMemory",
-            "player.history-header" => "Campaigns.ContextSection.PlayerHistoryHeader",
-            "player.public-memory" => "Campaigns.ContextSection.PlayerPublicMemory",
-            "player.history" => "Campaigns.ContextSection.PlayerHistory",
-            "player.latest-gm" => "Campaigns.ContextSection.PlayerLatestGm",
-            "player.pending-intents" => "Campaigns.ContextSection.PlayerPendingIntents",
-            "player.current-task" => "Campaigns.ContextSection.PlayerCurrentTask",
-            "gm.global" => "Campaigns.ContextSection.GmGlobal",
-            "gm.protocol" => "Campaigns.ContextSection.GmProtocol",
-            "gm.world" => "Campaigns.ContextSection.GmWorld",
-            "gm.opening" => "Campaigns.ContextSection.GmOpening",
-            "gm.roster" => "Campaigns.ContextSection.GmRoster",
-            "gm.authority" => "Campaigns.ContextSection.GmAuthority",
-            "gm.history-header" => "Campaigns.ContextSection.GmHistoryHeader",
-            "gm.memory" => "Campaigns.ContextSection.GmMemory",
-            "gm.history" => "Campaigns.ContextSection.GmHistory",
-            "gm.current-intents" => "Campaigns.ContextSection.GmCurrentIntents",
-            "gm.current-task" => "Campaigns.ContextSection.GmCurrentTask",
-            _ => "Campaigns.ContextSection.Unknown"
-        });
-
-    private string ContextBlockedHelpText() =>
-        string.IsNullOrWhiteSpace(_contextPreviewBlockingReason)
-            ? LanguageRuntime.GetString("Campaigns.Context.Blocked")
-            : LanguageRuntime.Format(
-                "Campaigns.Context.BlockedFormat",
-                _contextPreviewBlockingReason);
-
-    private static string ContextSectionStateText(
-        CampaignContextSectionEstimate section) =>
-        section.Kind == ContextSegmentKind.Memory
-        && !section.WasIncluded
-        && !section.WasTruncated
-        && section.EstimatedTokens == 0
-            ? LanguageRuntime.GetString("Campaigns.ContextSection.Disabled")
-            : section.WasIncluded
-            ? section.WasTruncated
-                ? LanguageRuntime.GetString("Campaigns.ContextSection.IncludedTrimmed")
-                : LanguageRuntime.GetString("Campaigns.ContextSection.Included")
-            : section.IsMandatory
-                ? LanguageRuntime.GetString("Campaigns.ContextSection.MandatoryOverLimit")
-                : section.WasTruncated
-                    ? LanguageRuntime.GetString("Campaigns.ContextSection.Omitted")
-                    : LanguageRuntime.GetString("Campaigns.ContextSection.NotIncluded");
 
     private bool CanDisplayEvent(
         CampaignAggregate aggregate,
@@ -2575,7 +1943,7 @@ public sealed class CampaignsViewModel : ViewModelBase
                 seat.Participant,
                 _flowEngine.Inspect(_game),
                 _flowEngine.PlanAction(_game, seat.Id));
-            var contextBlocked = _contextBlockedSeatReasons.TryGetValue(
+            var contextBlocked = ContextPreview.TryGetSeatBlockReason(
                 seat.Id,
                 out var contextReason);
             seat.ShowActionButton = actionState.ShowButton;
@@ -2618,25 +1986,13 @@ public sealed class CampaignsViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasGmCandidateNavigation));
         OnPropertyChanged(nameof(GmCandidateNavigationLabel));
         OnPropertyChanged(nameof(IsSelectedGmCandidateValid));
-        OnPropertyChanged(nameof(IsMemoryUpdating));
         OnPropertyChanged(nameof(IsCampaignOperationBusy));
         OnPropertyChanged(nameof(IsRequestReceiving));
         OnPropertyChanged(nameof(RequestProgressText));
         OnPropertyChanged(nameof(RequestReceivedTokenText));
-        OnPropertyChanged(nameof(MemoryProgressText));
-        OnPropertyChanged(nameof(MemoryReceivedTokenText));
         OnPropertyChanged(nameof(ScheduleUserJoinButtonText));
         OnPropertyChanged(nameof(ScheduleUserJoinHelpText));
-        OnPropertyChanged(nameof(CampaignMemoryStatusText));
-        OnPropertyChanged(nameof(IsCampaignMemoryEnabled));
-        OnPropertyChanged(nameof(CampaignMemoryToggleText));
-        OnPropertyChanged(nameof(CanToggleCampaignMemory));
-        OnPropertyChanged(nameof(CampaignMemoryActionText));
-        OnPropertyChanged(nameof(ShowCampaignMemoryAction));
-        OnPropertyChanged(nameof(CanRetryCampaignMemory));
-        OnPropertyChanged(nameof(ContextPreviewSummary));
-        OnPropertyChanged(nameof(HasContextPreview));
-        ToggleCampaignMemoryCommand.RaiseCanExecuteChanged();
+        SettingsPanel.NotifyGameStateChanged();
         PreviousGmCandidateCommand.RaiseCanExecuteChanged();
         NextGmCandidateCommand.RaiseCanExecuteChanged();
     }
@@ -2667,13 +2023,14 @@ public sealed class CampaignsViewModel : ViewModelBase
         object? sender,
         CampaignGenerationProgress progress)
     {
-        if (_game is null || progress.CampaignId != _game.Campaign.Id)
+        if (_disposed || _game is null || progress.CampaignId != _game.Campaign.Id)
         {
             return;
         }
 
         RunOnUi(() =>
         {
+            if (_disposed || progress.CampaignId != _game?.Campaign.Id) return;
             if (progress.Status is CampaignGenerationStatus.Queued
                 or CampaignGenerationStatus.Streaming)
             {
@@ -2688,91 +2045,6 @@ public sealed class CampaignsViewModel : ViewModelBase
             OnPropertyChanged(nameof(RequestReceivedTokenText));
         });
     }
-
-    private void OnCampaignMemoryProgressChanged(
-        object? sender,
-        CampaignMemoryUpdateProgress progress)
-    {
-        if (_game is null || progress.CampaignId != _game.Campaign.Id)
-        {
-            return;
-        }
-
-        RunOnUi(() =>
-        {
-            var operationId = progress.OperationId
-                              ?? $"{progress.CampaignId}|memory";
-            switch (progress.Status)
-            {
-                case CampaignMemoryUpdateProgressStatus.Started:
-                    _activeMemoryOperations.Add(operationId);
-                    _memoryTokensByOperation[operationId] = 0;
-                    _isMemoryUpdating = true;
-                    _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
-                    _memoryProgressText = LanguageRuntime.GetString(
-                        "Campaigns.Memory.ProgressDefault");
-                    StatusText = _memoryProgressText;
-                    break;
-                case CampaignMemoryUpdateProgressStatus.Receiving:
-                    _activeMemoryOperations.Add(operationId);
-                    _memoryTokensByOperation[operationId] = Math.Max(
-                        _memoryTokensByOperation.GetValueOrDefault(operationId),
-                        progress.ReceivedTokens);
-                    _isMemoryUpdating = true;
-                    _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
-                    _memoryProgressText = progress.Scope is null
-                        ? LanguageRuntime.GetString("Campaigns.Memory.Progress")
-                        : LanguageRuntime.Format(
-                            "Campaigns.Memory.ProgressScopeFormat",
-                            MemoryScopeName(progress.Scope.Value));
-                    break;
-                case CampaignMemoryUpdateProgressStatus.Completed:
-                    CompleteMemoryOperation(
-                        operationId,
-                        LanguageRuntime.GetString("Campaigns.Memory.ProgressDone"));
-                    break;
-                case CampaignMemoryUpdateProgressStatus.Failed:
-                    CompleteMemoryOperation(
-                        operationId,
-                        string.IsNullOrWhiteSpace(progress.Message)
-                            ? LanguageRuntime.GetString("Campaigns.Memory.ProgressFailed")
-                            : LanguageRuntime.Format(
-                                "Campaigns.Memory.ProgressFailedFormat",
-                                LanguageRuntime.BackendMessage(
-                                    progress.Message,
-                                    "Common.NoFurtherDetails")));
-                    break;
-            }
-
-            OnPropertyChanged(nameof(IsMemoryUpdating));
-            OnPropertyChanged(nameof(MemoryProgressText));
-            OnPropertyChanged(nameof(MemoryReceivedTokenText));
-            RefreshSeatActionStates();
-            RaiseGameProperties();
-            PreviousGmCandidateCommand.RaiseCanExecuteChanged();
-            NextGmCandidateCommand.RaiseCanExecuteChanged();
-        });
-    }
-
-    private void CompleteMemoryOperation(
-        string operationId,
-        string terminalMessage)
-    {
-        _activeMemoryOperations.Remove(operationId);
-        _memoryTokensByOperation.Remove(operationId);
-        _isMemoryUpdating = _activeMemoryOperations.Count > 0;
-        _memoryReceivedTokens = _memoryTokensByOperation.Values.Sum();
-        if (!_isMemoryUpdating)
-        {
-            _memoryProgressText = terminalMessage;
-            StatusText = _memoryProgressText;
-        }
-    }
-
-    private static string MemoryScopeName(CampaignMemoryScope scope) =>
-        scope == CampaignMemoryScope.GameMaster
-            ? "GM"
-            : LanguageRuntime.GetString("Campaigns.Memory.ScopePublic");
 
     private static void RunOnUi(Action action)
     {

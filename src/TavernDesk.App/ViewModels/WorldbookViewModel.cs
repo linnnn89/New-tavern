@@ -114,7 +114,8 @@ public sealed class WorldbookViewModel : ViewModelBase
             SaveEntryTitleAsync,
             () => SelectedBook is not null
                   && SelectedEntry is not null
-                  && !string.IsNullOrWhiteSpace(EntryTitle));
+                  && !string.IsNullOrWhiteSpace(EntryTitle)
+                  && IsEntryTitleDirty);
         SelectAllCharacterBindingsCommand = new RelayCommand(
             () => SetAllCharacterBindings(true),
             () => SelectedBook is not null && CharacterBindings.Count > 0);
@@ -197,9 +198,15 @@ public sealed class WorldbookViewModel : ViewModelBase
             }
 
             EntryTitle = value?.Title ?? string.Empty;
+            OnPropertyChanged(nameof(IsEntryTitleDirty));
             SaveEntryTitleCommand.RaiseCanExecuteChanged();
         }
     }
+
+    // Entry bodies are read-only; the title is the only editable field, saved explicitly (manual save, no autosave).
+    public bool IsEntryTitleDirty =>
+        SelectedEntry is { } entry
+        && !string.Equals(EntryTitle.Trim(), entry.Title, StringComparison.Ordinal);
 
     public string EntryTitle
     {
@@ -211,6 +218,7 @@ public sealed class WorldbookViewModel : ViewModelBase
                 return;
             }
 
+            OnPropertyChanged(nameof(IsEntryTitleDirty));
             SaveEntryTitleCommand.RaiseCanExecuteChanged();
         }
     }

@@ -2,14 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:TavernDesk.Core.Models;assembly=TavernDesk.Core"
+             xmlns:chat="clr-namespace:TavernDesk.App.Views.Chat"
              xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
-    <UserControl.Resources>
-        <DataTemplate x:Key="ChatCompactOptionTemplate">
-            <TextBlock Text="{Binding Label}"
-                       TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis" />
-        </DataTemplate>
-    </UserControl.Resources>
     <Grid x:Name="ChatLayoutRoot"
           Margin="16"
           Background="{DynamicResource WindowBackgroundBrush}"
@@ -22,199 +16,7 @@
             <ColumnDefinition x:Name="RightPanelColumn" Width="406*" MinWidth="260" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0"
-                Style="{StaticResource AppicaChatSidebarStyle}">
-            <Grid Margin="16,16,16,12">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <StackPanel Margin="0,0,0,12">
-                    <Grid Margin="2,0,0,14">
-                        <TextBlock Text="{StaticResource Chat.Title}" Style="{StaticResource AppicaPaneTitleStyle}" />
-                        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                            <Button Content="{StaticResource Chat.NewGroup}"
-                                    Command="{Binding Group.CreateGroupCommand}"
-                                    Style="{StaticResource AppicaHeaderActionButtonStyle}" />
-                        </StackPanel>
-                    </Grid>
-                    <TextBox AutomationProperties.Name="{StaticResource Chat.SearchToolTip}" Text="{Binding ConversationSearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource AppicaConversationSearchStyle}"
-                             ToolTip="{StaticResource Chat.SearchToolTip}" />
-                </StackPanel>
-
-                <ScrollViewer Grid.Row="1"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding ConversationGroups}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel>
-                                    <Button Command="{Binding ToggleCommand}"
-                                            Style="{StaticResource AppicaConversationGroupButtonStyle}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="66" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="58"
-                                                    Height="58"
-                                                    CornerRadius="29"
-                                                    Background="{DynamicResource AccentSoftBrush}"
-                                                    ClipToBounds="True">
-                                                 <Grid>
-                                                    <TextBlock HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center"
-                                                               FontFamily="{StaticResource AppicaShellIconFont}"
-                                                               FontSize="23"
-                                                               Foreground="{DynamicResource AccentBrush}"
-                                                               Text="&#xE77B;" />
-                                                     <Image Source="{Binding AvatarPath}"
-                                                            Stretch="UniformToFill">
-                                                        <Image.Clip>
-                                                            <EllipseGeometry Center="29,29"
-                                                                             RadiusX="29"
-                                                                             RadiusY="29" />
-                                                        </Image.Clip>
-                                                    </Image>
-                                                </Grid>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Margin="6,0,8,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}"
-                                                           FontSize="15"
-                                                           FontWeight="SemiBold"
-                                                           TextWrapping="NoWrap"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding LatestPreview}"
-                                                           Margin="0,2,0,0"
-                                                           FontSize="13"
-                                                           Foreground="{DynamicResource MutedTextBrush}"
-                                                           TextWrapping="NoWrap"
-                                                           TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding UpdatedText}"
-                                                           HorizontalAlignment="Right"
-                                                           FontSize="12"
-                                                           Foreground="{DynamicResource MutedTextBrush}" />
-                                                <TextBlock x:Name="ExpandGlyph"
-                                                           Margin="0,3,0,0"
-                                                           Text="⌄"
-                                                           HorizontalAlignment="Right"
-                                                           Foreground="{DynamicResource MutedTextBrush}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Button>
-
-                                    <Border ClipToBounds="True"
-                                            MaxHeight="0"
-                                            Opacity="0"
-                                            Margin="10,0,0,5">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="MaxHeight" Value="0" />
-                                                <Setter Property="Opacity" Value="0" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                        <DataTrigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
-                                                                                     To="1600"
-                                                                                     Duration="0:0:0.22">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                     To="1"
-                                                                                     Duration="0:0:0.18" />
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.EnterActions>
-                                                        <DataTrigger.ExitActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
-                                                                                     To="0"
-                                                                                     Duration="0:0:0.18">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <CubicEase EasingMode="EaseIn" />
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                     To="0"
-                                                                                     Duration="0:0:0.14" />
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.ExitActions>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <ItemsControl ItemsSource="{Binding VisibleConversations}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Button Command="{Binding DataContext.SelectConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding}"
-                                                            Style="{StaticResource AppicaConversationItemStyle}">
-                                                        <Button.ContextMenu>
-                                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                                <MenuItem Header="{StaticResource Chat.OpenNewWindow}"
-                                                                          Command="{Binding OpenInNewWindowCommand}" />
-                                                                <Separator />
-                                                                <MenuItem Header="{StaticResource Chat.DeleteConversation}"
-                                                                          Command="{Binding DeleteConversationCommand}" />
-                                                            </ContextMenu>
-                                                        </Button.ContextMenu>
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" />
-                                                                <ColumnDefinition Width="Auto" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <StackPanel>
-                                                                <TextBlock Text="{Binding Title}"
-                                                                           FontSize="13"
-                                                                           FontWeight="SemiBold"
-                                                                           TextWrapping="NoWrap"
-                                                                           TextTrimming="CharacterEllipsis" />
-                                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                                    <TextBlock Text="{Binding PreviewText}"
-                                                                               FontSize="12"
-                                                                               Foreground="{DynamicResource MutedTextBrush}"
-                                                                               TextWrapping="NoWrap"
-                                                                               TextTrimming="CharacterEllipsis" />
-                                                                    <TextBlock Text="{Binding GenerationStatusText}"
-                                                                               Margin="7,0,0,0"
-                                                                               FontSize="11"
-                                                                               FontWeight="SemiBold"
-                                                                               Foreground="{DynamicResource AccentBrush}" />
-                                                                </StackPanel>
-                                                            </StackPanel>
-                                                            <TextBlock Grid.Column="1"
-                                                                       Margin="8,0,0,0"
-                                                                       Text="{Binding UpdatedText}"
-                                                                       FontSize="11"
-                                                                       Foreground="{DynamicResource MutedTextBrush}" />
-                                                        </Grid>
-                                                    </Button>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </Border>
-                                </StackPanel>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                        <Setter TargetName="ExpandGlyph" Property="Text" Value="⌃" />
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Grid>
-        </Border>
+        <chat:ChatConversationList Grid.Column="0" />
 
         <GridSplitter Grid.Column="1"
                       Width="6"
@@ -238,45 +40,47 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="54"
-                                Height="54"
+                        <Border Width="40"
+                                Height="40"
                                 VerticalAlignment="Center"
                                 Background="{DynamicResource SurfaceAltBrush}"
-                                 CornerRadius="27"
-                                 ClipToBounds="True">
+                                CornerRadius="20"
+                                ClipToBounds="True">
                             <Grid>
                                 <TextBlock HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            FontFamily="{StaticResource AppicaShellIconFont}"
-                                           FontSize="22"
+                                           FontSize="17"
                                            Foreground="{DynamicResource AccentBrush}"
                                            Text="&#xE77B;" />
-                                <Image Source="{Binding SelectedConversationAvatarPath}"
+                                <Image Source="{Binding SelectedConversationAvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=48}"
                                        Stretch="UniformToFill">
                                     <Image.Clip>
-                                        <EllipseGeometry Center="27,27"
-                                                         RadiusX="27"
-                                                         RadiusY="27" />
+                                        <EllipseGeometry Center="20,20"
+                                                         RadiusX="20"
+                                                         RadiusY="20" />
                                     </Image.Clip>
                                 </Image>
                             </Grid>
                         </Border>
                         <StackPanel Grid.Column="1"
-                                    Margin="14,0,16,0"
+                                    Margin="12,0,14,0"
                                     VerticalAlignment="Center">
                             <TextBlock Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource Chat.NoConversationSelected}}"
-                                       FontSize="20"
+                                       FontSize="{DynamicResource FontSizeSubtitle}"
                                        FontWeight="SemiBold"
                                        TextWrapping="NoWrap"
                                        TextTrimming="CharacterEllipsis" />
-                            <StackPanel Margin="0,5,0,0" Orientation="Horizontal">
-                                <Ellipse Width="8"
-                                         Height="8"
-                                         Margin="0,0,7,0"
+                            <StackPanel Margin="0,3,0,0" Orientation="Horizontal">
+                                <Ellipse Width="7"
+                                         Height="7"
+                                         Margin="0,0,6,0"
                                          VerticalAlignment="Center"
                                          Fill="{DynamicResource SuccessBrush}" />
                                 <TextBlock Text="{Binding Status}"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="NoWrap"
                                            TextTrimming="CharacterEllipsis" />
@@ -314,7 +118,7 @@
                                 </Border>
                             </Popup>
                             <ComboBox Width="126"
-                                      Height="44"
+                                      Height="36"
                                       Margin="0,0,8,0"
                                       ItemsSource="{Binding DisplayModes}"
                                       ItemTemplate="{StaticResource ChatCompactOptionTemplate}"
@@ -324,8 +128,48 @@
                             <Button Content="{StaticResource Common.Stop}"
                                     Command="{Binding StopGenerationCommand}"
                                     ToolTip="{StaticResource Chat.StopGenerationToolTip}"
+                                    Visibility="{Binding IsCurrentConversationGenerating, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     Style="{StaticResource AppicaHeaderActionButtonStyle}" />
                         </StackPanel>
+                        <Button x:Name="RightPanelToggleButton"
+                                Grid.Column="3"
+                                Width="32"
+                                Height="32"
+                                Margin="8,0,0,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Click="RightPanelToggleButton_OnClick"
+                                ToolTip="{StaticResource Chat.CollapseRightPanel}"
+                                AutomationProperties.Name="{StaticResource Chat.CollapseRightPanel}"
+                                Style="{StaticResource SidebarToggleButtonStyle}">
+                            <Grid Width="16" Height="16">
+                                <Border Width="14"
+                                        Height="14"
+                                        CornerRadius="5"
+                                        BorderBrush="{DynamicResource MutedTextBrush}"
+                                        BorderThickness="1" />
+                                <Border Width="1"
+                                        Height="8"
+                                        HorizontalAlignment="Right"
+                                        Margin="0,0,3,0"
+                                        Background="{DynamicResource MutedTextBrush}" />
+                                <Path x:Name="RightPanelCollapseArrow"
+                                      Data="M 6,4 L 10,8 L 6,12"
+                                      Stroke="{DynamicResource MutedTextBrush}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" />
+                                <Path x:Name="RightPanelExpandArrow"
+                                      Data="M 10,4 L 6,8 L 10,12"
+                                      Visibility="Collapsed"
+                                      Stroke="{DynamicResource MutedTextBrush}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" />
+                            </Grid>
+                        </Button>
                     </Grid>
                 </Border>
 
@@ -342,7 +186,7 @@
                                    VerticalAlignment="Center"
                                    Text="{Binding Group.AiCountText}"
                                    Foreground="{DynamicResource MutedTextBrush}"
-                                   FontSize="12" />
+                                   FontSize="{DynamicResource FontSizeSmall}" />
                         <ScrollViewer HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Disabled"
                                       CanContentScroll="True">
@@ -376,7 +220,7 @@
                                                                        FontSize="15"
                                                                        Foreground="{DynamicResource AccentBrush}"
                                                                        Text="&#xE77B;" />
-                                                            <Image Source="{Binding Character.AvatarPath}"
+                                                            <Image Source="{Binding Character.AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=48}"
                                                                    Stretch="UniformToFill">
                                                                 <Image.Clip>
                                                                     <EllipseGeometry Center="18,18"
@@ -494,7 +338,7 @@
                                                    FontSize="18"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    Text="&#xE77B;" />
-                                        <Image Source="{Binding AvatarPath}"
+                                        <Image Source="{Binding AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=48}"
                                                Stretch="UniformToFill">
                                             <Image.Clip>
                                                 <EllipseGeometry Center="21,21"
@@ -527,31 +371,7 @@
                                       Grid.Row="1"
                                       Grid.Column="2"
                                       HorizontalAlignment="Left"
-                                      Margin="0,16,0,0"
-                                      MouseEnter="MessageHost_OnMouseEnter"
-                                      MouseLeave="MessageHost_OnMouseLeave">
-                                    <Grid.Triggers>
-                                        <EventTrigger RoutedEvent="MouseEnter">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="HoverActions"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     To="1"
-                                                                     Duration="0:0:0.12" />
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                        <EventTrigger RoutedEvent="MouseLeave">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="HoverActions"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     To="0"
-                                                                     Duration="0:0:0.12" />
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </Grid.Triggers>
+                                      Margin="0,16,0,0">
                                     <Border x:Name="MessageBubble"
                                             HorizontalAlignment="Left"
                                             Style="{StaticResource AppicaMessageBubbleStyle}"
@@ -562,10 +382,23 @@
                                     <Border x:Name="HoverActions"
                                             Margin="0,-16,4,0"
                                             HorizontalAlignment="Right"
-                                            VerticalAlignment="Top"
-                                            Opacity="0"
-                                            IsHitTestVisible="False"
-                                            Style="{StaticResource AppicaMessageHoverBarStyle}">
+                                            VerticalAlignment="Top">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource AppicaMessageHoverBarStyle}">
+                                                <Setter Property="Opacity" Value="0" />
+                                                <Setter Property="IsHitTestVisible" Value="False" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=MessageHost}" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                        <Setter Property="IsHitTestVisible" Value="True" />
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                        <Setter Property="IsHitTestVisible" Value="True" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <StackPanel Orientation="Horizontal">
                                             <Button Command="{Binding CopyCommand}"
                                                     ToolTip="{StaticResource Common.Copy}"
@@ -628,7 +461,7 @@
                                                        VerticalAlignment="Center"
                                                        TextAlignment="Center"
                                                        Text="{Binding CandidateNavigationLabel}"
-                                                       FontSize="10"
+                                                       FontSize="{DynamicResource FontSizeCaption2}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <Button Content="›"
                                                     Command="{Binding NextCandidateCommand}"
@@ -638,6 +471,7 @@
                                     </Border>
 
                                     <Button Style="{StaticResource MessagePlusButtonStyle}"
+                                            AutomationProperties.Name="{StaticResource Chat.MessageToolsToolTip}"
                                             ToolTip="{StaticResource Chat.MessageToolsToolTip}"
                                             PreviewMouseLeftButtonDown="MessagePlus_OnPreviewMouseLeftButtonDown"
                                             Click="MessagePlus_OnClick"
@@ -670,7 +504,7 @@
                                             <TextBlock Text="&#xE713;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="12" />
                                         </Button>
                                         <TextBlock Text="{Binding SpeechStatus}" MaxWidth="280" TextWrapping="Wrap"
-                                                   Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11"
+                                                   Margin="5,0,0,0" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeCaption}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
                                 </StackPanel>
@@ -679,7 +513,7 @@
                                        DataContext="{Binding}"
                                        PlacementTarget="{Binding ElementName=MessageBubble}"
                                        Placement="MousePoint"
-                                       StaysOpen="True"
+                                       StaysOpen="False"
                                        AllowsTransparency="True"
                                        PopupAnimation="Fade">
                                     <Border Width="178"
@@ -786,6 +620,12 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
+            <Button x:Name="ScrollToBottomButton" Grid.Row="2" Panel.ZIndex="5"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"
+                    Content="{DynamicResource Chat.ScrollToBottom}" Visibility="Collapsed"
+                    AutomationProperties.Name="{Binding Content, RelativeSource={RelativeSource Self}}"
+                    Click="ScrollToBottomButton_OnClick" Style="{StaticResource SecondaryButtonStyle}" />
+
             <!-- A reasoning stream is a transient progress signal. A whole-string
                  pulse works for every supported language without per-character assumptions. -->
             <TextBlock Grid.Row="2"
@@ -793,7 +633,7 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Bottom"
                        Text="{StaticResource Chat.Thinking}"
-                       FontSize="12"
+                       FontSize="{DynamicResource FontSizeSmall}"
                        Foreground="{DynamicResource MutedTextBrush}"
                        IsHitTestVisible="False"
                        Visibility="{Binding IsModelThinking, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -829,7 +669,7 @@
                         Visibility="{Binding IsGroupAutoRelayCountdownVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <TextBlock VerticalAlignment="Center"
                            Text="{Binding GroupAutoRelayCountdownText}"
-                           FontSize="11"
+                           FontSize="{DynamicResource FontSizeCaption}"
                            Opacity="0.68"
                            Foreground="{DynamicResource MutedTextBrush}"
                            AutomationProperties.LiveSetting="Polite">
@@ -851,7 +691,7 @@
                         Height="22"
                         MinWidth="54"
                         Padding="5,1"
-                        FontSize="11"
+                        FontSize="{DynamicResource FontSizeCaption}"
                         Content="{StaticResource Chat.Group.StopAutoRelay}"
                         Command="{Binding StopGroupAutoRelayCommand}"
                         ToolTip="{StaticResource Chat.Group.StopAutoRelayToolTip}"
@@ -883,19 +723,23 @@
                     </TextBox>
                     <Grid Grid.Row="1" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal"
-                                    VerticalAlignment="Center">
+                        <Grid VerticalAlignment="Center" ClipToBounds="True">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding ActiveModelText}"
+                                       ToolTip="{Binding ActiveModelText}"
                                        MaxWidth="320"
                                        Margin="0,0,10,0"
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
                                        Style="{StaticResource AppicaComposerMetaTextStyle}" />
-                            <Border VerticalAlignment="Center"
+                            <Border Grid.Column="1" VerticalAlignment="Center" MaxWidth="180"
                                     Style="{StaticResource AppicaTokenCapsuleStyle}">
                                 <Border.ToolTip>
                                     <StackPanel MaxWidth="360">
@@ -906,25 +750,23 @@
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border.ToolTip>
-                                <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBrush}"
+                                <TextBlock Style="{StaticResource TokenUsageTextStyle}"
                                            Text="{Binding EstimatedTokenHeadline, StringFormat={}{0} tokens}" />
                             </Border>
-                        </StackPanel>
+                        </Grid>
                         <StackPanel Grid.Column="2"
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal">
-                            <ComboBox Height="36"
-                                      Width="126"
+                            <ComboBox MinHeight="36"
+                                      MinWidth="140"
                                       Margin="0,0,8,0"
-                                      FontSize="13"
+                                      FontSize="{DynamicResource FontSizeBodySmall}"
                                       ItemsSource="{Binding SendModes}"
                                       ItemTemplate="{StaticResource ChatCompactOptionTemplate}"
                                       SelectedValuePath="Value"
                                       SelectedValue="{Binding SendMode}"
                                       ToolTip="{StaticResource Chat.SendModeToolTip}" />
-                            <Grid Width="88" Height="36">
+                            <Grid MinWidth="88" MinHeight="36">
                                 <Button Content="{StaticResource Chat.Send}"
                                         Command="{Binding SendLocalCommand}"
                                         Style="{StaticResource PrimaryButtonStyle}"
@@ -952,730 +794,26 @@
         <Border x:Name="RightPanel"
                 Grid.Column="4"
                 Style="{StaticResource AppicaChatInspectorStyle}">
-            <TabControl Style="{StaticResource AppicaInspectorTabControlStyle}"
-                        ItemContainerStyle="{StaticResource AppicaInspectorTabItemStyle}">
-                <TabItem Header="{StaticResource Chat.Tab.Context}">
-                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
-                        <StackPanel>
-                            <Border Style="{StaticResource AppicaInspectorCardStyle}">
-                                <StackPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{StaticResource Chat.TokenUsage}"
-                                                   Style="{StaticResource AppicaInspectorCardTitleStyle}" />
-                                        <TextBlock Grid.Column="1"
-                                                   Margin="12,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Text="{Binding EstimatedTokenHeadline}"
-                                                   FontSize="15"
-                                                   FontWeight="SemiBold" />
-                                    </Grid>
-                                    <ProgressBar Margin="0,14,0,0"
-                                                 Value="{Binding EstimatedTokenUsagePercent, Mode=OneWay}"
-                                                 Style="{StaticResource AppicaTokenProgressStyle}" />
-                                    <TextBlock Margin="0,12,0,0"
-                                               Text="{Binding EstimatedTokenText}"
-                                               TextWrapping="Wrap"
-                                               Style="{StaticResource AppicaTokenStatusTextStyle}" />
-                                    <TextBlock Margin="0,5,0,0"
-                                               Text="{Binding LastGenerationUsageText}"
-                                               TextWrapping="Wrap"
-                                               Style="{StaticResource AppicaComposerMetaTextStyle}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource AppicaInspectorCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="{StaticResource Chat.RequestStructure}"
-                                               Style="{StaticResource AppicaInspectorCardTitleStyle}" />
-                                    <TextBlock Margin="0,6,0,12"
-                                               Text="{StaticResource Chat.RequestStructureHelp}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource MutedTextBrush}" />
-                                    <Expander Header="{StaticResource Chat.SentSections}" IsExpanded="False">
-                                        <ItemsControl Margin="0,9,0,0"
-                                                      ItemsSource="{Binding ContextSegments}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Margin="0,0,0,8"
-                                                            Style="{StaticResource AppicaInspectorInsetStyle}">
-                                                        <StackPanel>
-                                                            <DockPanel>
-                                                                <TextBlock Text="{Binding Title}"
-                                                                           FontWeight="SemiBold" />
-                                                                <TextBlock DockPanel.Dock="Right"
-                                                                           Margin="8,0,0,0"
-                                                                           Text="{Binding ProviderRole}"
-                                                                           FontSize="11"
-                                                                           Foreground="{DynamicResource AccentBrush}" />
-                                                            </DockPanel>
-                                                            <TextBlock Margin="0,4,0,0"
-                                                                       MaxHeight="68"
-                                                                       Text="{Binding Content}"
-                                                                       TextWrapping="Wrap"
-                                                                       TextTrimming="CharacterEllipsis"
-                                                                       Foreground="{DynamicResource MutedTextBrush}" />
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </Expander>
-                                    <Expander Margin="0,8,0,0" Header="{StaticResource Chat.ApiRequestStructure}">
-                                        <TextBox MinHeight="150"
-                                                 MaxHeight="240"
-                                                 Margin="0,9,0,0"
-                                                 Text="{Binding ApiRequestPreview, Mode=OneWay}"
-                                                 IsReadOnly="True"
-                                                 AcceptsReturn="True"
-                                                 TextWrapping="NoWrap"
-                                                 VerticalContentAlignment="Top"
-                                                 VerticalScrollBarVisibility="Auto"
-                                                 HorizontalScrollBarVisibility="Auto" />
-                                    </Expander>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource AppicaInspectorCardStyle}">
-                                <StackPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{StaticResource Chat.Retrieval.Current}"
-                                                   Style="{StaticResource AppicaInspectorCardTitleStyle}" />
-                                        <CheckBox Grid.Column="1"
-                                                  Margin="12,0,0,0"
-                                                  Content="{StaticResource Common.Enable}"
-                                                  IsChecked="{Binding Retrieval.IsEnabled}"
-                                                  VerticalAlignment="Center" />
-                                    </Grid>
-                                    <TextBlock Margin="0,8,0,0"
-                                               Text="{Binding Retrieval.Status}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource MutedTextBrush}" />
-                                    <DockPanel Margin="0,9,0,0">
-                                        <TextBlock Text="{StaticResource Chat.Retrieval.ActualMatches}"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock DockPanel.Dock="Right"
-                                                   Text="{Binding Retrieval.ExcludedCount, StringFormat={StaticResource Chat.Retrieval.ExcludedCountFormat}}"
-                                                   Foreground="{DynamicResource MutedTextBrush}" />
-                                    </DockPanel>
-                                    <Expander Margin="0,10,0,0"
-                                              Header="{StaticResource Chat.Retrieval.SettingsAndResults}">
-                                        <StackPanel Margin="0,9,0,0">
-                                            <TextBlock Text="{StaticResource Chat.Retrieval.Scope}" />
-                                            <ComboBox Margin="0,5,0,0"
-                                                      ItemsSource="{Binding Retrieval.ScopeOptions}"
-                                                      DisplayMemberPath="Label"
-                                                      SelectedValuePath="Value"
-                                                      SelectedValue="{Binding Retrieval.Scope}" />
-                                            <Grid Margin="0,10,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
-                                                    <TextBlock Text="{StaticResource Chat.Retrieval.RecentMessages}" />
-                                                    <TextBox Margin="0,5,0,0"
-                                                             Text="{Binding Retrieval.RecentMessageCount, UpdateSourceTrigger=PropertyChanged}" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="{StaticResource Chat.Retrieval.MaximumResults}" />
-                                                    <TextBox Margin="0,5,0,0"
-                                                             Text="{Binding Retrieval.MaximumResults, UpdateSourceTrigger=PropertyChanged}" />
-                                                </StackPanel>
-                                            </Grid>
-                                            <TextBlock Margin="0,10,0,0" Text="{StaticResource Chat.Retrieval.TokenBudget}" />
-                                            <TextBox Margin="0,5,0,0"
-                                                     Text="{Binding Retrieval.TokenBudget, UpdateSourceTrigger=PropertyChanged}" />
-                                            <WrapPanel Margin="0,10,0,0">
-                                                <Button Margin="0,0,8,8"
-                                                        Content="{StaticResource Chat.Retrieval.SaveSettings}"
-                                                        Command="{Binding Retrieval.SaveSettingsCommand}"
-                                                        Style="{StaticResource PrimaryButtonStyle}" />
-                                                <Button Margin="0,0,0,8"
-                                                        Content="{StaticResource Chat.Retrieval.ClearExclusions}"
-                                                        Command="{Binding Retrieval.ClearExclusionsCommand}"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                            </WrapPanel>
-                                            <ItemsControl Margin="0,5,0,0"
-                                                          ItemsSource="{Binding Retrieval.Matches}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Margin="0,0,0,8"
-                                                                Style="{StaticResource AppicaInspectorInsetStyle}">
-                                                            <StackPanel>
-                                                                <DockPanel>
-                                                                    <TextBlock Text="{Binding Title}"
-                                                                               FontWeight="SemiBold"
-                                                                               TextTrimming="CharacterEllipsis" />
-                                                                    <Button DockPanel.Dock="Right"
-                                                                            Margin="8,0,0,0"
-                                                                            Content="{StaticResource Chat.Retrieval.Exclude}"
-                                                                            Command="{Binding DataContext.Retrieval.ExcludeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                            CommandParameter="{Binding}"
-                                                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                                                </DockPanel>
-                                                                <TextBlock Margin="0,5,0,0"
-                                                                           MaxHeight="84"
-                                                                           Text="{Binding Content}"
-                                                                           TextWrapping="Wrap"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           Foreground="{DynamicResource MutedTextBrush}" />
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <Expander Margin="0,7,0,0" Header="{StaticResource Chat.Retrieval.Diagnostics}">
-                                                <ItemsControl Margin="0,7,0,0"
-                                                              ItemsSource="{Binding Retrieval.Diagnostics}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock Margin="0,0,0,5"
-                                                                       Text="{Binding}"
-                                                                       TextWrapping="Wrap"
-                                                                       Foreground="{DynamicResource MutedTextBrush}" />
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </Expander>
-                                        </StackPanel>
-                                    </Expander>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
+            <TabControl Style="{StaticResource InspectorActivityControlStyle}">
+                <TabItem Header="{StaticResource Chat.Tab.Context}" Tag="&#xE8A5;">
+                    <chat:ChatContextPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Character}"
+                <TabItem Header="{StaticResource Chat.Tab.Character}" Tag="&#xE77B;"
                          Visibility="{Binding IsSingleCharacterConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
-                        <StackPanel>
-                            <TextBlock Text="{Binding CharacterPromptCharacterName, StringFormat={StaticResource Chat.Character.CurrentFormat}}"
-                                       Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Margin="0,6,0,12"
-                                       Padding="10"
-                                       Text="{StaticResource Chat.Character.Description}"
-                                       TextWrapping="Wrap"
-                                       Background="{DynamicResource AccentSoftBrush}" />
-
-                            <TextBlock Text="{StaticResource Chat.Character.SystemPrompt}"
-                                       FontWeight="SemiBold" />
-                            <TextBlock Margin="0,4,0,7"
-                                       Text="{StaticResource Chat.Character.SystemPromptHelp}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                             <TextBox MaxHeight="105"
-                                     IsReadOnly="True"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalContentAlignment="Top"
-                                     VerticalScrollBarVisibility="Auto"
-                                     Text="{Binding CharacterSystemPrompt, Mode=OneWay}" />
-                            <Button Margin="0,8,0,0"
-                                    HorizontalAlignment="Left"
-                                    Content="{StaticResource Chat.Character.EditSystemPrompt}"
-                                    Command="{Binding EditCharacterSystemPromptCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-
-                            <TextBlock Margin="0,18,0,0"
-                                       Text="{StaticResource Chat.Character.PostHistory}"
-                                       FontWeight="SemiBold" />
-                            <TextBlock Margin="0,4,0,7"
-                                       Text="{StaticResource Chat.Character.PostHistoryHelp}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                             <TextBox MaxHeight="95"
-                                     IsReadOnly="True"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalContentAlignment="Top"
-                                     VerticalScrollBarVisibility="Auto"
-                                     Text="{Binding CharacterPostHistoryInstructions, Mode=OneWay}" />
-                            <Button Margin="0,8,0,0"
-                                    HorizontalAlignment="Left"
-                                    Content="{StaticResource Chat.Character.EditPostHistory}"
-                                    Command="{Binding EditCharacterPostHistoryCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-
-                            <Separator Margin="0,18,0,12" />
-                            <Button HorizontalAlignment="Left"
-                                    Content="{StaticResource Chat.EditGlobalChatPrompt}"
-                                    Command="{Binding OpenGlobalPromptCommand}"
-                                    CommandParameter="ChatSystem"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                            <TextBlock Margin="0,10,0,0"
-                                       Text="{Binding CharacterPromptStatus}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                        </StackPanel>
-                    </ScrollViewer>
+                    <chat:ChatCharacterPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Persona}">
-                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
-                        <StackPanel>
-                            <TextBlock Text="{StaticResource Chat.Persona.Title}"
-                                       Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Margin="0,2,0,12"
-                                       Text="{StaticResource Chat.Persona.Description}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                            <TextBlock Text="{StaticResource Chat.Persona.Current}" />
-                            <ComboBox Margin="0,5,0,0"
-                                      ItemsSource="{Binding Personas.Profiles}"
-                                      DisplayMemberPath="Name"
-                                      SelectedItem="{Binding Personas.SelectedProfile, Mode=TwoWay}" />
-                             <TextBlock Margin="0,12,0,0" Text="{StaticResource Chat.Persona.Name}" />
-                             <TextBox Margin="0,5,0,0"
-                                      PreviewMouseLeftButtonDown="PersonaEditorTextBox_OnPreviewMouseLeftButtonDown"
-                                      Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Margin="0,12,0,0" Text="{StaticResource Chat.Persona.UserSettings}" />
-                            <TextBox Margin="0,5,0,0"
-                                     MinHeight="110"
-                                      AcceptsReturn="True"
-                                      TextWrapping="Wrap"
-                                      VerticalContentAlignment="Top"
-                                      PreviewMouseLeftButtonDown="PersonaEditorTextBox_OnPreviewMouseLeftButtonDown"
-                                      Text="{Binding Personas.EditorDescription, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Margin="0,8,0,0"
-                                       Text="{StaticResource Chat.Persona.SaveHelp}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                            <TextBlock Margin="0,8,0,0"
-                                       Text="{Binding Personas.Status}"
-                                       Foreground="{DynamicResource MutedTextBrush}"
-                                       TextWrapping="Wrap" />
-                            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
-                                <Button Content="{StaticResource Chat.Persona.Save}"
-                                        Command="{Binding SavePersonaCommand}"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
-                                <Button Margin="8,0,0,0"
-                                        Content="{StaticResource Common.Cancel}"
-                                        Command="{Binding CancelPersonaCommand}"
-                                        Style="{StaticResource SecondaryButtonStyle}" />
-                            </StackPanel>
-                            <Separator Margin="0,18,0,12" />
-                            <TextBlock Text="{StaticResource Chat.GlobalChatPrompt}"
-                                       FontWeight="SemiBold" />
-                            <TextBlock Margin="0,5,0,8"
-                                       Text="{StaticResource Chat.GlobalChatPromptHelp}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                            <Button HorizontalAlignment="Left"
-                                    Content="{StaticResource Chat.EditGlobalChatPrompt}"
-                                    Command="{Binding OpenGlobalPromptCommand}"
-                                    CommandParameter="ChatSystem"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                        </StackPanel>
-                    </ScrollViewer>
+                <TabItem Header="{StaticResource Chat.Tab.Persona}" Tag="&#xE716;">
+                    <chat:ChatPersonaPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Memory}">
-                    <TabControl Margin="18">
-                        <TabItem Header="{StaticResource Chat.Memory.BodyTab}">
-                            <Grid Margin="10">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Text="{Binding Memory.OwnerLabel}"
-                                           Style="{StaticResource SectionTitleStyle}" />
-                                <StackPanel Grid.Row="1" Margin="0,0,0,10">
-                                    <TextBlock Text="{Binding Memory.Status}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,5,0,0"
-                                               Text="{Binding Memory.CheckpointText}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                </StackPanel>
-                                <TextBox Grid.Row="2"
-                                         Text="{Binding Memory.Body, UpdateSourceTrigger=PropertyChanged}"
-                                         AcceptsReturn="True"
-                                         AcceptsTab="True"
-                                         TextWrapping="Wrap"
-                                         VerticalContentAlignment="Top"
-                                         VerticalScrollBarVisibility="Auto" />
-                                <Grid Grid.Row="3" Margin="0,10,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock VerticalAlignment="Center" Text="{StaticResource Chat.Memory.TargetTokens}" />
-                                        <TextBox Width="86"
-                                                 Margin="8,0,0,0"
-                                                 Text="{Binding Memory.TargetTokens, UpdateSourceTrigger=PropertyChanged}" />
-                                    </StackPanel>
-                                    <Button Grid.Column="1"
-                                            Content="{StaticResource Chat.Memory.SaveBody}"
-                                            Command="{Binding Memory.SaveBodyCommand}"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                </Grid>
-                            </Grid>
-                        </TabItem>
-                        <TabItem Header="{StaticResource Chat.Memory.AdvancedWorkflowTab}">
-                            <ScrollViewer Margin="10,10,0,10" VerticalScrollBarVisibility="Auto">
-                                <StackPanel>
-                                    <TextBlock Text="{StaticResource Chat.Memory.IncrementalUpdate}"
-                                               Style="{StaticResource SectionTitleStyle}" />
-                                    <TextBlock Margin="0,2,0,8"
-                                               Text="{StaticResource Chat.Memory.IncrementalUpdateHelp}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource MutedTextBrush}" />
-                                    <CheckBox Margin="0,4,0,0"
-                                              Content="{StaticResource Chat.Memory.AutoUpdate}"
-                                              IsChecked="{Binding Memory.AutoGenerateEnabled}" />
-                                    <Grid Margin="0,10,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="10" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="{StaticResource Chat.Memory.NewTurnsThreshold}" />
-                                            <TextBox Margin="0,5,0,0"
-                                                     Text="{Binding Memory.UpdateIntervalTurns, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="{StaticResource Chat.Memory.MaximumTurns}" />
-                                            <TextBox Margin="0,5,0,0"
-                                                     Text="{Binding Memory.MaximumSourceUserTurns, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <CheckBox Margin="0,10,0,0"
-                                              Content="{StaticResource Chat.Memory.IncrementalOnly}"
-                                              IsChecked="{Binding Memory.SendOnlyNewMessages}" />
-                                    <Button Margin="0,10,0,0"
-                                            Content="{StaticResource Chat.Memory.SaveWorkflow}"
-                                            Command="{Binding Memory.SaveSettingsCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <WrapPanel Margin="0,8,0,0">
-                                        <Button Margin="0,0,7,0"
-                                                Content="{StaticResource Chat.Memory.EditUpdatePrompt}"
-                                                Command="{Binding OpenGlobalPromptCommand}"
-                                                CommandParameter="MemoryUpdateSystem"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Content="{StaticResource Chat.Memory.EditCompressionPrompt}"
-                                                Command="{Binding OpenGlobalPromptCommand}"
-                                                CommandParameter="MemoryCompressionSystem"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                    </WrapPanel>
-                                    <TextBlock Margin="0,8,0,0"
-                                               Text="{StaticResource Chat.Memory.TemplateHelp}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource MutedTextBrush}" />
-                                    <WrapPanel Margin="0,12,0,0">
-                                        <Button Margin="0,0,7,7"
-                                                Content="{StaticResource Chat.Memory.PreviewUpdate}"
-                                                Command="{Binding Memory.PreviewUpdateCommand}"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Margin="0,0,7,7"
-                                                Content="{StaticResource Chat.Memory.GenerateUpdateDraft}"
-                                                Command="{Binding Memory.GenerateUpdateCommand}"
-                                                Style="{StaticResource PrimaryButtonStyle}" />
-                                        <Button Margin="0,0,7,7"
-                                                Content="{StaticResource Chat.Memory.GenerateCompressionDraft}"
-                                                Command="{Binding Memory.GenerateCompressionCommand}"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Margin="0,0,0,7"
-                                                Content="{StaticResource Common.Stop}"
-                                                 Command="{Binding Memory.StopGenerationCommand}"
-                                                 Visibility="Collapsed"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                    </WrapPanel>
-                                    <TextBlock Margin="0,2,0,0"
-                                               Text="{Binding Memory.Status}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,10,0,4"
-                                               Text="{StaticResource Chat.Memory.UpdatePreview}"
-                                               FontWeight="SemiBold" />
-                                    <TextBox Text="{Binding Memory.RequestPreview, Mode=OneWay}"
-                                             IsReadOnly="True"
-                                             AcceptsReturn="True"
-                                             TextWrapping="Wrap"
-                                             VerticalContentAlignment="Top"
-                                             HorizontalScrollBarVisibility="Disabled"
-                                             VerticalScrollBarVisibility="Auto"
-                                             MaxHeight="220" />
-
-                                </StackPanel>
-                            </ScrollViewer>
-                        </TabItem>
-                        <TabItem Header="{StaticResource Chat.Memory.DraftTab}">
-                            <Grid Margin="10">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Text="{Binding Memory.PendingTargetText}"
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource MutedTextBrush}" />
-                                <TabControl Grid.Row="1" Margin="0,10,0,0">
-                                    <TabItem Header="{StaticResource Chat.Memory.EditableBodyTab}">
-                                        <TextBox Text="{Binding Memory.PendingBody, UpdateSourceTrigger=PropertyChanged}"
-                                                 AcceptsReturn="True"
-                                                 AcceptsTab="True"
-                                                 TextWrapping="Wrap"
-                                                 VerticalContentAlignment="Top"
-                                                 HorizontalScrollBarVisibility="Disabled"
-                                                 VerticalScrollBarVisibility="Auto" />
-                                    </TabItem>
-                                    <TabItem Header="{StaticResource Chat.Memory.ApiStructureTab}">
-                                        <TextBox Text="{Binding Memory.RequestPreview, Mode=OneWay}"
-                                                 IsReadOnly="True"
-                                                 AcceptsReturn="True"
-                                                 TextWrapping="Wrap"
-                                                 VerticalContentAlignment="Top"
-                                                 HorizontalScrollBarVisibility="Disabled"
-                                                 VerticalScrollBarVisibility="Auto" />
-                                    </TabItem>
-                                </TabControl>
-                                <Grid Grid.Row="2" Margin="0,10,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="1"
-                                            Margin="0,0,8,0"
-                                            Content="{StaticResource Chat.Memory.DiscardDraft}"
-                                            Command="{Binding Memory.DiscardDraftCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Grid.Column="2"
-                                            Content="{StaticResource Chat.Memory.SaveDraft}"
-                                            Command="{Binding Memory.SaveDraftCommand}"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                </Grid>
-                            </Grid>
-                        </TabItem>
-                    </TabControl>
+                <TabItem Header="{StaticResource Chat.Tab.Memory}" Tag="&#xE8F1;">
+                    <chat:ChatMemoryPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Session}">
-                    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
-                        <StackPanel>
-                            <Border Padding="10"
-                                    Background="{DynamicResource SurfaceAltBrush}"
-                                    CornerRadius="10">
-                                <StackPanel>
-                                    <TextBlock Text="{StaticResource Chat.Session.Current}" FontWeight="SemiBold" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource Chat.Session.NoneSelected}}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               Text="{Binding Status}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource MutedTextBrush}" />
-                                    <DockPanel Margin="0,8,0,0">
-                                        <TextBlock VerticalAlignment="Center" Text="{StaticResource Chat.Session.DisplayMode}" />
-                                        <ComboBox Width="116"
-                                                  Margin="8,0,0,0"
-                                                  ItemsSource="{Binding DisplayModes}"
-                                                  ItemTemplate="{StaticResource ChatCompactOptionTemplate}"
-                                                  SelectedValuePath="Value"
-                                                  SelectedValue="{Binding DisplayMode}" />
-                                    </DockPanel>
-                                </StackPanel>
-                            </Border>
-                            <StackPanel Margin="0,12,0,0"
-                                        IsEnabled="{Binding Group.IsGroupConversation}"
-                                        Visibility="{Binding Group.IsGroupConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="{StaticResource Chat.Group.RelayAndMemory}"
-                                       Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="{Binding Group.Status}"
-                                       Foreground="{DynamicResource MutedTextBrush}"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Margin="0,5,0,0"
-                                       Text="{Binding Group.RelayStateText}"
-                                       Foreground="{DynamicResource MutedTextBrush}"
-                                       TextWrapping="Wrap" />
-
-                            <TextBlock Margin="0,14,0,0" Text="{StaticResource Chat.Group.RelayMode}" />
-                            <TextBlock Margin="0,5,0,0"
-                                       Text="{StaticResource GroupChat.Relay.FixedOrder}"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                            <CheckBox Margin="0,10,0,0"
-                                      Content="{StaticResource Chat.Group.AutoRelay}"
-                                      IsChecked="{Binding Group.AutoContinueEnabled}" />
-                            <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-                                <TextBlock VerticalAlignment="Center" Text="{StaticResource Chat.Group.MaximumRelay}" />
-                                <TextBox Width="72"
-                                         Margin="8,0,0,0"
-                                         Text="{Binding Group.MaximumAutomaticTurns, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-
-                            <TextBlock Margin="0,14,0,5" Text="{StaticResource Chat.Group.EnabledMembers}" FontWeight="SemiBold" />
-                            <ItemsControl ItemsSource="{Binding Group.Members}"
-                                          IsEnabled="{Binding CanEditGroupMembers}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <CheckBox Margin="2,3"
-                                                  Content="{Binding Character.Name}"
-                                                  IsChecked="{Binding IsEnabled}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <TextBlock Margin="0,12,0,5"
-                                       Text="{StaticResource Chat.Group.ManualSpeaker}"
-                                       Foreground="{DynamicResource MutedTextBrush}"
-                                       TextWrapping="Wrap" />
-                            <WrapPanel Margin="0,10,0,0">
-                                <Button Margin="0,0,7,7"
-                                        Content="{Binding Group.PauseButtonText}"
-                                        Command="{Binding Group.PauseOrResumeCommand}"
-                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button Margin="7,0,0,7"
-                                        Content="{StaticResource Chat.Group.EditGlobalPrompt}"
-                                        Command="{Binding OpenGlobalPromptCommand}"
-                                        CommandParameter="GroupRelaySystem"
-                                        Style="{StaticResource SecondaryButtonStyle}" />
-                            </WrapPanel>
-
-                            <Border Margin="0,12,0,0"
-                                    Padding="12"
-                                    Background="{DynamicResource AccentSoftBrush}"
-                                    CornerRadius="10">
-                                <StackPanel>
-                                    <TextBlock Text="{StaticResource Chat.Group.RelayPrompt}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Margin="0,4,0,6"
-                                               Text="{StaticResource Chat.Group.RelayPromptHelp}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource MutedTextBrush}" />
-                                    <Expander Header="{StaticResource Chat.Group.ExtraSystemPrompt}">
-                                        <TextBox MinHeight="170"
-                                                 AcceptsReturn="True"
-                                                 TextWrapping="Wrap"
-                                                 Text="{Binding Group.GroupSystemPrompt, UpdateSourceTrigger=PropertyChanged}" />
-                                    </Expander>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Margin="0,14,0,0"
-                                    Padding="10"
-                                    Background="{DynamicResource SurfaceAltBrush}"
-                                    CornerRadius="10">
-                                <StackPanel>
-                                    <TextBlock Text="{StaticResource Chat.Group.MemoryReliability}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Margin="0,4,0,8"
-                                               Text="{StaticResource Chat.Group.MemoryReliabilityHelp}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                    <CheckBox Content="{StaticResource Chat.Group.MemberMemoryEnabled}"
-                                              IsChecked="{Binding Group.MemberMemoryEnabled}" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               Text="{StaticResource Chat.Group.MemberMemoryEnabledHelp}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                    <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-                                        <TextBlock VerticalAlignment="Center"
-                                                   Text="{StaticResource Chat.Group.MemoryTokenThreshold}" />
-                                         <TextBox Width="88"
-                                                  Margin="8,0,0,0"
-                                                  AutomationProperties.Name="{StaticResource Chat.Group.MemoryTokenThreshold}"
-                                                  Text="{Binding Group.MemoryPendingTokenThreshold, UpdateSourceTrigger=PropertyChanged}" />
-                                    </StackPanel>
-                                     <TextBlock Margin="0,8,0,0"
-                                                Text="{Binding Group.MemoryStatus}"
-                                                AutomationProperties.LiveSetting="Polite"
-                                                Foreground="{DynamicResource MutedTextBrush}"
-                                                TextWrapping="Wrap" />
-                                    <WrapPanel Margin="0,8,0,0">
-                                        <Button Margin="0,0,7,0"
-                                                Content="{StaticResource Chat.Group.SaveSettings}"
-                                                Command="{Binding Group.SaveSettingsCommand}"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Content="{StaticResource Chat.Group.UpdateMemoryNow}"
-                                                Command="{Binding Group.UpdateMemoryCommand}"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Margin="0,14,0,0"
-                                    Padding="10"
-                                    Background="{DynamicResource SurfaceAltBrush}"
-                                    CornerRadius="10">
-                                <StackPanel>
-                                    <TextBlock Text="{StaticResource Chat.Group.MergeMemory}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Margin="0,4,0,8"
-                                               Text="{StaticResource Chat.Group.MergeMemoryHelp}"
-                                               Foreground="{DynamicResource MutedTextBrush}"
-                                               TextWrapping="Wrap" />
-                                    <ComboBox ItemsSource="{Binding Group.Members}"
-                                              DisplayMemberPath="Character.Name"
-                                              SelectedItem="{Binding Group.SelectedMergeMember}" />
-                                    <Button Margin="0,8,0,0"
-                                            Content="{StaticResource Chat.Group.GenerateMergeDraft}"
-                                            Command="{Binding Group.MergeMemoryCommand}"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                    <Button Margin="0,8,0,0"
-                                            Content="{StaticResource Chat.Group.EditMergePrompt}"
-                                            Command="{Binding OpenGlobalPromptCommand}"
-                                            CommandParameter="GroupMemoryMergeSystem"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
+                <TabItem Header="{StaticResource Chat.Tab.Session}" Tag="&#xE713;">
+                    <chat:ChatSessionPanel />
                 </TabItem>
             </TabControl>
         </Border>
 
-        <!-- Keep this overlay after the pane so the composer cannot paint over the toggle. -->
-        <Button x:Name="RightPanelToggleButton"
-                Grid.Column="2"
-                Grid.ColumnSpan="2"
-                Panel.ZIndex="1000"
-                Width="24"
-                Height="24"
-                Margin="0,0,0,12"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Bottom"
-                Click="RightPanelToggleButton_OnClick"
-                ToolTip="{StaticResource Chat.CollapseRightPanel}"
-                AutomationProperties.Name="{StaticResource Chat.CollapseRightPanel}"
-                Style="{StaticResource SidebarToggleButtonStyle}">
-            <Grid Width="16" Height="16">
-                <Border Width="14"
-                        Height="14"
-                        CornerRadius="5"
-                        BorderBrush="{DynamicResource MutedTextBrush}"
-                        BorderThickness="1" />
-                <Border Width="1"
-                        Height="8"
-                        HorizontalAlignment="Right"
-                        Margin="0,0,3,0"
-                        Background="{DynamicResource MutedTextBrush}" />
-                <Path x:Name="RightPanelCollapseArrow"
-                      Data="M 6,4 L 10,8 L 6,12"
-                      Stroke="{DynamicResource MutedTextBrush}"
-                      StrokeThickness="1.4"
-                      StrokeStartLineCap="Round"
-                      StrokeEndLineCap="Round"
-                      StrokeLineJoin="Round" />
-                <Path x:Name="RightPanelExpandArrow"
-                      Data="M 10,4 L 6,8 L 10,12"
-                      Visibility="Collapsed"
-                      Stroke="{DynamicResource MutedTextBrush}"
-                      StrokeThickness="1.4"
-                      StrokeStartLineCap="Round"
-                      StrokeEndLineCap="Round"
-                      StrokeLineJoin="Round" />
-            </Grid>
-        </Button>
+
     </Grid>
 </UserControl>

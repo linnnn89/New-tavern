@@ -157,6 +157,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Worldbook.Delete">Delete</sys:String>
     <sys:String x:Key="Worldbook.EntryName">Entry name</sys:String>
     <sys:String x:Key="Worldbook.SaveEntryName">Save entry name</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">● Unsaved changes</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">Keywords: {0}</sys:String>
     <!-- Characters -->
     <sys:String x:Key="Characters.Title">Character library</sys:String>
@@ -552,7 +553,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Settings.Interface.ScalePreviewHelp">Reverting in 10 seconds unless confirmed.</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">Global font</sys:String>
     <sys:String x:Key="Settings.Interface.Font">Font</sys:String>
-    <sys:String x:Key="Settings.Interface.FontSizeHelp">Font size range: 10–32. Chat body text is one step larger.</sys:String>
+    <sys:String x:Key="Settings.Interface.FontSizeHelp">Font size range: 10–30. Chat body text is one step larger.</sys:String>
     <sys:String x:Key="Settings.Interface.FontPreview">Font preview: TavernDesk chat Aa 123</sys:String>
     <sys:String x:Key="Settings.Interface.Theme">Theme</sys:String>
     <sys:String x:Key="Settings.Interface.ThemeHelp">Choose the default light or charcoal-dark theme. Only colors and materials change; window structure and interaction logic do not.</sys:String>
@@ -1647,4 +1648,9 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Speech.CacheUnavailable">Cache unavailable. Speech can still be generated and played.</sys:String>
     <sys:String x:Key="Speech.CacheHint">Stored separately in Documents. Oldest audio is removed at 120 MiB; the cache is cleared on the next launch. Only fully played audio is cached.</sys:String>
     <sys:String x:Key="Speech.RefreshCache">Refresh cache usage</sys:String>
+    <sys:String x:Key="Chat.SearchPlaceholder">Search conversations</sys:String>
+    <sys:String x:Key="Characters.SearchPlaceholder">Search characters</sys:String>
+    <sys:String x:Key="Chat.ScrollToBottom">↓ Back to bottom</sys:String>
+    <sys:String x:Key="Chat.NewMessages">↓ New messages</sys:String>
+    <sys:String x:Key="Settings.BackToWorkspace">← Back to workspace</sys:String>
 </ResourceDictionary>

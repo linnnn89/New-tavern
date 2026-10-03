@@ -157,6 +157,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Worldbook.Delete">刪除</sys:String>
     <sys:String x:Key="Worldbook.EntryName">詞條名</sys:String>
     <sys:String x:Key="Worldbook.SaveEntryName">儲存詞條名</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">● 有未儲存的變更</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">關鍵詞：{0}</sys:String>
     <!-- Characters -->
     <sys:String x:Key="Characters.Title">角色書架</sys:String>
@@ -167,11 +168,11 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Characters.ImportCard">匯入角色卡</sys:String>
     <sys:String x:Key="Characters.Empty.Title">書架還是空的</sys:String>
     <sys:String x:Key="Characters.Empty.Hint">匯入 PNG / JSON / CHARX 角色卡，或從其他書架把角色加進來。</sys:String>
-    <sys:String x:Key="Characters.BackToShelf">← 返回角色書架</sys:String>
+    <sys:String x:Key="Characters.BackToShelf">返回角色書架</sys:String>
     <sys:String x:Key="Characters.CurrentLayout">目前排列：</sys:String>
     <sys:String x:Key="Characters.LayoutHelp">　豎向封面按原比例裁切；懸停放大並提供聊天、編輯兩個快捷入口。</sys:String>
     <sys:String x:Key="Characters.MyShelves">我的書架</sys:String>
-    <sys:String x:Key="Characters.NewShelf">+ 新增書架</sys:String>
+    <sys:String x:Key="Characters.NewShelf">新增書架</sys:String>
     <sys:String x:Key="Characters.Rename">重新命名</sys:String>
     <sys:String x:Key="Characters.Batch.ToolTip">進入或退出角色多選整理模式</sys:String>
     <sys:String x:Key="Characters.Batch.Start">批次</sys:String>
@@ -214,7 +215,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Characters.MessageExample">對話示例（mes_example）</sys:String>
     <sys:String x:Key="Characters.AlternateGreetings">備選開場白</sys:String>
     <sys:String x:Key="Characters.Greeting">開場白</sys:String>
-    <sys:String x:Key="Characters.AppendGreeting">+ 追加開場白</sys:String>
+    <sys:String x:Key="Characters.AppendGreeting">追加開場白</sys:String>
     <sys:String x:Key="Characters.Tab.Prompts">提示詞</sys:String>
     <sys:String x:Key="Characters.SystemPrompt">系統提示詞</sys:String>
     <sys:String x:Key="Characters.PostHistoryInstructions">歷史後指令</sys:String>
@@ -237,7 +238,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Characters.SaveSettings">儲存角色設定</sys:String>
     <!-- Chat -->
     <sys:String x:Key="Chat.Title">聊天</sys:String>
-    <sys:String x:Key="Chat.NewGroup">+ 群聊</sys:String>
+    <sys:String x:Key="Chat.NewGroup">新建群聊</sys:String>
     <sys:String x:Key="Chat.SearchToolTip">按角色、會話標題或最近訊息過濾</sys:String>
     <sys:String x:Key="Chat.OpenNewWindow">在新視窗聊天</sys:String>
     <sys:String x:Key="Chat.DeleteConversation">刪除整個聊天記錄</sys:String>
@@ -301,7 +302,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Tab.Memory">記憶</sys:String>
     <sys:String x:Key="Chat.Memory.BodyTab">內文</sys:String>
     <sys:String x:Key="Chat.Memory.TargetTokens">目標 tokens</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveBody">直接儲存內文</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveBody">儲存記憶</sys:String>
     <sys:String x:Key="Chat.Memory.AdvancedWorkflowTab">高級工作流</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdate">增量更新與壓縮</sys:String>
     <sys:String x:Key="Chat.Memory.IncrementalUpdateHelp">單聊按使用者輪次（含對應角色回覆）計數；群聊按完整儲存的訊息計數，包含沒有新使用者訊息的角色自動接力。預設門檻值為 20；群聊也會在待處理內容達到 Token 門檻值時觸發。更新成功後會自動儲存內文並推進檢查點。</sys:String>
@@ -432,11 +433,11 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.ImportChatMemory">匯入聊天記憶</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraft">儲存大廳草稿</sys:String>
     <sys:String x:Key="Campaigns.Lobby.SaveDraftToolTip">儲存目前劇本、角色、GM、參與方式與模型選擇；暫不開始游玩。</sys:String>
-    <sys:String x:Key="Campaigns.Lobby.Start">開始本局並凍結設定</sys:String>
+    <sys:String x:Key="Campaigns.Lobby.Start">開始跑團</sys:String>
     <sys:String x:Key="Campaigns.Lobby.StartToolTip">驗證並凍結劇本、角色快照、記憶與初始模型，然後生成 GM 開場並進入第 1 回合。</sys:String>
     <sys:String x:Key="Campaigns.Play.Settings">跑團設定</sys:String>
     <sys:String x:Key="Campaigns.Play.SettingsToolTip">管理目前跑團的上下文預算與升級版跑團記憶。</sys:String>
-    <sys:String x:Key="Campaigns.Play.Refresh">↻ 重新整理</sys:String>
+    <sys:String x:Key="Campaigns.Play.Refresh">重新整理</sys:String>
     <sys:String x:Key="Campaigns.Play.RefreshToolTip">從本機資料庫重新載入目前跑團；不會呼叫模型或新增記錄。</sys:String>
     <sys:String x:Key="Campaigns.Play.BackToolTip">離開游玩頁並返回劇本庫；本局記錄已自動儲存，可隨時繼續。</sys:String>
     <sys:String x:Key="Campaigns.Play.PlayerSeats">玩家席位</sys:String>
@@ -552,7 +553,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒內未確認，將自動還原原比例。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">全域字型</sys:String>
     <sys:String x:Key="Settings.Interface.Font">字型</sys:String>
-    <sys:String x:Key="Settings.Interface.FontSizeHelp">字級範圍 10–32；聊天內文會在此基礎上增加一級。</sys:String>
+    <sys:String x:Key="Settings.Interface.FontSizeHelp">字級範圍 10–30；聊天內文會在此基礎上增加一級。</sys:String>
     <sys:String x:Key="Settings.Interface.FontPreview">字型預覽：TavernDesk 酒館聊天 Aa 123</sys:String>
     <sys:String x:Key="Settings.Interface.Theme">主題</sys:String>
     <sys:String x:Key="Settings.Interface.ThemeHelp">可選預設淺色或深炭黑；僅改變顏色與材質，不改變視窗結構和操作邏輯。</sys:String>
@@ -629,67 +630,53 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <!-- Confirmation and interaction dialogs -->
     <sys:String x:Key="Interaction.CustomModel.Title">新增自訂模型</sys:String>
     <sys:String x:Key="Interaction.CustomModel.Prompt">輸入模型 ID 或名稱。儲存後只寫入本機模型目錄，不會發起網路請求。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Message">選擇刪除範圍：
+    <!-- Semantic dialog actions -->
+    <sys:String x:Key="Interaction.Action.Save">儲存</sys:String>
+    <sys:String x:Key="Interaction.Action.Discard">捨棄變更</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCharacter">刪除角色</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteConversation">刪除對話</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteShelf">刪除書架</sys:String>
+    <sys:String x:Key="Interaction.Action.DeletePreset">刪除預設</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteProvider">刪除供應商</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteWorldbook">刪除世界書</sys:String>
+    <sys:String x:Key="Interaction.Action.DeleteCampaign">刪除跑團</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearKey">清除金鑰</sys:String>
+    <sys:String x:Key="Interaction.Action.ClearLogs">清空輸出</sys:String>
+    <sys:String x:Key="Interaction.Action.CopyCurrentData">複製現有資料</sys:String>
+    <sys:String x:Key="Interaction.Action.KeepTargetAsIs">僅指向新目錄</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedAndFollowing">刪除此訊息及後續</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.SelectedOnly">僅刪除此訊息</sys:String>
 
-「是」＝永久刪除目前訊息及其後的全部訊息
-「否」＝只永久刪除目前訊息
-「取消」＝不刪除</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessageRange.Title">刪除範圍</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">確認永久刪除目前訊息及其後的全部訊息？
-
-刪除後無法復原。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">確認永久刪除目前訊息？
-
-刪除後無法復原。</sys:String>
-    <sys:String x:Key="Interaction.DeleteMessage.Title">確認永久刪除</sys:String>
-    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">「{0}」的角色設定尚未儲存。
-
-選擇「是」儲存後繼續，「否」放棄修改，「取消」留在目前介面。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Message">請選擇要刪除的訊息範圍。刪除後無法復原。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessageRange.Title">刪除訊息</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.ConfirmTail">確認永久刪除目前訊息及其後的全部訊息？&#10;&#10;刪除後無法復原。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.ConfirmSingle">確認永久刪除目前訊息？&#10;&#10;刪除後無法復原。</sys:String>
+    <sys:String x:Key="Interaction.DeleteMessage.Title">刪除訊息</sys:String>
+    <sys:String x:Key="Interaction.UnsavedCharacter.MessageFormat">「{0}」的角色設定尚未儲存。是否在離開前儲存變更？</sys:String>
     <sys:String x:Key="Interaction.UnsavedCharacter.Title">未儲存的角色設定</sys:String>
-    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">「{0}」的供應商設定或待儲存 API Key 尚未儲存。
-
-選擇「是」儲存後繼續，「否」放棄修改，「取消」留在目前介面。</sys:String>
+    <sys:String x:Key="Interaction.UnsavedProvider.MessageFormat">「{0}」的供應商設定尚未儲存。是否在離開前儲存變更？</sys:String>
     <sys:String x:Key="Interaction.UnsavedProvider.Title">未儲存的模型設定</sys:String>
-    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">跑團「{0}」尚未開始。是否在離開前儲存為大廳草稿？
-
-選擇「是」儲存草稿；選擇「否」不儲存本次大廳內容；選擇「取消」留在目前介面。</sys:String>
+    <sys:String x:Key="Interaction.UnstartedCampaign.MessageFormat">跑團「{0}」尚未開始。是否在離開前儲存為大廳草稿？</sys:String>
     <sys:String x:Key="Interaction.UnstartedCampaign.Title">未開始的跑團</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.NoChats">該角色目前沒有聊天記錄。</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.ChatCountFormat">與該角色綁定的 {0} 條聊天會被保留，並顯示在「已刪除角色」下。</sys:String>
-    <sys:String x:Key="Interaction.DeleteCharacter.MessageFormat">從角色書架刪除「{0}」？
-
-{1}
-角色卡的匯入工作副本會保留，原始來來源檔案不會改動。</sys:String>
+    <sys:String x:Key="Interaction.DeleteCharacter.MessageFormat">從角色書架刪除「{0}」？&#10;&#10;{1}&#10;角色卡的匯入工作副本會保留，原始來源檔案不會改動。</sys:String>
     <sys:String x:Key="Interaction.DeleteCharacter.Title">刪除角色卡</sys:String>
-    <sys:String x:Key="Interaction.DeleteConversation.MessageFormat">永久刪除聊天記錄「{0}」？
-
-本會話的全部訊息、候選回覆和本機聊天快取都會刪除，刪除後無法復原。
-角色卡、角色整體記憶和其他聊天記錄不受影響。</sys:String>
+    <sys:String x:Key="Interaction.DeleteConversation.MessageFormat">永久刪除聊天記錄「{0}」？&#10;&#10;本會話的全部訊息、候選回覆和本機聊天快取都會刪除，刪除後無法復原。&#10;角色卡、角色整體記憶和其他聊天記錄不受影響。</sys:String>
     <sys:String x:Key="Interaction.DeleteConversation.Title">刪除聊天記錄</sys:String>
-    <sys:String x:Key="Interaction.DeleteShelf.MessageFormat">刪除書架「{0}」？
-
-角色卡本身不會被刪除。</sys:String>
+    <sys:String x:Key="Interaction.DeleteShelf.MessageFormat">刪除書架「{0}」？&#10;&#10;角色卡本身不會被刪除。</sys:String>
     <sys:String x:Key="Interaction.DeleteShelf.Title">刪除自訂書架</sys:String>
-    <sys:String x:Key="Interaction.DeletePreset.MessageFormat">刪除預設「{0}」？
-
-它在全域、角色和會話中的掛載也會一起移除。</sys:String>
+    <sys:String x:Key="Interaction.DeletePreset.MessageFormat">刪除預設「{0}」？&#10;&#10;它在全域、角色和會話中的掛載也會一起移除。</sys:String>
     <sys:String x:Key="Interaction.DeletePreset.Title">刪除預設</sys:String>
-    <sys:String x:Key="Interaction.DeleteProvider.MessageFormat">刪除供應商「{0}」？
-
-其模型目錄、功能指派和 TavernDesk 本機儲存的 DPAPI Key 都會永久清除。此操作不能撤銷。</sys:String>
+    <sys:String x:Key="Interaction.DeleteProvider.MessageFormat">刪除供應商「{0}」？&#10;&#10;其模型目錄、功能指派和 TavernDesk 本機儲存的 DPAPI Key 都會永久清除。此操作不能撤銷。</sys:String>
     <sys:String x:Key="Interaction.DeleteProvider.Title">刪除供應商</sys:String>
-    <sys:String x:Key="Interaction.DeleteWorldbook.MessageFormat">刪除世界書「{0}」？
-
-已儲存的原始 JSON 工作副本和其 Embedding 派生索引都會刪除；使用者原檔案不會修改。</sys:String>
+    <sys:String x:Key="Interaction.DeleteWorldbook.MessageFormat">刪除世界書「{0}」？&#10;&#10;已儲存的原始 JSON 工作副本和其 Embedding 派生索引都會刪除；使用者原檔案不會修改。</sys:String>
     <sys:String x:Key="Interaction.DeleteWorldbook.Title">刪除世界書</sys:String>
-    <sys:String x:Key="Interaction.DeleteCampaign.MessageFormat">永久刪除跑團「{0}」？
-
-該局的全部席位和 {1} 條跑團記錄會同時刪除，刪除後無法復原。
-劇本卡、角色卡和其他跑團不會被刪除。</sys:String>
+    <sys:String x:Key="Interaction.DeleteCampaign.MessageFormat">永久刪除跑團「{0}」？&#10;&#10;該局的全部席位和 {1} 條跑團記錄會同時刪除，刪除後無法復原。&#10;劇本卡、角色卡和其他跑團不會被刪除。</sys:String>
     <sys:String x:Key="Interaction.DeleteCampaign.Title">確認永久刪除跑團</sys:String>
     <sys:String x:Key="Interaction.ClearKey.MessageFormat">清除「{0}」儲存在 Windows DPAPI 中的 API Key？</sys:String>
     <sys:String x:Key="Interaction.ClearKey.Title">清除 API Key</sys:String>
-    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">下次啟動時切換個人資料目錄。是否同時複製目前資料庫、聊天記錄、角色卡、劇本和附件？&#10;&#10;「是」：下次啟動複製最新資料並保留舊目錄；「否」：下次啟動使用新目錄，不複製資料；「取消」：保留現有安排。&#10;&#10;目前：{0}&#10;新目錄：{1}</sys:String>
+    <sys:String x:Key="Interaction.ChangeDataRoot.MessageFormat">下次啟動時將切換個人資料目錄。是否同時將目前資料庫、聊天記錄、角色卡和附件複製到新目錄？&#10;&#10;目前：{0}&#10;新目錄：{1}</sys:String>
     <sys:String x:Key="Interaction.ChangeDataRoot.Title">切換個人資料目錄</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.MessageFormat">將永久刪除以下目錄中的全部子檔案和子資料夾，但保留目錄本身：&#10;&#10;{0}&#10;&#10;是否繼續？</sys:String>
     <sys:String x:Key="Interaction.Diagnostics.Clear.Title">清空 API 測試輸出</sys:String>
@@ -1197,8 +1184,9 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.CharacterPrompt.Select">選擇個人聊天後可直接檢視和修改該角色卡的提示詞。</sys:String>
     <sys:String x:Key="Chat.Model.Unassigned">聊天功能尚未指派模型</sys:String>
     <sys:String x:Key="Chat.ApiPreview.Select">選擇會話後顯示本次請求的角色與內容結構；不會顯示 API Key。</sys:String>
-    <sys:String x:Key="Chat.SendMode.SendAndGenerate">傳送並生成</sys:String>
+    <sys:String x:Key="Chat.SendMode.SendAndGenerate">發送並生成</sys:String>
     <sys:String x:Key="Chat.SendMode.SaveOnly">僅儲存訊息</sys:String>
+    <sys:String x:Key="Chat.SendModeToolTip">切換發送模式（發送並生成 / 僅儲存訊息）</sys:String>
     <sys:String x:Key="Chat.Display.Bubble">氣泡</sys:String>
     <sys:String x:Key="Chat.Display.Novel">小說</sys:String>
     <sys:String x:Key="Chat.SelectConversation">請選擇一次對話。</sys:String>
@@ -1660,4 +1648,9 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Speech.CacheUnavailable">快取無法使用；仍可直接產生並播放語音。</sys:String>
     <sys:String x:Key="Speech.CacheHint">快取獨立存放於「文件」，超過 120 MiB 時刪除最舊音訊，下次啟動清空。只快取完整播放成功的音訊。</sys:String>
     <sys:String x:Key="Speech.RefreshCache">重新整理快取用量</sys:String>
+    <sys:String x:Key="Chat.SearchPlaceholder">搜尋對話</sys:String>
+    <sys:String x:Key="Characters.SearchPlaceholder">搜尋角色</sys:String>
+    <sys:String x:Key="Chat.ScrollToBottom">↓ 回到底部</sys:String>
+    <sys:String x:Key="Chat.NewMessages">↓ 新訊息</sys:String>
+    <sys:String x:Key="Settings.BackToWorkspace">← 返回工作區</sys:String>
 </ResourceDictionary>

@@ -157,6 +157,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Worldbook.Delete">刪除</sys:String>
     <sys:String x:Key="Worldbook.EntryName">詞條名</sys:String>
     <sys:String x:Key="Worldbook.SaveEntryName">儲存詞條名</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">● 有未儲存的變更</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">關鍵詞：{0}</sys:String>
     <!-- Characters -->
     <sys:String x:Key="Characters.Title">角色書架</sys:String>
@@ -552,7 +553,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒內未確認，將自動還原原比例。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">全域字型</sys:String>
     <sys:String x:Key="Settings.Interface.Font">字型</sys:String>
-    <sys:String x:Key="Settings.Interface.FontSizeHelp">字級範圍 10–32；聊天內文會在此基礎上增加一級。</sys:String>
+    <sys:String x:Key="Settings.Interface.FontSizeHelp">字級範圍 10–30；聊天內文會在此基礎上增加一級。</sys:String>
     <sys:String x:Key="Settings.Interface.FontPreview">字型預覽：TavernDesk 酒館聊天 Aa 123</sys:String>
     <sys:String x:Key="Settings.Interface.Theme">主題</sys:String>
     <sys:String x:Key="Settings.Interface.ThemeHelp">可選預設淺色或深炭黑；僅改變顏色與材質，不改變視窗結構和操作邏輯。</sys:String>
@@ -1647,4 +1648,9 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Speech.CacheUnavailable">快取無法使用；仍可直接產生並播放語音。</sys:String>
     <sys:String x:Key="Speech.CacheHint">快取獨立存放於「文件」，超過 120 MiB 時刪除最舊音訊，下次啟動清空。只快取完整播放成功的音訊。</sys:String>
     <sys:String x:Key="Speech.RefreshCache">重新整理快取用量</sys:String>
+    <sys:String x:Key="Chat.SearchPlaceholder">搜尋對話</sys:String>
+    <sys:String x:Key="Characters.SearchPlaceholder">搜尋角色</sys:String>
+    <sys:String x:Key="Chat.ScrollToBottom">↓ 回到底部</sys:String>
+    <sys:String x:Key="Chat.NewMessages">↓ 新訊息</sys:String>
+    <sys:String x:Key="Settings.BackToWorkspace">← 返回工作區</sys:String>
 </ResourceDictionary>

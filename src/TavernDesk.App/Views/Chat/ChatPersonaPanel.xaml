@@ -1,0 +1,60 @@
+<UserControl x:Class="TavernDesk.App.Views.Chat.ChatPersonaPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
+        <StackPanel>
+            <TextBlock Text="{StaticResource Chat.Persona.Title}"
+                       Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Margin="0,2,0,12"
+                       Text="{StaticResource Chat.Persona.Description}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+            <TextBlock Text="{StaticResource Chat.Persona.Current}" />
+            <ComboBox Margin="0,5,0,0"
+                      ItemsSource="{Binding Personas.Profiles}"
+                      DisplayMemberPath="Name"
+                      SelectedItem="{Binding Personas.SelectedProfile, Mode=TwoWay}" />
+             <TextBlock Margin="0,12,0,0" Text="{StaticResource Chat.Persona.Name}" />
+             <TextBox Margin="0,5,0,0"
+                      PreviewMouseLeftButtonDown="PersonaEditorTextBox_OnPreviewMouseLeftButtonDown"
+                      Text="{Binding Personas.EditorName, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Margin="0,12,0,0" Text="{StaticResource Chat.Persona.UserSettings}" />
+            <TextBox Margin="0,5,0,0"
+                     MinHeight="110"
+                      AcceptsReturn="True"
+                      TextWrapping="Wrap"
+                      VerticalContentAlignment="Top"
+                      PreviewMouseLeftButtonDown="PersonaEditorTextBox_OnPreviewMouseLeftButtonDown"
+                      Text="{Binding Personas.EditorDescription, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Margin="0,8,0,0"
+                       Text="{StaticResource Chat.Persona.SaveHelp}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+            <TextBlock Margin="0,8,0,0"
+                       Text="{Binding Personas.Status}"
+                       Foreground="{DynamicResource MutedTextBrush}"
+                       TextWrapping="Wrap" />
+            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                <Button Content="{StaticResource Chat.Persona.Save}"
+                        Command="{Binding SavePersonaCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}" />
+                <Button Margin="8,0,0,0"
+                        Content="{StaticResource Common.Cancel}"
+                        Command="{Binding CancelPersonaCommand}"
+                        Style="{StaticResource SecondaryButtonStyle}" />
+            </StackPanel>
+            <Separator Margin="0,18,0,12" />
+            <TextBlock Text="{StaticResource Chat.GlobalChatPrompt}"
+                       FontWeight="SemiBold" />
+            <TextBlock Margin="0,5,0,8"
+                       Text="{StaticResource Chat.GlobalChatPromptHelp}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+            <Button HorizontalAlignment="Left"
+                    Content="{StaticResource Chat.EditGlobalChatPrompt}"
+                    Command="{Binding OpenGlobalPromptCommand}"
+                    CommandParameter="ChatSystem"
+                    Style="{StaticResource SecondaryButtonStyle}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

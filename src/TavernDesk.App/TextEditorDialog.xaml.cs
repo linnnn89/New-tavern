@@ -1,5 +1,6 @@
 using System.Windows;
 using TavernDesk.App.Localization;
+using TavernDesk.App.Presentation;
 
 namespace TavernDesk.App;
 
@@ -8,6 +9,7 @@ public partial class TextEditorDialog : Window
     public TextEditorDialog(string title, string prompt, string initialText)
     {
         InitializeComponent();
+        WindowChromeService.Attach(this);
         Title = title;
         PromptText.Text = prompt;
         Editor.Text = initialText;

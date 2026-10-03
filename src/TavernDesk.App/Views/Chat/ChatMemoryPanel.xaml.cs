@@ -1,0 +1,11 @@
+using System.Windows.Controls;
+
+namespace TavernDesk.App.Views.Chat;
+
+public partial class ChatMemoryPanel : UserControl
+{
+    public ChatMemoryPanel()
+    {
+        InitializeComponent();
+    }
+}

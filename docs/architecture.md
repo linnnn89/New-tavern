@@ -140,6 +140,8 @@ sequenceDiagram
 
 2026-09-11 起，会话分组、筛选、展开状态和角色缓存归 `ConversationBrowserViewModel`；上下文请求映射、Provider 请求构造和 API 预览归 `ChatRequestFactory`。`ChatViewModel` 继续拥有窗口选择、取消和业务编排。共享会话存储新增可选的延迟通知接口，旧 `SessionChanged` 订阅及 `Get` 返回值保持完整快照语义；显示队列负责订阅和释放，未引入第二级节流、数据库变更或新的渲染依赖。
 
+2026-10-03 起，角色提示词显示与编辑归 `ChatCharacterPromptViewModel`，角色页签直接绑定 `CharacterPrompt` 子对象；群聊记忆的触发、未保存正文与失效范围记录、合并门禁及记忆事件订阅归 `GroupMemoryCoordinator`。`ChatViewModel` 保留会话选择、生成、人设输入与业务编排。协调器随窗口解除订阅，应用级记忆更新继续运行，返回后不再更新已释放窗口；底层串行更新、版本与来源指纹校验规则不变。
+
 ### 4.3 普通聊天上下文
 
 `ChatContextPreviewViewModel` 由每个聊天窗口持有，统一管理 150 ms 预览刷新、取消、版本校验、分段/API 预览和预算展示。`ChatViewModel` 在会话资料就绪后捕获请求快照，继续拥有会话加载与发送编排；原有 XAML 绑定通过只读属性转发，不传入整个主 ViewModel，也不创建新的全局状态。
@@ -218,7 +220,9 @@ flowchart LR
 
 ### 界面设置的职责边界
 
-`ProviderSettingsViewModel` 持有 `InterfaceSettingsViewModel`，并转发原有属性、命令与属性变化通知，保持界面页和默认行为页的绑定兼容。子组件独立管理主题、字体、缩放、语言、自动滚动、缩放建议、加载、保存和恢复默认值；Provider 配置、模型分配、资料目录与诊断仍由父组件管理。
+`ProviderSettingsViewModel` 持有 `InterfaceSettingsViewModel`，并转发原有属性、命令与属性变化通知，保持界面页和默认行为页的绑定兼容。子组件独立管理主题、字体、缩放、语言、自动滚动、缩放建议、加载、保存和恢复默认值；Provider 配置和模型分配仍由父组件管理。
+
+资料目录与诊断由 `DataAndDiagnosticsSettingsViewModel` 管理，数据页直接绑定 `DataAndDiagnostics.*`，父级加载时调用子对象加载。资料目录更改仍只记录为下次启动执行，保存当前目录可取消待执行切换；API 测试模式的设置键、默认关闭、持久化失败回退和清空输出目录的范围不变。
 
 ```mermaid
 flowchart LR
@@ -230,6 +234,18 @@ flowchart LR
 ```
 
 主题和缩放在选择后即时预览；保存后应用字体和自动滚动，语言偏好在下次启动时生效。恢复默认值会修改编辑状态并预览主题、缩放，但仍需保存才会写入数据库。现有 `ui.*` 设置键不变；仅在首次缺少缩放设置时持久化显示器建议，已保存的缩放值不会被建议覆盖。
+
+说明文字、正文和小标题通过 `InterfaceSettingsRuntime` 的字号资源跟随已保存字号：默认 14 时分别保持 10–18 的原有尺寸，说明文字下限为 9；`Themes/Light.xaml` 提供同值启动默认资源。语音设置页的 C# 说明控件使用相同动态资源。图标字形、19 以上的大标题及固定字号的确认对话框保持原尺寸。
+
+大字号使语音固定页脚挤压输入区时，测试说明、辅助操作和状态文字移入正文滚动区，保存按钮仍固定在底部；恢复空间后回到原布局。设置页状态文字用省略显示并提供完整提示，主导航的运行状态卡在高度不足时独立滚动，避免占满导航区域。聊天输入区优先保留发送控件宽度，模型与 Token 说明在剩余空间内省略显示，完整内容通过提示查看。
+
+可设置字号范围为 10–30，旧库中超出上限的字号读取时归一为 30。极端字号、缩放和小窗口组合只要求保留进入设置并调小字号的恢复路径，不为此重排整个工作区。
+
+### 跑团预览与局内设置
+
+`CampaignsViewModel` 保留页面导航、游戏状态、忙碌门禁与回合执行。`CampaignContextPreviewViewModel` 管理预览集合、摘要、预算阻断与席位原因；每次刷新捕获本次 aggregate，在局部构造结果，应用成功或失败结果前确认它仍是父级当前对象。父级继续读取子对象的阻断状态控制回合推进，并在预览完成后刷新相关属性和席位状态。
+
+`CampaignSettingsPanelViewModel` 管理记忆状态、进度和五项预算设置，记忆设置对话框直接使用它作为 DataContext。保存仍使用 `StateVersion` 检查并通过父级原有忙碌入口重新加载本局。记忆进度在进入 UI 队列前和实际执行时检查当前局及释放状态；切换局时清空操作集合。`MainWindow.OnClosed` 调用父级 `Dispose()`，解除面板和 runner 的事件订阅。普通页面导航不释放面板，也不取消应用级记忆更新任务。
 
 ### 剧本编辑与事务边界
 
@@ -265,15 +281,21 @@ flowchart LR
 | 角色书架 | `src/TavernDesk.App/ViewModels/CharactersViewModel.cs` |
 | 界面设置与即时预览 | `src/TavernDesk.App/ViewModels/InterfaceSettingsViewModel.cs` |
 | 普通聊天 | `src/TavernDesk.App/ViewModels/ChatViewModel.cs` |
+| 聊天视图外壳、消息列表与响应式布局 | `src/TavernDesk.App/Views/ChatView.xaml`、`ChatView.xaml.cs` |
+| 聊天会话列表与右侧上下文、角色、人设、记忆、会话面板 | `src/TavernDesk.App/Views/Chat/`（继承聊天 DataContext；人设文本框点击处理在 `ChatPersonaPanel.xaml.cs`） |
+| 聊天角色提示词编辑与群聊记忆协调 | `src/TavernDesk.App/ViewModels/ChatCharacterPromptViewModel.cs`、`src/TavernDesk.App/ViewModels/GroupMemoryCoordinator.cs` |
 | 会话列表与请求构造 | `src/TavernDesk.App/ViewModels/ConversationBrowserViewModel.cs`、`src/TavernDesk.App/Services/ChatRequestFactory.cs` |
 | 聊天上下文预览与预算展示 | `src/TavernDesk.App/ViewModels/ChatContextPreviewViewModel.cs` |
 | 流式快照与显示 | `src/TavernDesk.Infrastructure/Context/ConversationGenerationSessionStore.cs`、`src/TavernDesk.App/Presentation/GenerationSessionUpdateQueue.cs`、`MarkdownMessagePresenter.cs`、`MarkdownMessageBlocks.cs` |
 | 普通上下文 | `src/TavernDesk.Infrastructure/Context/BasicContextAssembler.cs` |
 | Provider | `src/TavernDesk.Infrastructure/Providers/` |
 | 错误日志与 API 测试记录 | `src/TavernDesk.Infrastructure/Diagnostics/`、`ProviderGatewayRouter.cs` |
+| 资料目录与诊断设置界面 | `src/TavernDesk.App/ViewModels/DataAndDiagnosticsSettingsViewModel.cs`、`Views/ProviderSettingsView.xaml` |
 | 会话与 schema | `src/TavernDesk.Infrastructure/Storage/SqliteConversationRepository.cs`、`SqliteDatabase.cs` |
 | 世界书与检索 | `src/TavernDesk.Infrastructure/Knowledge/`、`Retrieval/` |
 | 跑团界面 | `src/TavernDesk.App/ViewModels/CampaignsViewModel.cs` |
+| 跑团上下文预览与预算门禁 | `src/TavernDesk.App/ViewModels/CampaignContextPreviewViewModel.cs` |
+| 跑团记忆与预算设置 | `src/TavernDesk.App/ViewModels/CampaignSettingsPanelViewModel.cs`、`CampaignMemorySettingsDialog.xaml` |
 | 剧本草稿与原子保存 | `src/TavernDesk.App/ViewModels/CampaignScenarioEditorViewModel.cs`、`src/TavernDesk.Infrastructure/Storage/SqliteCampaignScenarioRepository.cs` |
 | 跑团流程 | `src/TavernDesk.Core/Campaign/Flow/` |
 | 跑团执行与上下文 | `src/TavernDesk.Infrastructure/Campaign/` |

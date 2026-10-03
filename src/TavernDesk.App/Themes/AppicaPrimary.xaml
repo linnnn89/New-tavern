@@ -2,8 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Primary-workspace-only resources. Secondary windows and dialogs keep
          using the proven global templates from Light.xaml. -->
-    <Color x:Key="AppicaSelectedBorderColor">#AFC9F8</Color>
-    <Color x:Key="AppicaPanelBorderColor">#DDE3EC</Color>
+    <Color x:Key="AppicaSelectedBorderColor">#B8C8F7</Color>
+    <Color x:Key="AppicaPanelBorderColor">#E2E4E9</Color>
 
     <SolidColorBrush x:Key="AppicaSelectedBorderBrush"
                      Color="{StaticResource AppicaSelectedBorderColor}" />
@@ -42,11 +42,11 @@
            BasedOn="{StaticResource AppicaPanelSurfaceStyle}" />
 
     <Style x:Key="AppicaChatHeaderStyle" TargetType="Border">
-        <Setter Property="MinHeight" Value="100" />
+        <Setter Property="MinHeight" Value="68" />
         <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AppicaPanelBorderBrush}" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
-        <Setter Property="Padding" Value="24,14" />
+        <Setter Property="Padding" Value="20,10" />
     </Style>
 
     <Style x:Key="AppicaChatInspectorStyle"
@@ -54,13 +54,13 @@
            BasedOn="{StaticResource AppicaPanelSurfaceStyle}" />
 
     <Style x:Key="AppicaChatComposerStyle" TargetType="Border">
-        <Setter Property="MinHeight" Value="140" />
-        <Setter Property="Margin" Value="14,10,14,14" />
-        <Setter Property="Padding" Value="14,11" />
+        <Setter Property="MinHeight" Value="130" />
+        <Setter Property="Margin" Value="14,8,14,14" />
+        <Setter Property="Padding" Value="14,10" />
         <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AppicaSelectedBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppicaPanelBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Effect" Value="{StaticResource AppicaPrimaryPanelShadowEffect}" />
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
@@ -72,10 +72,10 @@
     <Style x:Key="AppicaConversationSearchStyle"
            TargetType="TextBox"
            BasedOn="{StaticResource ModernTextBoxStyle}">
-        <Setter Property="Height" Value="44" />
-        <Setter Property="MinHeight" Value="44" />
-        <Setter Property="Padding" Value="14,0" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
@@ -83,9 +83,9 @@
     <Style x:Key="AppicaConversationGroupButtonStyle"
            TargetType="Button"
            BasedOn="{StaticResource ModernButtonBaseStyle}">
-        <Setter Property="MinHeight" Value="78" />
+        <Setter Property="MinHeight" Value="64" />
         <Setter Property="Margin" Value="0,2" />
-        <Setter Property="Padding" Value="7,8" />
+        <Setter Property="Padding" Value="6,6" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
@@ -93,9 +93,9 @@
     </Style>
 
     <Style x:Key="AppicaConversationItemStyle" TargetType="Button">
-        <Setter Property="MinHeight" Value="72" />
-        <Setter Property="Margin" Value="0,2" />
-        <Setter Property="Padding" Value="13,9" />
+        <Setter Property="MinHeight" Value="58" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="Padding" Value="10,6" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
@@ -112,14 +112,14 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9">
+                                CornerRadius="8">
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
                         <Border x:Name="SelectionRail"
                                 Width="3"
-                                Margin="0,8,0,8"
+                                Margin="0,6,0,6"
                                 HorizontalAlignment="Left"
                                 Background="{DynamicResource AccentBrush}"
                                 CornerRadius="0,3,3,0"
@@ -162,22 +162,22 @@
     <Style x:Key="AppicaHeaderIconButtonStyle"
            TargetType="Button"
            BasedOn="{StaticResource ModernButtonBaseStyle}">
-        <Setter Property="Width" Value="44" />
-        <Setter Property="Height" Value="44" />
-        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="MinHeight" Value="36" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AppicaPanelBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
     </Style>
 
     <Style x:Key="AppicaHeaderActionButtonStyle"
            TargetType="Button"
            BasedOn="{StaticResource SecondaryButtonStyle}">
-        <Setter Property="Height" Value="44" />
-        <Setter Property="MinHeight" Value="44" />
-        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="12,0" />
     </Style>
 
     <Style x:Key="AppicaMessageAvatarStyle" TargetType="Border">
@@ -191,14 +191,14 @@
     </Style>
 
     <Style x:Key="AppicaMessageNameStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
 
     <Style x:Key="AppicaMessageTimeStyle" TargetType="TextBlock">
         <Setter Property="Margin" Value="9,0,0,0" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
     </Style>
 
@@ -207,7 +207,7 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AppicaPanelBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="CornerRadius" Value="12" />
     </Style>
 
     <Style x:Key="AppicaComposerTextBoxStyle"
@@ -215,22 +215,15 @@
            BasedOn="{StaticResource ModernTextBoxStyle}">
         <Setter Property="MinHeight" Value="62" />
         <Setter Property="MaxHeight" Value="150" />
-        <Setter Property="Padding" Value="2,3" />
-        <Setter Property="Background" Value="{DynamicResource ComposerHintBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AppicaSelectedBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="4,4" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="VerticalContentAlignment" Value="Top" />
-        <Style.Triggers>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                <Setter Property="Background" Value="Transparent" />
-                <Setter Property="BorderBrush" Value="Transparent" />
-                <Setter Property="BorderThickness" Value="0" />
-            </Trigger>
-        </Style.Triggers>
     </Style>
 
     <Style x:Key="AppicaComposerMetaTextStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
@@ -273,7 +266,7 @@
                 <ControlTemplate TargetType="TabControl">
                     <Grid Background="{TemplateBinding Background}">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="64" />
+                            <RowDefinition Height="42" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Border BorderBrush="{DynamicResource AppicaPanelBorderBrush}"
@@ -294,12 +287,13 @@
         </Setter>
     </Style>
 
+    <!-- Header weight and colour live on HeaderPresenter, not on the TabItem:
+         tab content is a logical child of the TabItem, so TabItem-level
+         FontWeight/Foreground would be inherited by every body TextBlock. -->
     <Style x:Key="AppicaInspectorTabItemStyle" TargetType="TabItem">
-        <Setter Property="MinHeight" Value="64" />
-        <Setter Property="Padding" Value="7,8" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Padding" Value="6,4" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
-        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -307,16 +301,24 @@
                 <ControlTemplate TargetType="TabItem">
                     <Grid x:Name="Root" Background="Transparent">
                         <Border x:Name="HoverSurface"
-                                Margin="2,8"
+                                Margin="2,4"
                                 Background="Transparent"
-                                CornerRadius="7" />
-                        <ContentPresenter HorizontalAlignment="Center"
+                                CornerRadius="6" />
+                        <ContentPresenter x:Name="HeaderPresenter"
+                                          HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}"
                                           ContentSource="Header"
                                           RecognizesAccessKey="True"
-                                          TextElement.Foreground="{TemplateBinding Foreground}"
-                                          TextElement.FontWeight="{TemplateBinding FontWeight}" />
+                                          TextElement.Foreground="{DynamicResource MutedTextBrush}"
+                                          TextElement.FontWeight="Normal">
+                            <ContentPresenter.Resources>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource TemplateTextBlockStyle}">
+                                    <Setter Property="TextWrapping" Value="NoWrap" />
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
                         <Border x:Name="SelectionIndicator"
                                 Height="2"
                                 Margin="8,0"
@@ -326,10 +328,10 @@
                                 CornerRadius="1"
                                 Visibility="Collapsed" />
                         <Border x:Name="FocusRing"
-                                Margin="5,7"
+                                Margin="3,3"
                                 BorderBrush="{DynamicResource FocusRingBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8"
+                                CornerRadius="6"
                                 Opacity="0" />
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -339,8 +341,8 @@
                                     Value="{DynamicResource ControlHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter TargetName="HeaderPresenter" Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="HeaderPresenter" Property="TextElement.FontWeight" Value="SemiBold" />
                             <Setter TargetName="SelectionIndicator" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
@@ -373,7 +375,7 @@
     </Style>
 
     <Style x:Key="AppicaInspectorCardTitleStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitleLarge}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
@@ -439,14 +441,19 @@
     </Style>
 
     <Style x:Key="AppicaPaneTitleStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontSize" Value="20" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
 
     <Style x:Key="AppicaEyebrowTextStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
     </Style>
+    <DataTemplate x:Key="ChatCompactOptionTemplate">
+        <TextBlock Text="{Binding Label}"
+                   TextWrapping="NoWrap"
+                   TextTrimming="CharacterEllipsis" />
+    </DataTemplate>
 </ResourceDictionary>

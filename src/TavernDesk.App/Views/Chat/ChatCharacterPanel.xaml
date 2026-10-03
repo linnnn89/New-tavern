@@ -1,0 +1,65 @@
+<UserControl x:Class="TavernDesk.App.Views.Chat.ChatCharacterPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer Style="{StaticResource AppicaInspectorBodyScrollStyle}">
+        <StackPanel>
+            <TextBlock Text="{Binding CharacterPrompt.CharacterPromptCharacterName, StringFormat={StaticResource Chat.Character.CurrentFormat}}"
+                       Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Margin="0,6,0,12"
+                       Padding="10"
+                       Text="{StaticResource Chat.Character.Description}"
+                       TextWrapping="Wrap"
+                       Background="{DynamicResource AccentSoftBrush}" />
+
+            <TextBlock Text="{StaticResource Chat.Character.SystemPrompt}"
+                       FontWeight="SemiBold" />
+            <TextBlock Margin="0,4,0,7"
+                       Text="{StaticResource Chat.Character.SystemPromptHelp}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+             <TextBox MaxHeight="105"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalContentAlignment="Top"
+                     VerticalScrollBarVisibility="Auto"
+                     Text="{Binding CharacterPrompt.CharacterSystemPrompt, Mode=OneWay}" />
+            <Button Margin="0,8,0,0"
+                    HorizontalAlignment="Left"
+                    Content="{StaticResource Chat.Character.EditSystemPrompt}"
+                    Command="{Binding CharacterPrompt.EditCharacterSystemPromptCommand}"
+                    Style="{StaticResource SecondaryButtonStyle}" />
+
+            <TextBlock Margin="0,18,0,0"
+                       Text="{StaticResource Chat.Character.PostHistory}"
+                       FontWeight="SemiBold" />
+            <TextBlock Margin="0,4,0,7"
+                       Text="{StaticResource Chat.Character.PostHistoryHelp}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+             <TextBox MaxHeight="95"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalContentAlignment="Top"
+                     VerticalScrollBarVisibility="Auto"
+                     Text="{Binding CharacterPrompt.CharacterPostHistoryInstructions, Mode=OneWay}" />
+            <Button Margin="0,8,0,0"
+                    HorizontalAlignment="Left"
+                    Content="{StaticResource Chat.Character.EditPostHistory}"
+                    Command="{Binding CharacterPrompt.EditCharacterPostHistoryCommand}"
+                    Style="{StaticResource SecondaryButtonStyle}" />
+
+            <Separator Margin="0,18,0,12" />
+            <Button HorizontalAlignment="Left"
+                    Content="{StaticResource Chat.EditGlobalChatPrompt}"
+                    Command="{Binding OpenGlobalPromptCommand}"
+                    CommandParameter="ChatSystem"
+                    Style="{StaticResource SecondaryButtonStyle}" />
+            <TextBlock Margin="0,10,0,0"
+                       Text="{Binding CharacterPrompt.CharacterPromptStatus}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

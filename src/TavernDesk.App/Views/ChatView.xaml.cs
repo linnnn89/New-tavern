@@ -23,6 +23,11 @@ public partial class ChatView : UserControl
     private ChatViewModel? _observedViewModel;
     private bool _isOpeningMessageTools;
     private bool _scrollScheduled;
+    // False once the user scrolls away from the bottom, so streaming output does not yank the
+    // viewport back while they re-read history. Restored on send, conversation switch, or scrolling back down.
+    private bool _followTail = true;
+    private bool _hasUnreadMessages;
+    private const double FollowTailTolerance = 48;
     private bool _isRightPanelCollapsed;
     private bool _isRightPanelAutoCollapsed;
     private double _rightPanelWidth = 406;
@@ -40,28 +45,14 @@ public partial class ChatView : UserControl
         Loaded += ChatView_OnLoaded;
         Unloaded += ChatView_OnUnloaded;
         DataContextChanged += ChatView_OnDataContextChanged;
+        ConversationMessageList.AddHandler(
+            ScrollViewer.ScrollChangedEvent,
+            new ScrollChangedEventHandler(MessageList_OnScrollChanged));
     }
 
     private void ChatArchiveMenuButton_OnClick(object sender, RoutedEventArgs e)
     {
         ChatArchiveMenuPopup.IsOpen = !ChatArchiveMenuPopup.IsOpen;
-        e.Handled = true;
-    }
-
-    private void PersonaEditorTextBox_OnPreviewMouseLeftButtonDown(
-        object sender,
-        MouseButtonEventArgs e)
-    {
-        if (sender is not TextBox textBox
-            || !textBox.IsEnabled
-            || textBox.IsReadOnly
-            || textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), snapToText: false) >= 0)
-        {
-            return;
-        }
-
-        textBox.Focus();
-        textBox.Select(textBox.Text?.Length ?? 0, 0);
         e.Handled = true;
     }
 
@@ -278,16 +269,21 @@ public partial class ChatView : UserControl
         if (_observedViewModel is not null)
         {
             _observedViewModel.Messages.CollectionChanged -= Messages_OnCollectionChanged;
+            _observedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
         }
 
         ClearObservedMessages();
         _observedViewModel = viewModel;
+        _followTail = true;
+        _hasUnreadMessages = false;
+        UpdateScrollToBottomButton();
         if (_observedViewModel is null)
         {
             return;
         }
 
         _observedViewModel.Messages.CollectionChanged += Messages_OnCollectionChanged;
+        _observedViewModel.PropertyChanged += ViewModel_OnPropertyChanged;
         foreach (var message in _observedViewModel.Messages)
         {
             ObserveMessage(message);
@@ -328,6 +324,12 @@ public partial class ChatView : UserControl
             }
         }
 
+        if (e.NewItems is { Count: > 0 } && !_followTail)
+        {
+            _hasUnreadMessages = true;
+        }
+
+        UpdateScrollToBottomButton();
         RequestAutoScroll();
     }
 
@@ -365,6 +367,11 @@ public partial class ChatView : UserControl
             && sender is ChatMessageItemViewModel message
             && ReferenceEquals(_observedViewModel?.Messages.LastOrDefault(), message))
         {
+            if (!_followTail)
+            {
+                _hasUnreadMessages = true;
+                UpdateScrollToBottomButton();
+            }
             RequestAutoScroll();
         }
     }
@@ -375,10 +382,72 @@ public partial class ChatView : UserControl
         RequestAutoScroll();
     }
 
+    private void MessageList_OnScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        // Only user-driven scrolling changes the follow state; content growth (streaming) does not.
+        if (e.ExtentHeightChange != 0 || e.ViewportHeightChange != 0)
+        {
+            return;
+        }
+
+        _followTail = e.VerticalOffset + e.ViewportHeight >= e.ExtentHeight - FollowTailTolerance;
+        if (_followTail)
+        {
+            _hasUnreadMessages = false;
+        }
+        UpdateScrollToBottomButton();
+    }
+
+    private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ChatViewModel.SelectedConversation))
+        {
+            _followTail = true;
+            _hasUnreadMessages = false;
+            UpdateScrollToBottomButton();
+            RequestAutoScroll();
+        }
+
+        // The composer is cleared when a message is sent: always bring the new exchange into view.
+        if (e.PropertyName == nameof(ChatViewModel.ComposerText)
+            && string.IsNullOrEmpty(_observedViewModel?.ComposerText))
+        {
+            _followTail = true;
+            _hasUnreadMessages = false;
+            UpdateScrollToBottomButton();
+        }
+    }
+
+    private void UpdateScrollToBottomButton()
+    {
+        ScrollToBottomButton.Visibility = !_followTail && _observedViewModel?.Messages.Count > 0
+            ? Visibility.Visible : Visibility.Collapsed;
+        ScrollToBottomButton.SetResourceReference(ContentControl.ContentProperty,
+            _hasUnreadMessages ? "Chat.NewMessages" : "Chat.ScrollToBottom");
+    }
+
+    private void ScrollToBottomButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _followTail = true;
+        _hasUnreadMessages = false;
+        UpdateScrollToBottomButton();
+        ScrollToLastMessage();
+    }
+
+    private void ScrollToLastMessage()
+    {
+        if (_observedViewModel?.Messages.LastOrDefault() is { } lastMessage)
+        {
+            ConversationMessageList.ScrollIntoView(lastMessage);
+            FindScrollViewer(ConversationMessageList)?.ScrollToEnd();
+        }
+    }
+
     private void RequestAutoScroll()
     {
         if (!IsLoaded
             || !InterfaceSettingsRuntime.ChatAutoScrollEnabled
+            || !_followTail
             || _scrollScheduled)
         {
             return;
@@ -390,33 +459,31 @@ public partial class ChatView : UserControl
             new Action(() =>
             {
                 _scrollScheduled = false;
-                if (IsLoaded && InterfaceSettingsRuntime.ChatAutoScrollEnabled)
+                // Input runs before this background callback; honor an intervening scroll up.
+                if (IsLoaded && InterfaceSettingsRuntime.ChatAutoScrollEnabled && _followTail)
                 {
-                    var lastMessage = _observedViewModel?.Messages.LastOrDefault();
-                    if (lastMessage is not null)
-                    {
-                        ConversationMessageList.ScrollIntoView(lastMessage);
-                    }
+                    ScrollToLastMessage();
                 }
             }));
     }
 
-    private void MessageHost_OnMouseEnter(object sender, MouseEventArgs e)
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
     {
-        if (sender is FrameworkElement host
-            && host.FindName("HoverActions") is UIElement bar)
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
         {
-            bar.IsHitTestVisible = true;
-        }
-    }
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is ScrollViewer viewer)
+            {
+                return viewer;
+            }
 
-    private void MessageHost_OnMouseLeave(object sender, MouseEventArgs e)
-    {
-        if (sender is FrameworkElement host
-            && host.FindName("HoverActions") is UIElement bar)
-        {
-            bar.IsHitTestVisible = false;
+            if (FindScrollViewer(child) is { } nested)
+            {
+                return nested;
+            }
         }
+
+        return null;
     }
 
     private void MessageBubble_OnPreviewMouseRightButtonUp(

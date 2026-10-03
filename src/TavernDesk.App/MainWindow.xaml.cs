@@ -30,6 +30,11 @@ public partial class MainWindow : Window
         Closed += OnClosed;
     }
 
+    private void SidebarLayout_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        RuntimeStatusScroll.MaxHeight = e.NewSize.Height * 0.45;
+    }
+
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (_closeConfirmed || DataContext is not MainWindowViewModel viewModel)
@@ -86,6 +91,7 @@ public partial class MainWindow : Window
         {
             // Closing the main window is a real application exit. Secondary
             // windows and page navigation must never route their Close here.
+            if (DataContext is MainWindowViewModel viewModel) viewModel.Campaigns.Dispose();
             Application.Current.Shutdown();
         }
     }

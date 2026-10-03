@@ -17,7 +17,7 @@
 
         <StackPanel>
             <TextBlock Text="{StaticResource Regenerate.Question}"
-                       FontSize="16"
+                       FontSize="{DynamicResource FontSizeSubtitle}"
                        FontWeight="SemiBold" />
             <TextBlock Margin="0,5,0,12"
                        Foreground="{DynamicResource MutedTextBrush}"

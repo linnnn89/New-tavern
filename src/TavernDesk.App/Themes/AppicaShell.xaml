@@ -3,66 +3,68 @@
                     xmlns:system="clr-namespace:System;assembly=System.Runtime"
                     xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
                     xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="VisualStyles.xaml" />
+    </ResourceDictionary.MergedDictionaries>
     <presentation:ReferenceEqualsMultiConverter x:Key="ReferenceEqualsMultiConverter" />
     <system:Boolean x:Key="AppicaBooleanTrue">True</system:Boolean>
 
     <!-- The shell is deliberately isolated from secondary windows and dialogs. -->
     <FontFamily x:Key="AppicaShellIconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-    <SolidColorBrush x:Key="AppicaShellCanvasBrush" Color="#F7F9FC" />
+    <SolidColorBrush x:Key="AppicaShellCanvasBrush" Color="#F4F5F7" />
     <SolidColorBrush x:Key="AppicaShellSurfaceBrush" Color="#FFFFFFFF" />
-    <SolidColorBrush x:Key="AppicaShellDividerBrush" Color="#E5E9F0" />
-    <SolidColorBrush x:Key="AppicaShellTextBrush" Color="#171B24" />
-    <SolidColorBrush x:Key="AppicaShellMutedBrush" Color="#697386" />
-    <SolidColorBrush x:Key="AppicaShellSubtleBrush" Color="#8A94A6" />
-    <SolidColorBrush x:Key="AppicaShellAccentBrush" Color="#0F6BEE" />
-    <SolidColorBrush x:Key="AppicaShellAccentHoverBrush" Color="#075FDC" />
-    <SolidColorBrush x:Key="AppicaShellAccentSoftBrush" Color="#E8F1FF" />
-    <SolidColorBrush x:Key="AppicaShellAccentBorderBrush" Color="#CFE0FF" />
-    <SolidColorBrush x:Key="AppicaShellHoverBrush" Color="#F3F6FA" />
-    <SolidColorBrush x:Key="AppicaShellPressedBrush" Color="#E9EEF5" />
-    <SolidColorBrush x:Key="AppicaShellStatusSurfaceBrush" Color="#F7F9FC" />
-    <SolidColorBrush x:Key="AppicaShellSuccessBrush" Color="#1BAA67" />
-    <SolidColorBrush x:Key="AppicaShellDangerBrush" Color="#B42318" />
-    <SolidColorBrush x:Key="AppicaShellDangerSurfaceBrush" Color="#FFF2F0" />
-    <SolidColorBrush x:Key="AppicaShellDangerHoverBrush" Color="#FFE8E5" />
-    <SolidColorBrush x:Key="AppicaShellDangerBorderBrush" Color="#F6C8C2" />
-    <SolidColorBrush x:Key="AppicaShellFocusBrush" Color="#79A7FF" />
+    <SolidColorBrush x:Key="AppicaShellDividerBrush" Color="#E2E4E9" />
+    <SolidColorBrush x:Key="AppicaShellTextBrush" Color="#1B1E24" />
+    <SolidColorBrush x:Key="AppicaShellMutedBrush" Color="#6B7280" />
+    <SolidColorBrush x:Key="AppicaShellSubtleBrush" Color="#8D939D" />
+    <SolidColorBrush x:Key="AppicaShellAccentBrush" Color="#3B5BDB" />
+    <SolidColorBrush x:Key="AppicaShellAccentHoverBrush" Color="#314EC2" />
+    <SolidColorBrush x:Key="AppicaShellAccentSoftBrush" Color="#EEF1FC" />
+    <SolidColorBrush x:Key="AppicaShellAccentBorderBrush" Color="#C5D2F6" />
+    <SolidColorBrush x:Key="AppicaShellHoverBrush" Color="#F3F4F6" />
+    <SolidColorBrush x:Key="AppicaShellPressedBrush" Color="#E8EAEE" />
+    <SolidColorBrush x:Key="AppicaShellStatusSurfaceBrush" Color="#F8F9FA" />
+    <SolidColorBrush x:Key="AppicaShellSuccessBrush" Color="#1A8A5A" />
+    <SolidColorBrush x:Key="AppicaShellDangerBrush" Color="#C9372C" />
+    <SolidColorBrush x:Key="AppicaShellDangerSurfaceBrush" Color="#FDF2F2" />
+    <SolidColorBrush x:Key="AppicaShellDangerHoverBrush" Color="#FDE8E8" />
+    <SolidColorBrush x:Key="AppicaShellDangerBorderBrush" Color="#F8B4B4" />
+    <SolidColorBrush x:Key="AppicaShellFocusBrush" Color="#9AAEF0" />
 
-    <SolidColorBrush x:Key="AppicaDashboardHeroBrush" Color="#EDF4FF" />
-    <SolidColorBrush x:Key="AppicaDashboardHeroBorderBrush" Color="#D8E6FF" />
-    <SolidColorBrush x:Key="AppicaDashboardPurpleSoftBrush" Color="#F1ECFF" />
-    <SolidColorBrush x:Key="AppicaDashboardPurpleBrush" Color="#7450D8" />
-    <SolidColorBrush x:Key="AppicaDashboardGreenSoftBrush" Color="#E8F8F0" />
-    <SolidColorBrush x:Key="AppicaDashboardGreenBrush" Color="#16845B" />
+    <SolidColorBrush x:Key="AppicaDashboardHeroBrush" Color="#EEF1FC" />
+    <SolidColorBrush x:Key="AppicaDashboardHeroBorderBrush" Color="#D4DDF8" />
+    <SolidColorBrush x:Key="AppicaDashboardPurpleSoftBrush" Color="#F3F0FF" />
+    <SolidColorBrush x:Key="AppicaDashboardPurpleBrush" Color="#6741D9" />
+    <SolidColorBrush x:Key="AppicaDashboardGreenSoftBrush" Color="#EBFBEE" />
+    <SolidColorBrush x:Key="AppicaDashboardGreenBrush" Color="#2B8A3E" />
 
     <DropShadowEffect x:Key="AppicaShellSidebarShadowEffect"
-                      BlurRadius="18"
+                      BlurRadius="16"
                       Direction="0"
-                      Opacity="0.07"
+                      Opacity="0.04"
                       ShadowDepth="2"
-                      Color="#42516B" />
+                      Color="#111827" />
     <DropShadowEffect x:Key="AppicaDashboardCardShadowEffect"
                       BlurRadius="20"
                       Direction="270"
-                      Opacity="0.07"
-                      ShadowDepth="3"
-                      Color="#34435A" />
+                      Opacity="0.05"
+                      ShadowDepth="2"
+                      Color="#111827" />
 
     <Style x:Key="AppicaShellSidebarStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource AppicaShellSurfaceBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceSunken}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AppicaShellDividerBrush}" />
-        <Setter Property="BorderThickness" Value="0,0,1,0" />
-        <Setter Property="Effect" Value="{StaticResource AppicaShellSidebarShadowEffect}" />
+        <Setter Property="BorderThickness" Value="0" />
     </Style>
 
     <Style x:Key="AppicaShellBrandTextStyle" TargetType="TextBlock">
-        <Setter Property="Margin" Value="26,0,16,0" />
+        <Setter Property="Margin" Value="{DynamicResource InsetMd}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
-        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
     <Style x:Key="AppicaShellNavIconStyle" TargetType="TextBlock">
@@ -72,20 +74,20 @@
         <Setter Property="FontFamily" Value="{StaticResource AppicaShellIconFont}" />
         <Setter Property="FontSize" Value="20" />
         <Setter Property="TextAlignment" Value="Center" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
     <Style x:Key="AppicaShellNavButtonStyle" TargetType="Button">
-        <Setter Property="Height" Value="48" />
-        <Setter Property="Margin" Value="10,3" />
-        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="MinHeight" Value="{DynamicResource ControlHeightLg}" />
+        <Setter Property="Margin" Value="{DynamicResource NavMargin}" />
+        <Setter Property="Padding" Value="{DynamicResource NavInset}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellMutedBrush}" />
-        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyLarge}" />
         <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -101,7 +103,15 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10" />
+                                CornerRadius="{DynamicResource RadiusMd}" />
+                        <Border x:Name="SelectionIndicator"
+                                Width="{DynamicResource NavIndicatorWidth}"
+                                Height="{DynamicResource NavIndicatorHeight}"
+                                Margin="{DynamicResource IndicatorInset}"
+                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                CornerRadius="{DynamicResource NavIndicatorRadius}"
+                                Background="{DynamicResource NavItemIndicatorBrush}"
+                                IsHitTestVisible="False" Visibility="Collapsed" />
                         <Border x:Name="FocusRing"
                                 Margin="1"
                                 BorderBrush="{DynamicResource AppicaShellFocusBrush}"
@@ -120,9 +130,9 @@
                             <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
                         </Trigger>
                         <Trigger Property="Tag" Value="{StaticResource AppicaBooleanTrue}">
-                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AppicaShellAccentSoftBrush}" />
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AppicaShellAccentBorderBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource AppicaShellAccentBrush}" />
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource NavItemSelectedBackground}" />
+                            <Setter TargetName="SelectionIndicator" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
@@ -207,11 +217,9 @@
     </Style>
 
     <Style x:Key="AppicaTokenCapsuleStyle" TargetType="Border">
-        <Setter Property="Padding" Value="10,5" />
-        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AppicaShellAccentBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="{DynamicResource InsetSm}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
@@ -260,11 +268,11 @@
     </Style>
 
     <Style x:Key="AppicaEmptyStateStyle" TargetType="Border">
-        <Setter Property="Padding" Value="28,36" />
-        <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+        <Setter Property="Padding" Value="{DynamicResource InsetLg}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBase}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="MaxWidth" Value="420" />
@@ -273,7 +281,7 @@
     <Style x:Key="AppicaShellSectionTitleStyle" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
-        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitleLarge}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
@@ -288,13 +296,13 @@
 
     <Style x:Key="AppicaShellRuntimeLabelStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellSubtleBrush}" />
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style x:Key="AppicaShellRuntimeTextStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellMutedBrush}" />
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
         <Setter Property="LineHeight" Value="17" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -308,7 +316,7 @@
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellDangerBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AppicaShellDangerBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -359,23 +367,21 @@
     </Style>
 
     <Style x:Key="AppicaDashboardHeroStyle" TargetType="Border">
-        <Setter Property="Padding" Value="30,26" />
-        <Setter Property="Background" Value="{DynamicResource AppicaDashboardHeroBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AppicaDashboardHeroBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="Padding" Value="{DynamicResource NoInset}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
     </Style>
 
     <Style x:Key="AppicaDashboardHeroEyebrowStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellAccentBrush}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style x:Key="AppicaDashboardHeroTitleStyle" TargetType="TextBlock">
-        <Setter Property="Margin" Value="0,9,0,8" />
+        <Setter Property="Margin" Value="{DynamicResource ContentGap}" />
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
-        <Setter Property="FontSize" Value="30" />
+        <Setter Property="FontSize" Value="{DynamicResource DashboardTitleSize}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -384,7 +390,7 @@
         <Setter Property="MaxWidth" Value="590" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellMutedBrush}" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{DynamicResource InterfaceFontSize}" />
         <Setter Property="LineHeight" Value="22" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -410,8 +416,8 @@
     </Style>
 
     <Style x:Key="AppicaDashboardStatButtonStyle" TargetType="Button">
-        <Setter Property="MinHeight" Value="138" />
-        <Setter Property="Padding" Value="18" />
+        <Setter Property="MinHeight" Value="{DynamicResource StatTileMinHeight}" />
+        <Setter Property="Padding" Value="{DynamicResource InsetMd}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
@@ -421,7 +427,6 @@
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-        <Setter Property="Effect" Value="{StaticResource AppicaDashboardCardShadowEffect}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -430,7 +435,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="16"
+                                CornerRadius="{DynamicResource RadiusMd}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
@@ -461,23 +466,23 @@
 
     <Style x:Key="AppicaDashboardStatLabelStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellMutedBrush}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style x:Key="AppicaDashboardStatMetricStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
-        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontSize" Value="{DynamicResource DashboardMetricSize}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
     <Style x:Key="AppicaDashboardRecentPanelStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource AppicaShellSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AppicaShellDividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="16" />
-        <Setter Property="Effect" Value="{StaticResource AppicaDashboardCardShadowEffect}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
     </Style>
 
     <Style x:Key="AppicaDashboardRecentRowButtonStyle" TargetType="Button">

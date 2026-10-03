@@ -50,7 +50,7 @@
                                          Text="{Binding CampaignContextTokenBudgetText, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Margin="0,4,0,0"
                                            Text="{StaticResource CampaignMemorySettings.InputBudgetHelp}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
@@ -60,7 +60,7 @@
                                          Text="{Binding CampaignPlayerHistoryBudgetText, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Margin="0,4,0,0"
                                            Text="{StaticResource CampaignMemorySettings.PlayerHistoryBudgetHelp}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
@@ -72,7 +72,7 @@
                                      Text="{Binding CampaignGmHistoryBudgetText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Margin="0,4,0,0"
                                        Text="{StaticResource CampaignMemorySettings.GmHistoryBudgetHelp}"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource FontSizeSmall}"
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
@@ -140,7 +140,7 @@
                                          Text="{Binding CampaignMemoryUpdateIntervalRoundsText, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Margin="0,4,0,0"
                                            Text="{StaticResource CampaignMemorySettings.UpdateIntervalHelp}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
@@ -149,7 +149,7 @@
                                          Text="{Binding CampaignMemoryPendingTokenThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Margin="0,4,0,0"
                                            Text="{StaticResource CampaignMemorySettings.PendingThresholdHelp}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}"
                                            TextWrapping="Wrap" />
                             </StackPanel>

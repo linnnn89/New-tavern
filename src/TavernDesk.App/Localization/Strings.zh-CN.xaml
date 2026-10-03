@@ -160,6 +160,7 @@
     <sys:String x:Key="Worldbook.Delete">删除</sys:String>
     <sys:String x:Key="Worldbook.EntryName">词条名</sys:String>
     <sys:String x:Key="Worldbook.SaveEntryName">保存词条名</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">● 有未保存的更改</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">关键词：{0}</sys:String>
 
     <!-- Characters -->
@@ -559,7 +560,7 @@
     <sys:String x:Key="Settings.Interface.ScalePreviewHelp">10 秒内未确认，将自动恢复原比例。</sys:String>
     <sys:String x:Key="Settings.Interface.GlobalFont">全局字体</sys:String>
     <sys:String x:Key="Settings.Interface.Font">字体</sys:String>
-    <sys:String x:Key="Settings.Interface.FontSizeHelp">字号范围 10–32；聊天正文会在此基础上增加一级。</sys:String>
+    <sys:String x:Key="Settings.Interface.FontSizeHelp">字号范围 10–30；聊天正文会在此基础上增加一级。</sys:String>
     <sys:String x:Key="Settings.Interface.FontPreview">字体预览：TavernDesk 酒馆聊天 Aa 123</sys:String>
     <sys:String x:Key="Settings.Interface.Theme">主题</sys:String>
     <sys:String x:Key="Settings.Interface.ThemeHelp">可选默认浅色或深炭黑；仅改变颜色与材质，不改变窗口结构和操作逻辑。</sys:String>
@@ -1657,4 +1658,9 @@
     <sys:String x:Key="Speech.CacheUnavailable">缓存不可用；语音仍可直接生成播放。</sys:String>
     <sys:String x:Key="Speech.CacheHint">缓存独立存放在“我的文档”，超过 120 MiB 时删除最旧音频，下次启动清空。只缓存完整播放成功的音频。</sys:String>
     <sys:String x:Key="Speech.RefreshCache">刷新缓存占用</sys:String>
+    <sys:String x:Key="Chat.SearchPlaceholder">搜索会话</sys:String>
+    <sys:String x:Key="Characters.SearchPlaceholder">搜索角色</sys:String>
+    <sys:String x:Key="Chat.ScrollToBottom">↓ 回到底部</sys:String>
+    <sys:String x:Key="Chat.NewMessages">↓ 新消息</sys:String>
+    <sys:String x:Key="Settings.BackToWorkspace">← 返回工作区</sys:String>
 </ResourceDictionary>
