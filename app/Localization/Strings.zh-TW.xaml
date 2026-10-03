@@ -1501,7 +1501,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Worldbook.Mount.Title">管理世界書掛載</sys:String>
     <sys:String x:Key="Chat.RightPanel.Collapse">折疊右側欄</sys:String>
     <sys:String x:Key="Chat.RightPanel.Expand">展開右側欄</sys:String>
-    <sys:String x:Key="Chat.RightPanel.WidthConstrained">視窗空間不足；放大視窗後可展開右側欄</sys:String>
+    <sys:String x:Key="Chat.RightPanel.WidthConstrained">以浮層開啟右側欄</sys:String>
     <sys:String x:Key="Common.NoFurtherDetails">暫無更多詳細資訊</sys:String>
     <sys:String x:Key="Chat.Model.DefaultBudgetSource">目前預設模型設定</sys:String>
     <sys:String x:Key="Worldbook.IndexRebuiltFormat">索引已重建：{0} 個文字區塊，向量維度 {1}。</sys:String>

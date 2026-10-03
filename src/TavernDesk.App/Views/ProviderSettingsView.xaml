@@ -3,6 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:TavernDesk.App.ViewModels"
              xmlns:views="clr-namespace:TavernDesk.App.Views">
+    <UserControl.Resources>
+        <!-- Fluent scrollbars overlay the viewport; keep settings cards clear of the track. -->
+        <Style x:Key="SettingsScrollContentStyle" TargetType="FrameworkElement">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ComputedVerticalScrollBarVisibility, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                             Value="Visible">
+                    <Setter Property="Margin" Value="0,0,14,0" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
     <Grid Margin="20,16,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -104,7 +115,7 @@
                             <ScrollViewer Grid.Row="0"
                                           Padding="22,18,22,16"
                                           VerticalScrollBarVisibility="Auto">
-                                <StackPanel>
+                                <StackPanel Style="{StaticResource SettingsScrollContentStyle}">
                                     <TextBlock Text="{StaticResource Settings.Providers.Configuration}"
                                                FontSize="{DynamicResource FontSizeTitle}" FontWeight="SemiBold"
                                                Margin="{DynamicResource ContentGap}" />
@@ -379,7 +390,8 @@
                                               Margin="0,0,0,10"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled">
-                                    <ItemsControl ItemsSource="{Binding AssignmentOverview}">
+                                    <ItemsControl ItemsSource="{Binding AssignmentOverview}"
+                                                  Style="{StaticResource SettingsScrollContentStyle}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Expander Margin="0,0,0,4"
@@ -441,7 +453,7 @@
                                 <ScrollViewer Grid.Row="2"
                                               Margin="0,0,0,0"
                                               VerticalScrollBarVisibility="Auto">
-                                    <StackPanel>
+                                    <StackPanel Style="{StaticResource SettingsScrollContentStyle}">
                                     <StackPanel>
                                         <StackPanel.Style>
                                             <Style TargetType="StackPanel">
@@ -563,7 +575,7 @@
                      Tag="{x:Static viewModels:SettingsPage.DefaultBehavior}">
                 <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
+                    <StackPanel Style="{StaticResource SettingsScrollContentStyle}">
                         <TextBlock Text="{StaticResource Settings.Tab.DefaultBehavior}"
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"
@@ -667,7 +679,7 @@
                     <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                         <ScrollViewer Margin="18,12,12,12"
                                       VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
+                            <StackPanel Style="{StaticResource SettingsScrollContentStyle}">
                                 <TextBlock Text="{StaticResource Settings.Personas.Title}"
                                            Style="{StaticResource PageTitleStyle}" />
                                 <TextBlock Margin="0,2,0,14"
@@ -867,9 +879,10 @@
 
             <TabItem Header="{StaticResource Settings.Tab.Interface}"
                      Tag="{x:Static viewModels:SettingsPage.Interface}">
-                <ScrollViewer Margin="18,12,16,16"
+                <ScrollViewer AutomationProperties.AutomationId="SettingsInterfaceScroll" Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
+                    <StackPanel AutomationProperties.AutomationId="SettingsInterfaceContent"
+                                Style="{StaticResource SettingsScrollContentStyle}">
                             <TextBlock Text="{StaticResource Settings.Tab.Interface}"
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"
@@ -1016,7 +1029,7 @@
                      Tag="{x:Static viewModels:SettingsPage.Data}">
                 <ScrollViewer Margin="18,12,16,16"
                               VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
+                    <StackPanel Style="{StaticResource SettingsScrollContentStyle}">
                         <TextBlock Text="{StaticResource Settings.Data.Title}"
                                    Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Margin="0,2,0,14"

@@ -1501,7 +1501,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Worldbook.Mount.Title">Manage worldbook mounts</sys:String>
     <sys:String x:Key="Chat.RightPanel.Collapse">Collapse right sidebar</sys:String>
     <sys:String x:Key="Chat.RightPanel.Expand">Expand right sidebar</sys:String>
-    <sys:String x:Key="Chat.RightPanel.WidthConstrained">Not enough window space; enlarge the window to expand the right sidebar</sys:String>
+    <sys:String x:Key="Chat.RightPanel.WidthConstrained">Open the right sidebar as an overlay</sys:String>
     <sys:String x:Key="Common.NoFurtherDetails">No further details are available</sys:String>
     <sys:String x:Key="Chat.Model.DefaultBudgetSource">Current default model configuration</sys:String>
     <sys:String x:Key="Worldbook.IndexRebuiltFormat">Index rebuilt: {0} text chunks; embedding dimension {1}.</sys:String>

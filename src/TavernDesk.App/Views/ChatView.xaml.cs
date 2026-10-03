@@ -30,6 +30,7 @@ public partial class ChatView : UserControl
     private const double FollowTailTolerance = 48;
     private bool _isRightPanelCollapsed;
     private bool _isRightPanelAutoCollapsed;
+    private bool _isRightPanelOverlay;
     private double _rightPanelWidth = 406;
     private Window? _layoutHostWindow;
     private ContextMenu? _openGroupMemberMenu;
@@ -45,6 +46,7 @@ public partial class ChatView : UserControl
         Loaded += ChatView_OnLoaded;
         Unloaded += ChatView_OnUnloaded;
         DataContextChanged += ChatView_OnDataContextChanged;
+        ChatLayoutRoot.SizeChanged += (_, _) => UpdateResponsiveLayout();
         ConversationMessageList.AddHandler(
             ScrollViewer.ScrollChangedEvent,
             new ScrollChangedEventHandler(MessageList_OnScrollChanged));
@@ -62,7 +64,7 @@ public partial class ChatView : UserControl
         {
             if (RequiresResponsiveCollapse())
             {
-                UpdateCollapsedToggleMetadata(isWidthConstrained: true);
+                OpenRightPanelOverlay();
                 return;
             }
 
@@ -80,11 +82,12 @@ public partial class ChatView : UserControl
             return;
         }
 
-        if (RightPanelColumn.ActualWidth >= RightPanelColumn.MinWidth)
+        if (!_isRightPanelOverlay && RightPanelColumn.ActualWidth >= RightPanelMinimumWidth)
         {
             _rightPanelWidth = RightPanelColumn.ActualWidth;
         }
 
+        RestoreDockedRightPanelLayout();
         RightPanelColumn.MinWidth = 0;
         RightPanelColumn.Width = new GridLength(0);
         RightPanel.Visibility = Visibility.Collapsed;
@@ -97,6 +100,48 @@ public partial class ChatView : UserControl
         _isRightPanelCollapsed = true;
         _isRightPanelAutoCollapsed = automatic;
         UpdateCollapsedToggleMetadata(isWidthConstrained: automatic);
+    }
+
+    private void OpenRightPanelOverlay()
+    {
+        // Reuse the same panel and bindings without forcing all three columns into a narrow window.
+        Grid.SetColumn(RightPanel, 0);
+        Grid.SetColumnSpan(RightPanel, ChatLayoutRoot.ColumnDefinitions.Count);
+        Panel.SetZIndex(RightPanel, 1);
+        RightPanel.HorizontalAlignment = HorizontalAlignment.Right;
+        RightPanel.Width = Math.Min(Math.Max(_rightPanelWidth, RightPanelMinimumWidth), ChatLayoutRoot.ActualWidth);
+        RightPanel.Visibility = Visibility.Visible;
+        RightPanelOverlayHeader.Visibility = Visibility.Visible;
+        _isRightPanelCollapsed = false;
+        _isRightPanelOverlay = true;
+        UpdateExpandedToggleMetadata();
+        RightPanelOverlayCloseButton.Focus();
+    }
+
+    private void RestoreDockedRightPanelLayout()
+    {
+        Grid.SetColumn(RightPanel, 4);
+        Grid.SetColumnSpan(RightPanel, 1);
+        Panel.SetZIndex(RightPanel, 0);
+        RightPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+        RightPanel.Width = double.NaN;
+        RightPanelOverlayHeader.Visibility = Visibility.Collapsed;
+        _isRightPanelOverlay = false;
+    }
+
+    private void RightPanelOverlayCloseButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        CollapseRightPanel(automatic: false);
+        RightPanelToggleButton.Focus();
+    }
+
+    private void RightPanel_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_isRightPanelOverlay && e.Key == Key.Escape)
+        {
+            RightPanelOverlayCloseButton_OnClick(sender, e);
+            e.Handled = true;
+        }
     }
 
     private void ExpandRightPanel()
@@ -118,13 +163,18 @@ public partial class ChatView : UserControl
         RightPanel.Visibility = Visibility.Visible;
         RightPanelSplitter.IsEnabled = true;
         RightPanelSplitter.Background = Brushes.Transparent;
+        UpdateExpandedToggleMetadata();
+        _isRightPanelCollapsed = false;
+        _isRightPanelAutoCollapsed = false;
+    }
+
+    private void UpdateExpandedToggleMetadata()
+    {
         RightPanelCollapseArrow.Visibility = Visibility.Visible;
         RightPanelExpandArrow.Visibility = Visibility.Collapsed;
         var collapseLabel = LanguageRuntime.GetString("Chat.RightPanel.Collapse");
         RightPanelToggleButton.ToolTip = collapseLabel;
         AutomationProperties.SetName(RightPanelToggleButton, collapseLabel);
-        _isRightPanelCollapsed = false;
-        _isRightPanelAutoCollapsed = false;
     }
 
     private void UpdateCollapsedToggleMetadata(bool isWidthConstrained)
@@ -169,6 +219,20 @@ public partial class ChatView : UserControl
     private void UpdateResponsiveLayout()
     {
         var isWidthConstrained = RequiresResponsiveCollapse();
+        if (_isRightPanelOverlay)
+        {
+            if (isWidthConstrained)
+            {
+                RightPanel.Width = Math.Min(Math.Max(_rightPanelWidth, RightPanelMinimumWidth), ChatLayoutRoot.ActualWidth);
+            }
+            else
+            {
+                RestoreDockedRightPanelLayout();
+                _isRightPanelCollapsed = true;
+                ExpandRightPanel();
+            }
+            return;
+        }
         if (isWidthConstrained)
         {
             if (!_isRightPanelCollapsed)
@@ -241,6 +305,10 @@ public partial class ChatView : UserControl
     private void ChatView_OnUnloaded(object sender, RoutedEventArgs e)
     {
         CloseGroupMemberMenu();
+        if (_isRightPanelOverlay)
+        {
+            CollapseRightPanel(automatic: true);
+        }
         InterfaceSettingsRuntime.Changed -= InterfaceSettingsRuntime_OnChanged;
         DetachLayoutHostWindow();
         ObserveViewModel(null);

@@ -786,8 +786,24 @@
 
         <Border x:Name="RightPanel"
                 Grid.Column="4"
+                PreviewKeyDown="RightPanel_OnPreviewKeyDown"
                 Style="{StaticResource AppicaChatInspectorStyle}">
-            <TabControl Style="{StaticResource InspectorActivityControlStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border x:Name="RightPanelOverlayHeader" Visibility="Collapsed" Padding="8,4"
+                        Background="{DynamicResource SurfaceSunken}">
+                    <Button x:Name="RightPanelOverlayCloseButton" Content="×"
+                            HorizontalAlignment="Right"
+                            AutomationProperties.AutomationId="RightPanelOverlayCloseButton"
+                            AutomationProperties.Name="{StaticResource Chat.RightPanel.Collapse}"
+                            ToolTip="{StaticResource Chat.RightPanel.Collapse}"
+                            Style="{StaticResource MessageToolButtonStyle}"
+                            Click="RightPanelOverlayCloseButton_OnClick" />
+                </Border>
+            <TabControl Grid.Row="1" Style="{StaticResource InspectorActivityControlStyle}">
                 <TabItem Header="{StaticResource Chat.Tab.Context}" Tag="&#xE8A5;">
                     <chat:ChatContextPanel />
                 </TabItem>
@@ -805,6 +821,7 @@
                     <chat:ChatSessionPanel />
                 </TabItem>
             </TabControl>
+            </Grid>
         </Border>
 
 
