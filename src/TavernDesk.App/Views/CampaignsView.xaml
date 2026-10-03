@@ -95,7 +95,7 @@
                                                 <TextBlock Grid.Row="2"
                                                            Margin="0,5,0,0"
                                                            Text="{Binding SourceFileName}"
-                                                           FontSize="11"
+                                                           FontSize="{DynamicResource FontSizeCaption}"
                                                            TextTrimming="CharacterEllipsis"
                                                            Foreground="{DynamicResource MutedTextBrush}" />
                                             </Grid>
@@ -150,7 +150,7 @@
                                             <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding StatusLabel}" />
                                                 <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:MM-dd HH:mm}}"
-                                                           FontSize="11"
+                                                           FontSize="{DynamicResource FontSizeCaption}"
                                                            Foreground="{DynamicResource MutedTextBrush}" />
                                             </StackPanel>
                                         </Grid>
@@ -211,7 +211,7 @@
                             Style="{StaticResource CardStyle}">
                         <StackPanel>
                             <TextBlock Text="{StaticResource Campaigns.Edit.StructuredTitle}"
-                                       FontSize="18"
+                                       FontSize="{DynamicResource FontSizeTitle}"
                                        FontWeight="SemiBold" />
                             <TextBlock Margin="0,4,0,18"
                                        Text="{StaticResource Campaigns.Edit.StructuredDescription}"
@@ -410,7 +410,7 @@
                                Foreground="{DynamicResource MutedTextBrush}" />
                     <TextBlock Margin="0,8,0,0"
                                Text="{StaticResource Campaigns.Edit.SourcePreserved}"
-                               FontSize="12"
+                               FontSize="{DynamicResource FontSizeSmall}"
                                Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
             </ScrollViewer>
@@ -484,7 +484,7 @@
                                           SelectedItem="{Binding SelectedUserParticipation}"
                                           DisplayMemberPath="Name" />
                                 <TextBlock Margin="2,5,0,0"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}"
                                            Text="{Binding SelectedUserParticipation.Description}" />
                             </StackPanel>
@@ -497,12 +497,12 @@
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
                                        Margin="0,8,16,0"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource FontSizeSmall}"
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        Text="{Binding SelectedGm.Description}" />
                             <TextBlock Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2"
                                        Margin="0,8,0,0"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource FontSizeSmall}"
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        Text="{Binding SelectedFlow.Description}" />
 
@@ -759,7 +759,7 @@
                                                FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis" />
                                     <TextBlock Margin="0,3,0,0"
-                                               FontSize="11"
+                                               FontSize="{DynamicResource FontSizeCaption}"
                                                Foreground="{DynamicResource MutedTextBrush}"
                                                Text="{Binding RoundStatus}"
                                                TextTrimming="CharacterEllipsis" />
@@ -790,7 +790,7 @@
                                 <TextBlock Text="{StaticResource Campaigns.Play.PlayerSeats}" Style="{StaticResource SectionTitleStyle}" />
                                 <TextBlock Margin="0,4,0,0"
                                            Text="{StaticResource Campaigns.Play.PlayerSeatsHelp}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource FontSizeSmall}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                             <ScrollViewer Grid.Row="1" Margin="0,10,0,0"
@@ -941,7 +941,7 @@
                                                         <TextBlock Margin="0,0,6,0"
                                                                    VerticalAlignment="Center"
                                                                    Text="{StaticResource Campaigns.Play.GmCandidate}"
-                                                                   FontSize="11"
+                                                                   FontSize="{DynamicResource FontSizeCaption}"
                                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                                         <Button Content="‹"
                                                                 Command="{Binding DataContext.PreviousGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -951,7 +951,7 @@
                                                                    VerticalAlignment="Center"
                                                                    TextAlignment="Center"
                                                                    Text="{Binding CandidateNavigationLabel}"
-                                                                   FontSize="11"
+                                                                   FontSize="{DynamicResource FontSizeCaption}"
                                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                                         <Button Content="›"
                                                                 Command="{Binding DataContext.NextGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -960,7 +960,7 @@
                                                     </StackPanel>
                                                     <TextBlock Margin="0,4,0,0"
                                                                Text="{Binding CandidateHelpText}"
-                                                               FontSize="11"
+                                                               FontSize="{DynamicResource FontSizeCaption}"
                                                                TextWrapping="Wrap"
                                                                Foreground="{DynamicResource MutedTextBrush}"
                                                                Visibility="{Binding HasCandidates, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -996,14 +996,14 @@
                                                 Background="{DynamicResource AccentSoftBrush}"
                                                 CornerRadius="10">
                                             <TextBlock Text="{Binding GmModeText}"
-                                                       FontSize="12"
+                                                       FontSize="{DynamicResource FontSizeSmall}"
                                                        FontWeight="SemiBold" />
                                         </Border>
                                         <Border Padding="9,6"
                                                 Background="{DynamicResource SurfaceAltBrush}"
                                                 CornerRadius="10">
                                             <TextBlock Text="{Binding ParticipationModeText}"
-                                                       FontSize="12" />
+                                                       FontSize="{DynamicResource FontSizeSmall}" />
                                         </Border>
                                     </StackPanel>
                                     <TextBlock Margin="0,14,0,0"
@@ -1015,20 +1015,20 @@
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                     <TextBlock Margin="0,8,0,0"
                                                Text="{Binding CurrentStepProgressText}"
-                                               FontSize="12"
+                                               FontSize="{DynamicResource FontSizeSmall}"
                                                Foreground="{DynamicResource AccentBrush}" />
 
                                     <Expander Margin="0,12,0,0"
                                               Header="{StaticResource Campaigns.Play.ContextEstimate}"
                                               IsExpanded="False"
-                                              Visibility="{Binding HasContextPreview, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                              Visibility="{Binding ContextPreview.HasContextPreview, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <StackPanel Margin="0,8,0,0">
-                                            <TextBlock Text="{Binding ContextPreviewSummary}"
-                                                       FontSize="12"
+                                            <TextBlock Text="{Binding ContextPreview.ContextPreviewSummary}"
+                                                       FontSize="{DynamicResource FontSizeSmall}"
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <ItemsControl Margin="0,8,0,0"
-                                                          ItemsSource="{Binding ContextPreviewItems}">
+                                                          ItemsSource="{Binding ContextPreview.ContextPreviewItems}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <Border Margin="0,0,0,8"
@@ -1040,10 +1040,10 @@
                                                                            FontWeight="SemiBold" />
                                                                 <TextBlock Margin="0,3,0,0"
                                                                            Text="{Binding BudgetText}"
-                                                                           FontSize="12" />
+                                                                           FontSize="{DynamicResource FontSizeSmall}" />
                                                                 <TextBlock Margin="0,3,0,0"
                                                                            Text="{Binding StatusText}"
-                                                                           FontSize="12"
+                                                                           FontSize="{DynamicResource FontSizeSmall}"
                                                                            TextWrapping="Wrap"
                                                                            Foreground="{DynamicResource AccentBrush}" />
                                                                 <ItemsControl Margin="0,6,0,0"
@@ -1056,15 +1056,15 @@
                                                                                     <ColumnDefinition Width="Auto" />
                                                                                 </Grid.ColumnDefinitions>
                                                                                 <TextBlock Text="{Binding Title}"
-                                                                                           FontSize="11"
+                                                                                           FontSize="{DynamicResource FontSizeCaption}"
                                                                                            TextWrapping="Wrap" />
                                                                                 <StackPanel Grid.Column="1"
                                                                                             Margin="6,0,0,0">
                                                                                     <TextBlock Text="{Binding TokenText}"
-                                                                                               FontSize="11"
+                                                                                               FontSize="{DynamicResource FontSizeCaption}"
                                                                                                HorizontalAlignment="Right" />
                                                                                     <TextBlock Text="{Binding StateText}"
-                                                                                               FontSize="10"
+                                                                                               FontSize="{DynamicResource FontSizeCaption2}"
                                                                                                HorizontalAlignment="Right"
                                                                                                Foreground="{DynamicResource MutedTextBrush}" />
                                                                                 </StackPanel>
@@ -1086,7 +1086,7 @@
                                                    FontWeight="SemiBold" />
                                         <TextBlock Margin="0,5,0,0"
                                                    Text="{StaticResource Campaigns.Play.UserActionHelp}"
-                                                   FontSize="12"
+                                                   FontSize="{DynamicResource FontSizeSmall}"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <TextBox Margin="0,7,0,0"
@@ -1156,7 +1156,7 @@
                                 <Expander Header="{StaticResource Campaigns.Play.ExtraDice}">
                                     <StackPanel Margin="0,9,0,0">
                                         <TextBlock Text="{StaticResource Campaigns.Play.ExtraDiceHelp}"
-                                                   FontSize="12"
+                                                   FontSize="{DynamicResource FontSizeSmall}"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <WrapPanel Margin="0,8,0,0">
@@ -1222,7 +1222,7 @@
                                                      Text="{Binding GmMaxOutputTokensText, UpdateSourceTrigger=PropertyChanged}" />
                                         </Grid>
                                         <TextBlock Margin="0,5,0,0"
-                                                   FontSize="11"
+                                                   FontSize="{DynamicResource FontSizeCaption}"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}"
                                                    Text="{StaticResource Campaigns.Play.GmOutputTokensHelp}" />

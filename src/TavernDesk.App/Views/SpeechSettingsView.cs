@@ -87,14 +87,15 @@ public sealed class SpeechSettingsView : UserControl
         var footer = new StackPanel { Margin = new Thickness(20, 0, 20, 12), MaxWidth = 780 };
         Grid.SetRow(footer, 1);
         layout.Children.Add(footer);
-        footer.Children.Add(Note("TestHint"));
+        var testHint = Note("TestHint");
+        footer.Children.Add(testHint);
         var buttons = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,8,0,4) };
         buttons.SetBinding(IsEnabledProperty, new Binding("CanEdit"));
         footer.Children.Add(buttons);
         AddButton(buttons, L("TestConnection"), "TestCommand", "SpeechTestConnection");
         AddButton(buttons, L("Recommended"), "RecommendedCommand", "SpeechRecommended");
         AddButton(buttons, L("Reload"), "ReloadCommand", "SpeechReload");
-        AddButton(buttons, LanguageRuntime.GetString("Common.SaveChanges"), "SaveCommand", "SpeechSave");
+        var saveButton = AddButton(buttons, LanguageRuntime.GetString("Common.SaveChanges"), "SaveCommand", "SpeechSave");
         var cancelTest = new Button { Content = L("CancelTest"), HorizontalAlignment = HorizontalAlignment.Right };
         cancelTest.SetBinding(Button.CommandProperty, new Binding("CancelTestCommand"));
         cancelTest.SetBinding(VisibilityProperty, new Binding("IsTesting") { Converter = new BooleanToVisibilityConverter() });
@@ -103,6 +104,57 @@ public sealed class SpeechSettingsView : UserControl
         var status = Note("ManualOnly"); status.SetBinding(TextBlock.TextProperty, new Binding("Status")); footer.Children.Add(status);
         AutomationProperties.SetAutomationId(status, "SpeechStatus");
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
+        var extraButtons = buttons.Children.OfType<Button>().Where(button => button != saveButton).ToArray();
+        var overflow = new StackPanel();
+        var overflowButtons = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = buttons.Margin };
+        panel.Children.Add(overflow);
+        var compactFooter = false;
+        void UpdateFooterLayout()
+        {
+            if (ActualWidth <= 40 || ActualHeight <= 0) return;
+            var availableWidth = Math.Min(780, ActualWidth - 40);
+            var size = new Size(availableWidth, double.PositiveInfinity);
+            testHint.Measure(size); status.Measure(size); cancelTest.Measure(size);
+            double rowWidth = 0, rowHeight = 0, buttonHeight = 0;
+            foreach (var button in extraButtons.Append(saveButton))
+            {
+                button.Measure(size);
+                if (rowWidth > 0 && rowWidth + button.DesiredSize.Width > availableWidth)
+                {
+                    buttonHeight += rowHeight; rowWidth = rowHeight = 0;
+                }
+                rowWidth += button.DesiredSize.Width;
+                rowHeight = Math.Max(rowHeight, button.DesiredSize.Height);
+            }
+            var expandedHeight = testHint.DesiredSize.Height + buttonHeight + rowHeight
+                + status.DesiredSize.Height + cancelTest.DesiredSize.Height + overflowButtons.Margin.Top + overflowButtons.Margin.Bottom + 12;
+            // Keep the input viewport usable when large text makes the fixed footer too tall.
+            var compact = expandedHeight > ActualHeight - 120;
+            if (compact == compactFooter) return;
+            compactFooter = compact;
+            if (compact)
+            {
+                buttons.Margin = new Thickness(0, 4, 0, 0);
+                footer.Margin = new Thickness(20, 0, 20, 4);
+                footer.Children.Remove(testHint); overflow.Children.Add(testHint);
+                foreach (var button in extraButtons) { buttons.Children.Remove(button); overflowButtons.Children.Add(button); }
+                overflow.Children.Add(overflowButtons);
+                footer.Children.Remove(status); overflow.Children.Add(status);
+            }
+            else
+            {
+                buttons.Margin = overflowButtons.Margin;
+                footer.Margin = new Thickness(20, 0, 20, 12);
+                overflow.Children.Remove(testHint); footer.Children.Insert(0, testHint);
+                overflow.Children.Remove(overflowButtons);
+                for (var i = 0; i < extraButtons.Length; i++) { overflowButtons.Children.Remove(extraButtons[i]); buttons.Children.Insert(i, extraButtons[i]); }
+                overflow.Children.Remove(status); footer.Children.Add(status);
+            }
+        }
+        SizeChanged += (_, _) => UpdateFooterLayout();
+        footer.SizeChanged += (_, _) => UpdateFooterLayout();
+        testHint.SizeChanged += (_, _) => UpdateFooterLayout();
+        status.SizeChanged += (_, _) => UpdateFooterLayout();
         _password.PasswordChanged += (_, _) => { if (DataContext is SpeechSettingsViewModel vm) vm.PendingApiKey = _password.Password; };
         DataContextChanged += (_, e) =>
         {
@@ -121,10 +173,11 @@ public sealed class SpeechSettingsView : UserControl
         };
         Unloaded += (_, _) => { _observedViewModel?.CancelTest(); Observe(null); };
     }
-    private static void AddButton(Panel panel, string text, string command, string id)
+    private static Button AddButton(Panel panel, string text, string command, string id)
     {
         var button = new Button { Content = text, Margin = new Thickness(5,3,0,3), Padding = new Thickness(14,7,14,7) };
         button.SetBinding(Button.CommandProperty, new Binding(command)); AutomationProperties.SetAutomationId(button, id); panel.Children.Add(button);
+        return button;
     }
     private void Observe(SpeechSettingsViewModel? viewModel)
     {
@@ -196,7 +249,10 @@ public sealed class SpeechSettingsView : UserControl
                 bounds.Union(error.TransformToAncestor(_scroll).TransformBounds(new Rect(error.RenderSize)));
                 const double margin = 8;
                 var bottom = _scroll.ViewportHeight - margin;
-                var delta = bounds.Height > bottom - margin || bounds.Top < margin ? bounds.Top - margin
+                var delta = error.ActualHeight > bottom
+                    ? input.TransformToAncestor(_scroll).TransformBounds(new Rect(input.RenderSize)).Top - margin
+                    : bounds.Height > bottom - margin ? bounds.Bottom - bottom
+                    : bounds.Top < margin ? bounds.Top - margin
                     : bounds.Bottom > bottom ? bounds.Bottom - bottom : 0;
                 if (delta != 0) _scroll.ScrollToVerticalOffset(_scroll.VerticalOffset + delta);
             }));
@@ -208,7 +264,13 @@ public sealed class SpeechSettingsView : UserControl
         if (_password.Password != value) _password.Password = value;
     }
     private static string L(string key) => LanguageRuntime.GetString("Speech." + key);
-    private static TextBlock Note(string key, double size = 12) => new() { Text = L(key), TextWrapping = TextWrapping.Wrap, FontSize = size, Margin = new Thickness(0,5,0,5) };
+    private static TextBlock Note(string key, double size = 12)
+    {
+        var note = new TextBlock { Text = L(key), TextWrapping = TextWrapping.Wrap, FontSize = size, Margin = new Thickness(0,5,0,5) };
+        if (size is 12 or 16)
+            note.SetResourceReference(TextBlock.FontSizeProperty, size == 12 ? "FontSizeSmall" : "FontSizeSubtitle");
+        return note;
+    }
     private static TextBlock Label(Panel panel, string key)
     {
         var label = new TextBlock { Text = L(key), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,12,0,5) };

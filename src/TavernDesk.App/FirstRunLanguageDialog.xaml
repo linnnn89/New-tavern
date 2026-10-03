@@ -43,7 +43,7 @@
                            Text="{DynamicResource FirstRun.Language.Description}"
                            TextWrapping="Wrap"
                            LineHeight="25"
-                           FontSize="15"
+                           FontSize="{DynamicResource FontSizeBodyLarge}"
                            Foreground="{DynamicResource MutedTextBrush}" />
             </StackPanel>
 

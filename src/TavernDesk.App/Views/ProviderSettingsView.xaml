@@ -11,56 +11,12 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <TextBlock Text="{StaticResource Settings.Title}" Style="{StaticResource PageTitleStyle}" />
-            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}"
+                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}" />
         </StackPanel>
 
         <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="180" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <ScrollViewer Grid.Column="0"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <ListBox Style="{StaticResource SettingsNavListBoxStyle}"
-                         SelectedValuePath="Tag"
-                         SelectedValue="{Binding SelectedSettingsPage, Mode=TwoWay}">
-                    <ListBoxItem Content="{StaticResource Settings.Section.AiModels}"
-                                 IsEnabled="False"
-                                 Style="{StaticResource SettingsNavSectionHeaderStyle}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.Providers}"
-                                 Tag="{x:Static viewModels:SettingsPage.Providers}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.ModelCatalog}"
-                                 Tag="{x:Static viewModels:SettingsPage.ModelCatalog}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.Assignments}"
-                                 Tag="{x:Static viewModels:SettingsPage.Assignments}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.Prompts}"
-                                 Tag="{x:Static viewModels:SettingsPage.Prompts}" />
-                    <ListBoxItem Content="{StaticResource Speech.Nav}"
-                                 AutomationProperties.AutomationId="SpeechSettingsNav"
-                                 Tag="{x:Static viewModels:SettingsPage.Speech}" />
-
-                    <ListBoxItem Content="{StaticResource Settings.Section.Personal}"
-                                 IsEnabled="False"
-                                 Style="{StaticResource SettingsNavSectionHeaderStyle}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.Personas}"
-                                 Tag="{x:Static viewModels:SettingsPage.Personas}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.DefaultBehavior}"
-                                 Tag="{x:Static viewModels:SettingsPage.DefaultBehavior}" />
-
-                    <ListBoxItem Content="{StaticResource Settings.Section.System}"
-                                 IsEnabled="False"
-                                 Style="{StaticResource SettingsNavSectionHeaderStyle}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.Interface}"
-                                 Tag="{x:Static viewModels:SettingsPage.Interface}" />
-                    <ListBoxItem Content="{StaticResource Settings.Tab.Data}"
-                                 Tag="{x:Static viewModels:SettingsPage.Data}" />
-                </ListBox>
-            </ScrollViewer>
-
-            <TabControl x:Name="SettingsPages" Grid.Column="2" Visibility="Collapsed"
+            <TabControl x:Name="SettingsPages" Visibility="Collapsed"
                         Style="{StaticResource SettingsContentTabControlStyle}"
                         SelectedValuePath="Tag"
                         SelectedValue="{Binding SelectedSettingsPage, Mode=TwoWay}">
@@ -127,7 +83,7 @@
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Margin="0,2,0,0"
                                                            Text="{Binding BaseUrl}"
-                                                           FontSize="11"
+                                                           FontSize="{DynamicResource FontSizeCaption}"
                                                            Foreground="{DynamicResource MutedTextBrush}"
                                                            TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
@@ -190,8 +146,8 @@
                                     </Border>
 
                                     <TextBlock Grid.Row="3"
-                                               Margin="0,14,0,0"
-                                               VerticalAlignment="Center"
+                                               Margin="{DynamicResource FormLabelTopInset}"
+                                               VerticalAlignment="Top"
                                                Text="{StaticResource Settings.Providers.Address}"
                                                Visibility="{Binding IsHttpApiSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     <StackPanel Grid.Row="3"
@@ -294,7 +250,7 @@
                                                   Fill="{DynamicResource MutedTextBrush}"
                                                   Data="M6,1 L1.5,3.25 L1.5,7 C1.5,10.15 3.42,13.06 6,14 C8.58,13.06 10.5,10.15 10.5,7 L10.5,3.25 L6,1 Z" />
                                             <TextBlock Text="{StaticResource Settings.Providers.SaveOffline}"
-                                                       FontSize="11"
+                                                       FontSize="{DynamicResource FontSizeCaption}"
                                                        Foreground="{DynamicResource MutedTextBrush}"
                                                        VerticalAlignment="Center" />
                                         </StackPanel>
@@ -370,7 +326,7 @@
                                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
                                             <TextBlock Margin="0,2,0,0"
                                                        Text="{Binding ModelId}"
-                                                       FontSize="11"
+                                                       FontSize="{DynamicResource FontSizeCaption}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </DataTemplate>
@@ -453,7 +409,7 @@
                                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
                                             <TextBlock Margin="0,2,0,0"
                                                        Text="{Binding ModelId}"
-                                                       FontSize="11"
+                                                       FontSize="{DynamicResource FontSizeCaption}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
                                     </DataTemplate>
@@ -472,7 +428,7 @@
                                     <TextBlock Text="{StaticResource Settings.Assignments.Overview}" Style="{StaticResource SectionTitleStyle}" />
                                     <TextBlock Margin="0,2,0,6"
                                                Text="{StaticResource Settings.Assignments.Saved}"
-                                               FontSize="11"
+                                               FontSize="{DynamicResource FontSizeCaption}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                                 <ScrollViewer Grid.Row="1"
@@ -499,7 +455,7 @@
                                                                            VerticalAlignment="Center" />
                                                                 <TextBlock Grid.Column="1"
                                                                            Text="{Binding TargetText}"
-                                                                           FontSize="11"
+                                                                           FontSize="{DynamicResource FontSizeCaption}"
                                                                            VerticalAlignment="Center"
                                                                            Foreground="{DynamicResource MutedTextBrush}"
                                                                            TextWrapping="NoWrap"
@@ -518,7 +474,7 @@
                                                             <TextBlock Text="{StaticResource Settings.Assignments.DeepSeekReasoning}"
                                                                        FontWeight="SemiBold" />
                                                             <TextBlock Text="{StaticResource Settings.Assignments.ReasoningParameter}"
-                                                                       FontSize="11"
+                                                                       FontSize="{DynamicResource FontSizeCaption}"
                                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                                         </StackPanel>
                                                         <ToggleButton Grid.Column="1"
@@ -1046,7 +1002,7 @@
                                         <ColumnDefinition Width="54" />
                                     </Grid.ColumnDefinitions>
                                     <Slider AutomationProperties.Name="{StaticResource Settings.Interface.FontSizeHelp}" Minimum="10"
-                                            Maximum="32"
+                                            Maximum="30"
                                             TickFrequency="1"
                                             IsSnapToTickEnabled="True"
                                             Value="{Binding InterfaceFontSize}" />
@@ -1138,23 +1094,23 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Text="{Binding DataRoot, UpdateSourceTrigger=PropertyChanged}"
-                                             IsReadOnly="{Binding IsDataRootExternallyOverridden}" />
+                                    <TextBox Text="{Binding DataAndDiagnostics.DataRoot, UpdateSourceTrigger=PropertyChanged}"
+                                             IsReadOnly="{Binding DataAndDiagnostics.IsDataRootExternallyOverridden}" />
                                     <Button Grid.Column="1"
                                             Margin="8,0,0,0"
                                             Content="{StaticResource Settings.Data.Browse}"
-                                            Command="{Binding PickDataRootCommand}"
+                                            Command="{Binding DataAndDiagnostics.PickDataRootCommand}"
                                             Style="{StaticResource SecondaryButtonStyle}" />
                                 </Grid>
 
                                 <TextBlock Margin="0,9,0,0"
                                            Text="{StaticResource Settings.Data.ConfigurationFile}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
-                                <TextBlock Text="{Binding DataRootConfigurationPath}"
+                                <TextBlock Text="{Binding DataAndDiagnostics.DataRootConfigurationPath}"
                                            TextWrapping="Wrap"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBlock Margin="0,9,0,0"
-                                           Text="{Binding DataRootStatus}"
+                                           Text="{Binding DataAndDiagnostics.DataRootStatus}"
                                            TextWrapping="Wrap"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
@@ -1164,7 +1120,7 @@
                                     HorizontalAlignment="Right"
                                     Orientation="Horizontal">
                             <Button Content="{StaticResource Settings.Data.SaveAndSwitch}"
-                                    Command="{Binding ChangeDataRootCommand}"
+                                    Command="{Binding DataAndDiagnostics.ChangeDataRootCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                         </StackPanel>
 
@@ -1189,7 +1145,7 @@
                                            Text="{StaticResource Settings.Diagnostics.ErrorLogPath}"
                                            Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBox Margin="0,4,0,0"
-                                         Text="{Binding ErrorLogDirectory, Mode=OneWay}"
+                                         Text="{Binding DataAndDiagnostics.ErrorLogDirectory, Mode=OneWay}"
                                          IsReadOnly="True" />
 
                                 <Border Margin="0,18,0,0"
@@ -1212,8 +1168,8 @@
                                             </StackPanel>
                                             <ToggleButton Grid.Column="1"
                                                           VerticalAlignment="Center"
-                                                          IsChecked="{Binding IsApiTestModeEnabled, Mode=OneWay}"
-                                                          Command="{Binding SetApiTestModeCommand}"
+                                                          IsChecked="{Binding DataAndDiagnostics.IsApiTestModeEnabled, Mode=OneWay}"
+                                                          Command="{Binding DataAndDiagnostics.SetApiTestModeCommand}"
                                                           CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}"
                                                           ToolTip="{StaticResource Settings.Diagnostics.TestModeToggle}"
                                                           AutomationProperties.Name="{StaticResource Settings.Diagnostics.TestModeToggle}"
@@ -1228,25 +1184,25 @@
                                                    Text="{StaticResource Settings.Diagnostics.OutputPath}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <TextBox Margin="0,4,0,0"
-                                                 Text="{Binding ApiTestOutputDirectory, Mode=OneWay}"
+                                                 Text="{Binding DataAndDiagnostics.ApiTestOutputDirectory, Mode=OneWay}"
                                                  IsReadOnly="True" />
                                         <TextBlock Margin="0,7,0,0"
-                                                   Text="{Binding ApiTestOutputSummary}"
+                                                   Text="{Binding DataAndDiagnostics.ApiTestOutputSummary}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <StackPanel Margin="0,12,0,0"
                                                     HorizontalAlignment="Right"
                                                     Orientation="Horizontal">
                                             <Button Margin="0,0,8,0"
                                                     Content="{StaticResource Settings.Diagnostics.OpenOutput}"
-                                                    Command="{Binding OpenApiTestOutputCommand}"
+                                                    Command="{Binding DataAndDiagnostics.OpenApiTestOutputCommand}"
                                                     Style="{StaticResource SecondaryButtonStyle}" />
                                             <Button Content="{StaticResource Settings.Diagnostics.ClearOutput}"
-                                                    Command="{Binding ClearApiTestOutputCommand}"
+                                                    Command="{Binding DataAndDiagnostics.ClearApiTestOutputCommand}"
                                                     Foreground="{DynamicResource DangerBrush}"
                                                     Style="{StaticResource SecondaryButtonStyle}" />
                                         </StackPanel>
                                         <TextBlock Margin="0,10,0,0"
-                                                   Text="{Binding DiagnosticsStatus}"
+                                                   Text="{Binding DataAndDiagnostics.DiagnosticsStatus}"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>

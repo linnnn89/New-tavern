@@ -20,11 +20,11 @@ public partial class CampaignsView : UserControl
             return;
         }
 
-        viewModel.PrepareCampaignMemorySettings();
+        viewModel.SettingsPanel.Prepare();
         var dialog = new CampaignMemorySettingsDialog
         {
             Owner = Window.GetWindow(this),
-            DataContext = viewModel
+            DataContext = viewModel.SettingsPanel
         };
         dialog.ShowDialog();
     }

@@ -14,7 +14,7 @@ public static class InterfaceSettingsRuntime
     public const double DefaultFontSize = 14;
     public const bool DefaultChatAutoScroll = true;
     public const double MinimumFontSize = 10;
-    public const double MaximumFontSize = 32;
+    public const double MaximumFontSize = 30;
     public const int DefaultScalePercent = 100;
     public const int MinimumScalePercent = 80;
     public const int MaximumScalePercent = 150;
@@ -30,53 +30,53 @@ public static class InterfaceSettingsRuntime
     private static readonly IReadOnlyDictionary<string, string> LightThemeBrushes =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["WindowBackgroundBrush"] = "#F6F8FC",
+            ["WindowBackgroundBrush"] = "#F4F5F7",
             ["SurfaceBrush"] = "#FFFFFFFF",
             ["SurfaceSolidBrush"] = "#FFFFFFFF",
-            ["SurfaceAltBrush"] = "#F1F4F8",
-            ["BorderBrush"] = "#D9E1EC",
-            ["TextBrush"] = "#182230",
-            ["MutedTextBrush"] = "#667085",
-            ["AccentBrush"] = "#2563EB",
-            ["AccentSoftBrush"] = "#EAF2FF",
-            ["ControlHoverBrush"] = "#F2F6FC",
-            ["ControlPressedBrush"] = "#E5ECF6",
-            ["ControlDisabledBrush"] = "#F2F4F7",
-            ["FocusRingBrush"] = "#84ADFF",
-            ["ScrollThumbBrush"] = "#B7C2D1",
-            ["ScrollThumbHoverBrush"] = "#7D8DA2",
-            ["SuccessBrush"] = "#178A60",
+            ["SurfaceAltBrush"] = "#F3F4F6",
+            ["BorderBrush"] = "#E2E4E9",
+            ["TextBrush"] = "#1B1E24",
+            ["MutedTextBrush"] = "#6B7280",
+            ["AccentBrush"] = "#3B5BDB",
+            ["AccentSoftBrush"] = "#EEF1FC",
+            ["ControlHoverBrush"] = "#F3F4F6",
+            ["ControlPressedBrush"] = "#E8EAEE",
+            ["ControlDisabledBrush"] = "#F3F4F6",
+            ["FocusRingBrush"] = "#9AAEF0",
+            ["ScrollThumbBrush"] = "#C8CCD3",
+            ["ScrollThumbHoverBrush"] = "#8D939D",
+            ["SuccessBrush"] = "#1A8A5A",
             ["WarningBrush"] = "#B45309",
-            ["DangerBrush"] = "#D92D20",
-            ["MessagePlusBrush"] = "#748096",
-            ["InteractionOverlayBrush"] = "#1F2937",
-            ["AppicaSelectedBorderBrush"] = "#AFC9F8",
-            ["AppicaPanelBorderBrush"] = "#DDE3EC",
-            ["AppicaShellCanvasBrush"] = "#F7F9FC",
+            ["DangerBrush"] = "#C9372C",
+            ["MessagePlusBrush"] = "#7A808B",
+            ["InteractionOverlayBrush"] = "#111827",
+            ["AppicaSelectedBorderBrush"] = "#C5D2F6",
+            ["AppicaPanelBorderBrush"] = "#E2E4E9",
+            ["AppicaShellCanvasBrush"] = "#F4F5F7",
             ["AppicaShellSurfaceBrush"] = "#FFFFFFFF",
-            ["AppicaShellDividerBrush"] = "#E5E9F0",
-            ["AppicaShellTextBrush"] = "#171B24",
-            ["AppicaShellMutedBrush"] = "#697386",
-            ["AppicaShellSubtleBrush"] = "#8A94A6",
-            ["AppicaShellAccentBrush"] = "#0F6BEE",
-            ["AppicaShellAccentHoverBrush"] = "#075FDC",
-            ["AppicaShellAccentSoftBrush"] = "#E8F1FF",
-            ["AppicaShellAccentBorderBrush"] = "#CFE0FF",
-            ["AppicaShellHoverBrush"] = "#F3F6FA",
-            ["AppicaShellPressedBrush"] = "#E9EEF5",
-            ["AppicaShellStatusSurfaceBrush"] = "#F7F9FC",
-            ["AppicaShellSuccessBrush"] = "#1BAA67",
-            ["AppicaShellDangerBrush"] = "#B42318",
-            ["AppicaShellDangerSurfaceBrush"] = "#FFF2F0",
-            ["AppicaShellDangerHoverBrush"] = "#FFE8E5",
-            ["AppicaShellDangerBorderBrush"] = "#F6C8C2",
-            ["AppicaShellFocusBrush"] = "#79A7FF",
-            ["AppicaDashboardHeroBrush"] = "#EDF4FF",
-            ["AppicaDashboardHeroBorderBrush"] = "#D8E6FF",
-            ["AppicaDashboardPurpleSoftBrush"] = "#F1ECFF",
-            ["AppicaDashboardPurpleBrush"] = "#7450D8",
-            ["AppicaDashboardGreenSoftBrush"] = "#E8F8F0",
-            ["AppicaDashboardGreenBrush"] = "#16845B"
+            ["AppicaShellDividerBrush"] = "#E2E4E9",
+            ["AppicaShellTextBrush"] = "#1B1E24",
+            ["AppicaShellMutedBrush"] = "#6B7280",
+            ["AppicaShellSubtleBrush"] = "#8D939D",
+            ["AppicaShellAccentBrush"] = "#3B5BDB",
+            ["AppicaShellAccentHoverBrush"] = "#314EC2",
+            ["AppicaShellAccentSoftBrush"] = "#EEF1FC",
+            ["AppicaShellAccentBorderBrush"] = "#C5D2F6",
+            ["AppicaShellHoverBrush"] = "#F3F4F6",
+            ["AppicaShellPressedBrush"] = "#E8EAEE",
+            ["AppicaShellStatusSurfaceBrush"] = "#F8F9FA",
+            ["AppicaShellSuccessBrush"] = "#1A8A5A",
+            ["AppicaShellDangerBrush"] = "#C9372C",
+            ["AppicaShellDangerSurfaceBrush"] = "#FDF2F2",
+            ["AppicaShellDangerHoverBrush"] = "#FDE8E8",
+            ["AppicaShellDangerBorderBrush"] = "#F8B4B4",
+            ["AppicaShellFocusBrush"] = "#9AAEF0",
+            ["AppicaDashboardHeroBrush"] = "#EEF1FC",
+            ["AppicaDashboardHeroBorderBrush"] = "#D4DDF8",
+            ["AppicaDashboardPurpleSoftBrush"] = "#F3F0FF",
+            ["AppicaDashboardPurpleBrush"] = "#6741D9",
+            ["AppicaDashboardGreenSoftBrush"] = "#EBFBEE",
+            ["AppicaDashboardGreenBrush"] = "#2B8A3E"
         };
 
     private static readonly IReadOnlyDictionary<string, string> DarkThemeBrushes =
@@ -264,6 +264,16 @@ public static class InterfaceSettingsRuntime
                 new FontFamily(FontFamilyName);
             application.Resources["InterfaceFontSize"] = FontSize;
             application.Resources["ChatFontSize"] = FontSize + 1;
+            application.Resources["FontSizeCaption2"] = Math.Max(9, FontSize - 4);
+            application.Resources["FontSizeCaption"] = Math.Max(9, FontSize - 3);
+            application.Resources["FontSizeSmall"] = Math.Max(9, FontSize - 2);
+            application.Resources["FontSizeBodySmall"] = Math.Max(9, FontSize - 1);
+            application.Resources["FontSizeBodyLarge"] = FontSize + 1;
+            application.Resources["FontSizeSubtitle"] = FontSize + 2;
+            application.Resources["FontSizeSubtitleLarge"] = FontSize + 3;
+            application.Resources["FontSizeTitle"] = FontSize + 4;
+            application.Resources["DashboardTitleSize"] = FontSize + 14;
+            application.Resources["DashboardMetricSize"] = FontSize + 10;
             ApplyScaleResource(application);
         }
 
@@ -338,9 +348,9 @@ public static class InterfaceSettingsRuntime
     public static void ApplyTextRendering(Window window)
     {
         ArgumentNullException.ThrowIfNull(window);
-        var formatting = ScalePercent == DefaultScalePercent
-            ? TextFormattingMode.Display
-            : TextFormattingMode.Ideal;
+        // Always Ideal: Display mode snaps glyphs to whole device pixels, which makes CJK strokes
+        // uneven at non-integer DPI (e.g. 125%) and when the interface scale transform is applied.
+        const TextFormattingMode formatting = TextFormattingMode.Ideal;
         TextOptions.SetTextFormattingMode(window, formatting);
         TextOptions.SetTextRenderingMode(window, TextRenderingMode.ClearType);
         if (window.Content is DependencyObject content)
@@ -370,7 +380,7 @@ public static class InterfaceSettingsRuntime
             MaterialThemeName => MaterialThemeBrushes,
             _ => LightThemeBrushes
         };
-        foreach (var (key, value) in palette)
+        foreach (var (key, value) in VisualThemeResources.CreatePalette(palette, isDark))
         {
             var color = (Color)ColorConverter.ConvertFromString(value);
             var brush = new SolidColorBrush(color);

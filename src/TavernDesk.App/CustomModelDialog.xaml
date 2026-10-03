@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock x:Name="PromptText"
-                   FontSize="16"
+                   FontSize="{DynamicResource FontSizeSubtitle}"
                    FontWeight="SemiBold"
                    TextWrapping="Wrap" />
 

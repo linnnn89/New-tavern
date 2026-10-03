@@ -76,11 +76,15 @@ $protocolLiteralKeys = @(
     'Characters.Role.User',
     'Characters.Role.Assistant'
 )
+$brandLiteralKeys = @(
+    'Speech.ApiKey'
+)
 $unexpectedEnglishCopies = @(
     $baseline.Keys |
         Where-Object {
             $catalogs['en-US'][$_] -ceq $baseline[$_] -and
-            $_ -notin $protocolLiteralKeys
+            $_ -notin $protocolLiteralKeys -and
+            $_ -notin $brandLiteralKeys
         } |
         Sort-Object
 )
@@ -213,7 +217,8 @@ if ($unlocalizedButtonText.Count -gt 0) {
 
 $referencedKeys = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::Ordinal)
-$codeReferencePattern = 'LanguageRuntime\.(?:GetString|Format)\(\s*"([^"]+)"'
+# Only complete literal arguments are keys; concatenated prefixes are not.
+$codeReferencePattern = 'LanguageRuntime\.(?:GetString|Format)\(\s*"([^"]+)"\s*(?=[,)])'
 Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
     Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
     ForEach-Object {

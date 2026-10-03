@@ -61,8 +61,8 @@ public sealed class ChatContextPreviewViewModel : ViewModelBase, IDisposable, IA
     public string EstimatedTokenHeadline => $"{_estimate.TotalTokens:N0} / {_estimate.ContextLimit:N0}";
     public double EstimatedTokenUsagePercent => _estimate.ContextLimit <= 0
         ? 0 : Math.Clamp(100d * _estimate.TotalTokens / _estimate.ContextLimit, 0, 100);
-    public string EstimatedTokenUsageLevel => EstimatedTokenUsagePercent >= 90 ? "Danger"
-        : EstimatedTokenUsagePercent >= 70 ? "Warning" : "Normal";
+    public string EstimatedTokenUsageLevel => EstimatedTokenUsagePercent >= 100 ? "Danger"
+        : EstimatedTokenUsagePercent >= 80 ? "Warning" : "Normal";
     public bool IsEstimatedOverLimit => _estimate.ExceedsLimit || _groupBudget is { CanSend: false };
     public GroupContextBudgetResult? ContextBudgetResult => _groupBudget;
 

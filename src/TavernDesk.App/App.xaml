@@ -12,10 +12,13 @@
                 <ResourceDictionary Source="Themes/Light.xaml" />
                 <ResourceDictionary Source="Themes/AppicaPrimary.xaml" />
                 <ResourceDictionary Source="Themes/AppicaShell.xaml" />
+                <ResourceDictionary Source="Themes/Tokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <presentation:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+            <presentation:AvatarImageConverter x:Key="AvatarImageConverter" />
+            <presentation:RecentCharactersConverter x:Key="RecentCharactersConverter" />
             <DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
                 <views:DashboardView />
             </DataTemplate>

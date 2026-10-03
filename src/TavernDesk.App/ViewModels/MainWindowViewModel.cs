@@ -5,7 +5,6 @@ using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
-using TavernDesk.Infrastructure.Context;
 
 namespace TavernDesk.App.ViewModels;
 
@@ -15,6 +14,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly Dictionary<string, ConversationGenerationState>
         _activeGenerationStates = new(StringComparer.Ordinal);
     private object _currentPage;
+    private object? _settingsReturnPage;
+    private string _settingsReturnSection = LanguageRuntime.GetString("Runtime.Section.Dashboard");
     private bool _isGenerationActive;
     private bool _isStoppingAll;
     private bool _isRuntimeReceiving;
@@ -27,7 +28,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         InfrastructureServices services,
         IFileDialogService fileDialog,
         IUserInteractionService interaction,
-        ChatViewModel? chat = null)
+        ChatViewModel chat)
     {
         _generationCoordinator = services.GenerationCoordinator;
         Dashboard = new DashboardViewModel(
@@ -37,33 +38,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             OpenRecentConversationAsync);
         // Chat owns application-lifetime generation sessions. Navigation only swaps
         // presentation pages; it must never recreate or dispose this instance.
-        var personas = chat?.Personas
-                       ?? new PlayerPersonaManagerViewModel(services.Settings, interaction);
-        Chat = chat ?? new ChatViewModel(
-            services.Conversations,
-            services.Characters,
-            services.MemoryBanks,
-            services.MemoryWorkflow,
-            services.MemoryPrompts,
-            services.GroupChats,
-            services.GroupMemory,
-            services.GroupRelay,
-            services.Retrieval,
-            services.Presets,
-            services.PresetResolver,
-            services.ContextAssembler,
-            new DefaultContextBudgetProvider(),
-            services.GenerationCoordinator,
-            services.GenerationSessions,
-            services.ModelAssignments,
-            services.ProviderGateway,
-            services.Settings,
-            services.GlobalPrompts,
-            interaction,
-            services.ChatArchives,
-            fileDialog,
-            personas: personas,
-            groupAutoRelayDelay: TimeSpan.FromSeconds(5));
+        var personas = chat.Personas;
+        Chat = chat;
         Characters = new CharactersViewModel(
             services.Characters,
             services.CharacterShelves,
@@ -135,6 +111,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         ShowCampaignsCommand = new AsyncRelayCommand(ShowCampaignsAsync);
         ShowWorldbooksCommand = new AsyncRelayCommand(ShowWorldbooksAsync);
         ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync);
+        ReturnFromSettingsCommand = new AsyncRelayCommand(ReturnFromSettingsAsync);
         StopAllGenerationCommand = new AsyncRelayCommand(
             StopAllGenerationAsync,
             () => IsGenerationActive && !IsStoppingAll);
@@ -201,13 +178,28 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand ShowCampaignsCommand { get; }
     public AsyncRelayCommand ShowWorldbooksCommand { get; }
     public AsyncRelayCommand ShowSettingsCommand { get; }
+    public AsyncRelayCommand ReturnFromSettingsCommand { get; }
     public AsyncRelayCommand StopAllGenerationCommand { get; }
 
     public object CurrentPage
     {
         get => _currentPage;
-        private set => SetProperty(ref _currentPage, value);
+        private set
+        {
+            if (ReferenceEquals(value, Settings) && !IsSettingsPage)
+            {
+                _settingsReturnPage = _currentPage;
+                _settingsReturnSection = CurrentSection;
+            }
+
+            if (SetProperty(ref _currentPage, value))
+            {
+                OnPropertyChanged(nameof(IsSettingsPage));
+            }
+        }
     }
+
+    public bool IsSettingsPage => ReferenceEquals(CurrentPage, Settings);
 
     public string CurrentSection
     {
@@ -387,6 +379,18 @@ public sealed class MainWindowViewModel : ViewModelBase
         await Settings.LoadAsync();
         CurrentPage = Settings;
         CurrentSection = LanguageRuntime.GetString("Runtime.Section.Settings");
+    }
+
+    private async Task ReturnFromSettingsAsync()
+    {
+        if (!IsSettingsPage || !await ConfirmPageChangeAsync())
+        {
+            return;
+        }
+
+        // Restore the same page and its selection, without reloading the chat or editor.
+        CurrentPage = _settingsReturnPage ?? Dashboard;
+        CurrentSection = _settingsReturnSection;
     }
 
     public async Task OpenPromptSettingsAsync(GlobalPromptKey key)

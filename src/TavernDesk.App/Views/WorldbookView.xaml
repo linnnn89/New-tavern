@@ -19,6 +19,7 @@
             </StackPanel>
             <StackPanel Grid.Column="1"
                         HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
                         Orientation="Horizontal">
                 <Button Content="{StaticResource Worldbook.Refresh}"
                         Command="{Binding RefreshCommand}"
@@ -36,7 +37,7 @@
                 Padding="10,8"
                 CornerRadius="12"
                 Background="{DynamicResource AccentSoftBrush}">
-            <DockPanel>
+            <DockPanel LastChildFill="False">
                 <StackPanel>
                     <TextBlock Text="{StaticResource Worldbook.MountSummary}" FontWeight="SemiBold" />
                     <TextBlock Margin="0,3,0,0"
@@ -45,6 +46,8 @@
                 </StackPanel>
                 <Button x:Name="MountManagementButton"
                         DockPanel.Dock="Right"
+                        Margin="16,0,0,0"
+                        VerticalAlignment="Center"
                         Content="{StaticResource Worldbook.ManageMounts}"
                         Click="MountManagementButton_OnClick"
                         Style="{StaticResource SecondaryButtonStyle}" />
@@ -206,11 +209,11 @@
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Margin="0,3,0,0"
                                                    Text="{Binding SourceKindText}"
-                                                   FontSize="12"
+                                                   FontSize="{DynamicResource FontSizeSmall}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <TextBlock Margin="0,2,0,0"
                                                    Text="{Binding EntryCount, StringFormat={StaticResource Worldbook.EntryCountFormat}}"
-                                                   FontSize="12"
+                                                   FontSize="{DynamicResource FontSizeSmall}"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
                                 </Border>
@@ -233,7 +236,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding SelectedBook.Name}"
-                                   FontSize="18"
+                                   FontSize="{DynamicResource FontSizeTitle}"
                                    FontWeight="SemiBold"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center" />
@@ -278,7 +281,7 @@
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Margin="0,2,0,0"
                                                            Text="{Binding ContentType}"
-                                                           FontSize="11"
+                                                           FontSize="{DynamicResource FontSizeCaption}"
                                                            Foreground="{DynamicResource MutedTextBrush}" />
                                             </StackPanel>
                                         </Border>
@@ -301,7 +304,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox Text="{Binding EntryTitle, UpdateSourceTrigger=PropertyChanged}"
-                                                 FontSize="16"
+                                                 FontSize="{DynamicResource FontSizeSubtitle}"
                                                  FontWeight="SemiBold" />
                                         <Button Grid.Column="1"
                                                 Margin="8,0,0,0"
@@ -311,6 +314,11 @@
                                                 Command="{Binding SaveEntryTitleCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                     </Grid>
+                                    <TextBlock Margin="0,4,0,0"
+                                               Text="{StaticResource Worldbook.EntryNameUnsaved}"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               FontSize="{DynamicResource FontSizeSmall}"
+                                               Visibility="{Binding IsEntryTitleDirty, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     <TextBlock Margin="0,5,0,12"
                                                Text="{Binding SelectedEntry.Comment}"
                                                Foreground="{DynamicResource MutedTextBrush}" />

@@ -35,9 +35,11 @@ public sealed class DashboardViewModel : ViewModelBase
     public string Title => LanguageRuntime.GetString("Dashboard.Title");
     public string Subtitle => LanguageRuntime.GetString("Dashboard.Subtitle");
     public ObservableCollection<ConversationSummary> RecentConversations { get; } = [];
+    public ObservableCollection<DashboardStatistic> Statistics { get; } = [];
     public ConversationSummary? LatestConversation =>
         RecentConversations.Count > 0 ? RecentConversations[0] : null;
     public bool HasRecentConversation => LatestConversation is not null;
+    public bool ShowCharacterShortcuts => CharacterCount > 0 && RecentConversations.Count < 3;
     public AsyncRelayCommand OpenConversationCommand { get; }
     public AsyncRelayCommand ResumeLatestCommand { get; }
 
@@ -64,6 +66,10 @@ public sealed class DashboardViewModel : ViewModelBase
         CharacterCount = await _characters.CountAsync();
         ConversationCount = await _conversations.CountAsync();
         ProviderCount = await _providers.CountEnabledAsync();
+        Statistics.Clear();
+        Statistics.Add(new("Characters", LanguageRuntime.GetString("Dashboard.Characters"), CharacterCount, "\uE77B", LanguageRuntime.GetString("Dashboard.OpenCharacters")));
+        Statistics.Add(new("Conversations", LanguageRuntime.GetString("Dashboard.Conversations"), ConversationCount, "\uE8BD", LanguageRuntime.GetString("Dashboard.OpenConversations")));
+        Statistics.Add(new("Providers", LanguageRuntime.GetString("Dashboard.Providers"), ProviderCount, "\uE713", LanguageRuntime.GetString("Dashboard.ConfigureModels")));
 
         RecentConversations.Clear();
         foreach (var conversation in await _conversations.ListRecentAsync(6))
@@ -73,6 +79,7 @@ public sealed class DashboardViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(LatestConversation));
         OnPropertyChanged(nameof(HasRecentConversation));
+        OnPropertyChanged(nameof(ShowCharacterShortcuts));
         ResumeLatestCommand.RaiseCanExecuteChanged();
     }
 
@@ -84,3 +91,5 @@ public sealed class DashboardViewModel : ViewModelBase
         }
     }
 }
+
+public sealed record DashboardStatistic(string Destination, string Label, int Count, string Glyph, string ActionLabel);
