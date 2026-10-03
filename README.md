@@ -20,38 +20,6 @@ TavernDesk keeps role-play data understandable and under your control. Character
 
 It is built for long-running character interactions rather than one-off prompts: ordinary chat and tabletop campaigns have separate state, memory has visible drafts and checkpoints, and campaign turns are coordinated by explicit player and GM rules.
 
-## Screenshots
-
-<p align="center">
-  <img src="./docs/screenshots/dashboard.png" alt="TavernDesk local-first dashboard">
-</p>
-<p align="center"><sub>A clean local workspace with characters, conversations, and provider status at a glance.</sub></p>
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="./docs/screenshots/character-home.png" alt="TavernDesk character home">
-      <p align="center"><sub>Character cards, profile tools, shelves, and conversation history in one place.</sub></p>
-    </td>
-    <td width="50%">
-      <img src="./docs/screenshots/chat-workspace.png" alt="TavernDesk four-column chat workspace">
-      <p align="center"><sub>A four-column chat workspace with message history and an inspectable context panel.</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./docs/screenshots/campaigns.png" alt="TavernDesk tabletop campaign workspace">
-      <p align="center"><sub>Separate scenario and campaign libraries for structured tabletop sessions.</sub></p>
-    </td>
-    <td width="50%">
-      <img src="./docs/screenshots/language-selection.png" alt="TavernDesk first-run language selection">
-      <p align="center"><sub>First-run interface selection for Simplified Chinese, Traditional Chinese, English, and Japanese.</sub></p>
-    </td>
-  </tr>
-</table>
-
-<p align="center"><sub>The character card and conversation shown here are user-imported examples and are not bundled with TavernDesk.</sub></p>
-
 ## Why TavernDesk
 
 - **Memory you can inspect.** Long-term memory is stored per character, group, or campaign. Updates can be previewed, edited, checkpointed, and saved instead of disappearing into an opaque global memory layer.
@@ -98,14 +66,18 @@ Campaign mode is a separate runtime, not group chat with an extra GM prompt.
 - Frozen starting snapshots for characters, persona, world rules, GM instructions, narrative permissions, and model routing.
 - Different provider/model assignments for every AI player and GM seat.
 - Recorded `1d20` action rolls plus optional public dice expressions.
-- Deterministic validation before a GM result advances the round or updates persistent campaign state.
+- Normally completed, non-empty GM output is accepted through the turn flow; interrupted, truncated, or failed generations do not advance the round. Valid optional permission declarations update the scene projection; missing declarations do not reject a complete narrative.
 - Campaign-specific public and GM memory, context budgets, cancellation, and explicit retries.
 - Scenario content and worldbook bindings save atomically. Edits are also preserved locally every second and flushed before normal exit. On returning to Campaigns, recover or explicitly discard the previous draft; closing that prompt keeps it for later. Saving clears the draft in the same transaction; returning to the scenario library discards it. If the original changed or disappeared, recovery saves as a new scenario. An abrupt process failure can still lose edits made since the last completed draft write.
 
 ### Desktop experience
 
 - Native WPF interface for Windows 10/11 x64.
-- Four-column chat workspace with a collapsible context inspector.
+- A vertical icon rail switches the chat inspector between context, character, persona, memory, and session. Bubble/novel display mode is under Session. The composer grows from one to eight lines, then scrolls internally; scrolling up pauses automatic following and exposes a return-to-bottom action.
+- Settings replaces the main navigation with its own directory. Return to workspace restores the previous page and keeps the chat draft. Provider forms place labels above inputs.
+- Click a character card to open its details; chat/edit actions appear on hover or keyboard focus. Campaigns occupy the wider left column, with the scenario library on the right.
+- Worldbooks use a top selector and an entry list/detail layout. Entry names save manually; entry bodies are read-only. Chat message tools close when you click outside.
+- Narrow windows collapse the inspector automatically; opening it displays a temporary overlay so display mode and session settings stay accessible. Closing it restores chat space; widening the window docks it again. Settings navigation uses the same spacing and selection styling as workspace navigation.
 - New workspaces start at 100% application scale. Every scale change opens an always-on-top confirmation window, independent of application zoom: confirm within 10 seconds to persist that scale, or it automatically restores the previous setting. Closing the dialog also reverts. Other interface preferences, including restored defaults, still use Save; language changes require a restart. Existing saved scale preferences are retained.
 - At 100% application scale, the main window can shrink to 500 logical units in height. Interface settings stack labels above selectors, and key scenario fields, the chat composer, and scale controls expose accessible names. History reads run off the UI thread, and long histories are applied in batches so input and cancellation can be processed. Windows DPI scaling remains separate from application zoom.
 - Interface languages: Simplified Chinese, Traditional Chinese, English, and Japanese.
@@ -178,6 +150,7 @@ For development testing, run `& .\scripts\Start-IsolatedTest.ps1` in PowerShell 
 
 ## Documentation
 
+- [Documentation index](./docs/README.md)
 - [Architecture baseline](./docs/architecture.md)
 - [Campaign mode design](./docs/campaign_mode_design.md)
 - [Campaign context budget](./docs/TavernDesk-R2-B-Campaign-Context-Budget.md)

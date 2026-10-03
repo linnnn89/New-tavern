@@ -1501,7 +1501,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Worldbook.Mount.Title">ワールドブックのマウントを管理</sys:String>
     <sys:String x:Key="Chat.RightPanel.Collapse">右サイドバーを折りたたむ</sys:String>
     <sys:String x:Key="Chat.RightPanel.Expand">右サイドバーを展開</sys:String>
-    <sys:String x:Key="Chat.RightPanel.WidthConstrained">ウィンドウ幅が不足しています。拡大すると右サイドバーを展開できます</sys:String>
+    <sys:String x:Key="Chat.RightPanel.WidthConstrained">右サイドバーをオーバーレイで開く</sys:String>
     <sys:String x:Key="Common.NoFurtherDetails">これ以上の詳細はありません</sys:String>
     <sys:String x:Key="Chat.Model.DefaultBudgetSource">現在のデフォルトモデル設定</sys:String>
     <sys:String x:Key="Worldbook.IndexRebuiltFormat">インデックスを再構築しました：テキストチャンク {0} 件、埋め込み次元 {1}。</sys:String>

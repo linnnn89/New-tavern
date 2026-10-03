@@ -1511,7 +1511,7 @@
     <sys:String x:Key="Worldbook.Mount.Title">管理世界书挂载</sys:String>
     <sys:String x:Key="Chat.RightPanel.Collapse">折叠右侧栏</sys:String>
     <sys:String x:Key="Chat.RightPanel.Expand">展开右侧栏</sys:String>
-    <sys:String x:Key="Chat.RightPanel.WidthConstrained">窗口空间不足；放大窗口后可展开右侧栏</sys:String>
+    <sys:String x:Key="Chat.RightPanel.WidthConstrained">以浮层打开右侧栏</sys:String>
     <sys:String x:Key="Common.NoFurtherDetails">暂无更多详情</sys:String>
     <sys:String x:Key="Chat.Model.DefaultBudgetSource">当前默认模型配置</sys:String>
     <sys:String x:Key="Worldbook.IndexRebuiltFormat">索引已重建：{0} 个文本块，向量维度 {1}。</sys:String>

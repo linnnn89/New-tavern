@@ -31,11 +31,22 @@
                 <TextBlock Text="TavernDesk"
                            Style="{StaticResource AppicaShellBrandTextStyle}" />
 
-                <ScrollViewer Grid.Row="1"
+                <ScrollViewer x:Name="SidebarNavigationScroll" Grid.Row="1"
                               HorizontalContentAlignment="Stretch"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="0,8,0,0">
+                    <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Margin" Value="0,8,0,0" />
+                                <Style.Triggers>
+                                    <!-- The Fluent scrollbar overlays the viewport; reserve its gutter for both directories. -->
+                                    <DataTrigger Binding="{Binding ComputedVerticalScrollBarVisibility, ElementName=SidebarNavigationScroll}" Value="Visible">
+                                        <Setter Property="Margin" Value="0,8,14,0" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                     <StackPanel Visibility="{Binding IsSettingsPage, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                     <Button Command="{Binding ShowDashboardCommand}"
                             AutomationProperties.AutomationId="NavDashboard"
@@ -201,11 +212,13 @@
                             <TextBlock Text="{StaticResource Settings.BackToWorkspace}" TextWrapping="Wrap" />
                         </Button>
                         <ListBox DataContext="{Binding Settings}" Style="{StaticResource SettingsNavListBoxStyle}"
+                                 AutomationProperties.AutomationId="SettingsNavigation"
+                                 ItemContainerStyle="{StaticResource AppicaShellSettingsNavItemStyle}"
                                  SelectedValuePath="Tag"
                                  SelectedValue="{Binding SelectedSettingsPage, Mode=TwoWay}">
                             <ListBoxItem Content="{StaticResource Settings.Section.AiModels}"
                                          IsEnabled="False"
-                                         Style="{StaticResource SettingsNavSectionHeaderStyle}" />
+                                         Style="{StaticResource AppicaShellSettingsSectionHeaderStyle}" />
                             <ListBoxItem Content="{StaticResource Settings.Tab.Providers}"
                                          Tag="{x:Static viewModels:SettingsPage.Providers}" />
                             <ListBoxItem Content="{StaticResource Settings.Tab.ModelCatalog}"
@@ -220,7 +233,7 @@
 
                             <ListBoxItem Content="{StaticResource Settings.Section.Personal}"
                                          IsEnabled="False"
-                                         Style="{StaticResource SettingsNavSectionHeaderStyle}" />
+                                         Style="{StaticResource AppicaShellSettingsSectionHeaderStyle}" />
                             <ListBoxItem Content="{StaticResource Settings.Tab.Personas}"
                                          Tag="{x:Static viewModels:SettingsPage.Personas}" />
                             <ListBoxItem Content="{StaticResource Settings.Tab.DefaultBehavior}"
@@ -228,7 +241,7 @@
 
                             <ListBoxItem Content="{StaticResource Settings.Section.System}"
                                          IsEnabled="False"
-                                         Style="{StaticResource SettingsNavSectionHeaderStyle}" />
+                                         Style="{StaticResource AppicaShellSettingsSectionHeaderStyle}" />
                             <ListBoxItem Content="{StaticResource Settings.Tab.Interface}"
                                          Tag="{x:Static viewModels:SettingsPage.Interface}" />
                             <ListBoxItem Content="{StaticResource Settings.Tab.Data}"

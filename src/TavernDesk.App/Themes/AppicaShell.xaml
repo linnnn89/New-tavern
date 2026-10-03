@@ -77,6 +77,27 @@
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
+    <Style x:Key="AppicaShellSettingsNavItemStyle" TargetType="ListBoxItem"
+           BasedOn="{StaticResource ListItemSelectableStyle}">
+        <Setter Property="Margin" Value="{DynamicResource NavMargin}" />
+        <Setter Property="MinHeight" Value="{DynamicResource ControlHeightLg}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppicaShellMutedBrush}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyLarge}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="AppicaShellSettingsSectionHeaderStyle" TargetType="ListBoxItem"
+           BasedOn="{StaticResource SettingsNavSectionHeaderStyle}">
+        <Setter Property="Margin" Value="{DynamicResource NavMargin}" />
+        <Setter Property="Padding" Value="{DynamicResource NavInset}" />
+    </Style>
+
     <Style x:Key="AppicaShellNavButtonStyle" TargetType="Button">
         <Setter Property="MinHeight" Value="{DynamicResource ControlHeightLg}" />
         <Setter Property="Margin" Value="{DynamicResource NavMargin}" />

@@ -1,36 +1,21 @@
 # TavernDesk 文档导航
 
-这里保存源码维护、跑团规则和验证证据。普通用户的安装、功能与模型配置请先看仓库根目录 README；准备阅读源码或继续开发时，从本页开始。
+状态日期：2026-10-04。本轮改动基于：`ca55ef0`（PR #30 合并后）。
 
-## 推荐阅读顺序
+安装、功能和模型配置从根目录 [简体中文 README](../README.zh-CN.md) 开始；源码维护从本页进入。
 
-1. [`architecture.md`](architecture.md)：先理解模块、数据边界、请求生命周期、安全约束和当前证据。
-2. [`campaign_mode_design.md`](campaign_mode_design.md)：涉及独立跑团时，再读参与者权限、三种流程、事件状态和叙事门禁。
-3. [`TavernDesk-R2-B-Campaign-Context-Budget.md`](TavernDesk-R2-B-Campaign-Context-Budget.md)：调试跑团上下文、Token、GM/Public 记忆或长局行为时阅读。
-4. [`codex_worklog.md`](codex_worklog.md)：只在查历史变更、旧故障或某次验证证据时搜索，不建议从头通读。
+| 文档 | 用途 |
+| --- | --- |
+| [架构与维护指南](architecture.md) | 模块、数据与生命周期边界、代码定位、隔离测试和发布 |
+| [跑团规则与实现](campaign_mode_design.md) | 参与者权限、三种流程、事件状态、GM 输出与失败处理 |
+| [跑团上下文与记忆](TavernDesk-R2-B-Campaign-Context-Budget.md) | Token 预算、GM/Public 记忆、预览和长局验收 |
+| [UI 当前状态与剩余范围](ui-design-optimization-plan.md) | 已确认布局、已实现行为、已知问题及未验收项 |
+| [重构交付索引](refactor-plan/README.md) | P1–P5 的结果与代码入口，P6 的交付范围 |
 
-```mermaid
-flowchart LR
-    Root["根 README\n用户入口"] --> Architecture["architecture.md\n系统边界"]
-    Architecture --> Campaign["campaign_mode_design.md\n跑团规则"]
-    Campaign --> Context["Context Budget\n运行与验收"]
-    Architecture -.需要历史证据.-> Worklog["codex_worklog.md\n时间线"]
-```
+## 维护约定
 
-## 每份文档只回答一个问题
-
-| 文档 | 回答的问题 | 不保存的内容 |
-| --- | --- | --- |
-| `architecture.md` | 系统如何分层，哪些数据和生命周期边界不能破坏 | 逐次开发流水、跑团完整规则 |
-| `campaign_mode_design.md` | 一局跑团如何运行，谁能看见和改变什么 | 旧阶段施工计划、重复测试明细 |
-| `TavernDesk-R2-B-Campaign-Context-Budget.md` | 模型本轮看到什么，预算和记忆如何验证 | 旧分支/提交号、会话 ID、已完成工作包 |
-| `codex_worklog.md` | 某次改动做了什么、验证到哪里 | 面向新读者的产品或架构总览 |
-
-## 当前阅读口径
-
-- 文档状态日期为 2026-08-14；工作区之后可能继续变化，具体实现以当前源码和实际验证为准。
-- 当前群聊接力口径是固定成员顺序与头像“立即接话”；模型输出的 `@` 不再参与选人或暂停，软件也不再提供旧的 `@`、随机或手动接力模式。详细边界见 [`architecture.md`](architecture.md)。
-- 自动化通过不等于真实 Provider、真实长局或完整 UI 已验收；各文档会明确区分已验证与未验证。
-- 不从工作日志中的旧测试数、旧分支名或阶段标签推断当前状态。
-- 新功能或修复应更新对应主题文档；只有时间线证据写入 `codex_worklog.md`。
-- 不把同一规则复制到多份文档。需要跨主题说明时使用链接，并让一个文件成为事实来源。
+- 当前行为写在对应主题文档；跨主题内容用链接，避免重复保存版本不同的规则。
+- 已完成的逐文件施工计划和旧工作日志不再维护，历史变更从 Git 提交及 PR 查询。
+- UI 截图保留在 `ui-evidence/`，来源与适用范围见 UI 状态文档；不能用旧图证明当前布局已验收。
+- `tests/` 与 `work/` 按仓库现有规则不公开；文档中的本机验证记录不代表新克隆仓库自带测试或证据文件。
+- 构建、自动化测试、真实窗口操作和真实 Provider 验收分别说明，不互相替代。
