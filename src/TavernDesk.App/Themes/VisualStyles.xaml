@@ -90,6 +90,54 @@
         </Style.Triggers>
     </Style>
 
+    <Style x:Key="CharacterCardOpenButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RadiusMd}">
+                        <Border x:Name="FocusRing" Margin="{DynamicResource FocusInset}" Opacity="0"
+                                CornerRadius="{DynamicResource RadiusMd}"
+                                BorderBrush="{DynamicResource FocusRing}" BorderThickness="{DynamicResource FocusThickness}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding DataContext.IsShelfBatchMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="CharacterCardActionsStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SurfaceOverlay}" />
+        <Setter Property="Padding" Value="{DynamicResource CardActionInset}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                <Setter Property="Opacity" Value="1" />
+                <Setter Property="IsHitTestVisible" Value="True" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                <Setter Property="Opacity" Value="1" />
+                <Setter Property="IsHitTestVisible" Value="True" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding DataContext.IsShelfBatchMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="InspectorActivityTabStyle" TargetType="TabItem">
         <Setter Property="MinWidth" Value="{DynamicResource InspectorRailWidth}" />
         <Setter Property="MinHeight" Value="{DynamicResource ControlHeightLg}" />

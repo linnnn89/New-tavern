@@ -54,7 +54,7 @@
            BasedOn="{StaticResource AppicaPanelSurfaceStyle}" />
 
     <Style x:Key="AppicaChatComposerStyle" TargetType="Border">
-        <Setter Property="MinHeight" Value="130" />
+        <Setter Property="MinHeight" Value="0" />
         <Setter Property="Margin" Value="14,8,14,14" />
         <Setter Property="Padding" Value="14,10" />
         <Setter Property="Background" Value="{DynamicResource SurfaceSolidBrush}" />
@@ -213,8 +213,11 @@
     <Style x:Key="AppicaComposerTextBoxStyle"
            TargetType="TextBox"
            BasedOn="{StaticResource ModernTextBoxStyle}">
-        <Setter Property="MinHeight" Value="62" />
-        <Setter Property="MaxHeight" Value="150" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="MinLines" Value="1" />
+        <Setter Property="MaxLines" Value="8" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Padding" Value="4,4" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />

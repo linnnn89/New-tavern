@@ -117,14 +117,6 @@
                                     </StackPanel>
                                 </Border>
                             </Popup>
-                            <ComboBox Width="126"
-                                      Height="36"
-                                      Margin="0,0,8,0"
-                                      ItemsSource="{Binding DisplayModes}"
-                                      ItemTemplate="{StaticResource ChatCompactOptionTemplate}"
-                                      SelectedValuePath="Value"
-                                      SelectedValue="{Binding DisplayMode}"
-                                      ToolTip="{StaticResource Chat.LayoutToolTip}" />
                             <Button Content="{StaticResource Common.Stop}"
                                     Command="{Binding StopGenerationCommand}"
                                     ToolTip="{StaticResource Chat.StopGenerationToolTip}"
@@ -703,10 +695,11 @@
                     Style="{StaticResource AppicaChatComposerStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBox Grid.Row="0"
+                    <TextBox x:Name="ChatComposer" Grid.Row="0"
+                             AutomationProperties.AutomationId="ChatComposer"
                              AutomationProperties.Name="{StaticResource Chat.ComposerToolTip}"
                              Text="{Binding ComposerText, UpdateSourceTrigger=PropertyChanged}"
                              AcceptsReturn="True"

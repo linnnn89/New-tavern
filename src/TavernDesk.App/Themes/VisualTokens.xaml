@@ -51,6 +51,12 @@
     <Thickness x:Key="FocusThickness">2</Thickness>
     <Thickness x:Key="NoInset">0</Thickness>
     <Thickness x:Key="FormLabelTopInset">0,24,0,0</Thickness>
+    <Thickness x:Key="FormFieldGap">0,0,0,16</Thickness>
+    <Thickness x:Key="CardGridGap">0,0,16,16</Thickness>
+    <Thickness x:Key="CardActionInset">8</Thickness>
+    <Thickness x:Key="TrailingActionGap">8,0,0,0</Thickness>
+    <GridLength x:Key="WorldbookEntryListWidth">320</GridLength>
+    <GridLength x:Key="PaneGapWidth">16</GridLength>
     <system:Double x:Key="NavIndicatorWidth">3</system:Double>
     <system:Double x:Key="NavIndicatorHeight">16</system:Double>
     <CornerRadius x:Key="NavIndicatorRadius">2</CornerRadius>

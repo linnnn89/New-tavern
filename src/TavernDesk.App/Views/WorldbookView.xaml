@@ -168,62 +168,7 @@
             </Border>
         </Popup>
 
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="238" MinWidth="210" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Margin="16,14,16,10"
-                               Text="{StaticResource Worldbook.Library}"
-                               FontWeight="SemiBold" />
-                    <ListBox Grid.Row="1"
-                             Margin="8,0"
-                             Padding="0"
-                             BorderThickness="0"
-                             Background="Transparent"
-                             ItemsSource="{Binding Books}"
-                             SelectedItem="{Binding SelectedBook}"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem"
-                                   BasedOn="{StaticResource ModernListBoxItemStyle}">
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                <Setter Property="Margin" Value="0,2" />
-                                <Setter Property="Padding" Value="0" />
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Padding="11,10" CornerRadius="10">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Name}"
-                                                   FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Margin="0,3,0,0"
-                                                   Text="{Binding SourceKindText}"
-                                                   FontSize="{DynamicResource FontSizeSmall}"
-                                                   Foreground="{DynamicResource MutedTextBrush}" />
-                                        <TextBlock Margin="0,2,0,0"
-                                                   Text="{Binding EntryCount, StringFormat={StaticResource Worldbook.EntryCountFormat}}"
-                                                   FontSize="{DynamicResource FontSizeSmall}"
-                                                   Foreground="{DynamicResource MutedTextBrush}" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
-
-            <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="12">
+        <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="{DynamicResource InsetMd}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -235,17 +180,25 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding SelectedBook.Name}"
-                                   FontSize="{DynamicResource FontSizeTitle}"
-                                   FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center" />
+                        <StackPanel>
+                            <TextBlock x:Name="WorldbookSelectorLabel" Text="{StaticResource Worldbook.Library}" />
+                            <ComboBox Margin="{DynamicResource LabelGap}"
+                                      AutomationProperties.AutomationId="WorldbookSelector"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=WorldbookSelectorLabel}"
+                                      ItemsSource="{Binding Books}" SelectedItem="{Binding SelectedBook}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
                         <TextBlock Grid.Column="1"
                                    Margin="12,0,12,0"
                                    Text="{Binding SelectedBook.IndexedChunkCount, StringFormat={StaticResource Worldbook.IndexedChunkCountFormat}}"
                                    Foreground="{DynamicResource MutedTextBrush}"
                                    VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <WrapPanel Grid.Column="2" VerticalAlignment="Center">
                             <Button Content="{StaticResource Worldbook.RebuildIndex}"
                                     Command="{Binding RebuildIndexCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
@@ -253,13 +206,13 @@
                                     Margin="8,0,0,0"
                                     Command="{Binding DeleteCommand}"
                                     Style="{StaticResource DestructiveButtonStyle}" />
-                        </StackPanel>
+                        </WrapPanel>
                     </Grid>
 
                     <Grid Grid.Row="1" Margin="0,14,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="220" />
-                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="{DynamicResource WorldbookEntryListWidth}" />
+                            <ColumnDefinition Width="{DynamicResource PaneGapWidth}" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0"
@@ -267,11 +220,16 @@
                                 BorderThickness="1"
                                 CornerRadius="10"
                                 Padding="0">
-                            <ListBox ItemsSource="{Binding Entries}"
+                            <ListBox AutomationProperties.AutomationId="WorldbookEntries" ItemsSource="{Binding Entries}"
                                      SelectedItem="{Binding SelectedEntry}"
                                      BorderThickness="0"
                                      Background="Transparent"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource ModernListBoxItemStyle}">
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Border Padding="8,7">
@@ -296,14 +254,16 @@
                                 Padding="12">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel>
-                                    <TextBlock Text="{StaticResource Worldbook.EntryName}"
+                                    <TextBlock x:Name="WorldbookEntryTitleLabel" Text="{StaticResource Worldbook.EntryName}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                     <Grid Margin="0,4,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding EntryTitle, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox AutomationProperties.AutomationId="WorldbookEntryTitle"
+                                                 AutomationProperties.LabeledBy="{Binding ElementName=WorldbookEntryTitleLabel}"
+                                                 Text="{Binding EntryTitle, UpdateSourceTrigger=PropertyChanged}"
                                                  FontSize="{DynamicResource FontSizeSubtitle}"
                                                  FontWeight="SemiBold" />
                                         <Button Grid.Column="1"
@@ -337,7 +297,6 @@
                         </Border>
                     </Grid>
                 </Grid>
-            </Border>
-        </Grid>
+        </Border>
     </Grid>
 </UserControl>
