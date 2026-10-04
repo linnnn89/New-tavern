@@ -156,7 +156,10 @@ public partial class App : Application
             if (testCharacter is not null)
                 await viewModel.OpenCharacterCardAsync(testCharacter);
 
-            var window = new MainWindow(viewModel, windowPlacement);
+            var window = new MainWindow(viewModel, windowPlacement)
+            {
+                ShowActivated = _testStartup is null
+            };
             await windowPlacement.RestoreAsync(window, "window.main", 1440, 900);
             MainWindow = window;
             window.Show();

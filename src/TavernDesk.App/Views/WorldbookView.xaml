@@ -1,6 +1,10 @@
 <UserControl x:Class="TavernDesk.App.Views.WorldbookView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
+    <UserControl.Resources>
+        <presentation:WorldbookEntryTextConverter x:Key="WorldbookEntryTextConverter" />
+    </UserControl.Resources>
     <Grid Margin="16,16,16,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -238,7 +242,7 @@
                                                            FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Margin="0,2,0,0"
-                                                           Text="{Binding ContentType}"
+                                                           Text="{Binding ContentType, Converter={StaticResource WorldbookEntryTextConverter}}"
                                                            FontSize="{DynamicResource FontSizeCaption}"
                                                            Foreground="{DynamicResource MutedTextBrush}" />
                                             </StackPanel>
@@ -293,7 +297,7 @@
                                              MinHeight="120"
                                              VerticalContentAlignment="Top" />
                                     <TextBlock Margin="0,10,0,0"
-                                               Text="{Binding SelectedEntry.Keys, StringFormat={StaticResource Worldbook.KeywordsFormat}}"
+                                               Text="{Binding SelectedEntry.Keys, Converter={StaticResource WorldbookEntryTextConverter}, StringFormat={StaticResource Worldbook.KeywordsFormat}}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
                             </ScrollViewer>

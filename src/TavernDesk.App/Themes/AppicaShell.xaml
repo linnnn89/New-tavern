@@ -302,8 +302,8 @@
     <Style x:Key="AppicaShellSectionTitleStyle" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
-        <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitleLarge}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyLarge}" />
+        <Setter Property="FontWeight" Value="Medium" />
     </Style>
 
     <Style x:Key="AppicaShellWorkspaceCardStyle" TargetType="Border">

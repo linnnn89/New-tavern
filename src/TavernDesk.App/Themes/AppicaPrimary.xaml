@@ -379,7 +379,7 @@
 
     <Style x:Key="AppicaInspectorCardTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitleLarge}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
 

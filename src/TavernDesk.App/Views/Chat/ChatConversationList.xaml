@@ -31,6 +31,7 @@
                         <DataTemplate>
                             <StackPanel>
                                 <Button Command="{Binding ToggleCommand}"
+                                        AutomationProperties.Name="{Binding Name}"
                                         ToolTip="{StaticResource Chat.ToggleConversations}"
                                         Style="{StaticResource AppicaConversationGroupButtonStyle}">
                                     <Grid>
@@ -139,6 +140,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Button Command="{Binding DataContext.SelectConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        AutomationProperties.Name="{Binding Title}"
                                                         CommandParameter="{Binding}"
                                                         Style="{StaticResource AppicaConversationItemStyle}">
                                                     <Button.ContextMenu>

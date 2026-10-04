@@ -166,13 +166,13 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         }));
         NewScenarioCommand = new AsyncRelayCommand(NewScenarioAsync);
         EditScenarioCommand = new AsyncRelayCommand(
-            EditScenarioAsync,
-            () => SelectedScenario is not null);
+            parameter => EditScenarioAsync(parameter as CampaignScenario),
+            parameter => parameter is CampaignScenario || SelectedScenario is not null);
         SaveScenarioCommand = new AsyncRelayCommand(SaveScenarioAsync);
         OpenScenarioLobbyCommand = new AsyncRelayCommand(
             OpenScenarioLobbyAsync,
             () => SelectedScenario is not null && !IsBusy);
-        ContinueCampaignCommand = new AsyncRelayCommand(ContinueSelectedCampaignAsync);
+        ContinueCampaignCommand = new AsyncRelayCommand(ContinueSelectedCampaignAsync, () => SelectedCampaign is not null);
         RenameCampaignCommand = new AsyncRelayCommand(RenameCampaignAsync);
         DeleteCampaignCommand = new AsyncRelayCommand(DeleteCampaignAsync);
         BackToLibraryCommand = new AsyncRelayCommand(BackToLibraryAsync);
@@ -227,9 +227,12 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         RecoveryDrafts = _scenarios is ICampaignScenarioDraftRepository drafts
             ? await Task.Run(() => drafts.ListEditDraftsAsync()) : [];
         OnPropertyChanged(nameof(RecoveryDrafts));
+        OnPropertyChanged(nameof(OrphanRecoveryDrafts));
     }
 
     public IReadOnlyList<CampaignScenarioEditDraft> RecoveryDrafts { get; private set; } = [];
+    public IReadOnlyList<CampaignScenarioEditDraft> OrphanRecoveryDrafts =>
+        RecoveryDrafts.Where(draft => !Scenarios.Any(scenario => scenario.Id == draft.Id)).ToArray();
     public AsyncRelayCommand RestoreScenarioDraftCommand { get; }
     public AsyncRelayCommand DiscardScenarioDraftCommand { get; }
 
@@ -486,7 +489,10 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
     public CampaignSummaryItemViewModel? SelectedCampaign
     {
         get => _selectedCampaign;
-        set => SetProperty(ref _selectedCampaign, value);
+        set
+        {
+            if (SetProperty(ref _selectedCampaign, value)) ContinueCampaignCommand.RaiseCanExecuteChanged();
+        }
     }
 
     public CampaignEventItemViewModel? SelectedEvent
@@ -868,8 +874,9 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         });
     }
 
-    private async Task EditScenarioAsync()
+    private async Task EditScenarioAsync(CampaignScenario? scenarioToEdit = null)
     {
+        if (scenarioToEdit is not null) SelectedScenario = scenarioToEdit;
         if (SelectedScenario is not { } selected)
         {
             StatusText = LanguageRuntime.GetString("Campaigns.Scenario.Select");

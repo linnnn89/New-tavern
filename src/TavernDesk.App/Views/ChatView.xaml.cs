@@ -178,7 +178,7 @@ public partial class ChatView : UserControl
             return;
         }
 
-        var fixedMinimumWidth = ExpandedLayoutMinimumWidth() - RightPanelMinimumWidth;
+        var fixedMinimumWidth = ExpandedLayoutMinimumWidth() - Math.Max(RightPanelMinimumWidth, _rightPanelWidth);
         var maximumSafeRightPanelWidth = Math.Max(
             RightPanelMinimumWidth,
             AvailableUnscaledChatWidth() - fixedMinimumWidth);
@@ -226,6 +226,7 @@ public partial class ChatView : UserControl
         if (_layoutHostWindow is not null)
         {
             _layoutHostWindow.SizeChanged += LayoutHostWindow_OnSizeChanged;
+            _layoutHostWindow.DpiChanged += LayoutHostWindow_OnDpiChanged;
         }
     }
 
@@ -234,6 +235,7 @@ public partial class ChatView : UserControl
         if (_layoutHostWindow is not null)
         {
             _layoutHostWindow.SizeChanged -= LayoutHostWindow_OnSizeChanged;
+            _layoutHostWindow.DpiChanged -= LayoutHostWindow_OnDpiChanged;
             _layoutHostWindow = null;
         }
     }
@@ -243,8 +245,25 @@ public partial class ChatView : UserControl
         SizeChangedEventArgs e) =>
         UpdateResponsiveLayout();
 
+    private void LayoutHostWindow_OnDpiChanged(object sender, DpiChangedEventArgs e) => UpdateResponsiveLayout();
+
     private void UpdateResponsiveLayout()
     {
+        if (_layoutHostWindow is not null)
+        {
+            var dpi = VisualTreeHelper.GetDpi(_layoutHostWindow);
+            var showLabels = _layoutHostWindow.ActualWidth * dpi.DpiScaleX >= 1920
+                && _layoutHostWindow.ActualHeight * dpi.DpiScaleY >= 1080;
+            if (showLabels != (InspectorTabs.Tag is true))
+            {
+                InspectorTabs.Tag = showLabels;
+                ConversationListColumn.Width = new GridLength(showLabels ? 220 : 240);
+                var adjustment = showLabels ? 24 : -24;
+                _rightPanelWidth = Math.Max(RightPanelMinimumWidth, _rightPanelWidth + adjustment);
+                if (!_isRightPanelCollapsed && !_isRightPanelOverlay)
+                    RightPanelColumn.Width = new GridLength(Math.Max(RightPanelMinimumWidth, RightPanelColumn.Width.Value + adjustment));
+            }
+        }
         var isWidthConstrained = RequiresResponsiveCollapse();
         if (_isRightPanelOverlay)
         {
@@ -318,7 +337,8 @@ public partial class ChatView : UserControl
         + ChatLayoutRoot.ColumnDefinitions[1].Width.Value
         + ConversationBodyColumn.MinWidth
         + ChatLayoutRoot.ColumnDefinitions[3].Width.Value
-        + RightPanelMinimumWidth;
+        + Math.Max(RightPanelMinimumWidth,
+            _isRightPanelCollapsed || _isRightPanelOverlay ? _rightPanelWidth : RightPanelColumn.Width.Value);
 
     private void ChatView_OnLoaded(object sender, RoutedEventArgs e)
     {

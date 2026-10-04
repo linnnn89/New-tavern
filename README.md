@@ -33,7 +33,7 @@ The repository also includes a portable build. Extract the complete download and
 
 Switch between bubble and novel display in the chat header. Messages support editing, regeneration, alternate replies, branching, and JSONL import/export. Conversations can also open in separate windows. Scrolling up pauses automatic following; the return-to-bottom button resumes it.
 
-The menu beside Send lets you generate a reply or save only your message. Stop appears in the same position during generation. If a model is missing, the notice links directly to its assignment page. Budget and memory summaries beside the composer open the inspector.
+The menu beside Send lets you generate a reply or save only your message. In save-only mode, the main button reads Save message. Stop appears in the same position during generation. If a model is missing, the notice links directly to its assignment page. Budget and memory summaries beside the composer open the inspector.
 
 Group members show their names, and a ring marks the next speaker. Click Speak below a member to select that character. Automatic relay continues in member order.
 
@@ -45,7 +45,9 @@ The inspector shows persona, character card, worldbook, memory, history, retriev
 
 ![Chat and context inspector](./docs/screenshots/chat-inspector.png)
 
-Long-term memory belongs to a character, group, or campaign. You can edit it, compress it, and create checkpoints. Chat memory drafts show additions and removals for review before saving.
+At a window size of 1920 × 1080 pixels or larger, the inspector shows small labels beside its icons. Smaller windows keep the icons and tooltips.
+
+Long-term memory belongs to a character, group, or campaign. You can edit it, compress it, and create checkpoints. Chat memory drafts show the owner, token budget, processed messages, and additions and removals. Save the reviewed draft as a checkpoint, or confirm before discarding it. Switch between Diff and Body to review or edit the draft; View request expands the request details.
 
 ![Memory draft diff](./docs/screenshots/memory-diff.png)
 
@@ -60,7 +62,7 @@ Create or import a scenario in the library, select it, and start a new game. Ass
 - Separate models for the GM and each AI player, with action dice recorded in the game.
 - Stop generation or retry a failed turn from the campaign controls.
 
-Scenario edits are kept as local recovery drafts. The library marks pending drafts so you can restore or discard them. Saving clears the recovery draft; returning to the library discards the current edits. If the original scenario changed or was deleted, recovery saves a new scenario.
+Edit scenarios from their library cards. Cards with recovery drafts show a badge and restore or discard actions; drafts for new scenarios appear separately. Saving clears the recovery draft; returning to the library discards the current edits. If the original scenario changed or was deleted, recovery saves a new scenario.
 
 ![Scenario library and draft recovery](./docs/screenshots/campaign-recovery.png)
 

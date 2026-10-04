@@ -1,4 +1,4 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">选择界面语言 / Choose Language / 言語を選択</sys:String>
@@ -327,7 +327,7 @@
     <sys:String x:Key="Chat.Memory.EditableBodyTab">可编辑正文</sys:String>
     <sys:String x:Key="Chat.Memory.ApiStructureTab">API 发送结构</sys:String>
     <sys:String x:Key="Chat.Memory.DiscardDraft">丢弃草稿</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveDraft">保存草稿并推进检查点</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveDraft">保存并设为检查点</sys:String>
     <sys:String x:Key="Chat.Tab.Session">会话</sys:String>
     <sys:String x:Key="Chat.Session.Current">当前会话</sys:String>
     <sys:String x:Key="Chat.Session.NoneSelected">尚未选择会话</sys:String>
@@ -359,7 +359,7 @@
 
     <!-- Campaigns -->
     <sys:String x:Key="Campaigns.Title">跑团</sys:String>
-    <sys:String x:Key="Campaigns.Description">剧本是 GM 的结构化主持模板；每一局保存独立历史，可继续或用左侧剧本开新局。</sys:String>
+    <sys:String x:Key="Campaigns.Description">选择剧本开始新局；每一局独立保存，可以随时继续。</sys:String>
     <sys:String x:Key="Campaigns.NewScenario">新建剧本</sys:String>
     <sys:String x:Key="Campaigns.NewScenarioToolTip">按问卷式结构填写并保存一个新的跑团剧本。</sys:String>
     <sys:String x:Key="Campaigns.ImportScenario">导入剧本卡</sys:String>
@@ -609,7 +609,7 @@
     <sys:String x:Key="Runtime.Section.CharacterChatFormat">聊天 · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.CharacterCardFormat">角色卡 · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.NewCharacterChatFormat">聊天 · {0} · 新对话</sys:String>
-    <sys:String x:Key="Runtime.Ready">本地数据已就绪 · 当前无生成请求</sys:String>
+    <sys:String x:Key="Runtime.Ready">本地就绪</sys:String>
     <sys:String x:Key="Runtime.ReceivingOne">本地数据已就绪 · 正在接收模型响应</sys:String>
     <sys:String x:Key="Runtime.ReceivingManyFormat">本地数据已就绪 · 正在接收 {0} 个模型响应</sys:String>
     <sys:String x:Key="Runtime.RequestSummaryFormat">{0} 个请求 · 已接收约 {1:N0} tokens</sys:String>
@@ -948,7 +948,7 @@
     <sys:String x:Key="Memory.TargetRange">记忆目标必须是 1000–20000 之间的整数 tokens。</sys:String>
     <sys:String x:Key="Memory.CheckpointAllNext">尚无处理检查点；下次更新会读取本会话全部用户/角色消息。</sys:String>
     <sys:String x:Key="Memory.CheckpointFormat">已处理到消息 #{0}；累计 {1} 个用户轮次。</sys:String>
-    <sys:String x:Key="Memory.PendingTargetFormat">{0} · 目标 {1} · 目标 {2} tokens · 来源处理到 #{3}</sys:String>
+    <sys:String x:Key="Memory.PendingTargetFormat">{0} · 更新对象：{1} · 预算 {2} tokens · 已处理到第 {3} 条消息</sys:String>
     <sys:String x:Key="Memory.NotCalled">尚未调用</sys:String>
     <sys:String x:Key="Memory.Function.Update">记忆更新</sys:String>
     <sys:String x:Key="Memory.Function.Compression">记忆压缩</sys:String>
@@ -1393,7 +1393,7 @@
     <sys:String x:Key="Campaigns.Game.DeletedFormat">跑团“{0}”及其 {1} 条记录已永久删除。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.NewCancelled">已取消新建剧本，未保存的内容已丢弃。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.EditCancelled">已取消剧本编辑，未保存的修改已丢弃。</sys:String>
-    <sys:String x:Key="Campaigns.Library.AllSaved">所有已开始的跑团均已即时保存；新局请从左侧剧本创建。</sys:String>
+    <sys:String x:Key="Campaigns.Library.AllSaved">已有跑团均已保存；选择剧本即可开始新局。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.DraftSaved">起始大厅草稿已保存；尚未冻结。</sys:String>
     <sys:String x:Key="Campaigns.Game.Started">游戏已开始：剧本、角色快照、记忆导入和初始配置已经冻结。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.NoScenario">起始大厅没有关联剧本。</sys:String>
@@ -1697,7 +1697,7 @@
     <sys:String x:Key="Chat.Budget.UserInput">当前输入</sys:String>
     <sys:String x:Key="Chat.Budget.Knowledge">知识库</sys:String>
     <sys:String x:Key="Memory.Summary.Failed">记忆更新失败</sys:String>
-    <sys:String x:Key="Chat.Budget.TotalFormat">预计 {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">预计 {0:N0} / {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.CompactFormat">输入 {0:N0} · 预留 {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.BreakdownFormat">输入 {0:N0} · 含输出预留 {1:N0} · 上限 {2:N0}</sys:String>
     <sys:String x:Key="Chat.DisplayLabel">显示：</sys:String>
@@ -1706,4 +1706,23 @@
     <sys:String x:Key="Chat.EmptyConversation">开始这段对话</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">在下方输入消息。可以发送并生成，也可以只保存用户消息。</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">展开或收起会话列表</sys:String>
+    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">工作区 › {0}</sys:String>
+    <sys:String x:Key="Chat.Tab.Context.Short">语境</sys:String>
+    <sys:String x:Key="Chat.Tab.Character.Short">角色</sys:String>
+    <sys:String x:Key="Chat.Tab.Persona.Short">人设</sys:String>
+    <sys:String x:Key="Chat.Tab.Memory.Short">记忆</sys:String>
+    <sys:String x:Key="Chat.Tab.Session.Short">会话</sys:String>
+    <sys:String x:Key="Memory.OwnerOriginal">原记忆对象</sys:String>
+    <sys:String x:Key="Memory.DiscardTitle">丢弃记忆草稿？</sys:String>
+    <sys:String x:Key="Memory.DiscardPrompt">丢弃后将删除这份草稿。已保存的记忆和检查点保持不变。</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Instruction">指令</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Lore">背景知识</sys:String>
+    <sys:String x:Key="Worldbook.KeywordsEmpty">未设置</sys:String>
+    <sys:String x:Key="Worldbook.KeywordSeparator">、</sys:String>
+    <sys:String x:Key="Chat.SendMode.SaveAction">保存消息</sys:String>
+    <sys:String x:Key="Memory.Diff.Short">差异</sys:String>
+    <sys:String x:Key="Memory.Body.Short">正文</sys:String>
+    <sys:String x:Key="Memory.Request.Short">查看请求</sys:String>
+    <sys:String x:Key="Chat.Budget.InputCompositionFormat">输入组成 · {0:N0} tokens</sys:String>
+    <sys:String x:Key="Campaigns.EmptyHistory">尚未开始跑团。选择剧本，开一局新的冒险。</sys:String>
 </ResourceDictionary>

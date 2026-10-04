@@ -254,43 +254,15 @@
                 <ScrollViewer x:Name="RuntimeStatusScroll" Grid.Row="2"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
-                <Border
-                        Style="{StaticResource AppicaShellWorkspaceCardStyle}">
+                <Border Margin="16,10,16,16" Padding="0" Background="Transparent">
                     <StackPanel>
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="24" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="&#xE8B7;"
-                                       VerticalAlignment="Center"
-                                       FontFamily="{StaticResource AppicaShellIconFont}"
-                                       FontSize="16"
-                                       Foreground="{DynamicResource AppicaShellAccentBrush}" />
-                            <TextBlock Grid.Column="1"
-                                       VerticalAlignment="Center"
-                                       Text="{StaticResource Shell.LocalWorkspace}"
-                                       FontSize="{DynamicResource FontSizeBodySmall}"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource AppicaShellTextBrush}" />
-                        </Grid>
-
-                        <TextBlock Text="{StaticResource Shell.RuntimeStatus}"
-                                   Style="{StaticResource AppicaShellRuntimeLabelStyle}" />
-                        <Grid Margin="0,5,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="14" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Ellipse Width="7"
-                                     Height="7"
-                                     Margin="0,4,0,0"
-                                     HorizontalAlignment="Left"
-                                     VerticalAlignment="Top"
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="14" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Ellipse Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Center"
                                      Fill="{DynamicResource AppicaShellSuccessBrush}" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding RuntimeStatusText}"
-                                       Style="{StaticResource AppicaShellRuntimeTextStyle}" />
+                            <TextBlock Grid.Column="1" Text="{Binding RuntimeStatusText}"
+                                       FontSize="{DynamicResource FontSizeBodySmall}" FontWeight="Normal"
+                                       Foreground="{DynamicResource AppicaShellMutedBrush}" TextWrapping="Wrap" />
                         </Grid>
 
                         <StackPanel Margin="14,8,0,2"
@@ -361,7 +333,7 @@
 
             <Border Grid.Row="0" Style="{StaticResource AppicaShellTopBarStyle}">
                 <Grid>
-                    <TextBlock Text="{Binding CurrentSection}"
+                    <TextBlock Text="{Binding PageBreadcrumb}"
                                Style="{StaticResource AppicaShellSectionTitleStyle}" />
                     <StackPanel HorizontalAlignment="Right"
                                 VerticalAlignment="Center"

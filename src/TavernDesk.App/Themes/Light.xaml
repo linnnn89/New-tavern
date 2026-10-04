@@ -53,6 +53,17 @@
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="{StaticResource AccentSoftColor}" />
     <SolidColorBrush x:Key="BudgetOutputReservedBrush" Color="#C9CEF4" />
+    <SolidColorBrush x:Key="BudgetSafetyBrush" Color="#6975A8" />
+    <SolidColorBrush x:Key="BudgetPresetBrush" Color="#657CBB" />
+    <SolidColorBrush x:Key="BudgetCharacterBrush" Color="#8776BA" />
+    <SolidColorBrush x:Key="BudgetPersonaBrush" Color="#AC82AF" />
+    <SolidColorBrush x:Key="BudgetWorldbookBrush" Color="#599997" />
+    <SolidColorBrush x:Key="BudgetMemoryBrush" Color="#7F9D72" />
+    <SolidColorBrush x:Key="BudgetSearchBrush" Color="#6A9CB4" />
+    <SolidColorBrush x:Key="BudgetKnowledgeBrush" Color="#8B94C5" />
+    <SolidColorBrush x:Key="BudgetHistoryBrush" Color="#8293A6" />
+    <SolidColorBrush x:Key="BudgetPostHistoryBrush" Color="#AD8797" />
+    <SolidColorBrush x:Key="BudgetUserInputBrush" Color="#526BCA" />
     <SolidColorBrush x:Key="ComposerHintBrush" Color="{StaticResource ComposerHintColor}" />
     <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHoverColor}" />
     <SolidColorBrush x:Key="ControlPressedBrush" Color="{StaticResource ControlPressedColor}" />
@@ -739,7 +750,7 @@
                             <Setter TargetName="TabFill" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                             <Setter Property="Panel.ZIndex" Value="1" />
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter TargetName="HeaderContent" Property="TextElement.FontWeight" Value="Medium" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="TabStroke" Property="Background" Value="{DynamicResource AccentBrush}" />
@@ -810,7 +821,7 @@
                             <Setter TargetName="TabStroke" Property="Background" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="TabFill" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter TargetName="HeaderContent" Property="TextElement.FontWeight" Value="Medium" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="TabStroke" Property="Background" Value="{DynamicResource AccentBrush}" />
@@ -1733,13 +1744,13 @@
 
     <Style x:Key="PageTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="28" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
 
     <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
 </ResourceDictionary>

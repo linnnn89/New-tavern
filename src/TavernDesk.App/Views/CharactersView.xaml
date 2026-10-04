@@ -1,7 +1,35 @@
-﻿<UserControl x:Class="TavernDesk.App.Views.CharactersView"
+<UserControl x:Class="TavernDesk.App.Views.CharactersView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:shared="clr-namespace:TavernDesk.App.Views.Shared">
+             xmlns:shared="clr-namespace:TavernDesk.App.Views.Shared"
+             xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
+    <UserControl.Resources>
+        <presentation:CharacterPlaceholderConverter x:Key="CharacterPlaceholderConverter" />
+        <Style x:Key="DensityChoiceStyle" TargetType="RadioButton">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template"><Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Chrome" Margin="2" Padding="{TemplateBinding Padding}" CornerRadius="6"
+                            Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value></Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid Margin="26,22,26,26">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -16,7 +44,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Text="{StaticResource Characters.Title}" Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
+
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <StackPanel.Style>
@@ -34,10 +62,16 @@
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Placeholder="{StaticResource Characters.SearchPlaceholder}"
                          ToolTip="{StaticResource Characters.SearchToolTip}" />
-                <Button Content="{StaticResource Characters.Layout.Dense}" Command="{Binding SetDenseCommand}" Style="{StaticResource SecondaryButtonStyle}" />
-                <Button Content="{StaticResource Characters.Layout.Medium}" Command="{Binding SetMediumCommand}" Margin="6,0"
-                        Style="{StaticResource SecondaryButtonStyle}" />
-                <Button Content="{StaticResource Characters.Layout.Large}" Command="{Binding SetLargeCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="8">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton AutomationProperties.AutomationId="CharacterDensityDense" Content="{StaticResource Characters.Layout.Dense}"
+                                     GroupName="CharacterDensity" IsChecked="{Binding IsDense, Mode=TwoWay}" Style="{StaticResource DensityChoiceStyle}" />
+                        <RadioButton AutomationProperties.AutomationId="CharacterDensityMedium" Content="{StaticResource Characters.Layout.Medium}"
+                                     GroupName="CharacterDensity" IsChecked="{Binding IsMedium, Mode=TwoWay}" Style="{StaticResource DensityChoiceStyle}" />
+                        <RadioButton AutomationProperties.AutomationId="CharacterDensityLarge" Content="{StaticResource Characters.Layout.Large}"
+                                     GroupName="CharacterDensity" IsChecked="{Binding IsLarge, Mode=TwoWay}" Style="{StaticResource DensityChoiceStyle}" />
+                    </StackPanel>
+                </Border>
                 <Button Content="{StaticResource Characters.ImportCard}" Command="{Binding ImportCommand}" Margin="12,0,0,0"
                         Style="{StaticResource PrimaryButtonStyle}" />
             </StackPanel>
@@ -57,29 +91,12 @@
             </Button>
         </Grid>
 
-        <Border Grid.Row="1"
-                Margin="0,14,0,12"
-                Padding="12,8"
-                CornerRadius="8"
-                Background="{DynamicResource SurfaceAltBrush}"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsCharacterToolsOpen}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-            <TextBlock FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedTextBrush}">
-                <Run Text="{StaticResource Characters.CurrentLayout}" />
-                <Run Text="{Binding ScaleLabel, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
-                <Run Text="{StaticResource Characters.LayoutHelp}" />
-            </TextBlock>
-        </Border>
+        <TextBlock Grid.Row="1" Text="{Binding Status}" Margin="0,8,0,14" TextWrapping="Wrap"
+                   Foreground="{DynamicResource MutedTextBrush}">
+            <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers>
+                <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger>
+            </Style.Triggers></Style></TextBlock.Style>
+        </TextBlock>
 
         <Grid Grid.Row="2">
             <Grid.Style>
@@ -98,15 +115,15 @@
                 <ColumnDefinition Width="*" MinWidth="350" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
+            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10" VerticalAlignment="Top">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Text="{StaticResource Characters.MyShelves}" Margin="8,6,8,10" Style="{StaticResource SectionTitleStyle}" />
-                    <ListBox Grid.Row="1"
+                    <ListBox Grid.Row="1" MaxHeight="360"
                              ItemsSource="{Binding ShelfItems}"
                              SelectedItem="{Binding SelectedShelf}"
                              DisplayMemberPath="Name"
@@ -281,25 +298,25 @@
                                     <RowDefinition Height="*" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <Border Background="{DynamicResource AccentSoftBrush}" IsHitTestVisible="False">
+                                <Border Background="{Binding Name, Converter={StaticResource CharacterPlaceholderConverter}}" IsHitTestVisible="False">
                                     <Grid>
-                                        <TextBlock Text="{Binding Name}" Margin="{DynamicResource InsetMd}"
+                                        <TextBlock Text="{Binding Name, Converter={StaticResource CharacterPlaceholderConverter}, ConverterParameter=Initial}" Margin="{DynamicResource InsetMd}"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                   TextAlignment="Center" FontSize="{DynamicResource FontSizeTitle}"
-                                                   FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                                                   TextAlignment="Center" FontSize="36"
+                                                   FontWeight="Medium" Foreground="#33405C" />
                                         <Image Source="{Binding AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=240}"
                                                Stretch="UniformToFill" />
                                     </Grid>
                                 </Border>
                                 <DockPanel Grid.Row="1" Margin="8">
                                     <Button DockPanel.Dock="Right" Content="{StaticResource Characters.Chat}" Padding="7,3" MinHeight="28"
-                                            AutomationProperties.AutomationId="CharacterCardChat" CommandParameter="{Binding}"
+                                            AutomationProperties.AutomationId="{Binding Id, StringFormat=CharacterCardChat_{0}}" CommandParameter="{Binding}"
                                             Command="{Binding DataContext.StartChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             Style="{StaticResource PrimaryButtonStyle}" />
                                     <TextBlock Text="{Binding Name}" Margin="0,0,5,0" VerticalAlignment="Center"
                                                FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                 </DockPanel>
-                                <Button Grid.RowSpan="2" Panel.ZIndex="1"
+                                <Button Grid.Row="0" Panel.ZIndex="1"
                                         AutomationProperties.AutomationId="CharacterCardOpen"
                                         AutomationProperties.Name="{Binding Name}"
                                         ToolTip="{StaticResource Characters.OpenToolsToolTip}"

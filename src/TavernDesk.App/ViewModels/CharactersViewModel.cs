@@ -27,7 +27,7 @@ public sealed class CharactersViewModel : ViewModelBase
     private IReadOnlySet<string> _selectedShelfCharacterIds =
         new HashSet<string>(StringComparer.Ordinal);
     private CharacterCardScale _scale = CharacterCardScale.Medium;
-    private string _status = LanguageRuntime.GetString("Characters.Status.Intro");
+    private string _status = string.Empty;
     private string _searchText = string.Empty;
     private readonly CharacterEditBuffer _inactiveEditor = new();
     private readonly ObservableCollection<CharacterConversationListItemViewModel>
@@ -247,7 +247,26 @@ public sealed class CharactersViewModel : ViewModelBase
             OnPropertyChanged(nameof(CardWidth));
             OnPropertyChanged(nameof(CardHeight));
             OnPropertyChanged(nameof(ScaleLabel));
+            OnPropertyChanged(nameof(IsDense));
+            OnPropertyChanged(nameof(IsMedium));
+            OnPropertyChanged(nameof(IsLarge));
         }
+    }
+
+    public bool IsDense
+    {
+        get => Scale == CharacterCardScale.Dense;
+        set { if (value && !IsDense) SetDenseCommand.Execute(null); }
+    }
+    public bool IsMedium
+    {
+        get => Scale == CharacterCardScale.Medium;
+        set { if (value && !IsMedium) SetMediumCommand.Execute(null); }
+    }
+    public bool IsLarge
+    {
+        get => Scale == CharacterCardScale.Large;
+        set { if (value && !IsLarge) SetLargeCommand.Execute(null); }
     }
 
     public double CardWidth => Scale switch
@@ -782,7 +801,7 @@ public sealed class CharactersViewModel : ViewModelBase
 
         if (EndCharacterSession(session))
         {
-            Status = LanguageRuntime.GetString("Characters.ReturnedShelf");
+            Status = string.Empty;
         }
     }
 

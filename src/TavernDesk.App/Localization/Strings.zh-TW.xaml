@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">選擇介面語言 / Choose Language / 言語を選択</sys:String>
     <sys:String x:Key="FirstRun.Language.Description">請選擇 TavernDesk 的介面語言。
@@ -322,7 +322,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Memory.EditableBodyTab">可編輯內文</sys:String>
     <sys:String x:Key="Chat.Memory.ApiStructureTab">API 發送結構</sys:String>
     <sys:String x:Key="Chat.Memory.DiscardDraft">丟棄草稿</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveDraft">儲存草稿並推進檢查點</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveDraft">儲存並設為檢查點</sys:String>
     <sys:String x:Key="Chat.Tab.Session">會話</sys:String>
     <sys:String x:Key="Chat.Session.Current">目前會話</sys:String>
     <sys:String x:Key="Chat.Session.NoneSelected">尚未選擇會話</sys:String>
@@ -353,7 +353,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.CollapseRightPanel">折疊右側欄</sys:String>
     <!-- Campaigns -->
     <sys:String x:Key="Campaigns.Title">跑團</sys:String>
-    <sys:String x:Key="Campaigns.Description">劇本是 GM 的結構化主持模板；每一局儲存獨立歷史，可繼續或用左側劇本開新局。</sys:String>
+    <sys:String x:Key="Campaigns.Description">選擇劇本開始新局；每一局獨立儲存，可以隨時繼續。</sys:String>
     <sys:String x:Key="Campaigns.NewScenario">新增劇本</sys:String>
     <sys:String x:Key="Campaigns.NewScenarioToolTip">按問卷式結構填寫並儲存一個新的跑團劇本。</sys:String>
     <sys:String x:Key="Campaigns.ImportScenario">匯入劇本卡</sys:String>
@@ -601,7 +601,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Runtime.Section.CharacterChatFormat">聊天 · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.CharacterCardFormat">角色卡 · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.NewCharacterChatFormat">聊天 · {0} · 新對話</sys:String>
-    <sys:String x:Key="Runtime.Ready">本機資料已就緒 · 目前無生成請求</sys:String>
+    <sys:String x:Key="Runtime.Ready">本機就緒</sys:String>
     <sys:String x:Key="Runtime.ReceivingOne">本機資料已就緒 · 正在接收模型回應</sys:String>
     <sys:String x:Key="Runtime.ReceivingManyFormat">本機資料已就緒 · 正在接收 {0} 個模型回應</sys:String>
     <sys:String x:Key="Runtime.RequestSummaryFormat">{0} 個請求 · 已接收約 {1:N0} tokens</sys:String>
@@ -943,7 +943,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Memory.TargetRange">記憶目標必須是 1000–20000 之間的整數 tokens。</sys:String>
     <sys:String x:Key="Memory.CheckpointAllNext">尚無處理檢查點；下次更新會讀取本會話全部使用者/角色訊息。</sys:String>
     <sys:String x:Key="Memory.CheckpointFormat">已處理到訊息 #{0}；累計 {1} 個使用者輪次。</sys:String>
-    <sys:String x:Key="Memory.PendingTargetFormat">{0} · 目標 {1} · 目標 {2} tokens · 來源處理到 #{3}</sys:String>
+    <sys:String x:Key="Memory.PendingTargetFormat">{0} · 更新對象：{1} · 預算 {2} tokens · 已處理到第 {3} 則訊息</sys:String>
     <sys:String x:Key="Memory.NotCalled">尚未呼叫</sys:String>
     <sys:String x:Key="Memory.Function.Update">記憶更新</sys:String>
     <sys:String x:Key="Memory.Function.Compression">記憶壓縮</sys:String>
@@ -1383,7 +1383,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Campaigns.Game.DeletedFormat">跑團「{0}」及其 {1} 條記錄已永久刪除。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.NewCancelled">已取消新增劇本，未儲存的內容已丟棄。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.EditCancelled">已取消劇本編輯，未儲存的修改已丟棄。</sys:String>
-    <sys:String x:Key="Campaigns.Library.AllSaved">所有已開始的跑團均已即時儲存；新局請從左側劇本建立。</sys:String>
+    <sys:String x:Key="Campaigns.Library.AllSaved">已有跑團均已儲存；選擇劇本即可開始新局。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.DraftSaved">起始大廳草稿已儲存；尚未凍結。</sys:String>
     <sys:String x:Key="Campaigns.Game.Started">游戲已開始：劇本、角色快照、記憶匯入和初始設定已經凍結。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.NoScenario">起始大廳沒有關聯劇本。</sys:String>
@@ -1687,7 +1687,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Budget.UserInput">目前輸入</sys:String>
     <sys:String x:Key="Chat.Budget.Knowledge">知識庫</sys:String>
     <sys:String x:Key="Memory.Summary.Failed">記憶更新失敗</sys:String>
-    <sys:String x:Key="Chat.Budget.TotalFormat">預計 {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">預計 {0:N0} / {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.CompactFormat">輸入 {0:N0} · 預留 {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.BreakdownFormat">輸入 {0:N0} · 含輸出預留 {1:N0} · 上限 {2:N0}</sys:String>
     <sys:String x:Key="Chat.DisplayLabel">顯示：</sys:String>
@@ -1696,4 +1696,23 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.EmptyConversation">開始這段對話</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">在下方輸入訊息。可以傳送並生成，也可以只儲存使用者訊息。</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">展開或收合對話列表</sys:String>
+    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">工作區 › {0}</sys:String>
+    <sys:String x:Key="Chat.Tab.Context.Short">語境</sys:String>
+    <sys:String x:Key="Chat.Tab.Character.Short">角色</sys:String>
+    <sys:String x:Key="Chat.Tab.Persona.Short">人設</sys:String>
+    <sys:String x:Key="Chat.Tab.Memory.Short">記憶</sys:String>
+    <sys:String x:Key="Chat.Tab.Session.Short">對話</sys:String>
+    <sys:String x:Key="Memory.OwnerOriginal">原記憶對象</sys:String>
+    <sys:String x:Key="Memory.DiscardTitle">丟棄記憶草稿？</sys:String>
+    <sys:String x:Key="Memory.DiscardPrompt">丟棄後將刪除這份草稿。已儲存的記憶與檢查點維持原狀。</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Instruction">指令</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Lore">背景知識</sys:String>
+    <sys:String x:Key="Worldbook.KeywordsEmpty">未設定</sys:String>
+    <sys:String x:Key="Worldbook.KeywordSeparator">、</sys:String>
+    <sys:String x:Key="Chat.SendMode.SaveAction">儲存訊息</sys:String>
+    <sys:String x:Key="Memory.Diff.Short">差異</sys:String>
+    <sys:String x:Key="Memory.Body.Short">正文</sys:String>
+    <sys:String x:Key="Memory.Request.Short">查看請求</sys:String>
+    <sys:String x:Key="Chat.Budget.InputCompositionFormat">輸入組成 · {0:N0} tokens</sys:String>
+    <sys:String x:Key="Campaigns.EmptyHistory">尚未開始跑團。選擇劇本，展開新的冒險。</sys:String>
 </ResourceDictionary>
