@@ -652,7 +652,9 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TabPanel x:Name="HeaderPanel"
+                        <!-- Pill headers need their full margin in the layout slot.
+                             TabPanel subtracts TabItem margins during measurement. -->
+                        <WrapPanel x:Name="HeaderPanel"
                                   Grid.Row="0"
                                   Grid.Column="0"
                                   Grid.ColumnSpan="2"
@@ -688,6 +690,7 @@
                             <Setter TargetName="HeaderPanel" Property="Grid.ColumnSpan" Value="1" />
                             <Setter TargetName="HeaderPanel" Property="Margin" Value="2,0,12,0" />
                             <Setter TargetName="HeaderPanel" Property="ClipToBounds" Value="False" />
+                            <Setter TargetName="HeaderPanel" Property="Orientation" Value="Vertical" />
                             <Setter TargetName="ContentPanel" Property="Grid.Row" Value="0" />
                             <Setter TargetName="ContentPanel" Property="Grid.RowSpan" Value="2" />
                             <Setter TargetName="ContentPanel" Property="Grid.Column" Value="1" />

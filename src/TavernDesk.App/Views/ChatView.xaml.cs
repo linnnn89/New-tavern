@@ -21,6 +21,7 @@ public partial class ChatView : UserControl
     private readonly DispatcherTimer _groupMemberMenuTimer;
     private readonly HashSet<ChatMessageItemViewModel> _observedMessages = [];
     private ChatViewModel? _observedViewModel;
+    private string? _observedConversationId;
     private bool _isOpeningMessageTools;
     private bool _scrollScheduled;
     // False once the user scrolls away from the bottom, so streaming output does not yank the
@@ -389,6 +390,7 @@ public partial class ChatView : UserControl
 
         ClearObservedMessages();
         _observedViewModel = viewModel;
+        _observedConversationId = viewModel?.SelectedConversation?.Id;
         _followTail = true;
         _hasUnreadMessages = false;
         UpdateScrollToBottomButton();
@@ -515,8 +517,10 @@ public partial class ChatView : UserControl
 
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ChatViewModel.SelectedConversation))
+        if (e.PropertyName == nameof(ChatViewModel.SelectedConversation)
+            && _observedConversationId != _observedViewModel?.SelectedConversation?.Id)
         {
+            _observedConversationId = _observedViewModel?.SelectedConversation?.Id;
             _followTail = true;
             _hasUnreadMessages = false;
             UpdateScrollToBottomButton();
