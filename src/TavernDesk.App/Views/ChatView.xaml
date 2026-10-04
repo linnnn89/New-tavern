@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="TavernDesk.App.Views.ChatView"
+<UserControl x:Class="TavernDesk.App.Views.ChatView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:TavernDesk.Core.Models;assembly=TavernDesk.Core"
@@ -49,9 +49,9 @@
           Background="{DynamicResource WindowBackgroundBrush}"
           UseLayoutRounding="True">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="ConversationListColumn" Width="280" MinWidth="220" />
+            <ColumnDefinition x:Name="ConversationListColumn" Width="240" MinWidth="220" />
             <ColumnDefinition Width="6" />
-            <ColumnDefinition x:Name="ConversationBodyColumn" Width="*" MinWidth="360" />
+            <ColumnDefinition x:Name="ConversationBodyColumn" Width="*" MinWidth="460" />
             <ColumnDefinition Width="6" />
             <ColumnDefinition x:Name="RightPanelColumn" Width="360" MinWidth="260" />
         </Grid.ColumnDefinitions>
@@ -833,7 +833,7 @@
                                 </Border.Style>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="1" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
-                                    <Button x:Name="ChatSendButton" AutomationProperties.AutomationId="ChatSendButton" Content="{StaticResource Chat.Send}"
+                                    <Button x:Name="ChatSendButton" AutomationProperties.AutomationId="ChatSendButton" Content="{Binding SendButtonText}"
                                             Command="{Binding SendLocalCommand}" Style="{StaticResource ComposerSendPart}" ToolTip="{StaticResource Chat.ComposerToolTip}" />
                                     <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" Margin="0,8" />
                                     <Button x:Name="SendModeMenu" Grid.Column="2" Content="⌄" Click="SendModeMenu_OnClick"
@@ -891,20 +891,20 @@
                             Click="RightPanelOverlayCloseButton_OnClick" />
                 </Border>
             <TabControl x:Name="InspectorTabs" Grid.Row="1" Style="{StaticResource InspectorActivityControlStyle}">
-                <TabItem Header="{StaticResource Chat.Tab.Context}" Tag="&#xE8A5;">
+                <TabItem Header="{StaticResource Chat.Tab.Context}" Tag="&#xE8A5;" presentation:InspectorNavigation.Label="{StaticResource Chat.Tab.Context.Short}">
                     <chat:ChatContextPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Character}" Tag="&#xE77B;"
+                <TabItem Header="{StaticResource Chat.Tab.Character}" Tag="&#xE77B;" presentation:InspectorNavigation.Label="{StaticResource Chat.Tab.Character.Short}"
                          Visibility="{Binding IsSingleCharacterConversation, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <chat:ChatCharacterPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Persona}" Tag="&#xE716;">
+                <TabItem Header="{StaticResource Chat.Tab.Persona}" Tag="&#xE716;" presentation:InspectorNavigation.Label="{StaticResource Chat.Tab.Persona.Short}">
                     <chat:ChatPersonaPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Memory}" Tag="&#xE8F1;">
+                <TabItem Header="{StaticResource Chat.Tab.Memory}" Tag="&#xE8F1;" presentation:InspectorNavigation.Label="{StaticResource Chat.Tab.Memory.Short}">
                     <chat:ChatMemoryPanel />
                 </TabItem>
-                <TabItem Header="{StaticResource Chat.Tab.Session}" Tag="&#xE713;">
+                <TabItem Header="{StaticResource Chat.Tab.Session}" Tag="&#xE713;" presentation:InspectorNavigation.Label="{StaticResource Chat.Tab.Session.Short}">
                     <chat:ChatSessionPanel />
                 </TabItem>
             </TabControl>

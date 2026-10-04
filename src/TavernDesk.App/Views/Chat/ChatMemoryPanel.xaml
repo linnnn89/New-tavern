@@ -142,12 +142,13 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <TextBlock Text="{Binding Memory.PendingTargetText}"
+                <TextBlock FontWeight="Normal" FontSize="{DynamicResource FontSizeSmall}" Text="{Binding Memory.PendingTargetText}"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource MutedTextBrush}" />
                 <TabControl Grid.Row="1" Margin="0,10,0,0">
-                    <TabItem Header="{StaticResource Memory.Diff.Title}">
+                    <TabItem Header="{StaticResource Memory.Diff.Short}" AutomationProperties.AutomationId="MemoryDraftDiffTab">
                         <DockPanel Margin="4">
                             <TextBlock DockPanel.Dock="Top" Text="{Binding Memory.DiffStatus}" TextWrapping="Wrap"
                                        Margin="0,0,0,8" Foreground="{DynamicResource MutedTextBrush}" />
@@ -183,7 +184,7 @@
                             </ListBox>
                         </DockPanel>
                     </TabItem>
-                    <TabItem Header="{StaticResource Chat.Memory.EditableBodyTab}">
+                    <TabItem Header="{StaticResource Memory.Body.Short}" AutomationProperties.AutomationId="MemoryDraftBodyTab">
                         <TextBox Text="{Binding Memory.PendingBody, UpdateSourceTrigger=PropertyChanged}"
                                  IsReadOnly="{Binding Memory.IsGenerating}"
                                  AcceptsReturn="True"
@@ -193,26 +194,29 @@
                                  HorizontalScrollBarVisibility="Disabled"
                                  VerticalScrollBarVisibility="Auto" />
                     </TabItem>
-                    <TabItem Header="{StaticResource Chat.Memory.ApiStructureTab}">
-                        <TextBox Text="{Binding Memory.RequestPreview, Mode=OneWay}"
-                                 IsReadOnly="True"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalContentAlignment="Top"
-                                 HorizontalScrollBarVisibility="Disabled"
-                                 VerticalScrollBarVisibility="Auto" />
-                    </TabItem>
+
                 </TabControl>
-                <WrapPanel Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right">
-                    <Button Margin="0,0,8,8"
-                            Content="{StaticResource Chat.Memory.DiscardDraft}"
+                <Expander Grid.Row="2" Margin="0,8,0,0" Header="{StaticResource Memory.Request.Short}"
+                          FontSize="{DynamicResource FontSizeSmall}" AutomationProperties.AutomationId="MemoryDraftRequest">
+                    <TextBox Text="{Binding Memory.RequestPreview, Mode=OneWay}" IsReadOnly="True" AutomationProperties.Name="{StaticResource Memory.Request.Short}"
+                             AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="160"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" />
+                </Expander>
+                <Grid Grid.Row="3" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions>
+                    <Button AutomationProperties.AutomationId="DiscardMemoryDraft" FontSize="{DynamicResource FontSizeSmall}" Padding="10,8"
                             Command="{Binding Memory.DiscardDraftCommand}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Margin="0,0,0,8"
-                            Content="{StaticResource Chat.Memory.SaveDraft}"
-                            Command="{Binding Memory.SaveDraftCommand}"
-                            Style="{StaticResource PrimaryButtonStyle}" />
-                </WrapPanel>
+                            Foreground="{DynamicResource DangerBrush}" Style="{StaticResource SecondaryButtonStyle}">
+                        <TextBlock Text="{StaticResource Chat.Memory.DiscardDraft}" TextWrapping="Wrap" TextAlignment="Center"
+                                   FontWeight="Normal" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    </Button>
+                    <Button Grid.Column="1" Margin="10,0,0,0" AutomationProperties.AutomationId="SaveMemoryDraft"
+                            FontSize="{DynamicResource FontSizeSmall}" Padding="10,8" Command="{Binding Memory.SaveDraftCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}">
+                        <TextBlock Text="{StaticResource Chat.Memory.SaveDraft}" TextWrapping="Wrap" TextAlignment="Center"
+                                   FontWeight="Normal" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    </Button>
+                </Grid>
             </Grid>
         </TabItem>
     </TabControl>

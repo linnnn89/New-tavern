@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">言語を選択 / Choose Language / 选择界面语言</sys:String>
     <sys:String x:Key="FirstRun.Language.Description">TavernDesk の表示言語を選択してください。
@@ -322,7 +322,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Chat.Memory.EditableBodyTab">編集可能な本文</sys:String>
     <sys:String x:Key="Chat.Memory.ApiStructureTab">API 送信構造</sys:String>
     <sys:String x:Key="Chat.Memory.DiscardDraft">下書きを破棄</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveDraft">下書きを保存してチェックポイントを進める</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveDraft">保存してチェックポイントに</sys:String>
     <sys:String x:Key="Chat.Tab.Session">セッション</sys:String>
     <sys:String x:Key="Chat.Session.Current">現在のセッション</sys:String>
     <sys:String x:Key="Chat.Session.NoneSelected">セッション未選択</sys:String>
@@ -353,7 +353,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Chat.CollapseRightPanel">右サイドバーを折りたたむ</sys:String>
     <!-- Campaigns -->
     <sys:String x:Key="Campaigns.Title">キャンペーン</sys:String>
-    <sys:String x:Key="Campaigns.Description">シナリオは GM 用の構造化進行テンプレートです。各キャンペーンは独立した履歴を保存し、再開するか左側のシナリオから新規開始できます。</sys:String>
+    <sys:String x:Key="Campaigns.Description">シナリオを選んで開始します。各セッションは個別に保存され、いつでも再開できます。</sys:String>
     <sys:String x:Key="Campaigns.NewScenario">新しいシナリオ</sys:String>
     <sys:String x:Key="Campaigns.NewScenarioToolTip">質問形式で新しいテーブルトークシナリオを作成して保存します。</sys:String>
     <sys:String x:Key="Campaigns.ImportScenario">シナリオカードをインポート</sys:String>
@@ -601,7 +601,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Runtime.Section.CharacterChatFormat">チャット · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.CharacterCardFormat">キャラクターカード · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.NewCharacterChatFormat">チャット · {0} · 新しい会話</sys:String>
-    <sys:String x:Key="Runtime.Ready">ローカルデータ準備完了 · 生成リクエストなし</sys:String>
+    <sys:String x:Key="Runtime.Ready">ローカル準備完了</sys:String>
     <sys:String x:Key="Runtime.ReceivingOne">ローカルデータ準備完了 · モデル応答を受信中</sys:String>
     <sys:String x:Key="Runtime.ReceivingManyFormat">ローカルデータ準備完了 · {0} 件のモデル応答を受信中</sys:String>
     <sys:String x:Key="Runtime.RequestSummaryFormat">{0} 件のリクエスト · 約 {1:N0} tokens 受信</sys:String>
@@ -943,7 +943,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Memory.TargetRange">メモリ目標は 1000～20000 tokens の整数です。</sys:String>
     <sys:String x:Key="Memory.CheckpointAllNext">チェックポイントはまだありません。次回更新でこの会話の全ユーザー/キャラクターメッセージを読みます。</sys:String>
     <sys:String x:Key="Memory.CheckpointFormat">メッセージ #{0} まで処理済み。累計 {1} ユーザーターン。</sys:String>
-    <sys:String x:Key="Memory.PendingTargetFormat">{0} · 対象 {1} · 目標 {2} tokens · 元データ #{3} まで</sys:String>
+    <sys:String x:Key="Memory.PendingTargetFormat">{0} · 更新対象：{1} · 予算 {2} tokens · メッセージ {3} まで処理済み</sys:String>
     <sys:String x:Key="Memory.NotCalled">未呼び出し</sys:String>
     <sys:String x:Key="Memory.Function.Update">メモリ更新</sys:String>
     <sys:String x:Key="Memory.Function.Compression">メモリ圧縮</sys:String>
@@ -1383,7 +1383,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Campaigns.Game.DeletedFormat">キャンペーン「{0}」と {1} 件の記録を完全に削除しました。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.NewCancelled">新規シナリオをキャンセルし、未保存内容を破棄しました。</sys:String>
     <sys:String x:Key="Campaigns.Scenario.EditCancelled">シナリオ編集をキャンセルし、未保存変更を破棄しました。</sys:String>
-    <sys:String x:Key="Campaigns.Library.AllSaved">開始済みキャンペーンはすべて即時保存されています。左側のシナリオから新規作成できます。</sys:String>
+    <sys:String x:Key="Campaigns.Library.AllSaved">セッションは保存されています。シナリオを選んで新しく開始できます。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.DraftSaved">開始ロビー下書きを保存しました。まだ固定されていません。</sys:String>
     <sys:String x:Key="Campaigns.Game.Started">開始しました。シナリオ、キャラクタースナップショット、メモリ、初期設定は固定済みです。</sys:String>
     <sys:String x:Key="Campaigns.Lobby.NoScenario">開始ロビーに関連シナリオがありません。</sys:String>
@@ -1687,7 +1687,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.Budget.UserInput">現在の入力</sys:String>
     <sys:String x:Key="Chat.Budget.Knowledge">ナレッジ</sys:String>
     <sys:String x:Key="Memory.Summary.Failed">記憶の更新に失敗</sys:String>
-    <sys:String x:Key="Chat.Budget.TotalFormat">推定 {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">推定 {0:N0} / {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.CompactFormat">入力 {0:N0} · 予約 {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.BreakdownFormat">入力 {0:N0} · 出力予約 {1:N0} を含む · 上限 {2:N0}</sys:String>
     <sys:String x:Key="Chat.DisplayLabel">表示：</sys:String>
@@ -1696,4 +1696,23 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.EmptyConversation">会話を始める</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">下の入力欄から返信を生成するか、ユーザーメッセージのみ保存できます。</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">会話一覧を展開・折りたたむ</sys:String>
+    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">ワークスペース › {0}</sys:String>
+    <sys:String x:Key="Chat.Tab.Context.Short">文脈</sys:String>
+    <sys:String x:Key="Chat.Tab.Character.Short">人物</sys:String>
+    <sys:String x:Key="Chat.Tab.Persona.Short">設定</sys:String>
+    <sys:String x:Key="Chat.Tab.Memory.Short">記憶</sys:String>
+    <sys:String x:Key="Chat.Tab.Session.Short">会話</sys:String>
+    <sys:String x:Key="Memory.OwnerOriginal">元の記憶対象</sys:String>
+    <sys:String x:Key="Memory.DiscardTitle">記憶草稿を破棄しますか？</sys:String>
+    <sys:String x:Key="Memory.DiscardPrompt">この草稿を削除します。保存済みの記憶とチェックポイントは残ります。</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Instruction">指示</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Lore">背景知識</sys:String>
+    <sys:String x:Key="Worldbook.KeywordsEmpty">未設定</sys:String>
+    <sys:String x:Key="Worldbook.KeywordSeparator">、</sys:String>
+    <sys:String x:Key="Chat.SendMode.SaveAction">メッセージを保存</sys:String>
+    <sys:String x:Key="Memory.Diff.Short">差分</sys:String>
+    <sys:String x:Key="Memory.Body.Short">本文</sys:String>
+    <sys:String x:Key="Memory.Request.Short">リクエストを表示</sys:String>
+    <sys:String x:Key="Chat.Budget.InputCompositionFormat">入力の内訳 · {0:N0} tokens</sys:String>
+    <sys:String x:Key="Campaigns.EmptyHistory">まだセッションがありません。シナリオを選んで冒険を始めましょう。</sys:String>
 </ResourceDictionary>

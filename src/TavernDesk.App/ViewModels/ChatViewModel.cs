@@ -136,7 +136,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             modelAssignments,
             providerGateway,
             generationCoordinator,
-            globalPrompts);
+            globalPrompts,
+            interaction);
         _groupMemoryCoordinator = new GroupMemoryCoordinator(
             groupMemory,
             Memory,
@@ -480,9 +481,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             {
                 SendLocalCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(IsGenerationModelMissing));
+                OnPropertyChanged(nameof(SendButtonText));
             }
         }
     }
+
+    public string SendButtonText => LanguageRuntime.GetString(
+        SendMode == ChatSendMode.SaveOnly ? "Chat.SendMode.SaveAction" : "Chat.Send");
 
     public ChatDisplayMode DisplayMode
     {

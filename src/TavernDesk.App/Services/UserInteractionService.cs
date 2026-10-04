@@ -34,6 +34,7 @@ public interface IUserInteractionService
 {
     bool? ConfirmScenarioRecovery(CampaignScenarioEditDraft draft) => null;
     bool ConfirmDiscardScenarioDraft(string title) => false;
+    bool ConfirmDiscardMemoryDraft() => false;
     bool ConfirmInterfaceScale(int percent) => false;
     void ShowWarning(string title, string message)
     {
@@ -77,6 +78,10 @@ public interface IUserInteractionService
 
 public sealed class UserInteractionService : IUserInteractionService
 {
+    public bool ConfirmDiscardMemoryDraft() => ConfirmDestructiveAction(
+        LanguageRuntime.GetString("Memory.DiscardTitle"), LanguageRuntime.GetString("Memory.DiscardPrompt"),
+        LanguageRuntime.GetString("Chat.Memory.DiscardDraft"));
+
     public bool ConfirmDiscardScenarioDraft(string title) => ConfirmDestructiveAction(
         LanguageRuntime.GetString("Recovery.DiscardTitle"), LanguageRuntime.Format("Recovery.DiscardPrompt", title),
         LanguageRuntime.GetString("Recovery.DiscardAction"));

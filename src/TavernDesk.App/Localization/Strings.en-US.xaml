@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">Choose Language / 选择界面语言 / 言語を選択</sys:String>
     <sys:String x:Key="FirstRun.Language.Description">Choose the TavernDesk interface language.
@@ -322,7 +322,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Chat.Memory.EditableBodyTab">Editable body</sys:String>
     <sys:String x:Key="Chat.Memory.ApiStructureTab">API payload structure</sys:String>
     <sys:String x:Key="Chat.Memory.DiscardDraft">Discard draft</sys:String>
-    <sys:String x:Key="Chat.Memory.SaveDraft">Save draft and advance checkpoint</sys:String>
+    <sys:String x:Key="Chat.Memory.SaveDraft">Save and checkpoint</sys:String>
     <sys:String x:Key="Chat.Tab.Session">Session</sys:String>
     <sys:String x:Key="Chat.Session.Current">Current session</sys:String>
     <sys:String x:Key="Chat.Session.NoneSelected">No session selected</sys:String>
@@ -353,7 +353,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Chat.CollapseRightPanel">Collapse right sidebar</sys:String>
     <!-- Campaigns -->
     <sys:String x:Key="Campaigns.Title">Campaigns</sys:String>
-    <sys:String x:Key="Campaigns.Description">Scenarios are structured GM templates. Each campaign keeps its own history and can be resumed, or you can start a new one from a scenario on the left.</sys:String>
+    <sys:String x:Key="Campaigns.Description">Choose a scenario to start a campaign. Each run is saved separately and can be continued anytime.</sys:String>
     <sys:String x:Key="Campaigns.NewScenario">New scenario</sys:String>
     <sys:String x:Key="Campaigns.NewScenarioToolTip">Fill in and save a new tabletop scenario using a questionnaire-style form.</sys:String>
     <sys:String x:Key="Campaigns.ImportScenario">Import scenario card</sys:String>
@@ -601,7 +601,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Runtime.Section.CharacterChatFormat">Chat · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.CharacterCardFormat">Character card · {0}</sys:String>
     <sys:String x:Key="Runtime.Section.NewCharacterChatFormat">Chat · {0} · New conversation</sys:String>
-    <sys:String x:Key="Runtime.Ready">Local data ready · no active generation requests</sys:String>
+    <sys:String x:Key="Runtime.Ready">Local ready</sys:String>
     <sys:String x:Key="Runtime.ReceivingOne">Local data ready · receiving a model response</sys:String>
     <sys:String x:Key="Runtime.ReceivingManyFormat">Local data ready · receiving {0} model responses</sys:String>
     <sys:String x:Key="Runtime.RequestSummaryFormat">{0} requests · about {1:N0} tokens received</sys:String>
@@ -943,7 +943,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Memory.TargetRange">Memory target must be an integer from 1000 to 20000 tokens.</sys:String>
     <sys:String x:Key="Memory.CheckpointAllNext">No processing checkpoint yet; the next update reads all user/character messages in this conversation.</sys:String>
     <sys:String x:Key="Memory.CheckpointFormat">Processed through message #{0}; {1} total user turns.</sys:String>
-    <sys:String x:Key="Memory.PendingTargetFormat">{0} · target {1} · target {2} tokens · source through #{3}</sys:String>
+    <sys:String x:Key="Memory.PendingTargetFormat">{0} · Owner: {1} · Budget {2} tokens · Processed through message {3}</sys:String>
     <sys:String x:Key="Memory.NotCalled">Not called</sys:String>
     <sys:String x:Key="Memory.Function.Update">Memory update</sys:String>
     <sys:String x:Key="Memory.Function.Compression">Memory compression</sys:String>
@@ -1383,7 +1383,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Campaigns.Game.DeletedFormat">Permanently deleted campaign “{0}” and its {1} records.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.NewCancelled">New scenario canceled; unsaved content was discarded.</sys:String>
     <sys:String x:Key="Campaigns.Scenario.EditCancelled">Scenario editing canceled; unsaved changes were discarded.</sys:String>
-    <sys:String x:Key="Campaigns.Library.AllSaved">All started campaigns are saved immediately. Create a new one from a scenario on the left.</sys:String>
+    <sys:String x:Key="Campaigns.Library.AllSaved">Your campaigns are saved. Choose a scenario to start a new run.</sys:String>
     <sys:String x:Key="Campaigns.Lobby.DraftSaved">Starting-lobby draft saved; configuration is not frozen yet.</sys:String>
     <sys:String x:Key="Campaigns.Game.Started">Campaign started: scenario, character snapshots, imported memory, and initial configuration are frozen.</sys:String>
     <sys:String x:Key="Campaigns.Lobby.NoScenario">No scenario is linked to the starting lobby.</sys:String>
@@ -1687,7 +1687,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Chat.Budget.UserInput">Current input</sys:String>
     <sys:String x:Key="Chat.Budget.Knowledge">Knowledge</sys:String>
     <sys:String x:Key="Memory.Summary.Failed">Memory update failed</sys:String>
-    <sys:String x:Key="Chat.Budget.TotalFormat">Estimated {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">Est. {0:N0} / {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.CompactFormat">Input {0:N0} · Reserve {1:N0}</sys:String>
     <sys:String x:Key="Chat.Budget.BreakdownFormat">Input {0:N0} · Includes output reserve {1:N0} · Limit {2:N0}</sys:String>
     <sys:String x:Key="Chat.DisplayLabel">View:</sys:String>
@@ -1696,4 +1696,23 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Chat.EmptyConversation">Start this conversation</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">Type below to send and generate a reply, or save your message only.</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">Expand or collapse conversations</sys:String>
+    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">Workspace › {0}</sys:String>
+    <sys:String x:Key="Chat.Tab.Context.Short">Context</sys:String>
+    <sys:String x:Key="Chat.Tab.Character.Short">Role</sys:String>
+    <sys:String x:Key="Chat.Tab.Persona.Short">Persona</sys:String>
+    <sys:String x:Key="Chat.Tab.Memory.Short">Memory</sys:String>
+    <sys:String x:Key="Chat.Tab.Session.Short">Session</sys:String>
+    <sys:String x:Key="Memory.OwnerOriginal">Original memory owner</sys:String>
+    <sys:String x:Key="Memory.DiscardTitle">Discard memory draft?</sys:String>
+    <sys:String x:Key="Memory.DiscardPrompt">This deletes the draft. Saved memory and checkpoints are kept.</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Instruction">Instruction</sys:String>
+    <sys:String x:Key="Worldbook.ContentType.Lore">Lore</sys:String>
+    <sys:String x:Key="Worldbook.KeywordsEmpty">Not set</sys:String>
+    <sys:String x:Key="Worldbook.KeywordSeparator">, </sys:String>
+    <sys:String x:Key="Chat.SendMode.SaveAction">Save message</sys:String>
+    <sys:String x:Key="Memory.Diff.Short">Diff</sys:String>
+    <sys:String x:Key="Memory.Body.Short">Body</sys:String>
+    <sys:String x:Key="Memory.Request.Short">View request</sys:String>
+    <sys:String x:Key="Chat.Budget.InputCompositionFormat">Input composition · {0:N0} tokens</sys:String>
+    <sys:String x:Key="Campaigns.EmptyHistory">No campaigns yet. Choose a scenario to start an adventure.</sys:String>
 </ResourceDictionary>

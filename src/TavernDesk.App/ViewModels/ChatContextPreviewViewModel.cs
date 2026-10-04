@@ -61,7 +61,7 @@ public sealed class ChatContextPreviewViewModel : ViewModelBase, IDisposable, IA
         }
     }
     public int EstimatedInputTokens => _estimate.InputTokens;
-    public string EstimatedTokenHeadline => LanguageRuntime.Format("Chat.Budget.TotalFormat", _estimate.TotalTokens);
+    public string EstimatedTokenHeadline => LanguageRuntime.Format("Chat.Budget.TotalFormat", _estimate.TotalTokens, _estimate.ContextLimit);
     public string EstimatedTokenCompactText => LanguageRuntime.Format("Chat.Budget.CompactFormat", _estimate.InputTokens, _estimate.ReservedOutputTokens);
     public string EstimatedTokenBreakdown => LanguageRuntime.Format("Chat.Budget.BreakdownFormat",
         _estimate.InputTokens, _estimate.ReservedOutputTokens, _estimate.ContextLimit);
@@ -162,14 +162,13 @@ public sealed class ChatContextPreviewViewModel : ViewModelBase, IDisposable, IA
         _groupBudget = result.GroupBudget;
         _estimate = result.Estimate;
         var parts = new List<TokenBudgetPart>();
-        var brushes = new[] { "AccentBrush", "MutedTextBrush", "AccentSoftBrush" };
         if (result.SegmentTokens is { } counts)
         {
             foreach (var group in result.Segments.GroupBy(segment => segment.Kind))
             {
                 var tokens = counts.GetValueOrDefault(group.Key);
                 if (tokens > 0) parts.Add(new(LanguageRuntime.GetString($"Chat.Budget.{group.Key}"), tokens,
-                    brushes[parts.Count % brushes.Length], group.ToArray()));
+                    $"Budget{group.Key}Brush", group.ToArray()));
             }
         }
         var other = Math.Max(0, _estimate.InputTokens - parts.Sum(part => part.Tokens));

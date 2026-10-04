@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
+using TavernDesk.App.Services;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 
@@ -18,6 +19,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private readonly IProviderGateway _gateway;
     private readonly IConversationGenerationCoordinator _generationCoordinator;
     private readonly IGlobalPromptConfiguration _globalPrompts;
+    private readonly IUserInteractionService? _interaction;
     private readonly SemaphoreSlim _generationGate = new(1, 1);
     private CancellationTokenSource? _generationCancellation;
     private string? _ownerId;
@@ -53,7 +55,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         IModelAssignmentRepository assignments,
         IProviderGateway gateway,
         IConversationGenerationCoordinator generationCoordinator,
-        IGlobalPromptConfiguration globalPrompts)
+        IGlobalPromptConfiguration globalPrompts,
+        IUserInteractionService? interaction = null)
     {
         _memoryBanks = memoryBanks;
         _workflow = workflow;
@@ -64,6 +67,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         _gateway = gateway;
         _generationCoordinator = generationCoordinator;
         _globalPrompts = globalPrompts;
+        _interaction = interaction;
 
         SaveBodyCommand = new AsyncRelayCommand(SaveBodyAsync, () => IsLoaded);
         SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync, () => IsLoaded);
@@ -252,6 +256,9 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             cancellationToken);
         var draftsTask = _workflow.ListDraftsAsync(conversationId, cancellationToken);
         await Task.WhenAll(bankTask, settingsTask, checkpointTask, draftsTask);
+        var loadedDraft = draftsTask.Result.FirstOrDefault();
+        var draftOwner = loadedDraft is not null && loadedDraft.TargetOwnerId != ownerId
+            ? await _characters.GetAsync(loadedDraft.TargetOwnerId, cancellationToken) : null;
         if (version != _loadVersion || cancellationToken.IsCancellationRequested)
         {
             return;
@@ -275,7 +282,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
         TargetTokens = (bank?.TargetTokens ?? 5000).ToString();
         ApplySettings(settingsTask.Result);
         ApplyCheckpoint(checkpointTask.Result);
-        ApplyDraft(draftsTask.Result.FirstOrDefault());
+        ApplyDraft(loadedDraft, draftOwner?.Name);
         Status = preserveUnsavedBody
             ? LanguageRuntime.GetString("Memory.ReloadPreservedUnsaved")
             : bank is null
@@ -931,14 +938,18 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
     private async Task DiscardDraftAsync()
     {
-        if (_pendingDraft is null)
+        var draft = _pendingDraft;
+        if (draft is null || _interaction?.ConfirmDiscardMemoryDraft() != true)
         {
             return;
         }
 
-        await _workflow.DeleteDraftAsync(_pendingDraft.Id);
-        ApplyDraft(null);
-        Status = LanguageRuntime.GetString("Memory.DraftDiscarded");
+        await _workflow.DeleteDraftAsync(draft.Id);
+        if (_pendingDraft?.Id == draft.Id)
+        {
+            ApplyDraft(null);
+            Status = LanguageRuntime.GetString("Memory.DraftDiscarded");
+        }
     }
 
     private void StopGeneration() => _generationCancellation?.Cancel();
@@ -1035,7 +1046,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 checkpoint.ProcessedUserTurns);
     }
 
-    private void ApplyDraft(MemoryUpdateDraft? draft)
+    private void ApplyDraft(MemoryUpdateDraft? draft, string? ownerLabel = null)
     {
         _pendingDraft = draft;
         UpdateDiff();
@@ -1048,7 +1059,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             : LanguageRuntime.Format(
                 "Memory.PendingTargetFormat",
                 DraftLabel(draft.Kind),
-                draft.TargetOwnerId,
+                ownerLabel ?? (draft.TargetOwnerId == _ownerId ? OwnerLabel : LanguageRuntime.GetString("Memory.OwnerOriginal")),
                 draft.TargetTokens,
                 draft.SourceThroughSequenceNo);
         SaveDraftCommand.RaiseCanExecuteChanged();

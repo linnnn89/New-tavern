@@ -1,7 +1,11 @@
-﻿<UserControl x:Class="TavernDesk.App.Views.Chat.ChatContextPanel"
+<UserControl x:Class="TavernDesk.App.Views.Chat.ChatContextPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
+        <Style x:Key="ContextDetailRow" TargetType="Border">
+            <Setter Property="Padding" Value="0,12" /><Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" /><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        </Style>
         <Style x:Key="BudgetDetailExpander" TargetType="Expander">
             <Setter Property="Template">
                 <Setter.Value>
@@ -35,22 +39,19 @@
                         <TextBlock Grid.Column="1"
                                    Margin="12,0,0,0"
                                    VerticalAlignment="Center"
-                                   Text="{Binding EstimatedTokenHeadline}"
+                                   Text="{Binding EstimatedTokenHeadline}" ToolTip="{Binding EstimatedTokenText}"
                                    FontSize="{DynamicResource FontSizeBodyLarge}"
                                    FontWeight="SemiBold" />
                     </Grid>
-                    <TextBlock Text="{Binding EstimatedTokenBreakdown}" TextWrapping="Wrap" Margin="0,7,0,0" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedTextBrush}" />
+
                     <ProgressBar Margin="0,14,0,0"
-                                 Value="{Binding EstimatedTokenUsagePercent, Mode=OneWay}"
+                                 Value="{Binding EstimatedTokenUsagePercent, Mode=OneWay}" ToolTip="{Binding EstimatedTokenBreakdown}"
                                  Style="{StaticResource AppicaTokenProgressStyle}" />
-                    <TextBlock Text="{StaticResource Chat.Budget.Help}" TextWrapping="Wrap" Margin="0,10,0,6"
+                    <TextBlock Text="{Binding EstimatedInputTokens, StringFormat={StaticResource Chat.Budget.InputCompositionFormat}}" ToolTip="{StaticResource Chat.Budget.Help}" TextWrapping="Wrap" Margin="0,10,0,6"
                                Foreground="{DynamicResource MutedTextBrush}" />
                     <Grid x:Name="BudgetBar" Height="16" AutomationProperties.AutomationId="ContextBudgetBar" />
                     <StackPanel x:Name="BudgetDetails" Margin="0,8,0,0" />
-                    <TextBlock Margin="0,12,0,0"
-                               Text="{Binding EstimatedTokenText}"
-                               TextWrapping="Wrap"
-                               Style="{StaticResource AppicaTokenStatusTextStyle}" />
+
                     <TextBlock Margin="0,5,0,0"
                                Text="{Binding LastGenerationUsageText}"
                                TextWrapping="Wrap"
@@ -64,13 +65,13 @@
                                Text="{StaticResource Chat.RequestStructureHelp}"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource MutedTextBrush}" />
-                    <Expander Header="{StaticResource Chat.SentSections}" IsExpanded="False">
+                    <Expander Header="{StaticResource Chat.SentSections}" IsExpanded="False" Style="{StaticResource BudgetDetailExpander}">
                         <ItemsControl Margin="0,9,0,0"
                                       ItemsSource="{Binding ContextSegments}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Margin="0,0,0,8"
-                                            Style="{StaticResource AppicaInspectorInsetStyle}">
+                                            Style="{StaticResource ContextDetailRow}">
                                         <StackPanel>
                                             <DockPanel>
                                                 <TextBlock Text="{Binding Title}"
@@ -93,7 +94,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </Expander>
-                    <Expander Margin="0,8,0,0" Header="{StaticResource Chat.ApiRequestStructure}">
+                    <Expander Margin="0,8,0,0" Header="{StaticResource Chat.ApiRequestStructure}" Style="{StaticResource BudgetDetailExpander}">
                         <TextBox MinHeight="150"
                                  MaxHeight="240"
                                  Margin="0,9,0,0"
@@ -135,7 +136,7 @@
                                    Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
                     <Expander Margin="0,10,0,0"
-                              Header="{StaticResource Chat.Retrieval.SettingsAndResults}">
+                              Header="{StaticResource Chat.Retrieval.SettingsAndResults}" Style="{StaticResource BudgetDetailExpander}">
                         <StackPanel Margin="0,9,0,0">
                             <TextBlock Text="{StaticResource Chat.Retrieval.Scope}" />
                             <ComboBox Margin="0,5,0,0"
@@ -178,7 +179,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,8"
-                                                Style="{StaticResource AppicaInspectorInsetStyle}">
+                                                Style="{StaticResource ContextDetailRow}">
                                             <StackPanel>
                                                 <DockPanel>
                                                     <TextBlock Text="{Binding Title}"
@@ -202,7 +203,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Expander Margin="0,7,0,0" Header="{StaticResource Chat.Retrieval.Diagnostics}">
+                            <Expander Margin="0,7,0,0" Header="{StaticResource Chat.Retrieval.Diagnostics}" Style="{StaticResource BudgetDetailExpander}">
                                 <ItemsControl Margin="0,7,0,0"
                                               ItemsSource="{Binding Retrieval.Diagnostics}">
                                     <ItemsControl.ItemTemplate>
