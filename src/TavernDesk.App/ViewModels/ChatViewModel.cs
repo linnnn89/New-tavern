@@ -260,9 +260,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         get => _selectedConversation;
         private set
         {
+            var conversationChanged = _selectedConversation?.Id != value?.Id;
             if (SetProperty(ref _selectedConversation, value))
             {
-                CharacterPrompt.Apply(null);
+                if (conversationChanged) CharacterPrompt.Apply(null);
                 Status = value is not null
                          && _conversationStatuses.TryGetValue(value.Id, out var status)
                     ? status
@@ -738,16 +739,17 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             return;
         }
 
+        var sameConversation = SelectedConversation?.Id == conversation.Id;
         if (SelectedConversation is not null)
         {
-            StopVisibleSpeech();
+            if (!sameConversation) StopVisibleSpeech();
             SelectedConversation.IsSelected = false;
         }
 
         conversation.IsSelected = true;
         SelectedConversation = conversation;
         ApplyActiveAssignmentBudget(conversation.Mode);
-        StartSelectionLoad(conversation);
+        StartSelectionLoad(conversation, sameConversation);
         SendLocalCommand.RaiseCanExecuteChanged();
     }
 
@@ -778,7 +780,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         SendLocalCommand.RaiseCanExecuteChanged();
     }
 
-    private void StartSelectionLoad(ConversationListItemViewModel conversation)
+    private void StartSelectionLoad(ConversationListItemViewModel conversation, bool preserveMessages)
     {
         // Cancellation is advisory for SQLite/WPF continuations; the monotonic
         // version also prevents a late load from replacing a newer selection.
@@ -788,14 +790,19 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         var version = ++_selectionVersion;
         _loadedSelectionId = null;
         _isSelectionLoading = true;
-        Messages.Clear();
-        _contextPreview.BeginSelection(conversation.Id, CurrentUiBudget);
-        _groupMemoryCoordinator.ForgetUnsavedBody();
-        Memory.Clear();
-        Group.Clear();
-        Retrieval.Clear();
-        Presets.Clear();
-        CharacterPrompt.Apply(null);
+        // Refreshing a summary does not navigate away from this conversation.
+        // Keep its rendered messages and panels alive while reading committed state.
+        if (!preserveMessages)
+        {
+            Messages.Clear();
+            _contextPreview.BeginSelection(conversation.Id, CurrentUiBudget);
+            _groupMemoryCoordinator.ForgetUnsavedBody();
+            Memory.Clear();
+            Group.Clear();
+            Retrieval.Clear();
+            Presets.Clear();
+            CharacterPrompt.Apply(null);
+        }
         SendLocalCommand.RaiseCanExecuteChanged();
         RefreshContinueGenerationCommands();
         _selectionLoadTask = LoadSelectionAsync(
@@ -840,7 +847,8 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
-            Messages.Clear();
+            var existingById = Messages.ToDictionary(item => item.Id);
+            var persistedIds = loadedMessages.Select(message => message.Id).ToHashSet(StringComparer.Ordinal);
             for (var index = 0; index < loadedMessages.Count; index++)
             {
                 if (index > 0 && index % 50 == 0 && System.Windows.Application.Current?.Dispatcher.CheckAccess() == true)
@@ -862,12 +870,35 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                             historyCharacter.Name);
                 }
 
-                Messages.Add(CreateMessageItem(
-                    message,
-                    candidatesByMessage.GetValueOrDefault(message.Id) ?? []));
+                var candidates = candidatesByMessage.GetValueOrDefault(message.Id) ?? [];
+                var existing = existingById.GetValueOrDefault(message.Id)
+                    ?? Messages.FirstOrDefault(item => item.Id == message.Id);
+                if (existing is not null)
+                {
+                    existing.ApplyPersistedMessage(message, candidates);
+                    if (!ReferenceEquals(Messages[index], existing))
+                        Messages.Move(Messages.IndexOf(existing), index);
+                }
+                else
+                {
+                    Messages.Insert(index, CreateMessageItem(message, candidates));
+                }
+            }
+            // A stream can advance while the database snapshot is being read.
+            // Its uncommitted projection must survive until the completion refresh.
+            var liveSession = _generationSessions.Get(conversation.Id);
+            for (var index = Messages.Count - 1; index >= 0; index--)
+            {
+                var item = Messages[index];
+                if (!persistedIds.Contains(item.Id)
+                    && !(liveSession.IsBusy && liveSession.MessageId == item.Id))
+                {
+                    item.CloseTools();
+                    Messages.RemoveAt(index);
+                }
             }
             RefreshContinueGenerationCommands();
-            ApplyLiveSession(_generationSessions.Get(conversation.Id));
+            ApplyLiveSession(liveSession);
 
             var ownerId = loadedConversation.Mode == ConversationMode.Group
                 ? MemoryOwnerIds.ForGroup(loadedConversation.Id)
@@ -1266,9 +1297,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 return;
             }
 
-            await ReloadGroupsPreservingSelectionAsync();
             if (snapshot.Mode == ConversationMode.Group)
             {
+                // Relay needs the committed group state before choosing its next speaker.
+                await ReloadGroupsPreservingSelectionAsync();
                 if (_generationCoordinator.GetState(conversationId).Status
                     != ConversationGenerationStatus.Interrupted)
                 {

@@ -19,7 +19,7 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
     private readonly Action<ChatMessageItemViewModel> _copy;
     private readonly Action<ChatMessageItemViewModel> _openingTools;
     private readonly DispatcherTimer _autoCloseTimer;
-    private readonly IReadOnlyList<MessageCandidate> _candidates;
+    private IReadOnlyList<MessageCandidate> _candidates;
     private string? _senderLabel;
     private string _personaMacroValue;
     private string _characterMacroValue;
@@ -95,7 +95,7 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
         _autoCloseTimer.Tick += (_, _) => CloseTools();
     }
 
-    public ChatMessage Message { get; }
+    public ChatMessage Message { get; private set; }
     public string Id => Message.Id;
     public string Content => Message.Content;
     public string DisplayContent => TavernNameMacroPattern().Replace(
@@ -166,6 +166,26 @@ public sealed partial class ChatMessageItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(DisplayContent));
         OnPropertyChanged(nameof(CandidateLabel));
         OnPropertyChanged(nameof(CandidateNavigationLabel));
+    }
+
+    public void ApplyPersistedMessage(ChatMessage message, IReadOnlyList<MessageCandidate> candidates)
+    {
+        if (message.Id != Id) throw new ArgumentException("Cannot replace a different message.", nameof(message));
+        var contentChanged = Message.Content != message.Content;
+        var timestampChanged = Message.CreatedAt != message.CreatedAt;
+        Message = message;
+        _candidates = candidates.OrderBy(candidate => candidate.CandidateIndex).ToArray();
+        if (contentChanged)
+        {
+            OnPropertyChanged(nameof(Content));
+            OnPropertyChanged(nameof(DisplayContent));
+        }
+        if (timestampChanged) OnPropertyChanged(nameof(TimestampText));
+        OnPropertyChanged(nameof(CandidateLabel));
+        OnPropertyChanged(nameof(HasMultipleCandidates));
+        OnPropertyChanged(nameof(CandidateNavigationLabel));
+        PreviousCandidateCommand.RaiseCanExecuteChanged();
+        NextCandidateCommand.RaiseCanExecuteChanged();
     }
 
     public void ApplyCandidate(MessageCandidate candidate)
