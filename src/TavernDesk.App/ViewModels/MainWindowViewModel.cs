@@ -95,6 +95,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             services.CampaignContextPlanner,
             services.CampaignFlowEngine);
         Chat.OpenPromptSettings = OpenPromptSettingsAsync;
+        Chat.OpenModelSettings = OpenModelSettingsAsync;
         Campaigns.OpenPromptSettings = OpenPromptSettingsAsync;
         services.GenerationCoordinator.StateChanged += OnGenerationStateChanged;
 
@@ -391,6 +392,15 @@ public sealed class MainWindowViewModel : ViewModelBase
         // Restore the same page and its selection, without reloading the chat or editor.
         CurrentPage = _settingsReturnPage ?? Dashboard;
         CurrentSection = _settingsReturnSection;
+        if (ReferenceEquals(CurrentPage, Chat)) await Chat.RefreshModelAssignmentsAsync();
+    }
+
+    public async Task OpenModelSettingsAsync(ModelFunctionKind function)
+    {
+        await ShowSettingsAsync();
+        if (!ReferenceEquals(CurrentPage, Settings)) return;
+        Settings.SelectedSettingsPage = SettingsPage.Assignments;
+        Settings.SelectedFunction = Settings.FunctionOptions.First(option => option.Value == function);
     }
 
     public async Task OpenPromptSettingsAsync(GlobalPromptKey key)
@@ -410,6 +420,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public async Task<bool> ConfirmCanCloseAsync()
     {
         await Campaigns.ScenarioEditor.FlushDraftAsync();
+        if (!await Worldbooks.ConfirmCanLeaveAsync()) return false;
         return await ConfirmPageChangeAsync();
     }
 
@@ -451,6 +462,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private Task<bool> ConfirmPageChangeAsync()
     {
+        if (ReferenceEquals(CurrentPage, Worldbooks)) return Worldbooks.ConfirmCanLeaveAsync();
         if (ReferenceEquals(CurrentPage, Characters))
         {
             return Characters.ConfirmCanLeaveAsync();

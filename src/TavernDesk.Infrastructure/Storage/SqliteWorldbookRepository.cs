@@ -273,6 +273,45 @@ public sealed class SqliteWorldbookRepository : IWorldbookRepository
         }
     }
 
+    public async Task UpdateEntryAsync(WorldbookEntry original, string title, string content,
+        IReadOnlyList<WorldbookChunk> chunks, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        await using var connection = _database.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
+        await using var update = connection.CreateCommand();
+        update.Transaction = transaction;
+        update.CommandText = """
+            UPDATE worldbook_entries SET title = $title, content = $content, content_hash = $hash
+            WHERE worldbook_id = $book AND entry_id = $entry AND title = $oldTitle AND content = $oldContent;
+            """;
+        update.Parameters.AddWithValue("$title", title.Trim());
+        update.Parameters.AddWithValue("$content", content);
+        update.Parameters.AddWithValue("$hash", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(content))).ToLowerInvariant());
+        update.Parameters.AddWithValue("$book", original.WorldbookId);
+        update.Parameters.AddWithValue("$entry", original.Id);
+        update.Parameters.AddWithValue("$oldTitle", original.Title);
+        update.Parameters.AddWithValue("$oldContent", original.Content);
+        if (await update.ExecuteNonQueryAsync(cancellationToken) != 1)
+            throw new InvalidOperationException("词条已变化或被删除，修改未保存。请保留编辑内容并重新载入词条。");
+        await using var clear = connection.CreateCommand();
+        clear.Transaction = transaction;
+        clear.CommandText = """
+            DELETE FROM worldbook_chunks_fts WHERE worldbook_id = $book AND entry_id = $entry;
+            DELETE FROM worldbook_chunks WHERE worldbook_id = $book AND entry_id = $entry;
+            UPDATE worldbooks SET revision = revision + 1, updated_at = $now WHERE id = $book;
+            """;
+        clear.Parameters.AddWithValue("$book", original.WorldbookId);
+        clear.Parameters.AddWithValue("$entry", original.Id);
+        clear.Parameters.AddWithValue("$now", DateTimeOffset.Now.ToString("O"));
+        await clear.ExecuteNonQueryAsync(cancellationToken);
+        foreach (var chunk in chunks)
+            await InsertChunkAndFtsAsync(connection, transaction, chunk, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     public async Task UpsertAsync(Worldbook worldbook, IReadOnlyList<WorldbookEntry> entries,
         CancellationToken cancellationToken = default)
     {

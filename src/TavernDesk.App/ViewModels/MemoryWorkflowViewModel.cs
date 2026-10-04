@@ -42,6 +42,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private long _loadVersion;
     private long _loadedBankRevision;
     private bool _isGenerating;
+    private bool _lastGenerationFailed;
 
     public MemoryWorkflowViewModel(
         IMemoryBankService memoryBanks,
@@ -75,10 +76,10 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             () => IsLoaded && !IsGenerating);
         SaveDraftCommand = new AsyncRelayCommand(
             SaveDraftAsync,
-            () => _pendingDraft is not null);
+            () => _pendingDraft is not null && !IsGenerating);
         DiscardDraftCommand = new AsyncRelayCommand(
             DiscardDraftAsync,
-            () => _pendingDraft is not null);
+            () => _pendingDraft is not null && !IsGenerating);
         StopGenerationCommand = new RelayCommand(
             StopGeneration,
             () => IsGenerating);
@@ -97,6 +98,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     public RelayCommand StopGenerationCommand { get; }
 
     public bool IsLoaded => _ownerId is not null && _conversationId is not null;
+    public string SummaryText => LanguageRuntime.GetString(IsGenerating ? "Memory.Summary.Updating"
+        : _lastGenerationFailed ? "Memory.Summary.Failed"
+        : _pendingDraft is not null ? "Memory.Summary.Draft"
+        : IsBodyDirty ? "Memory.Summary.Unsaved"
+        : !IsLoaded ? "Memory.Summary.None" : "Memory.Summary.Saved");
     public string? OwnerId => _ownerId;
     public string? ConversationId => _conversationId;
 
@@ -132,7 +138,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     public bool IsBodyDirty
     {
         get => _isBodyDirty;
-        private set => SetProperty(ref _isBodyDirty, value);
+        private set { if (SetProperty(ref _isBodyDirty, value)) OnPropertyChanged(nameof(SummaryText)); }
     }
 
     public string TargetTokens
@@ -186,7 +192,22 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     public string PendingBody
     {
         get => _pendingBody;
-        set => SetProperty(ref _pendingBody, value);
+        set
+        {
+            if (SetProperty(ref _pendingBody, value) && !IsGenerating) UpdateDiff();
+        }
+    }
+
+    public IReadOnlyList<MemoryDiffLine> PendingDiff { get; private set; } = [];
+    public string DiffStatus => LanguageRuntime.GetString(_pendingDraft?.BaseBody is null
+        ? "Memory.Diff.Unavailable" : "Memory.Diff.Help");
+
+    private void UpdateDiff()
+    {
+        PendingDiff = _pendingDraft?.BaseBody is { } baseline
+            ? MemoryDiff.Compare(baseline, PendingBody) : [];
+        OnPropertyChanged(nameof(PendingDiff));
+        OnPropertyChanged(nameof(DiffStatus));
     }
 
     public string PendingTargetText
@@ -204,6 +225,10 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             {
                 return;
             }
+            OnPropertyChanged(nameof(SummaryText));
+            if (!value) UpdateDiff();
+            SaveDraftCommand.RaiseCanExecuteChanged();
+            DiscardDraftCommand.RaiseCanExecuteChanged();
 
             GenerateUpdateCommand.RaiseCanExecuteChanged();
             GenerateCompressionCommand.RaiseCanExecuteChanged();
@@ -670,6 +695,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
         _generationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken);
+        _lastGenerationFailed = false;
         IsGenerating = true;
         try
         {
@@ -774,6 +800,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 SourceConversationId = plan.SourceConversationId,
                 Kind = plan.Kind,
                 Body = buffer.ToString(),
+                BaseBody = plan.BaseBody,
                 RequestPreview = preview,
                 TargetTokens = plan.TargetTokens,
                 SourceThroughSequenceNo = plan.SourceThroughSequenceNo,
@@ -837,6 +864,11 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
             {
                 Status = LanguageRuntime.GetString("Memory.Stopped");
             }
+        }
+        catch
+        {
+            if (IsCurrent(plan)) _lastGenerationFailed = true;
+            throw;
         }
         finally
         {
@@ -1006,6 +1038,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private void ApplyDraft(MemoryUpdateDraft? draft)
     {
         _pendingDraft = draft;
+        UpdateDiff();
+        OnPropertyChanged(nameof(SummaryText));
         PendingBody = draft?.Body ?? string.Empty;
         RequestPreview = draft?.RequestPreview
                          ?? LanguageRuntime.GetString("Memory.RequestPreviewHint");
@@ -1024,6 +1058,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
     private void RaiseCommandStates()
     {
         OnPropertyChanged(nameof(IsLoaded));
+        OnPropertyChanged(nameof(SummaryText));
         SaveBodyCommand.RaiseCanExecuteChanged();
         SaveSettingsCommand.RaiseCanExecuteChanged();
         PreviewUpdateCommand.RaiseCanExecuteChanged();
@@ -1033,6 +1068,7 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
 
     private void ApplyLoadedBody(string value)
     {
+        _lastGenerationFailed = false;
         _suppressBodyDirty = true;
         try
         {

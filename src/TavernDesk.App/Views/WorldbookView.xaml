@@ -262,6 +262,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox AutomationProperties.AutomationId="WorldbookEntryTitle"
+                                                 IsReadOnly="{Binding IsSavingEntry}"
                                                  AutomationProperties.LabeledBy="{Binding ElementName=WorldbookEntryTitleLabel}"
                                                  Text="{Binding EntryTitle, UpdateSourceTrigger=PropertyChanged}"
                                                  FontSize="{DynamicResource FontSizeSubtitle}"
@@ -282,8 +283,10 @@
                                     <TextBlock Margin="0,5,0,12"
                                                Text="{Binding SelectedEntry.Comment}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBox Text="{Binding SelectedEntry.Content}"
-                                             IsReadOnly="True"
+                                    <TextBox Text="{Binding EntryContent, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="WorldbookEntryContent"
+                                             AutomationProperties.Name="{StaticResource Worldbook.EntryBody}"
+                                             IsReadOnly="{Binding IsSavingEntry}"
                                              AcceptsReturn="True"
                                              TextWrapping="Wrap"
                                              VerticalScrollBarVisibility="Auto"

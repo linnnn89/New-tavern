@@ -90,7 +90,7 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
             source.Count(message => message.SenderKind == MessageSenderKind.User),
             targetTokens,
             fingerprintSource.Length,
-            GroupMemorySourceFingerprint.Compute(fingerprintSource));
+            GroupMemorySourceFingerprint.Compute(fingerprintSource), BaseBody: currentMemory);
     }
 
     private static ChatMessage[] LimitSource(
@@ -156,7 +156,7 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
                 }),
             checkpoint?.LastSequenceNo ?? 0,
             0,
-            targetTokens);
+            targetTokens, BaseBody: currentMemory);
     }
 
     public MemoryPromptPlan BuildGroupMerge(
@@ -192,7 +192,7 @@ public sealed class MemoryPromptComposer : IMemoryPromptComposer
                 }),
             0,
             0,
-            targetTokens);
+            targetTokens, BaseBody: characterMemory);
     }
 
     private static string Expand(

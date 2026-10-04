@@ -131,7 +131,11 @@ public sealed class GroupChatViewModel : ViewModelBase
     public GroupMemberItemViewModel? SelectedNextSpeaker
     {
         get => _selectedNextSpeaker;
-        set => SetProperty(ref _selectedNextSpeaker, value);
+        set
+        {
+            if (SetProperty(ref _selectedNextSpeaker, value))
+                foreach (var member in Members) member.IsNextSpeaker = ReferenceEquals(member, value);
+        }
     }
 
     public GroupMemberItemViewModel? SelectedMergeMember
@@ -670,6 +674,7 @@ public sealed class GroupChatViewModel : ViewModelBase
 public sealed class GroupMemberItemViewModel : ViewModelBase
 {
     private bool _isEnabled;
+    private bool _isNextSpeaker;
 
     public GroupMemberItemViewModel(
         Character character,
@@ -689,6 +694,13 @@ public sealed class GroupMemberItemViewModel : ViewModelBase
     }
 
     public Character Character { get; }
+    public string AvatarLabel => string.IsNullOrWhiteSpace(Character.Name) ? "?"
+        : System.Globalization.StringInfo.GetNextTextElement(Character.Name);
+    public bool IsNextSpeaker
+    {
+        get => _isNextSpeaker;
+        set => SetProperty(ref _isNextSpeaker, value);
+    }
     public AsyncRelayCommand TakeTurnCommand { get; }
     public AsyncRelayCommand RemoveMemberCommand { get; }
     public AsyncRelayCommand OpenCharacterCommand { get; }

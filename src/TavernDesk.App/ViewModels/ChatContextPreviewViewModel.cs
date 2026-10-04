@@ -6,6 +6,8 @@ using TavernDesk.Core.Abstractions;
 
 namespace TavernDesk.App.ViewModels;
 
+public sealed record TokenBudgetPart(string Title, int Tokens, string BrushKey, IReadOnlyList<ContextSegment> Segments, bool IsInput = true);
+
 /// <summary>
 /// Window-owned preview state. Calls and notifications use the owning view's
 /// context; inputs are captured requests, never a reference to the chat view model.
@@ -33,6 +35,7 @@ public sealed class ChatContextPreviewViewModel : ViewModelBase, IDisposable, IA
     }
 
     public ObservableCollection<ContextSegment> ContextSegments { get; } = [];
+    public IReadOnlyList<TokenBudgetPart> TokenBudgetParts { get; private set; } = [];
     public event EventHandler<ContextAssemblyResult>? PreviewApplied;
     public string ApiRequestPreview
     {
@@ -58,7 +61,10 @@ public sealed class ChatContextPreviewViewModel : ViewModelBase, IDisposable, IA
         }
     }
     public int EstimatedInputTokens => _estimate.InputTokens;
-    public string EstimatedTokenHeadline => $"{_estimate.TotalTokens:N0} / {_estimate.ContextLimit:N0}";
+    public string EstimatedTokenHeadline => LanguageRuntime.Format("Chat.Budget.TotalFormat", _estimate.TotalTokens);
+    public string EstimatedTokenCompactText => LanguageRuntime.Format("Chat.Budget.CompactFormat", _estimate.InputTokens, _estimate.ReservedOutputTokens);
+    public string EstimatedTokenBreakdown => LanguageRuntime.Format("Chat.Budget.BreakdownFormat",
+        _estimate.InputTokens, _estimate.ReservedOutputTokens, _estimate.ContextLimit);
     public double EstimatedTokenUsagePercent => _estimate.ContextLimit <= 0
         ? 0 : Math.Clamp(100d * _estimate.TotalTokens / _estimate.ContextLimit, 0, 100);
     public string EstimatedTokenUsageLevel => EstimatedTokenUsagePercent >= 100 ? "Danger"
@@ -155,10 +161,31 @@ public sealed class ChatContextPreviewViewModel : ViewModelBase, IDisposable, IA
     {
         _groupBudget = result.GroupBudget;
         _estimate = result.Estimate;
+        var parts = new List<TokenBudgetPart>();
+        var brushes = new[] { "AccentBrush", "MutedTextBrush", "AccentSoftBrush" };
+        if (result.SegmentTokens is { } counts)
+        {
+            foreach (var group in result.Segments.GroupBy(segment => segment.Kind))
+            {
+                var tokens = counts.GetValueOrDefault(group.Key);
+                if (tokens > 0) parts.Add(new(LanguageRuntime.GetString($"Chat.Budget.{group.Key}"), tokens,
+                    brushes[parts.Count % brushes.Length], group.ToArray()));
+            }
+        }
+        var other = Math.Max(0, _estimate.InputTokens - parts.Sum(part => part.Tokens));
+        if (other > 0) parts.Add(new(LanguageRuntime.GetString("Chat.Budget.Framing"), other, "MutedTextBrush", []));
+        if (_estimate.ReservedOutputTokens > 0) parts.Add(new(LanguageRuntime.GetString("Chat.Budget.Output"),
+            _estimate.ReservedOutputTokens, "BudgetOutputReservedBrush", [], false));
+        var remaining = Math.Max(0, _estimate.ContextLimit - _estimate.TotalTokens);
+        if (remaining > 0) parts.Add(new(LanguageRuntime.GetString("Chat.Budget.Remaining"), remaining, "SurfaceAltBrush", [], false));
+        TokenBudgetParts = parts;
+        OnPropertyChanged(nameof(TokenBudgetParts));
         OnPropertyChanged(nameof(ContextBudgetResult));
         OnPropertyChanged(nameof(EstimatedInputTokens));
         OnPropertyChanged(nameof(EstimatedTokenText));
         OnPropertyChanged(nameof(EstimatedTokenHeadline));
+        OnPropertyChanged(nameof(EstimatedTokenCompactText));
+        OnPropertyChanged(nameof(EstimatedTokenBreakdown));
         OnPropertyChanged(nameof(EstimatedTokenUsagePercent));
         OnPropertyChanged(nameof(EstimatedTokenUsageLevel));
         OnPropertyChanged(nameof(IsEstimatedOverLimit));

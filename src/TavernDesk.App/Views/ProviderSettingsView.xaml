@@ -641,6 +641,8 @@
                                         Style="{StaticResource SecondaryButtonStyle}" />
                             </DockPanel>
                             <ListBox Grid.Row="1"
+                                     AutomationProperties.AutomationId="SavedPersonasList"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      ItemsSource="{Binding Personas.Profiles}"
                                      SelectedItem="{Binding Personas.SelectedProfile, Mode=TwoWay}"
                                      BorderThickness="0"
@@ -662,6 +664,8 @@
                                                        TextTrimming="CharacterEllipsis" />
                                             <TextBlock Margin="0,2,0,0"
                                                        Text="{Binding Description}"
+                                                       MaxWidth="126" HorizontalAlignment="Left"
+                                                       TextWrapping="NoWrap"
                                                        Foreground="{DynamicResource MutedTextBrush}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>

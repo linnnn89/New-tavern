@@ -1,7 +1,7 @@
-<div align="center">
+﻿<div align="center">
   <img src="./src/TavernDesk.App/Assets/Icons/app-icon.png" width="112" alt="TavernDesk icon">
   <h1>TavernDesk</h1>
-  <p>A local-first Windows desktop for character-driven AI conversations, long-term memory, worldbooks, and structured tabletop campaigns.</p>
+  <p>Character AI chat, editable memory, and tabletop campaigns for Windows.</p>
   <p>
     <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white" alt="Windows 10 and 11">
     <img src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white" alt=".NET 10">
@@ -16,145 +16,113 @@
   <a href="./README.ja-JP.md">日本語</a>
 </p>
 
-TavernDesk keeps role-play data understandable and under your control. Character cards, conversations, memory, worldbooks, and campaigns live in a local SQLite workspace. You choose the model provider, inspect what will be sent, and decide when persistent state changes.
+TavernDesk is a Windows app for character AI conversations and tabletop campaigns. Import a character card, choose a model, and start a private conversation or group chat. Worldbooks and editable memory help carry the story forward; scenarios let you start a campaign with a GM and players. Characters, conversations, and scenarios are stored locally.
 
-It is built for long-running character interactions rather than one-off prompts: ordinary chat and tabletop campaigns have separate state, memory has visible drafts and checkpoints, and campaign turns are coordinated by explicit player and GM rules.
+## Get started
 
-## Why TavernDesk
+Download `TavernDesk-Setup-x64.exe` from [Releases](https://github.com/linnnn89/New-tavern/releases/latest), choose an installation folder, and launch the app. The installer includes the runtime. To uninstall, use the Start menu shortcut or `Uninstall TavernDesk.cmd` in the installation folder.
 
-- **Memory you can inspect.** Long-term memory is stored per character, group, or campaign. Updates can be previewed, edited, checkpointed, and saved instead of disappearing into an opaque global memory layer.
-- **Chat and campaigns stay separate.** A campaign has its own scenario, participant snapshots, event stream, GM state, and memory. It does not silently rewrite a character's ordinary chat history.
-- **Structured multi-character play.** Campaign mode supports AI or human GMs, human and AI players, three turn-flow presets, per-seat model routing, dice records, validation, cancellation, and retryable failures.
-- **Visible context assembly.** The context inspector shows token estimates, request segments, worldbook matches, retrieval diagnostics, exclusions, and the API request structure before generation. Chat previews follow the current input and conversation; late results cannot replace a newer preview. Once a request is assembled for sending, its budget takes priority until you edit the input or switch conversations.
-- **Bring your own provider and data.** Use a supported cloud endpoint, a local LM Studio server, or Grok CLI subscription login. Your library remains in your own Windows data directory.
-- **Compatible character assets.** Import and export SillyTavern-style PNG, JSON, and CHARX character cards while preserving supported embedded data and attached resources.
+1. Choose an interface language on first launch.
+2. Open **Settings → AI & Models**, add a provider, enter its address and key, then refresh or add models.
+3. Select a function such as chat or group chat relay, choose its model, and save the assignment.
+4. Import or create a character and click Chat on its card. Recent conversations on the home page take you back to previous chats.
 
-## Features
+The repository also includes a portable build. Extract the complete download and run `TavernDesk.exe`, keeping the adjacent `app/` folder. To run the latest source, follow “Build from source” below.
 
-### Character library and conversations
+## Conversations and group chat
 
-- Character shelves, search, sorting, cover sizes, batch organization, and editable character profiles.
-- One-to-one chat, group chat, multiple conversations, independent chat windows, streaming, cancellation, and continuation.
-- Group chat relay uses fixed member order by default. Fully automatic relay continues after a completed reply, while clicking a member avatar's “Take turn now” forces that character; model `@` text does not select the next speaker or pause relay.
-- In-place message editing, alternate replies, regeneration, branch-from-message, and JSONL chat import/export.
-- Bubble and novel display modes. In bubble mode, user messages stay on the right and character messages stay on the left, including group chats.
-- Persona selection, alternate greetings, system prompts, post-history instructions, and per-character model assignments.
+Switch between bubble and novel display in the chat header. Messages support editing, regeneration, alternate replies, branching, and JSONL import/export. Conversations can also open in separate windows. Scrolling up pauses automatic following; the return-to-bottom button resumes it.
 
-### Manual character speech (Fish Audio)
+The menu beside Send lets you generate a reply or save only your message. Stop appears in the same position during generation. If a model is missing, the notice links directly to its assignment page. Budget and memory summaries beside the composer open the inspector.
 
-- Click the speaker below a character message in an ordinary or group conversation to generate and play speech; click again to stop. Configure the endpoint, encrypted API key, synthesis model and default voice in Settings → Voice, or use the gear beside a message for a character voice override. Settings operations do not call TTS. The recommended model is `s2.1-pro-free`.
-- Concurrent settings windows merge only their edited fields, preserving newer models, parameters and voice assignments. If another window changes the endpoint or key, a stale editor must reload and check the connection before changing the endpoint, replacing/clearing a key or restoring defaults. Failed saves retain the draft; reloading discards unsaved edits. Restoring recommended values explicitly resets the model, endpoint and synthesis parameters on save, even if the old form already displayed those values; it preserves keys and unedited voices.
-- Save, Reload and Restore recommended values stay in a fixed footer. Invalid inputs show an adjacent explanation, scroll into view and receive keyboard focus; advanced settings expand when needed. Inputs expose accessible names and associated labels. Storage failures are reported separately. A committed save remains successful if cleanup of the old encrypted key fails, with a separate warning. See the [voice configuration details](./README.zh-CN.md#手动角色语音fish-audio) for supported parameters and playback behavior.
-- Closing the voice dialog opened beside a message prompts you to save, discard or cancel when edits are unsaved; Cancel is the default, and dismissing the prompt keeps your input. Closing is blocked while a save is in progress. Validation failures and old-key cleanup warnings keep the dialog open.
+Group members show their names, and a ring marks the next speaker. Click Speak below a member to select that character. Automatic relay continues in member order.
 
-### Memory, context, and worldbooks
+![Group members and send modes](./docs/screenshots/group-turns.png)
 
-- Character, group, and campaign memory with editable drafts, checkpoints, compression, and configurable update intervals.
-- Fixed, inspectable context ordering for persona, character card, worldbook, memory, history, retrieval results, post-history instructions, and current input.
-- Local token estimation for known OpenAI tokenizers, with an explicit fallback for unknown models.
-- Worldbooks mounted globally, per character, per conversation, per scenario, or per campaign run.
-- SillyTavern-style deterministic keyword rules, including selective matching, recursion, probability, groups, regular expressions, whole-word matching, and depth-based insertion.
-- SQLite FTS5 retrieval with optional embedding-based hybrid ranking. Local previews do not call an embedding service.
+## Context and memory
 
-### Tabletop campaign mode
+The inspector shows persona, character card, worldbook, memory, history, retrieval results, and the API request structure. Its composition bar shows proportions within the input; click a segment to inspect its content. The estimated total includes reserved output, with remaining capacity shown separately.
 
-Campaign mode is a separate runtime, not group chat with an extra GM prompt.
+![Chat and context inspector](./docs/screenshots/chat-inspector.png)
 
-- One GM, a human user, and zero to four AI players.
-- AI GM, human GM, player-and-GM, and observer arrangements.
+Long-term memory belongs to a character, group, or campaign. You can edit it, compress it, and create checkpoints. Chat memory drafts show additions and removals for review before saving.
+
+![Memory draft diff](./docs/screenshots/memory-diff.png)
+
+Worldbooks can apply globally or to a character, conversation, scenario, or campaign. Edit an entry’s name and body together; switching entries keeps pending edits, and leaving offers Save, Discard, or Cancel. Saving refreshes local full-text search; the rebuild action updates the vector index. Character cards support PNG, JSON, and CHARX.
+
+## Start a campaign
+
+Create or import a scenario in the library, select it, and start a new game. Assign the GM and players, choose a turn flow, and select models for AI seats. Each campaign keeps its own participants, events, and public/GM memory.
+
+- AI or human GM, human players, up to four AI players, and observer mode.
 - Collaborative roundtable, secret simultaneous submission, and strict initiative flows.
-- Frozen starting snapshots for characters, persona, world rules, GM instructions, narrative permissions, and model routing.
-- Different provider/model assignments for every AI player and GM seat.
-- Recorded `1d20` action rolls plus optional public dice expressions.
-- Normally completed, non-empty GM output is accepted through the turn flow; interrupted, truncated, or failed generations do not advance the round. Valid optional permission declarations update the scene projection; missing declarations do not reject a complete narrative.
-- Campaign-specific public and GM memory, context budgets, cancellation, and explicit retries.
-- Scenario content and worldbook bindings save atomically. Edits are also preserved locally every second and flushed before normal exit. On returning to Campaigns, recover or explicitly discard the previous draft; closing that prompt keeps it for later. Saving clears the draft in the same transaction; returning to the scenario library discards it. If the original changed or disappeared, recovery saves as a new scenario. An abrupt process failure can still lose edits made since the last completed draft write.
+- Separate models for the GM and each AI player, with action dice recorded in the game.
+- Stop generation or retry a failed turn from the campaign controls.
 
-### Desktop experience
+Scenario edits are kept as local recovery drafts. The library marks pending drafts so you can restore or discard them. Saving clears the recovery draft; returning to the library discards the current edits. If the original scenario changed or was deleted, recovery saves a new scenario.
 
-- Native WPF interface for Windows 10/11 x64.
-- A vertical icon rail switches the chat inspector between context, character, persona, memory, and session. Bubble/novel display mode is under Session. The composer grows from one to eight lines, then scrolls internally; scrolling up pauses automatic following and exposes a return-to-bottom action.
-- Settings replaces the main navigation with its own directory. Return to workspace restores the previous page and keeps the chat draft. Provider forms place labels above inputs.
-- Click a character card to open its details; chat/edit actions appear on hover or keyboard focus. Campaigns occupy the wider left column, with the scenario library on the right.
-- Worldbooks use a top selector and an entry list/detail layout. Entry names save manually; entry bodies are read-only. Chat message tools close when you click outside.
-- Narrow windows collapse the inspector automatically; opening it displays a temporary overlay so display mode and session settings stay accessible. Closing it restores chat space; widening the window docks it again. Settings navigation uses the same spacing and selection styling as workspace navigation.
-- New workspaces start at 100% application scale. Every scale change opens an always-on-top confirmation window, independent of application zoom: confirm within 10 seconds to persist that scale, or it automatically restores the previous setting. Closing the dialog also reverts. Other interface preferences, including restored defaults, still use Save; language changes require a restart. Existing saved scale preferences are retained.
-- At 100% application scale, the main window can shrink to 500 logical units in height. Interface settings stack labels above selectors, and key scenario fields, the chat composer, and scale controls expose accessible names. History reads run off the UI thread, and long histories are applied in batches so input and cancellation can be processed. Windows DPI scaling remains separate from application zoom.
-- Interface languages: Simplified Chinese, Traditional Chinese, English, and Japanese.
-- First-run language selection for a new workspace; later changes are available in Settings.
+![Scenario library and draft recovery](./docs/screenshots/campaign-recovery.png)
 
-## Quick start
+## Speech and appearance
 
-For players, the recommended option is the latest `TavernDesk-Setup-x64.exe` installer from the [Releases page](https://github.com/linnnn89/New-tavern/releases/latest):
+In **Settings → Speech**, enter a Fish Audio endpoint, key, and default voice. The gear beside a message sets a character voice. Click the speaker on a character message to generate and play audio; click again to stop. Advanced synthesis options are collapsed by default. See [speech settings](./docs/voice-settings.md) for details. Playback is available in ordinary and group chats.
 
-1. Run the installer and choose the setup language.
-2. Choose an installation folder and whether to create Desktop and Start menu shortcuts.
-3. Launch TavernDesk, choose the application language on first run, then open **Settings → AI & Models** to configure a provider and assign models.
+Appearance settings include light, dark, Cupertino, and Material themes, with Simplified Chinese, Traditional Chinese, English, and Japanese interfaces. Language changes take effect after restarting. Scale changes give you ten seconds to confirm; confirmation saves the scale, while closing or timing out restores it. Narrow windows collapse the inspector, which can still open from the composer summaries.
 
-The installer includes a private .NET 10 runtime and all required dependencies. It does not create registry entries and therefore does not appear in Windows Installed apps. Use the Start menu uninstall shortcut, or `Uninstall TavernDesk.cmd` in the installation folder. Upgrade and uninstall remove setup-managed program files and `tests\output`; unrelated files later placed in the install folder are left intact.
+<details>
+<summary>More screenshots</summary>
 
-The repository also includes a portable self-contained `win-x64` build. .NET does not need to be installed to run it:
+Narrow chat and inspector:
 
-1. [Download the repository ZIP](https://github.com/linnnn89/New-tavern/archive/refs/heads/%E8%B7%91%E5%9B%A2%E8%AE%B0%E5%BF%86%E5%8D%87%E7%BA%A7%E7%89%88.zip) and extract it, or clone the repository.
-2. Keep `TavernDesk.exe` beside the complete `app/` directory.
-3. Run `TavernDesk.exe` and choose an interface language.
-4. Open **Settings → AI & Models** to configure a provider and assign models.
+![Narrow chat](./docs/screenshots/chat-narrow.png)
+![Narrow inspector](./docs/screenshots/chat-narrow-inspector.png)
+
+Character library, worldbook editor, and personas:
+
+![Character library](./docs/screenshots/character-shelf-current.png)
+![Worldbook editor](./docs/screenshots/worldbook-editor.png)
+![Saved personas](./docs/screenshots/persona-list.png)
+
+</details>
+
+## Model providers
+
+| Connection | Setup |
+| --- | --- |
+| OpenRouter, SiliconFlow, DeepSeek | API key and model |
+| LM Studio | Local server address; default `http://127.0.0.1:6543` |
+| Grok CLI | Run `grok login` locally for subscription login |
+| Custom provider | OpenAI Chat Completions-compatible address and optional key |
+
+Enter custom addresses at the service root, `/v1`, or `/api/v1`; the app adds the chat path. Chat, group chat relay, and other generation functions have separate model assignments.
+
+## Local data
+
+The default workspace is `%USERPROFILE%\Documents\TavernDesk`, containing character cards, conversations, memory, scenarios, attachments, and exports. Provider keys are encrypted with Windows DPAPI. Changing the workspace in Settings migrates it on the next launch and keeps the original folder.
+
+Model generation, embedding, and speech requests go to your configured services. Error logs are in `%LOCALAPPDATA%\TavernDesk\logs`. API test mode in Settings saves requests, replies, timings, and token usage to `tests\output` under the application folder; Settings can open or clear that folder.
+
+## Build from source
+
+Use Windows 10/11 x64 and the .NET SDK specified in [global.json](./global.json).
 
 ```powershell
 git clone --branch "跑团记忆升级版" --single-branch https://github.com/linnnn89/New-tavern.git
 cd New-tavern
-.\TavernDesk.exe
-```
-
-`TavernDesk.exe` is a small launcher; the application runtime remains in `app/`. Copying the launcher by itself will not work.
-
-## Model providers
-
-| Connection | Authentication | Notes |
-| --- | --- | --- |
-| OpenRouter | API key | OpenAI-compatible chat and model catalog |
-| SiliconFlow | API key | OpenAI-compatible |
-| DeepSeek API | API key | OpenAI-compatible, including cache usage fields |
-| LM Studio | Local server | Default address: `http://127.0.0.1:6543` |
-| Grok CLI | Local subscription login | Uses local `grok login`; TavernDesk does not request a Grok API key |
-| Custom provider | Optional API key | Must expose an OpenAI Chat Completions-compatible API |
-
-Custom endpoints should end at the service root, `/v1`, or `/api/v1`; do not append `/chat` or `/chat/completions`. Native Anthropic Messages and Gemini APIs are not currently supported. TavernDesk is a client and does not include a model runtime or model downloader.
-
-## Local data and network boundaries
-
-The default workspace is `%USERPROFILE%\Documents\TavernDesk`. It contains the SQLite database, character and scenario cards, exports, attachments, and protected provider secrets. The selected workspace path is recorded in `%LOCALAPPDATA%\TavernDesk\config.json` and can be migrated from Settings.
-
-Changing the workspace in Settings schedules the switch for the next startup. The running session keeps using the current folder; copying starts after the next single-instance check, before business services open the database, so writes made after scheduling are included. A failed copy or configuration commit keeps the original workspace active, and the original folder is retained after a successful copy. Save the current folder again to cancel a pending switch. An interrupted copy may be preserved beside the target as `.name.incomplete-<id>` when retrying.
-
-Character-card imports stage their files before committing the character, embedded worldbook, and mount in one SQLite transaction. A failed save rolls back new records and removes files created by that attempt; a reused worldbook remains intact. Import limits are 16 MiB for JSON, 256 MiB for PNG/CHARX, and 20,000 entries per worldbook. Streaming replies coalesce ordinary display updates at 120 ms intervals, create full-text snapshots on demand, and reuse unchanged text and code views as a reply grows. Initial content and completion appear promptly; the complete text and existing Markdown syntax are preserved. An empty home page provides model setup and character import shortcuts; the provider count shows enabled connections, not configured chat models.
-
-API keys are stored as Windows DPAPI `CurrentUser`-protected files; SQLite stores only random references. TavernDesk has no built-in cloud sync. Local-first does not mean every generation is offline: prompts and conversation context are sent to the provider you select when you make a generation or embedding request.
-
-Privacy-safe rolling error logs are written to `%LOCALAPPDATA%\TavernDesk\logs`; they contain error categories, exception types, redacted call locations, and status, and do not intentionally collect API request/reply bodies or authorization headers. The optional API test mode in Settings is off by default. When enabled, it writes request bodies, visible replies, timings, and token usage to `tests\output` under the application root for local analysis; the UI warns that those files contain conversation content and can open or clear the folder directly. Authorization headers, cookies, hidden reasoning text, and full embedding vectors are not intentionally recorded, and known key formats are redacted, but arbitrary secrets embedded in ordinary text cannot always be recognized. Do not put keys or personal data in prompts, names, addresses, or error text. Installed test output is removed during both upgrade and uninstall.
-
-## Build from source
-
-Requirements: Windows 10/11 x64 and the .NET SDK version selected by [`global.json`](./global.json).
-
-```powershell
 dotnet restore TavernDesk.sln
 & .\scripts\Test-Localization.ps1
 dotnet build TavernDesk.sln -c Release --no-restore
 dotnet run --project src\TavernDesk.App\TavernDesk.App.csproj -c Release --no-build
 ```
 
-The source of truth is in `src/`. The checked-in `app/` directory is a runnable publication snapshot and is not updated by an ordinary `dotnet build`.
+Normal builds write to build folders under `src/`; the bundled `app/` is a separate published build. Package with `scripts/Build-WindowsInstaller.ps1`. See the [architecture and maintenance guide](./docs/architecture.md) for isolated testing and development.
 
-For development testing, run `& .\scripts\Start-IsolatedTest.ps1` in PowerShell 7. It builds the source app and reuses the dedicated `work/TAVERN-TEST/profile/` workspace, preserving test characters and language settings. It defaults to Chinese on first use and opens an existing character page on later runs. Close the previous app instance before launching. Use `-CharacterCard <absolute-file-path>` only when importing an additional test card, `-Fresh` to test first-run language selection, or `-StartupProbe` for a fresh headless initialization check. See the [isolated testing guide](./docs/architecture.md#隔离测试入口2026-09-07) for data boundaries and validation limits.
-
-## Documentation
+## Documentation and license
 
 - [Documentation index](./docs/README.md)
-- [Architecture baseline](./docs/architecture.md)
-- [Campaign mode design](./docs/campaign_mode_design.md)
-- [Campaign context budget](./docs/TavernDesk-R2-B-Campaign-Context-Budget.md)
+- [Architecture and maintenance](./docs/architecture.md)
+- [Campaign rules and implementation](./docs/campaign_mode_design.md)
+- [Campaign context and memory](./docs/TavernDesk-R2-B-Campaign-Context-Budget.md)
 
-## License
-
-TavernDesk is available under the [MIT License](./LICENSE). Commercial use, modification, and redistribution are permitted under its terms.
+Released under the [MIT License](./LICENSE), allowing commercial use, modification, and redistribution.

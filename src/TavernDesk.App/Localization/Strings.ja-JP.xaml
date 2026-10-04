@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">言語を選択 / Choose Language / 选择界面语言</sys:String>
     <sys:String x:Key="FirstRun.Language.Description">TavernDesk の表示言語を選択してください。
@@ -156,8 +156,8 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Worldbook.RebuildIndex">索引を再構築</sys:String>
     <sys:String x:Key="Worldbook.Delete">削除</sys:String>
     <sys:String x:Key="Worldbook.EntryName">項目名</sys:String>
-    <sys:String x:Key="Worldbook.SaveEntryName">項目名を保存</sys:String>
-    <sys:String x:Key="Worldbook.EntryNameUnsaved">● 未保存の変更があります</sys:String>
+    <sys:String x:Key="Worldbook.SaveEntryName">項目を保存</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">未保存の変更があります。項目の切り替えでは編集を保持し、移動時に保存または破棄できます。</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">キーワード：{0}</sys:String>
     <!-- Characters -->
     <sys:String x:Key="Characters.Title">キャラクターライブラリ</sys:String>
@@ -846,7 +846,7 @@ Choose the TavernDesk interface language.
     <sys:String x:Key="Worldbook.CampaignBindingsSavedFormat">「{0}」を {1} 件のキャンペーンシナリオにバインドしました。</sys:String>
     <sys:String x:Key="Worldbook.CampaignBindingsFailedFormat">キャンペーンシナリオバインドを保存できません：{0}</sys:String>
     <sys:String x:Key="Worldbook.EntryNameRequired">項目名を入力してください。</sys:String>
-    <sys:String x:Key="Worldbook.EntryNameSavedFormat">項目名「{0}」を保存しました。元ファイルは未変更です。新タイトルを FTS / ベクトル索引に入れるには「Embedding 索引を再構築」を押してください。</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameSavedFormat">「{0}」を保存し、ローカル検索を更新しました。ベクトルは手動で再構築してください。</sys:String>
     <sys:String x:Key="Worldbook.EntryNameSaveFailedFormat">項目名を保存できません：{0}</sys:String>
     <sys:String x:Key="Worldbook.SelectCharacter">バインドするキャラクターを選択してください。</sys:String>
     <sys:String x:Key="Worldbook.SelectCampaign">バインドするキャンペーンシナリオを選択してください。</sys:String>
@@ -1653,4 +1653,47 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.ScrollToBottom">↓ 最下部へ</sys:String>
     <sys:String x:Key="Chat.NewMessages">↓ 新しいメッセージ</sys:String>
     <sys:String x:Key="Settings.BackToWorkspace">← ワークスペースに戻る</sys:String>
+    <sys:String x:Key="Worldbook.EntryBody">項目の本文</sys:String>
+    <sys:String x:Key="Interaction.UnsavedWorldbook.Title">世界書の未保存の変更</sys:String>
+    <sys:String x:Key="Interaction.UnsavedWorldbook.MessageFormat">{0} 件の項目に未保存の変更があります。すべて保存して移動しますか？</sys:String>
+    <sys:String x:Key="Memory.Summary.Updating">記憶を更新中</sys:String>
+    <sys:String x:Key="Memory.Summary.Draft">記憶の下書きあり</sys:String>
+    <sys:String x:Key="Memory.Summary.Unsaved">記憶の未保存の編集</sys:String>
+    <sys:String x:Key="Memory.Summary.None">記憶が未読込</sys:String>
+    <sys:String x:Key="Memory.Summary.Saved">記憶を読込済み</sys:String>
+    <sys:String x:Key="Memory.Diff.Title">変更の比較</sys:String>
+    <sys:String x:Key="Memory.Diff.Help">生成時の記憶との行単位の比較：+ 追加、− 削除。確認してから保存してください。</sys:String>
+    <sys:String x:Key="Memory.Diff.Unavailable">比較できる下書きがないか、古い下書きに比較元が保存されていません。編集可能な本文を確認してください。</sys:String>
+    <sys:String x:Key="Chat.Budget.Help">色付きバーは入力の内訳のみを示します。クリックで内容を確認できます。出力予約と残りの予算は別に表示します。</sys:String>
+    <sys:String x:Key="Chat.Budget.Framing">リクエスト形式</sys:String>
+    <sys:String x:Key="Chat.Budget.Output">出力予約</sys:String>
+    <sys:String x:Key="Chat.Budget.Remaining">残りの予算</sys:String>
+    <sys:String x:Key="Chat.Group.TakeTurnShort">発言</sys:String>
+    <sys:String x:Key="Recovery.Badge">未保存の下書きあり</sys:String>
+    <sys:String x:Key="Recovery.RestoreAction">編集を再開</sys:String>
+    <sys:String x:Key="Recovery.DiscardAction">下書きを破棄</sys:String>
+    <sys:String x:Key="Recovery.DiscardTitle">シナリオの下書きを破棄</sys:String>
+    <sys:String x:Key="Recovery.DiscardPrompt">「{0}」の復元用下書きを破棄しますか？保存済みシナリオは保持されます。</sys:String>
+    <sys:String x:Key="Recovery.EditHint">先にこのシナリオの下書きを再開または破棄してください。</sys:String>
+    <sys:String x:Key="Chat.Budget.Safety">安全規則</sys:String>
+    <sys:String x:Key="Chat.Budget.Preset">プリセット</sys:String>
+    <sys:String x:Key="Chat.Budget.Character">キャラクター</sys:String>
+    <sys:String x:Key="Chat.Budget.Persona">ペルソナ</sys:String>
+    <sys:String x:Key="Chat.Budget.Worldbook">世界書</sys:String>
+    <sys:String x:Key="Chat.Budget.Memory">記憶</sys:String>
+    <sys:String x:Key="Chat.Budget.Search">検索結果</sys:String>
+    <sys:String x:Key="Chat.Budget.History">会話履歴</sys:String>
+    <sys:String x:Key="Chat.Budget.PostHistory">履歴後の指示</sys:String>
+    <sys:String x:Key="Chat.Budget.UserInput">現在の入力</sys:String>
+    <sys:String x:Key="Chat.Budget.Knowledge">ナレッジ</sys:String>
+    <sys:String x:Key="Memory.Summary.Failed">記憶の更新に失敗</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">推定 {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.CompactFormat">入力 {0:N0} · 予約 {1:N0}</sys:String>
+    <sys:String x:Key="Chat.Budget.BreakdownFormat">入力 {0:N0} · 出力予約 {1:N0} を含む · 上限 {2:N0}</sys:String>
+    <sys:String x:Key="Chat.DisplayLabel">表示：</sys:String>
+    <sys:String x:Key="Chat.AssignModel">モデルを割り当て</sys:String>
+    <sys:String x:Key="Chat.ComposerPlaceholder">メッセージを入力…</sys:String>
+    <sys:String x:Key="Chat.EmptyConversation">会話を始める</sys:String>
+    <sys:String x:Key="Chat.EmptyConversationHelp">下の入力欄から返信を生成するか、ユーザーメッセージのみ保存できます。</sys:String>
+    <sys:String x:Key="Chat.ToggleConversations">会話一覧を展開・折りたたむ</sys:String>
 </ResourceDictionary>

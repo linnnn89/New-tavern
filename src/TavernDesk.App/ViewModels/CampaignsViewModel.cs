@@ -148,6 +148,22 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         _selectedUserParticipation = UserParticipationChoices[0];
 
         ImportScenarioCommand = new AsyncRelayCommand(ImportScenarioAsync);
+        RestoreScenarioDraftCommand = new AsyncRelayCommand(parameter => RunUiAsync(async () =>
+        {
+            if (parameter is not CampaignScenarioEditDraft draft || ScenarioEditor.HasActiveEdit
+                || _scenarios is not ICampaignScenarioDraftRepository repository) return;
+            var current = (await Task.Run(() => repository.ListEditDraftsAsync())).FirstOrDefault(item => item.Id == draft.Id);
+            if (current is null) { await RefreshRecoveryDraftsAsync(); return; }
+            await ScenarioEditor.RestoreDraftAsync(current);
+            ShowScreen("scenario-editor");
+        }));
+        DiscardScenarioDraftCommand = new AsyncRelayCommand(parameter => RunUiAsync(async () =>
+        {
+            if (parameter is not CampaignScenarioEditDraft draft || _scenarios is not ICampaignScenarioDraftRepository repository
+                || !_interaction.ConfirmDiscardScenarioDraft(draft.Scenario.Title)) return;
+            await Task.Run(() => repository.DeleteEditDraftAsync(draft.Id));
+            await RefreshRecoveryDraftsAsync();
+        }));
         NewScenarioCommand = new AsyncRelayCommand(NewScenarioAsync);
         EditScenarioCommand = new AsyncRelayCommand(
             EditScenarioAsync,
@@ -204,22 +220,18 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanResolve));
         OnPropertyChanged(nameof(ResolveHelpText));
     }
-    public Task OfferScenarioRecoveryAsync() => RunUiAsync(async () =>
+    public Task OfferScenarioRecoveryAsync() => RefreshRecoveryDraftsAsync();
+
+    private async Task RefreshRecoveryDraftsAsync()
     {
-        if (ScenarioEditor.HasActiveEdit || _scenarios is not ICampaignScenarioDraftRepository drafts) return;
-        foreach (var draft in await Task.Run(() => drafts.ListEditDraftsAsync()))
-        {
-            var choice = _interaction.ConfirmScenarioRecovery(draft);
-            if (choice == true)
-            {
-                await ScenarioEditor.RestoreDraftAsync(draft);
-                ShowScreen("scenario-editor");
-                return;
-            }
-            if (choice == false) await Task.Run(() => drafts.DeleteEditDraftAsync(draft.Id));
-            else return;
-        }
-    });
+        RecoveryDrafts = _scenarios is ICampaignScenarioDraftRepository drafts
+            ? await Task.Run(() => drafts.ListEditDraftsAsync()) : [];
+        OnPropertyChanged(nameof(RecoveryDrafts));
+    }
+
+    public IReadOnlyList<CampaignScenarioEditDraft> RecoveryDrafts { get; private set; } = [];
+    public AsyncRelayCommand RestoreScenarioDraftCommand { get; }
+    public AsyncRelayCommand DiscardScenarioDraftCommand { get; }
 
     public ObservableCollection<CampaignScenario> Scenarios { get; } = [];
     public ObservableCollection<CampaignSummaryItemViewModel> Campaigns { get; } = [];
@@ -815,6 +827,7 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
                               item.Id == preferredScenarioId)
                           ?? Scenarios.FirstOrDefault();
         SelectedCampaign = Campaigns.FirstOrDefault();
+        await RefreshRecoveryDraftsAsync();
     }
 
     private async Task ImportScenarioAsync()
@@ -860,6 +873,12 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         if (SelectedScenario is not { } selected)
         {
             StatusText = LanguageRuntime.GetString("Campaigns.Scenario.Select");
+            return;
+        }
+
+        if (RecoveryDrafts.Any(draft => draft.Id == selected.Id))
+        {
+            StatusText = LanguageRuntime.GetString("Recovery.EditHint");
             return;
         }
 
@@ -1024,10 +1043,10 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
 
         await RunUiAsync(async () =>
         {
-            await RefreshLibraryAsync();
             var wasEditingScenario = IsScenarioEditor;
             var wasCreatingScenario = IsCreatingScenario;
             await ScenarioEditor.DiscardDraftAsync();
+            await RefreshLibraryAsync();
             ShowScreen("library");
             StatusText = wasEditingScenario
                 ? wasCreatingScenario

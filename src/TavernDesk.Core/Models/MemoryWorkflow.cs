@@ -47,6 +47,7 @@ public sealed class MemoryUpdateDraft
     public MemoryDraftKind Kind { get; init; }
     public string Body { get; set; } = string.Empty;
     public string RequestPreview { get; set; } = string.Empty;
+    public string? BaseBody { get; init; }
     public int TargetTokens { get; init; } = 5000;
     public long SourceThroughSequenceNo { get; init; }
     public int SourceUserTurns { get; init; }
@@ -70,7 +71,8 @@ public sealed record MemoryPromptPlan(
     int SourceMessageCount = 0,
     string SourceDigest = "",
     long? TargetBankRevision = null,
-    long? SourceBankRevision = null);
+    long? SourceBankRevision = null,
+    string? BaseBody = null);
 
 public static class MemoryOwnerIds
 {

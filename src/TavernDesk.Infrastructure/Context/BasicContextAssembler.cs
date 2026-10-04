@@ -645,7 +645,8 @@ public sealed class BasicContextAssembler : IContextAssembler
                     request.ContextLimit,
                     request.ReservedOutputTokens,
                     request.ModelId),
-                diagnostics);
+                diagnostics,
+                SegmentTokens: EstimateSegments(ordered, request));
         }
 
         var groupBudget = _groupContextBudgetPlanner.Plan(
@@ -667,7 +668,17 @@ public sealed class BasicContextAssembler : IContextAssembler
                 request.ReservedOutputTokens,
                 request.ModelId),
             diagnostics,
-            groupBudget);
+            groupBudget,
+            EstimateSegments(selected, request));
+    }
+
+    private IReadOnlyDictionary<ContextSegmentKind, int> EstimateSegments(
+        IReadOnlyList<ContextSegment> segments, ContextAssemblyRequest request)
+    {
+        // Subtract the shared request framing once per group so totals remain additive.
+        var framing = _tokenEstimator.Estimate([], request.ContextLimit, 0, request.ModelId).InputTokens;
+        return segments.GroupBy(segment => segment.Kind).ToDictionary(group => group.Key,
+            group => Math.Max(0, _tokenEstimator.Estimate(group, request.ContextLimit, 0, request.ModelId).InputTokens - framing));
     }
 
     private static string BuildSemanticQuery(

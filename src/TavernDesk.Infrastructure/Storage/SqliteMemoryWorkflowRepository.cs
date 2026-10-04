@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using TavernDesk.Core.Abstractions;
 using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure.Group;
@@ -144,7 +144,7 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             SELECT id, target_owner_id, source_conversation_id, draft_kind,
                    body, request_preview, target_tokens, source_through_sequence_no,
                    source_user_turns, source_message_count, source_digest,
-                   target_bank_revision, source_bank_revision, created_at, updated_at
+                   target_bank_revision, source_bank_revision, created_at, updated_at, base_body
             FROM memory_update_drafts
             WHERE target_owner_id = $targetOwnerId
               AND source_conversation_id = $sourceConversationId
@@ -171,7 +171,7 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             SELECT id, target_owner_id, source_conversation_id, draft_kind,
                    body, request_preview, target_tokens, source_through_sequence_no,
                    source_user_turns, source_message_count, source_digest,
-                   target_bank_revision, source_bank_revision, created_at, updated_at
+                   target_bank_revision, source_bank_revision, created_at, updated_at, base_body
             FROM memory_update_drafts
             WHERE source_conversation_id = $sourceConversationId
             ORDER BY updated_at DESC;
@@ -204,12 +204,12 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                 id, target_owner_id, source_conversation_id, draft_kind,
                 body, request_preview, target_tokens, source_through_sequence_no,
                 source_user_turns, source_message_count, source_digest,
-                target_bank_revision, source_bank_revision, created_at, updated_at)
+                target_bank_revision, source_bank_revision, created_at, updated_at, base_body)
             VALUES(
                 $id, $targetOwnerId, $sourceConversationId, $kind,
                 $body, $requestPreview, $targetTokens, $sourceThroughSequenceNo,
                 $sourceUserTurns, $sourceMessageCount, $sourceDigest,
-                $targetBankRevision, $sourceBankRevision, $createdAt, $updatedAt)
+                $targetBankRevision, $sourceBankRevision, $createdAt, $updatedAt, $baseBody)
             ON CONFLICT(target_owner_id, source_conversation_id, draft_kind)
             DO UPDATE SET
                 id = excluded.id,
@@ -223,8 +223,10 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                 target_bank_revision = excluded.target_bank_revision,
                 source_bank_revision = excluded.source_bank_revision,
                 created_at = excluded.created_at,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                base_body = excluded.base_body;
             """;
+        command.Parameters.AddWithValue("$baseBody", (object?)draft.BaseBody ?? DBNull.Value);
         command.Parameters.AddWithValue("$id", draft.Id);
         command.Parameters.AddWithValue("$targetOwnerId", draft.TargetOwnerId);
         command.Parameters.AddWithValue("$sourceConversationId", draft.SourceConversationId);
@@ -284,7 +286,7 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
                     SELECT id, target_owner_id, source_conversation_id, draft_kind,
                            body, request_preview, target_tokens, source_through_sequence_no,
                            source_user_turns, source_message_count, source_digest,
-                           target_bank_revision, source_bank_revision, created_at, updated_at
+                           target_bank_revision, source_bank_revision, created_at, updated_at, base_body
                     FROM memory_update_drafts
                     WHERE id = $id;
                     """;
@@ -792,6 +794,7 @@ public sealed class SqliteMemoryWorkflowRepository : IMemoryWorkflowRepository
             TargetBankRevision = reader.IsDBNull(11) ? null : reader.GetInt64(11),
             SourceBankRevision = reader.IsDBNull(12) ? null : reader.GetInt64(12),
             CreatedAt = DateTimeOffset.Parse(reader.GetString(13)),
-            UpdatedAt = DateTimeOffset.Parse(reader.GetString(14))
+            UpdatedAt = DateTimeOffset.Parse(reader.GetString(14)),
+            BaseBody = reader.IsDBNull(15) ? null : reader.GetString(15)
         };
 }

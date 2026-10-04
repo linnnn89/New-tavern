@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">选择界面语言 / Choose Language / 言語を選択</sys:String>
@@ -159,8 +159,8 @@
     <sys:String x:Key="Worldbook.RebuildIndex">重建索引</sys:String>
     <sys:String x:Key="Worldbook.Delete">删除</sys:String>
     <sys:String x:Key="Worldbook.EntryName">词条名</sys:String>
-    <sys:String x:Key="Worldbook.SaveEntryName">保存词条名</sys:String>
-    <sys:String x:Key="Worldbook.EntryNameUnsaved">● 有未保存的更改</sys:String>
+    <sys:String x:Key="Worldbook.SaveEntryName">保存词条</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">词条有未保存修改；切换词条会保留当前编辑，离开页面时可保存或放弃。</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">关键词：{0}</sys:String>
 
     <!-- Characters -->
@@ -863,7 +863,7 @@
     <sys:String x:Key="Worldbook.CampaignBindingsSavedFormat">已将“{0}”绑定到 {1} 个跑团剧本。</sys:String>
     <sys:String x:Key="Worldbook.CampaignBindingsFailedFormat">保存跑团剧本绑定失败：{0}</sys:String>
     <sys:String x:Key="Worldbook.EntryNameRequired">词条名不能为空。</sys:String>
-    <sys:String x:Key="Worldbook.EntryNameSavedFormat">已保存词条名“{0}”；原始来源文件未修改。若要让新标题进入 FTS/向量索引，请点击“重建 Embedding 索引”。</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameSavedFormat">词条“{0}”已保存，本地检索已刷新；向量索引需手动重建。</sys:String>
     <sys:String x:Key="Worldbook.EntryNameSaveFailedFormat">保存词条名失败：{0}</sys:String>
     <sys:String x:Key="Worldbook.SelectCharacter">请选择要绑定的角色。</sys:String>
     <sys:String x:Key="Worldbook.SelectCampaign">请选择要绑定的跑团剧本。</sys:String>
@@ -1663,4 +1663,47 @@
     <sys:String x:Key="Chat.ScrollToBottom">↓ 回到底部</sys:String>
     <sys:String x:Key="Chat.NewMessages">↓ 新消息</sys:String>
     <sys:String x:Key="Settings.BackToWorkspace">← 返回工作区</sys:String>
+    <sys:String x:Key="Worldbook.EntryBody">词条正文</sys:String>
+    <sys:String x:Key="Interaction.UnsavedWorldbook.Title">世界书有未保存修改</sys:String>
+    <sys:String x:Key="Interaction.UnsavedWorldbook.MessageFormat">有 {0} 个词条尚未保存。保存全部修改后离开？</sys:String>
+    <sys:String x:Key="Memory.Summary.Updating">记忆更新中</sys:String>
+    <sys:String x:Key="Memory.Summary.Draft">记忆有待确认草稿</sys:String>
+    <sys:String x:Key="Memory.Summary.Unsaved">记忆有未保存编辑</sys:String>
+    <sys:String x:Key="Memory.Summary.None">尚未载入记忆</sys:String>
+    <sys:String x:Key="Memory.Summary.Saved">记忆已载入</sys:String>
+    <sys:String x:Key="Memory.Diff.Title">差异核对</sys:String>
+    <sys:String x:Key="Memory.Diff.Help">与生成草稿时的旧记忆按行比较：+ 新增，− 删除。请核对后保存。</sys:String>
+    <sys:String x:Key="Memory.Diff.Unavailable">尚无可比较的草稿，或旧草稿未保存比较基准。请查看可编辑正文。</sys:String>
+    <sys:String x:Key="Chat.Budget.Help">色条仅展示输入各分段占比，点击查看内容；输出预留和剩余预算单独列出。</sys:String>
+    <sys:String x:Key="Chat.Budget.Framing">请求封装</sys:String>
+    <sys:String x:Key="Chat.Budget.Output">输出预留</sys:String>
+    <sys:String x:Key="Chat.Budget.Remaining">剩余预算</sys:String>
+    <sys:String x:Key="Chat.Group.TakeTurnShort">接话</sys:String>
+    <sys:String x:Key="Recovery.Badge">有未保存草稿</sys:String>
+    <sys:String x:Key="Recovery.RestoreAction">恢复编辑</sys:String>
+    <sys:String x:Key="Recovery.DiscardAction">丢弃草稿</sys:String>
+    <sys:String x:Key="Recovery.DiscardTitle">丢弃剧本草稿</sys:String>
+    <sys:String x:Key="Recovery.DiscardPrompt">确定丢弃“{0}”的恢复草稿？已保存的剧本不受影响。</sys:String>
+    <sys:String x:Key="Recovery.EditHint">请先恢复或丢弃此剧本的未保存草稿。</sys:String>
+    <sys:String x:Key="Chat.Budget.Safety">安全规则</sys:String>
+    <sys:String x:Key="Chat.Budget.Preset">预设</sys:String>
+    <sys:String x:Key="Chat.Budget.Character">角色卡</sys:String>
+    <sys:String x:Key="Chat.Budget.Persona">玩家人设</sys:String>
+    <sys:String x:Key="Chat.Budget.Worldbook">世界书</sys:String>
+    <sys:String x:Key="Chat.Budget.Memory">长期记忆</sys:String>
+    <sys:String x:Key="Chat.Budget.Search">检索结果</sys:String>
+    <sys:String x:Key="Chat.Budget.History">聊天历史</sys:String>
+    <sys:String x:Key="Chat.Budget.PostHistory">历史后指令</sys:String>
+    <sys:String x:Key="Chat.Budget.UserInput">当前输入</sys:String>
+    <sys:String x:Key="Chat.Budget.Knowledge">知识库</sys:String>
+    <sys:String x:Key="Memory.Summary.Failed">记忆更新失败</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">预计 {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.CompactFormat">输入 {0:N0} · 预留 {1:N0}</sys:String>
+    <sys:String x:Key="Chat.Budget.BreakdownFormat">输入 {0:N0} · 含输出预留 {1:N0} · 上限 {2:N0}</sys:String>
+    <sys:String x:Key="Chat.DisplayLabel">显示：</sys:String>
+    <sys:String x:Key="Chat.AssignModel">去分配模型</sys:String>
+    <sys:String x:Key="Chat.ComposerPlaceholder">输入消息…</sys:String>
+    <sys:String x:Key="Chat.EmptyConversation">开始这段对话</sys:String>
+    <sys:String x:Key="Chat.EmptyConversationHelp">在下方输入消息。可以发送并生成，也可以只保存用户消息。</sys:String>
+    <sys:String x:Key="Chat.ToggleConversations">展开或收起会话列表</sys:String>
 </ResourceDictionary>

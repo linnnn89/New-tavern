@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="FirstRun.Language.Title">Choose Language / 选择界面语言 / 言語を選択</sys:String>
     <sys:String x:Key="FirstRun.Language.Description">Choose the TavernDesk interface language.
@@ -156,8 +156,8 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Worldbook.RebuildIndex">Rebuild index</sys:String>
     <sys:String x:Key="Worldbook.Delete">Delete</sys:String>
     <sys:String x:Key="Worldbook.EntryName">Entry name</sys:String>
-    <sys:String x:Key="Worldbook.SaveEntryName">Save entry name</sys:String>
-    <sys:String x:Key="Worldbook.EntryNameUnsaved">● Unsaved changes</sys:String>
+    <sys:String x:Key="Worldbook.SaveEntryName">Save entry</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameUnsaved">Unsaved entry changes. Switching entries retains edits; save or discard before leaving.</sys:String>
     <sys:String x:Key="Worldbook.KeywordsFormat">Keywords: {0}</sys:String>
     <!-- Characters -->
     <sys:String x:Key="Characters.Title">Character library</sys:String>
@@ -846,7 +846,7 @@ Use the existing main window, or open additional chat windows from it.</sys:Stri
     <sys:String x:Key="Worldbook.CampaignBindingsSavedFormat">Bound “{0}” to {1} campaign scenarios.</sys:String>
     <sys:String x:Key="Worldbook.CampaignBindingsFailedFormat">Could not save campaign-scenario bindings: {0}</sys:String>
     <sys:String x:Key="Worldbook.EntryNameRequired">Entry name is required.</sys:String>
-    <sys:String x:Key="Worldbook.EntryNameSavedFormat">Saved entry name “{0}”; the original source file is unchanged. Select Rebuild Embedding Index to add the new title to FTS/vector indexes.</sys:String>
+    <sys:String x:Key="Worldbook.EntryNameSavedFormat">Entry “{0}” saved and local search refreshed. Rebuild vectors manually.</sys:String>
     <sys:String x:Key="Worldbook.EntryNameSaveFailedFormat">Could not save entry name: {0}</sys:String>
     <sys:String x:Key="Worldbook.SelectCharacter">Select a character to bind.</sys:String>
     <sys:String x:Key="Worldbook.SelectCampaign">Select a campaign scenario to bind.</sys:String>
@@ -1653,4 +1653,47 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Chat.ScrollToBottom">↓ Back to bottom</sys:String>
     <sys:String x:Key="Chat.NewMessages">↓ New messages</sys:String>
     <sys:String x:Key="Settings.BackToWorkspace">← Back to workspace</sys:String>
+    <sys:String x:Key="Worldbook.EntryBody">Entry body</sys:String>
+    <sys:String x:Key="Interaction.UnsavedWorldbook.Title">Unsaved worldbook changes</sys:String>
+    <sys:String x:Key="Interaction.UnsavedWorldbook.MessageFormat">{0} entries have unsaved changes. Save all changes before leaving?</sys:String>
+    <sys:String x:Key="Memory.Summary.Updating">Updating memory</sys:String>
+    <sys:String x:Key="Memory.Summary.Draft">Memory draft pending</sys:String>
+    <sys:String x:Key="Memory.Summary.Unsaved">Unsaved memory edits</sys:String>
+    <sys:String x:Key="Memory.Summary.None">Memory not loaded</sys:String>
+    <sys:String x:Key="Memory.Summary.Saved">Memory loaded</sys:String>
+    <sys:String x:Key="Memory.Diff.Title">Compare changes</sys:String>
+    <sys:String x:Key="Memory.Diff.Help">Line comparison with the memory used to generate this draft: + added, − removed. Review before saving.</sys:String>
+    <sys:String x:Key="Memory.Diff.Unavailable">No comparable draft, or this older draft has no saved baseline. See the editable body.</sys:String>
+    <sys:String x:Key="Chat.Budget.Help">The bar shows the input breakdown only. Select a section to inspect it; output reserve and remaining budget are listed separately.</sys:String>
+    <sys:String x:Key="Chat.Budget.Framing">Request framing</sys:String>
+    <sys:String x:Key="Chat.Budget.Output">Reserved output</sys:String>
+    <sys:String x:Key="Chat.Budget.Remaining">Remaining budget</sys:String>
+    <sys:String x:Key="Chat.Group.TakeTurnShort">Speak</sys:String>
+    <sys:String x:Key="Recovery.Badge">Unsaved draft</sys:String>
+    <sys:String x:Key="Recovery.RestoreAction">Resume editing</sys:String>
+    <sys:String x:Key="Recovery.DiscardAction">Discard draft</sys:String>
+    <sys:String x:Key="Recovery.DiscardTitle">Discard scenario draft</sys:String>
+    <sys:String x:Key="Recovery.DiscardPrompt">Discard the recovery draft for “{0}”? The saved scenario is preserved.</sys:String>
+    <sys:String x:Key="Recovery.EditHint">Resume or discard this scenario’s draft first.</sys:String>
+    <sys:String x:Key="Chat.Budget.Safety">Safety</sys:String>
+    <sys:String x:Key="Chat.Budget.Preset">Preset</sys:String>
+    <sys:String x:Key="Chat.Budget.Character">Character</sys:String>
+    <sys:String x:Key="Chat.Budget.Persona">Persona</sys:String>
+    <sys:String x:Key="Chat.Budget.Worldbook">Worldbook</sys:String>
+    <sys:String x:Key="Chat.Budget.Memory">Memory</sys:String>
+    <sys:String x:Key="Chat.Budget.Search">Retrieval</sys:String>
+    <sys:String x:Key="Chat.Budget.History">History</sys:String>
+    <sys:String x:Key="Chat.Budget.PostHistory">Post-history</sys:String>
+    <sys:String x:Key="Chat.Budget.UserInput">Current input</sys:String>
+    <sys:String x:Key="Chat.Budget.Knowledge">Knowledge</sys:String>
+    <sys:String x:Key="Memory.Summary.Failed">Memory update failed</sys:String>
+    <sys:String x:Key="Chat.Budget.TotalFormat">Estimated {0:N0} tokens</sys:String>
+    <sys:String x:Key="Chat.Budget.CompactFormat">Input {0:N0} · Reserve {1:N0}</sys:String>
+    <sys:String x:Key="Chat.Budget.BreakdownFormat">Input {0:N0} · Includes output reserve {1:N0} · Limit {2:N0}</sys:String>
+    <sys:String x:Key="Chat.DisplayLabel">View:</sys:String>
+    <sys:String x:Key="Chat.AssignModel">Assign model</sys:String>
+    <sys:String x:Key="Chat.ComposerPlaceholder">Type a message…</sys:String>
+    <sys:String x:Key="Chat.EmptyConversation">Start this conversation</sys:String>
+    <sys:String x:Key="Chat.EmptyConversationHelp">Type below to send and generate a reply, or save your message only.</sys:String>
+    <sys:String x:Key="Chat.ToggleConversations">Expand or collapse conversations</sys:String>
 </ResourceDictionary>

@@ -33,6 +33,7 @@ public sealed record GroupChatDraft(
 public interface IUserInteractionService
 {
     bool? ConfirmScenarioRecovery(CampaignScenarioEditDraft draft) => null;
+    bool ConfirmDiscardScenarioDraft(string title) => false;
     bool ConfirmInterfaceScale(int percent) => false;
     void ShowWarning(string title, string message)
     {
@@ -55,6 +56,7 @@ public interface IUserInteractionService
     DeleteMessageDecision ConfirmMessageDeletion();
     UnsavedChangesDecision ConfirmUnsavedCharacterChanges(string characterName);
     UnsavedChangesDecision ConfirmUnsavedProviderChanges(string providerName);
+    UnsavedChangesDecision ConfirmUnsavedWorldbookChanges(int count) => UnsavedChangesDecision.Cancel;
     UnsavedChangesDecision ConfirmUnsavedCampaignLobby(string campaignTitle) =>
         UnsavedChangesDecision.Discard;
     bool ConfirmCharacterDeletion(string characterName, int conversationCount);
@@ -75,6 +77,9 @@ public interface IUserInteractionService
 
 public sealed class UserInteractionService : IUserInteractionService
 {
+    public bool ConfirmDiscardScenarioDraft(string title) => ConfirmDestructiveAction(
+        LanguageRuntime.GetString("Recovery.DiscardTitle"), LanguageRuntime.Format("Recovery.DiscardPrompt", title),
+        LanguageRuntime.GetString("Recovery.DiscardAction"));
     public bool? ConfirmScenarioRecovery(CampaignScenarioEditDraft draft)
     {
         var dialog = new SafeChoiceDialog(LanguageRuntime.GetString("Recovery.Title"),
@@ -249,6 +254,11 @@ public sealed class UserInteractionService : IUserInteractionService
         ConfirmUnsavedChangesDialog(
             LanguageRuntime.GetString("Interaction.UnsavedProvider.Title"),
             LanguageRuntime.Format("Interaction.UnsavedProvider.MessageFormat", providerName));
+
+    public UnsavedChangesDecision ConfirmUnsavedWorldbookChanges(int count) =>
+        ConfirmUnsavedChangesDialog(
+            LanguageRuntime.GetString("Interaction.UnsavedWorldbook.Title"),
+            LanguageRuntime.Format("Interaction.UnsavedWorldbook.MessageFormat", count));
 
     public UnsavedChangesDecision ConfirmUnsavedCampaignLobby(string campaignTitle) =>
         ConfirmUnsavedChangesDialog(
