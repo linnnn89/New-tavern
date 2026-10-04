@@ -31,7 +31,7 @@ public partial class ChatView : UserControl
     private bool _isRightPanelCollapsed;
     private bool _isRightPanelAutoCollapsed;
     private bool _isRightPanelOverlay;
-    private double _rightPanelWidth = 406;
+    private double _rightPanelWidth = 360;
     private Window? _layoutHostWindow;
     private ContextMenu? _openGroupMemberMenu;
 
@@ -73,6 +73,33 @@ public partial class ChatView : UserControl
         }
 
         CollapseRightPanel(automatic: false);
+    }
+
+    private void OpenInspector(int index)
+    {
+        if (_isRightPanelCollapsed)
+        {
+            if (RequiresResponsiveCollapse()) OpenRightPanelOverlay();
+            else ExpandRightPanel();
+        }
+        InspectorTabs.SelectedIndex = index;
+    }
+
+    private void ContextSummary_OnClick(object sender, RoutedEventArgs e) => OpenInspector(0);
+    private void MemorySummary_OnClick(object sender, RoutedEventArgs e) => OpenInspector(3);
+
+    private void SendModeMenu_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { ContextMenu: { } menu } button)
+        {
+            menu.PlacementTarget = button;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void SendModeChoice_OnClick(object sender, RoutedEventArgs e)
+    {
+        SendModeMenu.ContextMenu!.IsOpen = false;
     }
 
     private void CollapseRightPanel(bool automatic)
@@ -287,7 +314,7 @@ public partial class ChatView : UserControl
     private double ExpandedLayoutMinimumWidth() =>
         ChatLayoutRoot.Margin.Left
         + ChatLayoutRoot.Margin.Right
-        + ConversationListColumn.MinWidth
+        + Math.Max(ConversationListColumn.MinWidth, ConversationListColumn.Width.Value)
         + ChatLayoutRoot.ColumnDefinitions[1].Width.Value
         + ConversationBodyColumn.MinWidth
         + ChatLayoutRoot.ColumnDefinitions[3].Width.Value

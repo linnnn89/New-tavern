@@ -4,6 +4,9 @@ namespace TavernDesk.Core.Abstractions;
 
 public interface IWorldbookRepository
 {
+    Task UpdateEntryAsync(WorldbookEntry original, string title, string content,
+        IReadOnlyList<WorldbookChunk> chunks, CancellationToken cancellationToken = default);
+
     Task<WorldbookImportResult> ImportAsync(
         WorldbookImportResult prepared,
         WorldbookScopeKind scopeKind,
@@ -139,6 +142,9 @@ public sealed record WorldbookRetrievalResult(
 
 public interface IWorldbookService
 {
+    Task UpdateEntryAsync(WorldbookEntry original, string title, string content,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Worldbook>> ListAsync(
         CancellationToken cancellationToken = default);
 

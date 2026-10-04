@@ -74,6 +74,11 @@ public sealed class WorldbookViewModel : ViewModelBase
     private CampaignScenario? _selectedCampaignScenario;
     private WorldbookScopeOption _selectedScopeOption;
     private string _entryTitle = string.Empty;
+    private string _entryContent = string.Empty;
+    private bool _loadingEntry;
+    private bool _isSavingEntry;
+    private readonly Dictionary<(string Book, string Entry), EntryEdit> _entryEdits = [];
+    private sealed record EntryEdit(WorldbookEntry Original, string Title, string Content);
     private string _status =
         LanguageRuntime.GetString("Worldbook.Status.Intro");
 
@@ -197,16 +202,41 @@ public sealed class WorldbookViewModel : ViewModelBase
                 return;
             }
 
-            EntryTitle = value?.Title ?? string.Empty;
+            _loadingEntry = true;
+            var edit = value is null ? null : _entryEdits.GetValueOrDefault((value.WorldbookId, value.Id));
+            EntryTitle = edit?.Title ?? value?.Title ?? string.Empty;
+            EntryContent = edit?.Content ?? value?.Content ?? string.Empty;
+            _loadingEntry = false;
             OnPropertyChanged(nameof(IsEntryTitleDirty));
             SaveEntryTitleCommand.RaiseCanExecuteChanged();
         }
     }
 
-    // Entry bodies are read-only; the title is the only editable field, saved explicitly (manual save, no autosave).
     public bool IsEntryTitleDirty =>
         SelectedEntry is { } entry
-        && !string.Equals(EntryTitle.Trim(), entry.Title, StringComparison.Ordinal);
+        && _entryEdits.ContainsKey((entry.WorldbookId, entry.Id));
+
+    public bool IsSavingEntry { get => _isSavingEntry; private set => SetProperty(ref _isSavingEntry, value); }
+
+    public string EntryContent
+    {
+        get => _entryContent;
+        set
+        {
+            if (SetProperty(ref _entryContent, value)) TrackEntryEdit();
+        }
+    }
+
+    private void TrackEntryEdit()
+    {
+        if (_loadingEntry || SelectedEntry is not { } entry) return;
+        var key = (entry.WorldbookId, entry.Id);
+        var original = _entryEdits.GetValueOrDefault(key)?.Original ?? entry;
+        if (EntryTitle.Trim() == original.Title && EntryContent == original.Content) _entryEdits.Remove(key);
+        else _entryEdits[key] = new EntryEdit(original, EntryTitle, EntryContent);
+        OnPropertyChanged(nameof(IsEntryTitleDirty));
+        SaveEntryTitleCommand.RaiseCanExecuteChanged();
+    }
 
     public string EntryTitle
     {
@@ -218,9 +248,42 @@ public sealed class WorldbookViewModel : ViewModelBase
                 return;
             }
 
-            OnPropertyChanged(nameof(IsEntryTitleDirty));
-            SaveEntryTitleCommand.RaiseCanExecuteChanged();
+            TrackEntryEdit();
         }
+    }
+
+    public async Task<bool> ConfirmCanLeaveAsync()
+    {
+        if (IsSavingEntry) return false;
+        if (_entryEdits.Count == 0) return true;
+        var decision = _interaction.ConfirmUnsavedWorldbookChanges(_entryEdits.Count);
+        if (decision == UnsavedChangesDecision.Cancel) return false;
+        if (decision == UnsavedChangesDecision.Save)
+        {
+            IsSavingEntry = true;
+            try
+            {
+                foreach (var pair in _entryEdits.ToArray())
+                {
+                    await _service.UpdateEntryAsync(pair.Value.Original, pair.Value.Title, pair.Value.Content);
+                    _entryEdits.Remove(pair.Key);
+                }
+            }
+            catch (Exception exception)
+            {
+                Status = LanguageRuntime.Format("Worldbook.EntryNameSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
+                return false;
+            }
+            finally
+            {
+                IsSavingEntry = false;
+                OnPropertyChanged(nameof(IsEntryTitleDirty));
+                SaveEntryTitleCommand.RaiseCanExecuteChanged();
+            }
+        }
+        else _entryEdits.Clear();
+        SelectedEntry = null;
+        return true;
     }
 
     public WorldbookScopeOption SelectedScopeOption
@@ -508,7 +571,11 @@ public sealed class WorldbookViewModel : ViewModelBase
 
         try
         {
-            await _service.UpdateEntryTitleAsync(book.Id, entry.Id, title);
+            IsSavingEntry = true;
+            var edit = _entryEdits.GetValueOrDefault((book.Id, entry.Id));
+            if (edit is null) return;
+            await _service.UpdateEntryAsync(edit.Original, title, edit.Content);
+            _entryEdits.Remove((book.Id, entry.Id));
             await LoadSelectedBookAsync(book.Id);
             if (!string.Equals(SelectedBook?.Id, book.Id, StringComparison.Ordinal))
             {
@@ -522,6 +589,7 @@ public sealed class WorldbookViewModel : ViewModelBase
         {
             Status = LanguageRuntime.Format("Worldbook.EntryNameSaveFailedFormat", LanguageRuntime.ErrorMessage(exception));
         }
+        finally { IsSavingEntry = false; }
     }
 
     private async Task ImportAsync()

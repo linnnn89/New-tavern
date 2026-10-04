@@ -67,6 +67,24 @@ public sealed class WorldbookService : IWorldbookService
         CancellationToken cancellationToken = default) =>
         _repository.ListMountsAsync(worldbookId, cancellationToken);
 
+    public async Task UpdateEntryAsync(WorldbookEntry original, string title, string content,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        var book = await _repository.GetAsync(original.WorldbookId, cancellationToken)
+                   ?? throw new InvalidOperationException("世界书已被删除，修改未保存。");
+        var edited = new WorldbookEntry
+        {
+            WorldbookId = original.WorldbookId, Id = original.Id, Title = title.Trim(),
+            Content = content, Keys = original.Keys, Enabled = original.Enabled,
+            SemanticEnabled = original.SemanticEnabled,
+            ContentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant()
+        };
+        // Refresh local search atomically; remote vector rebuilding remains an explicit action.
+        await _repository.UpdateEntryAsync(original, edited.Title, content,
+            BuildChunks(book, [edited]), cancellationToken);
+    }
+
     public Task UpsertMountAsync(
         WorldbookMount mount,
         CancellationToken cancellationToken = default) =>

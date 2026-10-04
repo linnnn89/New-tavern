@@ -185,6 +185,13 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         SavePersonaCommand = new AsyncRelayCommand(SavePersonaAsync);
         CancelPersonaCommand = new RelayCommand(CancelPersonaEdits);
         OpenGlobalPromptCommand = new AsyncRelayCommand(OpenGlobalPromptAsync);
+        OpenModelSettingsCommand = new AsyncRelayCommand(() =>
+            OpenModelSettings?.Invoke(SelectedConversation?.Mode == ConversationMode.Group
+                ? ModelFunctionKind.GroupChat : ModelFunctionKind.Chat) ?? Task.CompletedTask);
+        SetSendModeCommand = new RelayCommand(parameter =>
+        {
+            if (parameter is ChatSendMode mode) SendMode = mode;
+        });
         ImportChatArchiveCommand = new AsyncRelayCommand(ImportChatArchiveAsync);
         ExportChatArchiveCommand = new AsyncRelayCommand(
             ExportChatArchiveAsync,
@@ -215,6 +222,11 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
     public AsyncRelayCommand ExportChatArchiveCommand { get; }
     public Func<Character, Task>? OpenCharacterCard { get; set; }
     public Func<GlobalPromptKey, Task>? OpenPromptSettings { get; set; }
+    public Func<ModelFunctionKind, Task>? OpenModelSettings { get; set; }
+    public AsyncRelayCommand OpenModelSettingsCommand { get; }
+    public RelayCommand SetSendModeCommand { get; }
+    public bool IsGenerationModelMissing => SelectedConversation is { } selected
+        && SendMode == ChatSendMode.SendAndGenerate && AssignmentFor(selected.Mode) is null;
 
     public string GroupAutoRelayCountdownText => _groupAutoRelayCountdownText;
     public bool IsGroupAutoRelayCountdownVisible =>
@@ -264,6 +276,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                 OnPropertyChanged(nameof(LastGenerationUsageText));
                 OnPropertyChanged(nameof(IsSingleCharacterConversation));
                 OnPropertyChanged(nameof(SelectedConversationAvatarPath));
+                OnPropertyChanged(nameof(IsGenerationModelMissing));
                 StopGenerationCommand.RaiseCanExecuteChanged();
                 ExportChatArchiveCommand.RaiseCanExecuteChanged();
                 CharacterPrompt.RaiseCanExecuteChanged();
@@ -324,7 +337,10 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
 
     public string EstimatedTokenText => _contextPreview.EstimatedTokenText;
     public int EstimatedInputTokens => _contextPreview.EstimatedInputTokens;
+    public IReadOnlyList<TokenBudgetPart> TokenBudgetParts => _contextPreview.TokenBudgetParts;
     public string EstimatedTokenHeadline => _contextPreview.EstimatedTokenHeadline;
+    public string EstimatedTokenCompactText => _contextPreview.EstimatedTokenCompactText;
+    public string EstimatedTokenBreakdown => _contextPreview.EstimatedTokenBreakdown;
     public double EstimatedTokenUsagePercent => _contextPreview.EstimatedTokenUsagePercent;
     public string EstimatedTokenUsageLevel => _contextPreview.EstimatedTokenUsageLevel;
     public bool IsEstimatedOverLimit => _contextPreview.IsEstimatedOverLimit;
@@ -463,6 +479,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
             if (SetProperty(ref _sendMode, value))
             {
                 SendLocalCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(IsGenerationModelMissing));
             }
         }
     }
@@ -2276,6 +2293,12 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
         OnPropertyChanged(nameof(EstimatedTokenText));
     }
 
+    public async Task RefreshModelAssignmentsAsync()
+    {
+        await RefreshAssignmentsAsync();
+        await RefreshContextEstimateAsync(immediate: true);
+    }
+
     private ModelFunctionAssignment? AssignmentFor(ConversationMode mode) =>
         mode == ConversationMode.Group ? _groupChatAssignment : _chatAssignment;
 
@@ -2334,6 +2357,7 @@ public sealed class ChatViewModel : ViewModelBase, IDisposable, IAsyncDisposable
                     assignment.MaxOutputTokens);
         }
 
+        OnPropertyChanged(nameof(IsGenerationModelMissing));
         OnPropertyChanged(nameof(EstimatedTokenText));
     }
 

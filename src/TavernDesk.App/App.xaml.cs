@@ -151,6 +151,7 @@ public partial class App : Application
                 chatViewModels.Create());
             chatViewModels.OpenCharacterCard = viewModel.OpenCharacterCardAsync;
             chatViewModels.OpenPromptSettings = viewModel.OpenPromptSettingsAsync;
+            chatViewModels.OpenModelSettings = viewModel.OpenModelSettingsAsync;
             await viewModel.InitializeAsync();
             if (testCharacter is not null)
                 await viewModel.OpenCharacterCardAsync(testCharacter);

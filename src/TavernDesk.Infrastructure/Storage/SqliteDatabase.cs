@@ -5,7 +5,7 @@ namespace TavernDesk.Infrastructure.Storage;
 
 public sealed class SqliteDatabase : IDatabaseInitializer
 {
-    public const int CurrentSchemaVersion = 24;
+    public const int CurrentSchemaVersion = 25;
     private readonly AppDataPaths _paths;
 
     public SqliteDatabase(AppDataPaths paths)
@@ -1121,6 +1121,9 @@ public sealed class SqliteDatabase : IDatabaseInitializer
                 payload TEXT NOT NULL,
                 saved_at TEXT NOT NULL
             );
+            """),
+        new(25, """
+            ALTER TABLE memory_update_drafts ADD COLUMN base_body TEXT NULL;
             """)
     ];
 

@@ -31,6 +31,7 @@
                         <DataTemplate>
                             <StackPanel>
                                 <Button Command="{Binding ToggleCommand}"
+                                        ToolTip="{StaticResource Chat.ToggleConversations}"
                                         Style="{StaticResource AppicaConversationGroupButtonStyle}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -44,7 +45,7 @@
                                                 Background="{DynamicResource AccentSoftBrush}"
                                                 ClipToBounds="True">
                                              <Grid>
-                                                <TextBlock HorizontalAlignment="Center"
+                                                <TextBlock x:Name="ConversationAvatarGlyph" HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
                                                            FontFamily="{StaticResource AppicaShellIconFont}"
                                                            FontSize="18"
@@ -80,6 +81,7 @@
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBlock x:Name="ExpandGlyph"
                                                        Margin="0,3,0,0"
+                                                       FontSize="18"
                                                        Text="⌄"
                                                        HorizontalAlignment="Right"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
@@ -185,6 +187,9 @@
                                 </Border>
                             </StackPanel>
                             <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                    <Setter TargetName="ConversationAvatarGlyph" Property="Text" Value="&#xE902;" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                                     <Setter TargetName="ExpandGlyph" Property="Text" Value="⌃" />
                                 </DataTrigger>

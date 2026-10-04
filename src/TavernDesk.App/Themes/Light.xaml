@@ -52,6 +52,7 @@
     <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="{StaticResource AccentSoftColor}" />
+    <SolidColorBrush x:Key="BudgetOutputReservedBrush" Color="#C9CEF4" />
     <SolidColorBrush x:Key="ComposerHintBrush" Color="{StaticResource ComposerHintColor}" />
     <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHoverColor}" />
     <SolidColorBrush x:Key="ControlPressedBrush" Color="{StaticResource ControlPressedColor}" />
@@ -689,7 +690,7 @@
 
     <Style TargetType="{x:Type TabItem}">
         <Setter Property="MinHeight" Value="36" />
-        <Setter Property="Margin" Value="0,2,2,2" />
+        <Setter Property="Margin" Value="0,0,2,0" />
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />

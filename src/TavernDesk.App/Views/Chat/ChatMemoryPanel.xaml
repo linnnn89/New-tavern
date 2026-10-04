@@ -1,6 +1,7 @@
 <UserControl x:Class="TavernDesk.App.Views.Chat.ChatMemoryPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
     <TabControl Margin="18">
         <TabItem Header="{StaticResource Chat.Memory.BodyTab}">
             <Grid Margin="10">
@@ -146,8 +147,45 @@
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource MutedTextBrush}" />
                 <TabControl Grid.Row="1" Margin="0,10,0,0">
+                    <TabItem Header="{StaticResource Memory.Diff.Title}">
+                        <DockPanel Margin="4">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding Memory.DiffStatus}" TextWrapping="Wrap"
+                                       Margin="0,0,0,8" Foreground="{DynamicResource MutedTextBrush}" />
+                            <ListBox ItemsSource="{Binding Memory.PendingDiff}" AutomationProperties.AutomationId="MemoryDraftDiff"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap" Padding="4,2">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static presentation:MemoryDiffKind.Added}">
+                                                            <Setter Property="Background" Value="{DynamicResource SuccessBg}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource SuccessFg}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static presentation:MemoryDiffKind.Removed}">
+                                                            <Setter Property="Background" Value="{DynamicResource WarningBg}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource WarningFg}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+                        </DockPanel>
+                    </TabItem>
                     <TabItem Header="{StaticResource Chat.Memory.EditableBodyTab}">
                         <TextBox Text="{Binding Memory.PendingBody, UpdateSourceTrigger=PropertyChanged}"
+                                 IsReadOnly="{Binding Memory.IsGenerating}"
                                  AcceptsReturn="True"
                                  AcceptsTab="True"
                                  TextWrapping="Wrap"
@@ -165,22 +203,16 @@
                                  VerticalScrollBarVisibility="Auto" />
                     </TabItem>
                 </TabControl>
-                <Grid Grid.Row="2" Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Button Grid.Column="1"
-                            Margin="0,0,8,0"
+                <WrapPanel Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right">
+                    <Button Margin="0,0,8,8"
                             Content="{StaticResource Chat.Memory.DiscardDraft}"
                             Command="{Binding Memory.DiscardDraftCommand}"
                             Style="{StaticResource SecondaryButtonStyle}" />
-                    <Button Grid.Column="2"
+                    <Button Margin="0,0,0,8"
                             Content="{StaticResource Chat.Memory.SaveDraft}"
                             Command="{Binding Memory.SaveDraftCommand}"
                             Style="{StaticResource PrimaryButtonStyle}" />
-                </Grid>
+                </WrapPanel>
             </Grid>
         </TabItem>
     </TabControl>
