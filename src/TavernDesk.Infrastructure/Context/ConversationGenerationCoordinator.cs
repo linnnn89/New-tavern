@@ -224,10 +224,25 @@ public sealed class ConversationGenerationCoordinator : IConversationGenerationC
         ConversationGenerationState state;
         lock (_registrationGate)
         {
+            // Only the registered run may publish. A delayed callback from an
+            // older generation must not replace the new run's state.
+            if (!_runs.TryGetValue(operationId, out var run)
+                || !string.Equals(
+                    run.GenerationId,
+                    generationId,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
             // Status callbacks, normal completion and cancellation can race.
-            // ShouldReplace makes terminal states immutable and keeps Stopping
-            // from regressing to Streaming.
+            // Terminal states are immutable within one generation; a new run
+            // starts fresh. Stopping must not regress to Streaming.
             if (_states.TryGetValue(operationId, out var current)
+                && string.Equals(
+                    current.GenerationId,
+                    generationId,
+                    StringComparison.Ordinal)
                 && !ShouldReplace(current.Status, status))
             {
                 return;
