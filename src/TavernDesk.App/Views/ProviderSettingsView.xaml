@@ -509,7 +509,7 @@
                                                       ItemsSource="{Binding FunctionOptions}" SelectedItem="{Binding SelectedFunction}"
                                                       DisplayMemberPath="Label" AutomationProperties.AutomationId="AssignmentFunction"
                                                       ToolTip="{StaticResource Settings.Assignments.SelectFunctionToolTip}" />
-                                            
+
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>
