@@ -22,6 +22,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true") ConfigureCiDisplay();
         _output = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/responsive-layout");
         Directory.CreateDirectory(_output);
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -55,6 +56,27 @@ internal static class Program
         };
         return app.Run();
     }
+
+    // Only the disposable GitHub runner display is resized; local runs leave the desktop alone.
+    private static void ConfigureCiDisplay()
+    {
+        var mode = System.Runtime.InteropServices.Marshal.AllocHGlobal(220);
+        try
+        {
+            for (var i = 0; i < 220; i++) System.Runtime.InteropServices.Marshal.WriteByte(mode, i, 0);
+            System.Runtime.InteropServices.Marshal.WriteInt16(mode, 68, 220);
+            if (!EnumDisplaySettings(null, -1, mode)) return;
+            System.Runtime.InteropServices.Marshal.WriteInt32(mode, 72, 0x180000);
+            System.Runtime.InteropServices.Marshal.WriteInt32(mode, 172, 1920);
+            System.Runtime.InteropServices.Marshal.WriteInt32(mode, 176, 1080);
+            Console.WriteLine($"CI display mode change result: {ChangeDisplaySettings(mode, 0)}");
+        }
+        finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(mode); }
+    }
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern bool EnumDisplaySettings(string? device, int mode, IntPtr settings);
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int ChangeDisplaySettings(IntPtr settings, int flags);
 
     private static void Template<TModel, TView>() where TView : FrameworkElement
     {
@@ -97,6 +119,10 @@ internal static class Program
         var panes = new ResponsivePanes { First = list, Second = editor, ReferenceWidth = 800, StackedReferenceHeight = 650 };
         Layout(panes, 1000, 800);
         Check(panes.LayoutMode == "Columns", "Wide panes");
+        var scroll = Find<ScrollViewer>(list);
+        scroll.ScrollToVerticalOffset(20);
+        Layout(panes, 1000, 800);
+        var offset = scroll.VerticalOffset;
         Layout(panes, 600, 800);
         Check(panes.LayoutMode == "Rows", "Tall panes");
         Layout(panes, 600, 400);
@@ -111,6 +137,7 @@ internal static class Program
         Check(ReferenceEquals(parent, VisualTreeHelper.GetParent(editor)), "Panes must not reparent");
         Check(list.SelectedIndex == 42 && editor.Text.StartsWith("unsaved"), "Selection and draft must survive");
         Check(editor.Visibility == Visibility.Visible, "Selected compact pane must survive wide/narrow cycles");
+        Check(offset > 0 && Math.Abs(scroll.VerticalOffset - offset) < 1, "List scroll position survives mode changes");
         Check(VirtualizingPanel.GetIsVirtualizing(list), "List virtualization remains enabled");
     }
 
@@ -189,6 +216,9 @@ internal static class Program
         (Named<GridSplitter>(chat, "RightPanelSplitter")).RaiseEvent(new DragCompletedEventArgs(0, 0, false));
         main.Width = 1080;
         await Settle(main);
+        Console.WriteLine($"Desktop {SystemParameters.PrimaryScreenWidth}x{SystemParameters.PrimaryScreenHeight}; main {main.ActualWidth}x{main.ActualHeight}, viewport {Named<ResponsiveViewport>(chat, "ChatViewport").AvailableSize}; independent {independent.ActualWidth}x{independent.ActualHeight}, viewport {Named<ResponsiveViewport>(otherChat, "ChatViewport").AvailableSize}; scale {InterfaceSettingsRuntime.ScaleFactor}");
+        Capture((FrameworkElement)main.Content, "initial-main");
+        Capture((FrameworkElement)independent.Content, "initial-independent");
         Check(panel.Visibility == Visibility.Collapsed, "Main window automatically collapses");
         Check((Named<Border>(otherChat, "RightPanel")).Visibility == Visibility.Visible, "Independent window uses its own available space");
         Click(Named<Button>(chat, "RightPanelToggleButton"));
@@ -218,8 +248,15 @@ internal static class Program
                 Check(panel.Width <= space.AvailableSize.Width, "Overlay fits viewport");
                 Click(Named<Button>(chat, "RightPanelOverlayCloseButton"));
                 Check(panel.Visibility == Visibility.Collapsed, "Overlay closes");
+                Click(Named<Button>(chat, "RightPanelToggleButton"));
+                var escape = new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+                    PresentationSource.FromVisual(panel)!, 0, System.Windows.Input.Key.Escape)
+                    { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
+                panel.RaiseEvent(escape);
+                Check(escape.Handled && panel.Visibility == Visibility.Collapsed, "Escape closes the inspector overlay");
             }
         }
+        Capture((FrameworkElement)main.Content, "main-chat-150percent-font30");
         InterfaceSettingsRuntime.Apply(null, 14, true, 100);
         LanguageRuntime.Apply("en-US");
         foreach (var page in new object[] { vm.Chat, vm.Settings, vm.Worldbooks, vm.Campaigns })
