@@ -89,7 +89,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0"
+                <Border x:Name="ChatHeader" Grid.Row="0"
                         Style="{StaticResource AppicaChatHeaderStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -129,7 +129,7 @@
                                        FontWeight="SemiBold"
                                        TextWrapping="NoWrap"
                                        TextTrimming="CharacterEllipsis" />
-                            <DockPanel Margin="0,3,0,0">
+                            <DockPanel x:Name="ChatHeaderStatus" Margin="0,3,0,0">
                                 <Ellipse DockPanel.Dock="Left" Width="7"
                                          Height="7"
                                          Margin="0,0,6,0"
@@ -152,7 +152,7 @@
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal">
-                            <TextBlock Text="{StaticResource Chat.DisplayLabel}" VerticalAlignment="Center" Margin="0,0,5,0"
+                            <TextBlock x:Name="DisplayModeLabel" Text="{StaticResource Chat.DisplayLabel}" VerticalAlignment="Center" Margin="0,0,5,0"
                                        FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedTextBrush}" />
                             <ComboBox Width="92" Margin="0,0,8,0" MinHeight="32"
                                       AutomationProperties.AutomationId="ChatDisplayMode"
@@ -783,23 +783,23 @@
                         Style="{StaticResource SecondaryButtonStyle}" />
             </StackPanel>
 
-            <Border Grid.Row="3" Style="{StaticResource AppicaChatComposerStyle}">
+            <Border x:Name="ComposerPanel" Grid.Row="3" Style="{StaticResource AppicaChatComposerStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Border Background="{DynamicResource WarningBg}" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                    <Border x:Name="ModelNotice" Background="{DynamicResource WarningBg}" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
                             Visibility="{Binding IsGenerationModelMissing, Converter={StaticResource BooleanToVisibilityConverter}}"
                             AutomationProperties.AutomationId="ModelAssignmentNotice">
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Margin="12,0,0,0"
-                                    Command="{Binding OpenModelSettingsCommand}" AutomationProperties.AutomationId="AssignChatModel"
+                                    Command="{Binding OpenModelSettingsCommand}" ToolTip="{Binding ActiveModelText}" AutomationProperties.AutomationId="AssignChatModel"
                                     Style="{StaticResource ComposerStatusLink}">
                                 <TextBlock Text="{StaticResource Chat.AssignModel}" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource AccentBrush}" />
                             </Button>
-                            <TextBlock Text="{Binding ActiveModelText}" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeSmall}"
+                            <TextBlock x:Name="ModelNoticeText" Text="{Binding ActiveModelText}" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeSmall}"
                                        Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         </DockPanel>
                     </Border>

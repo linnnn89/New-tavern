@@ -276,7 +276,7 @@ internal static class Program
                 var send = Named<Button>(chat, "ChatSendButton");
                 var sendBounds = send.TransformToAncestor(main).TransformBounds(new Rect(send.RenderSize));
                 Check(sendBounds.Bottom <= main.ActualHeight + 1 && sendBounds.Right <= main.ActualWidth + 1,
-                    "Send action stays within the window at large font/scale");
+                    "Send action stays within the window at large font/scale: " + sendBounds);
             }
         }
         Capture((FrameworkElement)main.Content, "main-chat-150percent-font30");
@@ -291,6 +291,15 @@ internal static class Program
                 main.Width = width; main.Height = height;
                 await Settle(main);
                 Capture((FrameworkElement)main.Content, $"{page.GetType().Name}-{suffix}");
+                if (page == vm.Worldbooks && suffix == "narrow")
+                {
+                    var worldbook = Find<WorldbookView>(main);
+                    Check(Named<ResponsivePanes>(worldbook, "EntryPanes").ActualHeight >= 160,
+                        "Compact worldbook retains a usable entry viewport");
+                    Check(!Named<Expander>(worldbook, "LibraryTools").IsExpanded,
+                        "Short worldbook collapses management tools");
+                    Check(vm.Worldbooks.EntryTitle == "Unsaved worldbook title", "Worldbook draft survives resize");
+                }
                 if (FindOrNull<ResponsivePanes>(main) is { } panes)
                 {
                     panes.SelectPane(true);

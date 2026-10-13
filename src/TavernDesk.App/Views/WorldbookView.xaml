@@ -5,7 +5,8 @@
     <UserControl.Resources>
         <presentation:WorldbookEntryTextConverter x:Key="WorldbookEntryTextConverter" />
     </UserControl.Resources>
-    <presentation:ResponsiveViewport Margin="16">
+    <presentation:ResponsiveViewport x:Name="WorldbookViewport" Margin="16"
+                                     ReferenceFontSize="{DynamicResource InterfaceFontSize}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -33,8 +34,25 @@
             </WrapPanel>
 </StackPanel>
 
-        <Border Grid.Row="1"
-                Margin="0,12,0,12"
+        <StackPanel Grid.Row="1" Margin="0,8,0,8">
+<StackPanel>
+                            <TextBlock x:Name="WorldbookSelectorLabel" Text="{StaticResource Worldbook.Library}" />
+                            <ComboBox Margin="{DynamicResource LabelGap}"
+                                      AutomationProperties.AutomationId="WorldbookSelector"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=WorldbookSelectorLabel}"
+                                      ItemsSource="{Binding Books}" SelectedItem="{Binding SelectedBook}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+            <Expander x:Name="LibraryTools" Header="{StaticResource Worldbook.MountSummary}" IsExpanded="True" Margin="0,4,0,0">
+                <ScrollViewer x:Name="LibraryToolsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+<Border
+                Margin="0,4,0,4"
                 Padding="10,8"
                 CornerRadius="12"
                 Background="{DynamicResource AccentSoftBrush}">
@@ -54,6 +72,26 @@
                         Style="{StaticResource SecondaryButtonStyle}" />
             </DockPanel>
         </Border>
+<WrapPanel>
+<TextBlock
+                                   Margin="12,0,12,0"
+                                   Text="{Binding SelectedBook.IndexedChunkCount, StringFormat={StaticResource Worldbook.IndexedChunkCountFormat}}"
+                                   Foreground="{DynamicResource MutedTextBrush}"
+                                   VerticalAlignment="Center" />
+<WrapPanel VerticalAlignment="Center">
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.RebuildIndex}"
+                                    Command="{Binding RebuildIndexCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.Delete}"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding DeleteCommand}"
+                                    Style="{StaticResource DestructiveButtonStyle}" />
+                        </WrapPanel>
+</WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Expander>
+        </StackPanel>
 
         <Popup x:Name="ImportOptionsPopup"
                PlacementTarget="{Binding ElementName=ImportOptionsButton}"
@@ -175,39 +213,9 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <StackPanel>
-<StackPanel>
-                            <TextBlock x:Name="WorldbookSelectorLabel" Text="{StaticResource Worldbook.Library}" />
-                            <ComboBox Margin="{DynamicResource LabelGap}"
-                                      AutomationProperties.AutomationId="WorldbookSelector"
-                                      AutomationProperties.LabeledBy="{Binding ElementName=WorldbookSelectorLabel}"
-                                      ItemsSource="{Binding Books}" SelectedItem="{Binding SelectedBook}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </StackPanel>
-<WrapPanel>
-<TextBlock
-                                   Margin="12,0,12,0"
-                                   Text="{Binding SelectedBook.IndexedChunkCount, StringFormat={StaticResource Worldbook.IndexedChunkCountFormat}}"
-                                   Foreground="{DynamicResource MutedTextBrush}"
-                                   VerticalAlignment="Center" />
-<WrapPanel VerticalAlignment="Center">
-                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.RebuildIndex}"
-                                    Command="{Binding RebuildIndexCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.Delete}"
-                                    Margin="8,0,0,0"
-                                    Command="{Binding DeleteCommand}"
-                                    Style="{StaticResource DestructiveButtonStyle}" />
-                        </WrapPanel>
-</WrapPanel>
-</StackPanel>
+                    
 
-                    <presentation:ResponsivePanes x:Name="EntryPanes" Grid.Row="1" Margin="0,14,0,0" ReferenceWidth="760" FirstWidth="320" FirstHeader="{StaticResource Worldbook.Entries}" SecondHeader="{StaticResource Worldbook.EntryBody}">
+                    <presentation:ResponsivePanes x:Name="EntryPanes" Grid.Row="1" ReferenceWidth="760" FirstWidth="320" FirstHeader="{StaticResource Worldbook.Entries}" SecondHeader="{StaticResource Worldbook.EntryBody}">
                     <presentation:ResponsivePanes.First>
 <Border Grid.Column="0"
                                 BorderBrush="{DynamicResource BorderBrush}"

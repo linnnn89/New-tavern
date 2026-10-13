@@ -33,6 +33,7 @@ public partial class ChatView : UserControl
     private bool _isRightPanelOverlay;
     private double _rightPanelWidth = 360;
     private bool _hasListSpace = true;
+    private bool _hasComfortableHeight = true;
     private double _conversationListWidth = 240;
     private bool _hasDockSpace = true;
     private bool _showInspectorLabels;
@@ -241,6 +242,21 @@ public partial class ChatView : UserControl
         var space = ChatViewport.AvailableSize;
         if (space.Width <= 0 || space.Height <= 0) return;
         var font = ChatViewport.FontFactor;
+        var comfortableHeight = ResponsiveFit.Fits(space.Width, space.Height,
+            0, 420 * font, _hasComfortableHeight);
+        if (comfortableHeight != _hasComfortableHeight)
+        {
+            _hasComfortableHeight = comfortableHeight;
+            ChatHeaderStatus.Visibility = comfortableHeight ? Visibility.Visible : Visibility.Collapsed;
+            DisplayModeLabel.Visibility = comfortableHeight ? Visibility.Visible : Visibility.Collapsed;
+            ModelNoticeText.Visibility = comfortableHeight ? Visibility.Visible : Visibility.Collapsed;
+            ChatHeader.Padding = comfortableHeight ? new Thickness(20, 10, 20, 10) : new Thickness(8, 4, 8, 4);
+            ChatHeader.MinHeight = comfortableHeight ? 68 : 0;
+            ComposerPanel.Margin = comfortableHeight ? new Thickness(14, 8, 14, 14) : new Thickness(6, 4, 6, 4);
+            ComposerPanel.Padding = comfortableHeight ? new Thickness(14, 10, 14, 10) : new Thickness(8, 4, 8, 4);
+            ModelNotice.Padding = comfortableHeight ? new Thickness(10, 8, 10, 8) : new Thickness(6, 2, 6, 2);
+            ChatComposer.MaxLines = comfortableHeight ? 8 : 1;
+        }
         var hasListSpace = ResponsiveFit.Fits(space.Width, space.Height,
             _conversationListWidth + 6 + 460 * font, 0, _hasListSpace);
         if (hasListSpace != _hasListSpace)

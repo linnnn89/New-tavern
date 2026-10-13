@@ -3,14 +3,29 @@ using System.Windows.Controls;
 using TavernDesk.App;
 using TavernDesk.App.Localization;
 using TavernDesk.App.ViewModels;
+using TavernDesk.App.Presentation;
 
 namespace TavernDesk.App.Views;
 
 public partial class WorldbookView : UserControl
 {
+    private bool _hasToolsSpace = true;
+
     public WorldbookView()
     {
         InitializeComponent();
+        WorldbookViewport.AvailableSpaceChanged += (_, _) =>
+        {
+            var space = WorldbookViewport.AvailableSize;
+            var hasSpace = ResponsiveFit.Fits(space.Width, space.Height,
+                0, 620 * WorldbookViewport.FontFactor, _hasToolsSpace);
+            if (hasSpace != _hasToolsSpace)
+            {
+                _hasToolsSpace = hasSpace;
+                LibraryTools.IsExpanded = hasSpace;
+            }
+            LibraryToolsScroll.MaxHeight = space.Height * 0.35;
+        };
     }
 
     private void ImportOptionsButton_OnClick(object sender, RoutedEventArgs e)
