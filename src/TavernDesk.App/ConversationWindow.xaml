@@ -9,7 +9,7 @@
         ResizeMode="CanResize"
         Background="{DynamicResource AppicaShellCanvasBrush}">
     <presentation:ResponsiveViewport Style="{StaticResource InterfaceScaleRootStyle}">
-    <Grid >
+    <Grid Background="{DynamicResource AppicaShellCanvasBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

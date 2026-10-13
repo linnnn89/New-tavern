@@ -14,8 +14,7 @@
         ResizeMode="CanResize"
         Background="{DynamicResource AppicaShellCanvasBrush}">
     <presentation:ResponsiveViewport Style="{StaticResource InterfaceScaleRootStyle}">
-    <Grid Background="{DynamicResource AppicaShellCanvasBrush}"
-          >
+    <Grid Background="{DynamicResource AppicaShellCanvasBrush}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="MainNavigationColumn" Width="196" />
             <ColumnDefinition Width="*" />

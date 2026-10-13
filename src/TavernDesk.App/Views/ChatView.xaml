@@ -127,8 +127,8 @@
                                        FontWeight="SemiBold"
                                        TextWrapping="NoWrap"
                                        TextTrimming="CharacterEllipsis" />
-                            <StackPanel Margin="0,3,0,0" Orientation="Horizontal">
-                                <Ellipse Width="7"
+                            <DockPanel Margin="0,3,0,0">
+                                <Ellipse DockPanel.Dock="Left" Width="7"
                                          Height="7"
                                          Margin="0,0,6,0"
                                          VerticalAlignment="Center"
@@ -144,7 +144,7 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                            </StackPanel>
+                            </DockPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="2"
                                     HorizontalAlignment="Right"

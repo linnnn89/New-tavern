@@ -196,6 +196,7 @@ internal static class Program
             CampaignFlowPreset.CollaborativeTable, 8, 4, DateTimeOffset.UtcNow)));
         vm.Campaigns.SelectedCampaign = vm.Campaigns.Campaigns[0];
         vm.Campaigns.SelectedScenario = vm.Campaigns.Scenarios[0];
+        InterfaceSettingsRuntime.Apply(null, 14, true, 100);
         var main = new MainWindow(vm, placement);
         Application.Current.MainWindow = main;
         // Change only presentation selection; no generation commands or network requests are issued.
@@ -236,11 +237,15 @@ internal static class Program
         foreach (var culture in new[] { "zh-CN", "zh-TW", "en-US", "ja-JP" })
         {
             LanguageRuntime.Apply(culture);
+            await Settle(main);
+            chat = Find<ChatView>(main);
+            panel = Named<Border>(chat, "RightPanel");
             foreach (var (scale, font) in new[] { (100, 14d), (125, 20d), (150, 30d) })
             {
                 InterfaceSettingsRuntime.Apply(null, font, true, scale);
                 main.Width = 1080; main.Height = 500;
                 await Settle(main);
+                Check(ReferenceEquals(chat, Find<ChatView>(main)), "Font/scale changes retain the chat controls");
                 var space = Named<ResponsiveViewport>(chat, "ChatViewport");
                 Console.WriteLine($"Scale {scale} font {font}: root={((FrameworkElement)main.Content).RenderSize} transform={((FrameworkElement)main.Content).LayoutTransform.Value}; chat={space.AvailableSize}, loaded={chat.IsLoaded}, same={ReferenceEquals(chat, Find<ChatView>(main))}");
                 Capture((FrameworkElement)main.Content, $"scale-{scale}-font-{font}");
