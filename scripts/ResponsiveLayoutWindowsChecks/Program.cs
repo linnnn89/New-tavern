@@ -242,6 +242,8 @@ internal static class Program
                 main.Width = 1080; main.Height = 500;
                 await Settle(main);
                 var space = Named<ResponsiveViewport>(chat, "ChatViewport");
+                Console.WriteLine($"Scale {scale} font {font}: root={((FrameworkElement)main.Content).RenderSize} transform={((FrameworkElement)main.Content).LayoutTransform.Value}; chat={space.AvailableSize}, loaded={chat.IsLoaded}, same={ReferenceEquals(chat, Find<ChatView>(main))}");
+                Capture((FrameworkElement)main.Content, $"scale-{scale}-font-{font}");
                 Check(space.AvailableSize.Width < 1080 / (scale / 100d), "Main viewport accounts for navigation and scale");
                 Click(Named<Button>(chat, "RightPanelToggleButton"));
                 await Settle(main);

@@ -335,9 +335,13 @@
 
             <Border Grid.Row="0" Style="{StaticResource AppicaShellTopBarStyle}">
                 <Grid>
-                    <TextBlock Text="{Binding PageBreadcrumb}"
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding PageBreadcrumb}"
                                Style="{StaticResource AppicaShellSectionTitleStyle}" />
-                    <StackPanel HorizontalAlignment="Right"
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
                                 Orientation="Horizontal">
                         <views:ShellCaptionButtons />

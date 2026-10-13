@@ -16,9 +16,13 @@
         </Grid.RowDefinitions>
         <Border Style="{StaticResource AppicaShellTopBarStyle}">
             <Grid>
-                <TextBlock Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
                            Style="{StaticResource AppicaShellSectionTitleStyle}" />
-                <views:ShellCaptionButtons HorizontalAlignment="Right" />
+                <views:ShellCaptionButtons Grid.Column="1" HorizontalAlignment="Right" />
             </Grid>
         </Border>
         <views:ChatView Grid.Row="1" />

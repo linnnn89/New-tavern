@@ -190,7 +190,12 @@
                                                        Foreground="{DynamicResource MutedTextBrush}"
                                                        VerticalAlignment="Center" />
                                         </DockPanel>
-                                    </Border></StackPanel>
+                                    </Border>
+<Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,0,8,0"
+                                                Content="{StaticResource Settings.Providers.ClearKey}"
+                                                Command="{Binding ClearKeyCommand}"
+                                                Style="{StaticResource DestructiveButtonStyle}" />
+</StackPanel>
                             </ScrollViewer>
 
                             <!-- Docked Action Footer with Apple-Style Trust Badge -->
@@ -200,10 +205,7 @@
                                     BorderThickness="0,1,0,0"
                                     CornerRadius="0,0,14,14"
                                     Padding="20,12">
-                                <WrapPanel HorizontalAlignment="Right"><Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,0,8,0"
-                                                Content="{StaticResource Settings.Providers.ClearKey}"
-                                                Command="{Binding ClearKeyCommand}"
-                                                Style="{StaticResource DestructiveButtonStyle}" /><Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Settings.Providers.Save}"
+                                <WrapPanel HorizontalAlignment="Right"><Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Settings.Providers.Save}"
                                                 Command="{Binding SaveCommand}"
                                                 Style="{StaticResource PrimaryButtonStyle}" /></WrapPanel>
                             </Border>
