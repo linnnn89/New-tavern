@@ -177,6 +177,18 @@ internal static class Program
 
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
 
+    private static void CheckInspectorLabels(TabControl inspector)
+    {
+        var rail = (Border)inspector.Template.FindName("ActivityRail", inspector);
+        foreach (var tab in inspector.Items.OfType<TabItem>().Where(tab => tab.IsVisible))
+        {
+            var label = (TextBlock)tab.Template.FindName("ShortLabel", tab);
+            var bounds = label.TransformToAncestor(rail).TransformBounds(new Rect(label.RenderSize));
+            Check(label.IsVisible && bounds.Left >= 0 && bounds.Right <= rail.ActualWidth + 1,
+                "Inspector label stays inside the navigation rail: " + label.Text);
+        }
+    }
+
     private static async Task CheckWindows()
     {
         var profile = Path.Combine(_output, "profile");
@@ -234,8 +246,7 @@ internal static class Program
         main.Width = 1600;
         await Settle(main);
         Check(panel.Visibility == Visibility.Visible && Math.Abs(column.Width.Value - 390) < 1, "Overlay docks with the user's width");
-        var rail = (Border)inspector.Template.FindName("ActivityRail", inspector);
-        Check(inspector.Tag is true && rail.ActualWidth >= 96, "Visible inspector labels receive their own rail width");
+        CheckInspectorLabels(inspector);
         Click(Named<Button>(chat, "RightPanelToggleButton"));
         main.Width = 1080; await Settle(main);
         main.Width = 1600; await Settle(main);
@@ -252,6 +263,10 @@ internal static class Program
             await Settle(main);
             chat = Find<ChatView>(main);
             panel = Named<Border>(chat, "RightPanel");
+            InterfaceSettingsRuntime.Apply(null, 14, true, 100);
+            main.Width = 1600; main.Height = 900;
+            await Settle(main);
+            CheckInspectorLabels(Named<TabControl>(chat, "InspectorTabs"));
             foreach (var (scale, font) in new[] { (100, 14d), (125, 20d), (150, 30d) })
             {
                 InterfaceSettingsRuntime.Apply(null, font, true, scale);
@@ -308,6 +323,22 @@ internal static class Program
                     await Settle(main);
                     Capture((FrameworkElement)main.Content, $"{page.GetType().Name}-{suffix}-detail");
                 }
+            }
+        }
+        typeof(MainWindowViewModel).GetProperty(nameof(vm.CurrentPage))!.SetValue(vm, vm.Settings);
+        foreach (var section in new[] { SettingsPage.ModelCatalog, SettingsPage.Assignments })
+        {
+            vm.Settings.SelectedSettingsPage = section;
+            foreach (var (width, height, scale, suffix) in new[] { (1600d, 900d, 100, "wide"), (1080d, 620d, 125, "narrow") })
+            {
+                InterfaceSettingsRuntime.ApplyScale(scale);
+                main.Width = width; main.Height = height;
+                await Settle(main);
+                var panes = Find<ResponsivePanes>(main);
+                Check(panes.LayoutMode == (suffix == "wide" ? "Columns" : "Tabs"), section + " responds to available width");
+                panes.SelectPane(true);
+                await Settle(main);
+                Capture((FrameworkElement)main.Content, $"settings-{section}-{suffix}");
             }
         }
         InterfaceSettingsRuntime.ApplyScale(100);
