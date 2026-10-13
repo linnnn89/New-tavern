@@ -11,6 +11,7 @@ using TavernDesk.App.Presentation;
 using TavernDesk.App.Services;
 using TavernDesk.App.ViewModels;
 using TavernDesk.App.Views;
+using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
 using TavernDesk.Infrastructure.Storage;
 
@@ -137,6 +138,10 @@ internal static class Program
             if (FindOrNull<T>(VisualTreeHelper.GetChild(root, i)) is { } found) return found;
         return null;
     }
+    private static T Named<T>(FrameworkElement view, string name) where T : class =>
+        (T)(view.GetType().GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(view)
+            ?? view.FindName(name) ?? throw new InvalidOperationException($"Missing named element {name}"));
+
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
 
     private static async Task CheckWindows()
@@ -151,6 +156,19 @@ internal static class Program
         var factory = new ChatViewModelFactory(services, interaction, dialogs);
         var vm = new MainWindowViewModel(services, dialogs, interaction, factory.Create());
         await vm.InitializeAsync();
+        await vm.Settings.LoadAsync();
+        for (var i = 0; i < 100; i++)
+        {
+            vm.Worldbooks.Entries.Add(new WorldbookEntry { Id = $"entry-{i}", Title = $"Entry {i}: a long multilingual title 日本語 繁體中文", Content = "Fictional layout sample. Unsaved text stays in the same editor." });
+            vm.Campaigns.Scenarios.Add(new CampaignScenario { Title = $"Scenario {i}: The expedition beyond the northern mountains", Summary = "Fictional sample for wrapping action labels and list virtualization." });
+        }
+        vm.Worldbooks.SelectedEntry = vm.Worldbooks.Entries[0];
+        vm.Worldbooks.EntryTitle = "Unsaved worldbook title";
+        vm.Campaigns.Campaigns.Add(new CampaignSummaryItemViewModel(new CampaignSummary("sample", "sample", null,
+            "An ongoing fictional expedition", CampaignStatus.Active, CampaignPhase.AwaitingActions,
+            CampaignFlowPreset.CollaborativeTable, 8, 4, DateTimeOffset.UtcNow)));
+        vm.Campaigns.SelectedCampaign = vm.Campaigns.Campaigns[0];
+        vm.Campaigns.SelectedScenario = vm.Campaigns.Scenarios[0];
         var main = new MainWindow(vm, placement);
         Application.Current.MainWindow = main;
         // Change only presentation selection; no generation commands or network requests are issued.
@@ -162,29 +180,29 @@ internal static class Program
         await Settle(independent);
         var chat = Find<ChatView>(main);
         var otherChat = Find<ChatView>(independent);
-        var panel = (Border)chat.FindName("RightPanel");
-        var column = (ColumnDefinition)chat.FindName("RightPanelColumn");
-        var inspector = (TabControl)chat.FindName("InspectorTabs");
+        var panel = Named<Border>(chat, "RightPanel");
+        var column = Named<ColumnDefinition>(chat, "RightPanelColumn");
+        var inspector = Named<TabControl>(chat, "InspectorTabs");
         inspector.SelectedIndex = 3;
         vm.Chat.ComposerText = "Unsaved chat input 日本語";
         column.Width = new GridLength(390);
-        ((GridSplitter)chat.FindName("RightPanelSplitter")).RaiseEvent(new DragCompletedEventArgs(0, 0, false));
+        (Named<GridSplitter>(chat, "RightPanelSplitter")).RaiseEvent(new DragCompletedEventArgs(0, 0, false));
         main.Width = 1080;
         await Settle(main);
         Check(panel.Visibility == Visibility.Collapsed, "Main window automatically collapses");
-        Check(((Border)otherChat.FindName("RightPanel")).Visibility == Visibility.Visible, "Independent window uses its own available space");
-        Click((Button)chat.FindName("RightPanelToggleButton"));
+        Check((Named<Border>(otherChat, "RightPanel")).Visibility == Visibility.Visible, "Independent window uses its own available space");
+        Click(Named<Button>(chat, "RightPanelToggleButton"));
         await Settle(main);
-        Check(((Border)chat.FindName("RightPanelOverlayHeader")).Visibility == Visibility.Visible, "Compact inspector opens as overlay");
+        Check((Named<Border>(chat, "RightPanelOverlayHeader")).Visibility == Visibility.Visible, "Compact inspector opens as overlay");
         main.Width = 1600;
         await Settle(main);
         Check(panel.Visibility == Visibility.Visible && Math.Abs(column.Width.Value - 390) < 1, "Overlay docks with the user's width");
-        Click((Button)chat.FindName("RightPanelToggleButton"));
+        Click(Named<Button>(chat, "RightPanelToggleButton"));
         main.Width = 1080; await Settle(main);
         main.Width = 1600; await Settle(main);
         Check(panel.Visibility == Visibility.Collapsed, "Manual close survives resize");
         Check(inspector.SelectedIndex == 3 && vm.Chat.ComposerText == "Unsaved chat input 日本語", "Inspector selection and composer survive");
-        Click((Button)chat.FindName("RightPanelToggleButton"));
+        Click(Named<Button>(chat, "RightPanelToggleButton"));
         foreach (var culture in new[] { "zh-CN", "zh-TW", "en-US", "ja-JP" })
         {
             LanguageRuntime.Apply(culture);
@@ -193,12 +211,12 @@ internal static class Program
                 InterfaceSettingsRuntime.Apply(null, font, true, scale);
                 main.Width = 1080; main.Height = 500;
                 await Settle(main);
-                var space = (ResponsiveViewport)chat.FindName("ChatViewport");
+                var space = Named<ResponsiveViewport>(chat, "ChatViewport");
                 Check(space.AvailableSize.Width < 1080 / (scale / 100d), "Main viewport accounts for navigation and scale");
-                Click((Button)chat.FindName("RightPanelToggleButton"));
+                Click(Named<Button>(chat, "RightPanelToggleButton"));
                 await Settle(main);
                 Check(panel.Width <= space.AvailableSize.Width, "Overlay fits viewport");
-                Click((Button)chat.FindName("RightPanelOverlayCloseButton"));
+                Click(Named<Button>(chat, "RightPanelOverlayCloseButton"));
                 Check(panel.Visibility == Visibility.Collapsed, "Overlay closes");
             }
         }
@@ -212,6 +230,12 @@ internal static class Program
                 main.Width = width; main.Height = height;
                 await Settle(main);
                 Capture((FrameworkElement)main.Content, $"{page.GetType().Name}-{suffix}");
+                if (FindOrNull<ResponsivePanes>(main) is { } panes)
+                {
+                    panes.SelectPane(true);
+                    await Settle(main);
+                    Capture((FrameworkElement)main.Content, $"{page.GetType().Name}-{suffix}-detail");
+                }
             }
         }
         independent.Width = 960; independent.Height = 620;
