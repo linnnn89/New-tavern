@@ -140,7 +140,7 @@ if ($unexpectedTaiwanTerms.Count -gt 0) {
 $hardcodedXaml = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
     Where-Object {
         $_.FullName -notlike "$localizationRoot*" -and
-        $_.FullName -notmatch '\\(bin|obj)\\'
+        $_.FullName -notmatch '[\\/](bin|obj)[\\/]'
     } |
     Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]' -Encoding UTF8
 if ($hardcodedXaml) {
@@ -152,7 +152,7 @@ $allowedCSharp = @(
     'TimedPressFeedback.cs'
 )
 $hardcodedCSharp = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
-    Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
     Select-String -Pattern '[\p{IsCJKUnifiedIdeographs}]' -Encoding UTF8 |
     Where-Object {
         $name = $_.Path | Split-Path -Leaf
@@ -172,7 +172,7 @@ if ($hardcodedCSharp) {
 $nativeMessageBoxCalls = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
     Where-Object {
         $_.Name -ne 'LocalizedMessageBox.cs' -and
-        $_.FullName -notmatch '\\(bin|obj)\\'
+        $_.FullName -notmatch '[\\/](bin|obj)[\\/]'
     } |
     Select-String -Pattern '\bMessageBox\.Show\s*\(' -Encoding UTF8
 if ($nativeMessageBoxCalls) {
@@ -183,7 +183,7 @@ $unlocalizedButtonText = [System.Collections.Generic.List[string]]::new()
 $buttonXamlFiles = Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
     Where-Object {
         $_.FullName -notlike "$localizationRoot*" -and
-        $_.FullName -notmatch '\\(bin|obj)\\'
+        $_.FullName -notmatch '[\\/](bin|obj)[\\/]'
     }
 foreach ($file in $buttonXamlFiles) {
     [xml]$xaml = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
@@ -220,7 +220,7 @@ $referencedKeys = [System.Collections.Generic.HashSet[string]]::new(
 # Only complete literal arguments are keys; concatenated prefixes are not.
 $codeReferencePattern = 'LanguageRuntime\.(?:GetString|Format)\(\s*"([^"]+)"\s*(?=[,)])'
 Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
-    Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
     ForEach-Object {
         $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
         foreach ($match in [regex]::Matches($source, $codeReferencePattern)) {
@@ -237,7 +237,7 @@ foreach ($key in $baseline.Keys) {
 $resourceLikeLiteralPattern =
     '"([A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)+)"'
 Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.cs' |
-    Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
     ForEach-Object {
         $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
         foreach ($match in [regex]::Matches($source, $resourceLikeLiteralPattern)) {
@@ -253,7 +253,7 @@ $xamlReferencePattern = '\{(?:Dynamic|Static)Resource\s+([A-Za-z0-9_.-]+)\}'
 Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
     Where-Object {
         $_.FullName -notlike "$localizationRoot*" -and
-        $_.FullName -notmatch '\\(bin|obj)\\'
+        $_.FullName -notmatch '[\\/](bin|obj)[\\/]'
     } |
     ForEach-Object {
         $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
@@ -279,7 +279,7 @@ $declaredXamlResources = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::Ordinal)
 $allAppXaml = @(
     Get-ChildItem -LiteralPath $appRoot -Recurse -Filter '*.xaml' |
-        Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
 )
 foreach ($file in $allAppXaml) {
     $source = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8

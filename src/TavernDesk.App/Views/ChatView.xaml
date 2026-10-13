@@ -44,10 +44,12 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
+    <presentation:ResponsiveViewport x:Name="ChatViewport" Margin="16"
+                                     ReferenceFontSize="{DynamicResource InterfaceFontSize}">
     <Grid x:Name="ChatLayoutRoot"
-          Margin="16"
           Background="{DynamicResource WindowBackgroundBrush}"
           UseLayoutRounding="True">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="ConversationListColumn" Width="240" MinWidth="220" />
             <ColumnDefinition Width="6" />
@@ -56,14 +58,28 @@
             <ColumnDefinition x:Name="RightPanelColumn" Width="360" MinWidth="260" />
         </Grid.ColumnDefinitions>
 
-        <chat:ChatConversationList Grid.Column="0" />
+        <Button x:Name="ConversationListToggle" Grid.ColumnSpan="5" HorizontalAlignment="Left"
+                Visibility="Collapsed" Content="☰" Width="36" Height="36" FontSize="18" Padding="4"
+                ToolTip="{StaticResource Chat.ToggleConversations}"
+                AutomationProperties.Name="{StaticResource Chat.ToggleConversations}"
+                Click="ConversationListToggle_OnClick" Style="{StaticResource SecondaryButtonStyle}" />
+        <Border x:Name="ConversationListPane" Grid.Row="1" Grid.Column="0"
+                Background="{DynamicResource SurfaceBrush}" PreviewKeyDown="ConversationListPane_OnPreviewKeyDown">
+            <DockPanel>
+                <Button x:Name="ConversationListClose" DockPanel.Dock="Top" Visibility="Collapsed"
+                        Content="{StaticResource Common.Close}" Click="ConversationListToggle_OnClick"
+                        Style="{StaticResource SecondaryButtonStyle}" />
+                <chat:ChatConversationList />
+            </DockPanel>
+        </Border>
 
-        <GridSplitter Grid.Column="1"
+        <GridSplitter x:Name="ConversationListSplitter" Grid.Row="1" Grid.Column="1"
+                      DragCompleted="ConversationListSplitter_OnDragCompleted"
                       Width="6"
                       HorizontalAlignment="Stretch"
                       Background="Transparent" />
 
-        <Border Grid.Column="2"
+        <Border Grid.Row="1" Grid.Column="2"
                 Style="{StaticResource AppicaChatWorkspaceStyle}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -73,7 +89,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0"
+                <Border x:Name="ChatHeader" Grid.Row="0"
                         Style="{StaticResource AppicaChatHeaderStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -113,8 +129,8 @@
                                        FontWeight="SemiBold"
                                        TextWrapping="NoWrap"
                                        TextTrimming="CharacterEllipsis" />
-                            <StackPanel Margin="0,3,0,0" Orientation="Horizontal">
-                                <Ellipse Width="7"
+                            <DockPanel x:Name="ChatHeaderStatus" Margin="0,3,0,0">
+                                <Ellipse DockPanel.Dock="Left" Width="7"
                                          Height="7"
                                          Margin="0,0,6,0"
                                          VerticalAlignment="Center"
@@ -130,13 +146,13 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                            </StackPanel>
+                            </DockPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="2"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal">
-                            <TextBlock Text="{StaticResource Chat.DisplayLabel}" VerticalAlignment="Center" Margin="0,0,5,0"
+                            <TextBlock x:Name="DisplayModeLabel" Text="{StaticResource Chat.DisplayLabel}" VerticalAlignment="Center" Margin="0,0,5,0"
                                        FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedTextBrush}" />
                             <ComboBox Width="92" Margin="0,0,8,0" MinHeight="32"
                                       AutomationProperties.AutomationId="ChatDisplayMode"
@@ -767,23 +783,23 @@
                         Style="{StaticResource SecondaryButtonStyle}" />
             </StackPanel>
 
-            <Border Grid.Row="3" Style="{StaticResource AppicaChatComposerStyle}">
+            <Border x:Name="ComposerPanel" Grid.Row="3" Style="{StaticResource AppicaChatComposerStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Border Background="{DynamicResource WarningBg}" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                    <Border x:Name="ModelNotice" Background="{DynamicResource WarningBg}" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
                             Visibility="{Binding IsGenerationModelMissing, Converter={StaticResource BooleanToVisibilityConverter}}"
                             AutomationProperties.AutomationId="ModelAssignmentNotice">
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Margin="12,0,0,0"
-                                    Command="{Binding OpenModelSettingsCommand}" AutomationProperties.AutomationId="AssignChatModel"
+                                    Command="{Binding OpenModelSettingsCommand}" ToolTip="{Binding ActiveModelText}" AutomationProperties.AutomationId="AssignChatModel"
                                     Style="{StaticResource ComposerStatusLink}">
                                 <TextBlock Text="{StaticResource Chat.AssignModel}" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource AccentBrush}" />
                             </Button>
-                            <TextBlock Text="{Binding ActiveModelText}" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeSmall}"
+                            <TextBlock x:Name="ModelNoticeText" Text="{Binding ActiveModelText}" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeSmall}"
                                        Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         </DockPanel>
                     </Border>
@@ -865,13 +881,13 @@
             </Grid>
         </Border>
 
-        <GridSplitter x:Name="RightPanelSplitter"
+        <GridSplitter x:Name="RightPanelSplitter" Grid.Row="1" DragCompleted="RightPanelSplitter_OnDragCompleted"
                       Grid.Column="3"
                       Width="6"
                       HorizontalAlignment="Stretch"
                       Background="Transparent" />
 
-        <Border x:Name="RightPanel"
+        <Border x:Name="RightPanel" Grid.Row="1"
                 Grid.Column="4"
                 PreviewKeyDown="RightPanel_OnPreviewKeyDown"
                 Style="{StaticResource AppicaChatInspectorStyle}">
@@ -913,4 +929,5 @@
 
 
     </Grid>
+    </presentation:ResponsiveViewport>
 </UserControl>

@@ -37,18 +37,14 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
+        <StackPanel Grid.Row="0">
+<StackPanel>
                 <TextBlock Text="{StaticResource Characters.Title}" Style="{StaticResource PageTitleStyle}" />
 
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
+<WrapPanel  VerticalAlignment="Center">
+                <WrapPanel.Style>
+                    <Style TargetType="WrapPanel">
                         <Setter Property="Visibility" Value="Visible" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCharacterToolsOpen}" Value="True">
@@ -56,26 +52,26 @@
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </StackPanel.Style>
+                </WrapPanel.Style>
                 <shared:SearchBox Width="210"
                          Margin="0,0,12,0"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Placeholder="{StaticResource Characters.SearchPlaceholder}"
                          ToolTip="{StaticResource Characters.SearchToolTip}" />
                 <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="8">
-                    <StackPanel Orientation="Horizontal">
+                    <WrapPanel >
                         <RadioButton AutomationProperties.AutomationId="CharacterDensityDense" Content="{StaticResource Characters.Layout.Dense}"
                                      GroupName="CharacterDensity" IsChecked="{Binding IsDense, Mode=TwoWay}" Style="{StaticResource DensityChoiceStyle}" />
                         <RadioButton AutomationProperties.AutomationId="CharacterDensityMedium" Content="{StaticResource Characters.Layout.Medium}"
                                      GroupName="CharacterDensity" IsChecked="{Binding IsMedium, Mode=TwoWay}" Style="{StaticResource DensityChoiceStyle}" />
                         <RadioButton AutomationProperties.AutomationId="CharacterDensityLarge" Content="{StaticResource Characters.Layout.Large}"
                                      GroupName="CharacterDensity" IsChecked="{Binding IsLarge, Mode=TwoWay}" Style="{StaticResource DensityChoiceStyle}" />
-                    </StackPanel>
+                    </WrapPanel>
                 </Border>
                 <Button Content="{StaticResource Characters.ImportCard}" Command="{Binding ImportCommand}" Margin="12,0,0,0"
                         Style="{StaticResource PrimaryButtonStyle}" />
-            </StackPanel>
-            <Button Grid.Column="1"
+            </WrapPanel>
+<Button
                     Content="{StaticResource Characters.BackToShelf}"
                     Command="{Binding CloseCharacterToolsCommand}">
                 <Button.Style>
@@ -89,7 +85,7 @@
                     </Style>
                 </Button.Style>
             </Button>
-        </Grid>
+</StackPanel>
 
         <TextBlock Grid.Row="1" Text="{Binding Status}" Margin="0,8,0,14" TextWrapping="Wrap"
                    Foreground="{DynamicResource MutedTextBrush}">
@@ -199,20 +195,16 @@
                         CornerRadius="12"
                         Background="{DynamicResource AccentSoftBrush}"
                         Visibility="{Binding IsShelfBatchMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
+                    <StackPanel>
+<StackPanel>
                             <TextBlock Text="{Binding SelectedShelf.Name, StringFormat={StaticResource Characters.BatchTitleFormat}}"
                                        FontWeight="SemiBold" />
                             <TextBlock Text="{StaticResource Characters.BatchDescription}"
                                        Margin="0,3,12,0"
                                        Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1"
-                                    Orientation="Horizontal"
+<WrapPanel
+
                                     VerticalAlignment="Center">
                             <TextBlock Margin="0,0,12,0"
                                        VerticalAlignment="Center">
@@ -225,8 +217,8 @@
                                     CommandParameter="{Binding SelectedItems, ElementName=CharacterCardList}"
                                     ToolTip="{StaticResource Characters.RemoveSelectedToolTip}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                        </StackPanel>
-                    </Grid>
+                        </WrapPanel>
+</StackPanel>
                 </Border>
 
                 <Border Grid.Row="1">

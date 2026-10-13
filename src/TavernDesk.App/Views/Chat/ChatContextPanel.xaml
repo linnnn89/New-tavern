@@ -29,20 +29,16 @@
         <StackPanel>
             <Border Style="{StaticResource AppicaInspectorCardStyle}">
                 <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="{StaticResource Chat.TokenUsage}"
+                    <StackPanel>
+<TextBlock TextWrapping="Wrap" Text="{StaticResource Chat.TokenUsage}"
                                    Style="{StaticResource AppicaInspectorCardTitleStyle}" />
-                        <TextBlock Grid.Column="1"
-                                   Margin="12,0,0,0"
+<TextBlock
+                                   Margin="0,4,0,0"
                                    VerticalAlignment="Center"
                                    Text="{Binding EstimatedTokenHeadline}" ToolTip="{Binding EstimatedTokenText}"
                                    FontSize="{DynamicResource FontSizeBodyLarge}"
                                    FontWeight="SemiBold" />
-                    </Grid>
+</StackPanel>
 
                     <ProgressBar Margin="0,14,0,0"
                                  Value="{Binding EstimatedTokenUsagePercent, Mode=OneWay}" ToolTip="{Binding EstimatedTokenBreakdown}"

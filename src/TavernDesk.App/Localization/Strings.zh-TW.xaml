@@ -1715,4 +1715,5 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Memory.Request.Short">查看請求</sys:String>
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">輸入組成 · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">尚未開始跑團。選擇劇本，展開新的冒險。</sys:String>
+    <sys:String x:Key="Worldbook.Entries">詞條清單</sys:String>
 </ResourceDictionary>

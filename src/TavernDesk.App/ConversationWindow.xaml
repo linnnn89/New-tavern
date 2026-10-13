@@ -1,24 +1,31 @@
 <Window x:Class="TavernDesk.App.ConversationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:presentation="clr-namespace:TavernDesk.App.Presentation"
         xmlns:views="clr-namespace:TavernDesk.App.Views"
         Title="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
         MinWidth="960"
         MinHeight="620"
         ResizeMode="CanResize"
         Background="{DynamicResource AppicaShellCanvasBrush}">
-    <Grid Style="{StaticResource InterfaceScaleRootStyle}">
+    <presentation:ResponsiveViewport Style="{StaticResource InterfaceScaleRootStyle}">
+    <Grid Background="{DynamicResource AppicaShellCanvasBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Border Style="{StaticResource AppicaShellTopBarStyle}">
             <Grid>
-                <TextBlock Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
                            Style="{StaticResource AppicaShellSectionTitleStyle}" />
-                <views:ShellCaptionButtons HorizontalAlignment="Right" />
+                <views:ShellCaptionButtons Grid.Column="1" HorizontalAlignment="Right" />
             </Grid>
         </Border>
         <views:ChatView Grid.Row="1" />
     </Grid>
+    </presentation:ResponsiveViewport>
 </Window>

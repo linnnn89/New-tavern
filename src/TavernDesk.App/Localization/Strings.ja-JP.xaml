@@ -1715,4 +1715,5 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Memory.Request.Short">リクエストを表示</sys:String>
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">入力の内訳 · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">まだセッションがありません。シナリオを選んで冒険を始めましょう。</sys:String>
+    <sys:String x:Key="Worldbook.Entries">項目一覧</sys:String>
 </ResourceDictionary>

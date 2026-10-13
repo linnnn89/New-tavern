@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime"
                     xmlns:presentation="clr-namespace:TavernDesk.App.Presentation">
     <Style x:Key="TokenUsageTextStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
@@ -205,7 +206,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Background="{DynamicResource SurfaceSunken}">
+                        <Border x:Name="ActivityRail" Background="{DynamicResource SurfaceSunken}">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <TabPanel x:Name="HeaderPanel" IsItemsHost="True" VerticalAlignment="Top"
                                           KeyboardNavigation.TabIndex="1" KeyboardNavigation.TabNavigation="Once" />
@@ -222,6 +223,12 @@
                             </Grid>
                         </Border>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Tag">
+                            <Trigger.Value><system:Boolean>True</system:Boolean></Trigger.Value>
+                            <Setter TargetName="ActivityRail" Property="MinWidth" Value="96" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

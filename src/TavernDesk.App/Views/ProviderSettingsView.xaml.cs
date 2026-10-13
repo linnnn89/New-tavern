@@ -8,6 +8,7 @@ namespace TavernDesk.App.Views;
 
 public partial class ProviderSettingsView : UserControl
 {
+    private ProviderSettingsViewModel? _observedViewModel;
     private bool _syncingProviderSelection;
     private bool _providerSwitchInProgress;
 
@@ -15,18 +16,24 @@ public partial class ProviderSettingsView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        Loaded += (_, _) => ObserveViewModel(DataContext as ProviderSettingsViewModel);
+        Unloaded += (_, _) => ObserveViewModel(null);
     }
 
     private void OnDataContextChanged(
         object sender,
         System.Windows.DependencyPropertyChangedEventArgs e)
     {
-        if (e.OldValue is ProviderSettingsViewModel previous)
-        {
-            previous.PropertyChanged -= OnViewModelPropertyChanged;
-        }
+        if (IsLoaded) ObserveViewModel(e.NewValue as ProviderSettingsViewModel);
+    }
 
-        if (e.NewValue is ProviderSettingsViewModel current)
+    private void ObserveViewModel(ProviderSettingsViewModel? current)
+    {
+        if (ReferenceEquals(_observedViewModel, current)) return;
+        if (_observedViewModel is not null)
+            _observedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _observedViewModel = current;
+        if (current is not null)
         {
             current.PropertyChanged += OnViewModelPropertyChanged;
             SyncPasswordBox(current);

@@ -1,0 +1,30 @@
+name: Responsive WPF layout
+on:
+  push:
+    branches: [ui/responsive-layout, 跑团记忆升级版]
+    paths: ['src/**', 'scripts/**', '.github/workflows/responsive-layout.yml']
+  pull_request:
+    paths: ['src/**', 'scripts/**', '.github/workflows/responsive-layout.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-layout:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet build TavernDesk.sln -c Release
+      - run: ./scripts/Test-Localization.ps1
+      - run: dotnet run --project scripts/ResponsiveLayoutChecks -c Release
+      - run: dotnet run --project scripts/GroupContextHistoryTdd -c Release
+      - run: ./scripts/Start-IsolatedTest.ps1 -StartupProbe
+      - run: dotnet run --project scripts/ResponsiveLayoutWindowsChecks -c Release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: responsive-layout-evidence
+          path: artifacts/responsive-layout/*.png
