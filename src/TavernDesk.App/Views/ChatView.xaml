@@ -59,7 +59,9 @@
         </Grid.ColumnDefinitions>
 
         <Button x:Name="ConversationListToggle" Grid.ColumnSpan="5" HorizontalAlignment="Left"
-                Visibility="Collapsed" Content="{StaticResource Chat.ToggleConversations}"
+                Visibility="Collapsed" Content="☰" Width="36" Height="36" FontSize="18" Padding="4"
+                ToolTip="{StaticResource Chat.ToggleConversations}"
+                AutomationProperties.Name="{StaticResource Chat.ToggleConversations}"
                 Click="ConversationListToggle_OnClick" Style="{StaticResource SecondaryButtonStyle}" />
         <Border x:Name="ConversationListPane" Grid.Row="1" Grid.Column="0"
                 Background="{DynamicResource SurfaceBrush}" PreviewKeyDown="ConversationListPane_OnPreviewKeyDown">

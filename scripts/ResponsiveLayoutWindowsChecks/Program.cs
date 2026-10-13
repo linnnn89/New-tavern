@@ -243,6 +243,10 @@ internal static class Program
         foreach (var culture in new[] { "zh-CN", "zh-TW", "en-US", "ja-JP" })
         {
             LanguageRuntime.Apply(culture);
+            // StaticResource labels are resolved when a page is constructed, as on localized startup.
+            typeof(MainWindowViewModel).GetProperty(nameof(vm.CurrentPage))!.SetValue(vm, vm.Dashboard);
+            await Settle(main);
+            typeof(MainWindowViewModel).GetProperty(nameof(vm.CurrentPage))!.SetValue(vm, vm.Chat);
             await Settle(main);
             chat = Find<ChatView>(main);
             panel = Named<Border>(chat, "RightPanel");
