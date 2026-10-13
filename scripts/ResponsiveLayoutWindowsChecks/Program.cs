@@ -18,6 +18,7 @@ using TavernDesk.Infrastructure.Storage;
 internal static class Program
 {
     private static int _checks;
+    private static readonly List<string> Failures = [];
     private static string _output = "";
     [STAThread]
     public static int Main(string[] args)
@@ -45,6 +46,7 @@ internal static class Program
                 CheckMeasureBoundary();
                 CheckPersistentPanes();
                 await CheckWindows();
+                if (Failures.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, Failures));
                 Console.WriteLine($"Windows WPF layout: {_checks} checks passed. Rendered evidence: {_output}");
                 app.Shutdown(0);
             }
@@ -87,7 +89,11 @@ internal static class Program
     private static void Check(bool condition, string message)
     {
         _checks++;
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+        {
+            Failures.Add(message);
+            Console.Error.WriteLine($"FAIL: {message}");
+        }
     }
 
     private static void Layout(FrameworkElement view, double width, double height)
@@ -246,6 +252,8 @@ internal static class Program
                 main.Width = 1080; main.Height = 500;
                 await Settle(main);
                 Check(ReferenceEquals(chat, Find<ChatView>(main)), "Font/scale changes retain the chat controls");
+                chat = Find<ChatView>(main);
+                panel = Named<Border>(chat, "RightPanel");
                 var space = Named<ResponsiveViewport>(chat, "ChatViewport");
                 Console.WriteLine($"Scale {scale} font {font}: root={((FrameworkElement)main.Content).RenderSize} transform={((FrameworkElement)main.Content).LayoutTransform.Value}; chat={space.AvailableSize}, loaded={chat.IsLoaded}, same={ReferenceEquals(chat, Find<ChatView>(main))}");
                 Capture((FrameworkElement)main.Content, $"scale-{scale}-font-{font}");
@@ -261,6 +269,10 @@ internal static class Program
                     { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
                 panel.RaiseEvent(escape);
                 Check(escape.Handled && panel.Visibility == Visibility.Collapsed, "Escape closes the inspector overlay");
+                var send = Named<Button>(chat, "ChatSendButton");
+                var sendBounds = send.TransformToAncestor(main).TransformBounds(new Rect(send.RenderSize));
+                Check(sendBounds.Bottom <= main.ActualHeight + 1 && sendBounds.Right <= main.ActualWidth + 1,
+                    "Send action stays within the window at large font/scale");
             }
         }
         Capture((FrameworkElement)main.Content, "main-chat-150percent-font30");
@@ -271,6 +283,7 @@ internal static class Program
             typeof(MainWindowViewModel).GetProperty(nameof(vm.CurrentPage))!.SetValue(vm, page);
             foreach (var (width, height, suffix) in new[] { (1600d, 900d, "wide"), (1080d, 620d, "narrow") })
             {
+                InterfaceSettingsRuntime.ApplyScale(suffix == "narrow" ? 125 : 100);
                 main.Width = width; main.Height = height;
                 await Settle(main);
                 Capture((FrameworkElement)main.Content, $"{page.GetType().Name}-{suffix}");
@@ -282,6 +295,7 @@ internal static class Program
                 }
             }
         }
+        InterfaceSettingsRuntime.ApplyScale(100);
         independent.Width = 960; independent.Height = 620;
         await Settle(independent);
         Capture((FrameworkElement)independent.Content, "independent-chat-narrow");
@@ -293,7 +307,8 @@ internal static class Program
 
     private static void Capture(FrameworkElement visual, string name)
     {
-        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(visual.ActualWidth), (int)Math.Ceiling(visual.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        var bounds = visual.LayoutTransform.TransformBounds(new Rect(visual.RenderSize));
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(bounds.Width), (int)Math.Ceiling(bounds.Height), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);
         var png = new PngBitmapEncoder();
         png.Frames.Add(BitmapFrame.Create(bitmap));
