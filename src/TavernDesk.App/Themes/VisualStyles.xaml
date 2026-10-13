@@ -205,7 +205,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Background="{DynamicResource SurfaceSunken}">
+                        <Border x:Name="ActivityRail" Background="{DynamicResource SurfaceSunken}">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <TabPanel x:Name="HeaderPanel" IsItemsHost="True" VerticalAlignment="Top"
                                           KeyboardNavigation.TabIndex="1" KeyboardNavigation.TabNavigation="Once" />
@@ -222,6 +222,11 @@
                             </Grid>
                         </Border>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                            <Setter TargetName="ActivityRail" Property="MinWidth" Value="96" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

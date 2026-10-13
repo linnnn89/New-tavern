@@ -213,7 +213,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    
+
 
                     <presentation:ResponsivePanes x:Name="EntryPanes" Grid.Row="1" ReferenceWidth="760" FirstWidth="320" FirstHeader="{StaticResource Worldbook.Entries}" SecondHeader="{StaticResource Worldbook.EntryBody}">
                     <presentation:ResponsivePanes.First>

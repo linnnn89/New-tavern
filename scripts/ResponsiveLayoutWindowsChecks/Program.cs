@@ -234,6 +234,8 @@ internal static class Program
         main.Width = 1600;
         await Settle(main);
         Check(panel.Visibility == Visibility.Visible && Math.Abs(column.Width.Value - 390) < 1, "Overlay docks with the user's width");
+        var rail = (Border)inspector.Template.FindName("ActivityRail", inspector);
+        Check(inspector.Tag is true && rail.ActualWidth >= 96, "Visible inspector labels receive their own rail width");
         Click(Named<Button>(chat, "RightPanelToggleButton"));
         main.Width = 1080; await Settle(main);
         main.Width = 1600; await Settle(main);
