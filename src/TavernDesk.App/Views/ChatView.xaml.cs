@@ -16,7 +16,6 @@ namespace TavernDesk.App.Views;
 public partial class ChatView : UserControl
 {
     private const double RightPanelMinimumWidth = 260;
-    private const double WindowChromeAllowance = 16;
     private readonly TimedPressFeedback _pressFeedback = new();
     private readonly DispatcherTimer _groupMemberMenuTimer;
     private readonly HashSet<ChatMessageItemViewModel> _observedMessages = [];
@@ -33,7 +32,10 @@ public partial class ChatView : UserControl
     private bool _isRightPanelAutoCollapsed;
     private bool _isRightPanelOverlay;
     private double _rightPanelWidth = 360;
-    private Window? _layoutHostWindow;
+    private bool _hasListSpace = true;
+    private double _conversationListWidth = 240;
+    private bool _hasDockSpace = true;
+    private bool _showInspectorLabels;
     private ContextMenu? _openGroupMemberMenu;
 
     public ChatView()
@@ -47,7 +49,7 @@ public partial class ChatView : UserControl
         Loaded += ChatView_OnLoaded;
         Unloaded += ChatView_OnUnloaded;
         DataContextChanged += ChatView_OnDataContextChanged;
-        ChatLayoutRoot.SizeChanged += (_, _) => UpdateResponsiveLayout();
+        ChatViewport.AvailableSpaceChanged += (_, _) => UpdateResponsiveLayout();
         ConversationMessageList.AddHandler(
             ScrollViewer.ScrollChangedEvent,
             new ScrollChangedEventHandler(MessageList_OnScrollChanged));
@@ -110,11 +112,6 @@ public partial class ChatView : UserControl
             return;
         }
 
-        if (!_isRightPanelOverlay && RightPanelColumn.ActualWidth >= RightPanelMinimumWidth)
-        {
-            _rightPanelWidth = RightPanelColumn.ActualWidth;
-        }
-
         RestoreDockedRightPanelLayout();
         RightPanelColumn.MinWidth = 0;
         RightPanelColumn.Width = new GridLength(0);
@@ -132,12 +129,13 @@ public partial class ChatView : UserControl
 
     private void OpenRightPanelOverlay()
     {
+        if (!_hasListSpace) ConversationListPane.Visibility = Visibility.Hidden;
         // Reuse the same panel and bindings without forcing all three columns into a narrow window.
         Grid.SetColumn(RightPanel, 0);
         Grid.SetColumnSpan(RightPanel, ChatLayoutRoot.ColumnDefinitions.Count);
         Panel.SetZIndex(RightPanel, 1);
         RightPanel.HorizontalAlignment = HorizontalAlignment.Right;
-        RightPanel.Width = Math.Min(Math.Max(_rightPanelWidth, RightPanelMinimumWidth), ChatLayoutRoot.ActualWidth);
+        RightPanel.Width = Math.Min(Math.Max(_rightPanelWidth, RightPanelMinimumWidth), ChatViewport.AvailableSize.Width);
         RightPanel.Visibility = Visibility.Visible;
         RightPanelOverlayHeader.Visibility = Visibility.Visible;
         _isRightPanelCollapsed = false;
@@ -179,15 +177,8 @@ public partial class ChatView : UserControl
             return;
         }
 
-        var fixedMinimumWidth = ExpandedLayoutMinimumWidth() - Math.Max(RightPanelMinimumWidth, _rightPanelWidth);
-        var maximumSafeRightPanelWidth = Math.Max(
-            RightPanelMinimumWidth,
-            AvailableUnscaledChatWidth() - fixedMinimumWidth);
-        var restoredRightPanelWidth = Math.Min(
-            Math.Max(_rightPanelWidth, RightPanelMinimumWidth),
-            maximumSafeRightPanelWidth);
         RightPanelColumn.MinWidth = RightPanelMinimumWidth;
-        RightPanelColumn.Width = new GridLength(restoredRightPanelWidth);
+        RightPanelColumn.Width = new GridLength(_rightPanelWidth);
         RightPanel.Visibility = Visibility.Visible;
         RightPanelSplitter.IsEnabled = true;
         RightPanelSplitter.Background = Brushes.Transparent;
@@ -214,63 +205,76 @@ public partial class ChatView : UserControl
         AutomationProperties.SetName(RightPanelToggleButton, label);
     }
 
-    private void AttachLayoutHostWindow()
+    private void ConversationListSplitter_OnDragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
     {
-        var hostWindow = Window.GetWindow(this);
-        if (ReferenceEquals(_layoutHostWindow, hostWindow))
-        {
-            return;
-        }
-
-        DetachLayoutHostWindow();
-        _layoutHostWindow = hostWindow;
-        if (_layoutHostWindow is not null)
-        {
-            _layoutHostWindow.SizeChanged += LayoutHostWindow_OnSizeChanged;
-            _layoutHostWindow.DpiChanged += LayoutHostWindow_OnDpiChanged;
-        }
-    }
-
-    private void DetachLayoutHostWindow()
-    {
-        if (_layoutHostWindow is not null)
-        {
-            _layoutHostWindow.SizeChanged -= LayoutHostWindow_OnSizeChanged;
-            _layoutHostWindow.DpiChanged -= LayoutHostWindow_OnDpiChanged;
-            _layoutHostWindow = null;
-        }
-    }
-
-    private void LayoutHostWindow_OnSizeChanged(
-        object sender,
-        SizeChangedEventArgs e) =>
+        if (_hasListSpace) _conversationListWidth = Math.Max(220, ConversationListColumn.Width.Value);
         UpdateResponsiveLayout();
+    }
 
-    private void LayoutHostWindow_OnDpiChanged(object sender, DpiChangedEventArgs e) => UpdateResponsiveLayout();
+    private void ConversationListToggle_OnClick(object sender, RoutedEventArgs e)
+    {
+        var open = ConversationListPane.Visibility != Visibility.Visible;
+        ConversationListPane.Visibility = open ? Visibility.Visible : Visibility.Hidden;
+        if (open) ConversationListClose.Focus();
+        else ConversationListToggle.Focus();
+    }
+
+    private void ConversationListPane_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_hasListSpace && e.Key == Key.Escape)
+        {
+            ConversationListPane.Visibility = Visibility.Hidden;
+            ConversationListToggle.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void RightPanelSplitter_OnDragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (!_isRightPanelCollapsed && !_isRightPanelOverlay)
+            _rightPanelWidth = Math.Max(RightPanelMinimumWidth, RightPanelColumn.Width.Value);
+        UpdateResponsiveLayout();
+    }
 
     private void UpdateResponsiveLayout()
     {
-        if (_layoutHostWindow is not null)
+        var space = ChatViewport.AvailableSize;
+        if (space.Width <= 0 || space.Height <= 0) return;
+        var font = ChatViewport.FontFactor;
+        var hasListSpace = ResponsiveFit.Fits(space.Width, space.Height,
+            _conversationListWidth + 6 + 460 * font, 0, _hasListSpace);
+        if (hasListSpace != _hasListSpace)
         {
-            var dpi = VisualTreeHelper.GetDpi(_layoutHostWindow);
-            var showLabels = _layoutHostWindow.ActualWidth * dpi.DpiScaleX >= 1920
-                && _layoutHostWindow.ActualHeight * dpi.DpiScaleY >= 1080;
-            if (showLabels != (InspectorTabs.Tag is true))
-            {
-                InspectorTabs.Tag = showLabels;
-                ConversationListColumn.Width = new GridLength(showLabels ? 220 : 240);
-                var adjustment = showLabels ? 24 : -24;
-                _rightPanelWidth = Math.Max(RightPanelMinimumWidth, _rightPanelWidth + adjustment);
-                if (!_isRightPanelCollapsed && !_isRightPanelOverlay)
-                    RightPanelColumn.Width = new GridLength(Math.Max(RightPanelMinimumWidth, RightPanelColumn.Width.Value + adjustment));
-            }
+            _hasListSpace = hasListSpace;
+            ConversationListColumn.MinWidth = hasListSpace ? 220 : 0;
+            ConversationListColumn.Width = new GridLength(hasListSpace ? _conversationListWidth : 0);
+            ChatLayoutRoot.ColumnDefinitions[1].Width = new GridLength(hasListSpace ? 6 : 0);
+            ConversationListSplitter.Visibility = hasListSpace ? Visibility.Visible : Visibility.Collapsed;
+            ConversationListToggle.Visibility = hasListSpace ? Visibility.Collapsed : Visibility.Visible;
+            ConversationListClose.Visibility = hasListSpace ? Visibility.Collapsed : Visibility.Visible;
+            Grid.SetColumnSpan(ConversationListPane, hasListSpace ? 1 : 5);
+            Panel.SetZIndex(ConversationListPane, hasListSpace ? 0 : 2);
+            ConversationListPane.HorizontalAlignment = hasListSpace ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+            ConversationListPane.Visibility = hasListSpace ? Visibility.Visible : Visibility.Hidden;
+        }
+        ConversationListPane.Width = hasListSpace ? double.NaN : Math.Min(_conversationListWidth, space.Width);
+        // Allow the composer to use the entire viewport in the smallest supported scale/window combinations.
+        ConversationBodyColumn.MinWidth = 0;
+        _hasDockSpace = ResponsiveFit.Fits(space.Width, space.Height,
+            ExpandedLayoutMinimumWidth(), 0, _hasDockSpace);
+        var showLabels = ResponsiveFit.Fits(space.Width, space.Height,
+            1240 * font, 560 * font, _showInspectorLabels);
+        if (showLabels != _showInspectorLabels)
+        {
+            _showInspectorLabels = showLabels;
+            InspectorTabs.Tag = showLabels;
         }
         var isWidthConstrained = RequiresResponsiveCollapse();
         if (_isRightPanelOverlay)
         {
             if (isWidthConstrained)
             {
-                RightPanel.Width = Math.Min(Math.Max(_rightPanelWidth, RightPanelMinimumWidth), ChatLayoutRoot.ActualWidth);
+                RightPanel.Width = Math.Min(Math.Max(_rightPanelWidth, RightPanelMinimumWidth), ChatViewport.AvailableSize.Width);
             }
             else
             {
@@ -304,46 +308,14 @@ public partial class ChatView : UserControl
         }
     }
 
-    private bool RequiresResponsiveCollapse()
-    {
-        if (_layoutHostWindow is null
-            || _layoutHostWindow.ActualWidth <= 0)
-        {
-            return false;
-        }
-
-        return AvailableUnscaledChatWidth() < ExpandedLayoutMinimumWidth();
-    }
-
-    private double AvailableUnscaledChatWidth()
-    {
-        if (_layoutHostWindow is null)
-        {
-            return 0;
-        }
-
-        var scaleFactor = Math.Max(InterfaceSettingsRuntime.ScaleFactor, 0.01);
-        var availableWidth = Math.Max(
-            0,
-            (_layoutHostWindow.ActualWidth - WindowChromeAllowance) / scaleFactor);
-        return _layoutHostWindow is MainWindow mainWindow
-            ? availableWidth - mainWindow.NavigationLayoutWidth
-            : availableWidth;
-    }
+    private bool RequiresResponsiveCollapse() => !_hasDockSpace;
 
     private double ExpandedLayoutMinimumWidth() =>
-        ChatLayoutRoot.Margin.Left
-        + ChatLayoutRoot.Margin.Right
-        + Math.Max(ConversationListColumn.MinWidth, ConversationListColumn.Width.Value)
-        + ChatLayoutRoot.ColumnDefinitions[1].Width.Value
-        + ConversationBodyColumn.MinWidth
-        + ChatLayoutRoot.ColumnDefinitions[3].Width.Value
-        + Math.Max(RightPanelMinimumWidth,
-            _isRightPanelCollapsed || _isRightPanelOverlay ? _rightPanelWidth : RightPanelColumn.Width.Value);
+        _conversationListWidth
+        + 12 + 460 * ChatViewport.FontFactor + _rightPanelWidth;
 
     private void ChatView_OnLoaded(object sender, RoutedEventArgs e)
     {
-        AttachLayoutHostWindow();
         InterfaceSettingsRuntime.Changed += InterfaceSettingsRuntime_OnChanged;
         ObserveViewModel(DataContext as ChatViewModel);
         UpdateResponsiveLayout();
@@ -358,7 +330,6 @@ public partial class ChatView : UserControl
             CollapseRightPanel(automatic: true);
         }
         InterfaceSettingsRuntime.Changed -= InterfaceSettingsRuntime_OnChanged;
-        DetachLayoutHostWindow();
         ObserveViewModel(null);
     }
 

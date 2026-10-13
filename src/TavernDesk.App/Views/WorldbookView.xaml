@@ -5,36 +5,33 @@
     <UserControl.Resources>
         <presentation:WorldbookEntryTextConverter x:Key="WorldbookEntryTextConverter" />
     </UserControl.Resources>
-    <Grid Margin="16,16,16,16">
+    <presentation:ResponsiveViewport Margin="16">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
+        <StackPanel Grid.Row="0">
+<StackPanel>
                 <TextBlock Text="{StaticResource Worldbook.Title}" Style="{StaticResource PageTitleStyle}" />
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
             </StackPanel>
-            <StackPanel Grid.Column="1"
+<WrapPanel
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
-                        Orientation="Horizontal">
-                <Button Content="{StaticResource Worldbook.Refresh}"
+                        >
+                <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.Refresh}"
                         Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButtonStyle}" />
-                <Button x:Name="ImportOptionsButton"
+                <Button ContentTemplate="{StaticResource WrappingActionText}" x:Name="ImportOptionsButton"
                         Margin="8,0,0,0"
                         Content="{StaticResource Worldbook.ImportAction}"
                         Click="ImportOptionsButton_OnClick"
                         Style="{StaticResource PrimaryButtonStyle}" />
-            </StackPanel>
-        </Grid>
+            </WrapPanel>
+</StackPanel>
 
         <Border Grid.Row="1"
                 Margin="0,12,0,12"
@@ -48,7 +45,7 @@
                                Text="{Binding Mounts.Count, StringFormat={StaticResource Worldbook.MountCountFormat}}"
                                Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
-                <Button x:Name="MountManagementButton"
+                <Button ContentTemplate="{StaticResource WrappingActionText}" x:Name="MountManagementButton"
                         DockPanel.Dock="Right"
                         Margin="16,0,0,0"
                         VerticalAlignment="Center"
@@ -163,7 +160,7 @@
                                    Text="{StaticResource Worldbook.TriggerDescription}"
                                    TextWrapping="Wrap"
                                    Foreground="{DynamicResource MutedTextBrush}" />
-                        <Button Margin="0,14,0,0"
+                        <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,14,0,0"
                                 Content="{StaticResource Worldbook.SelectAndImport}"
                                 Command="{Binding ImportCommand}"
                                 Style="{StaticResource PrimaryButtonStyle}" />
@@ -178,13 +175,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
+                    <StackPanel>
+<StackPanel>
                             <TextBlock x:Name="WorldbookSelectorLabel" Text="{StaticResource Worldbook.Library}" />
                             <ComboBox Margin="{DynamicResource LabelGap}"
                                       AutomationProperties.AutomationId="WorldbookSelector"
@@ -197,34 +189,34 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                         </StackPanel>
-                        <TextBlock Grid.Column="1"
+<WrapPanel>
+<TextBlock
                                    Margin="12,0,12,0"
                                    Text="{Binding SelectedBook.IndexedChunkCount, StringFormat={StaticResource Worldbook.IndexedChunkCountFormat}}"
                                    Foreground="{DynamicResource MutedTextBrush}"
                                    VerticalAlignment="Center" />
-                        <WrapPanel Grid.Column="2" VerticalAlignment="Center">
-                            <Button Content="{StaticResource Worldbook.RebuildIndex}"
+<WrapPanel VerticalAlignment="Center">
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.RebuildIndex}"
                                     Command="{Binding RebuildIndexCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Content="{StaticResource Worldbook.Delete}"
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Worldbook.Delete}"
                                     Margin="8,0,0,0"
                                     Command="{Binding DeleteCommand}"
                                     Style="{StaticResource DestructiveButtonStyle}" />
                         </WrapPanel>
-                    </Grid>
+</WrapPanel>
+</StackPanel>
 
-                    <Grid Grid.Row="1" Margin="0,14,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="{DynamicResource WorldbookEntryListWidth}" />
-                            <ColumnDefinition Width="{DynamicResource PaneGapWidth}" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0"
+                    <presentation:ResponsivePanes x:Name="EntryPanes" Grid.Row="1" Margin="0,14,0,0" ReferenceWidth="760" FirstWidth="320" FirstHeader="{StaticResource Worldbook.Entries}" SecondHeader="{StaticResource Worldbook.EntryBody}">
+                    <presentation:ResponsivePanes.First>
+<Border Grid.Column="0"
                                 BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="10"
                                 Padding="0">
                             <ListBox AutomationProperties.AutomationId="WorldbookEntries" ItemsSource="{Binding Entries}"
+                                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      SelectedItem="{Binding SelectedEntry}"
                                      BorderThickness="0"
                                      Background="Transparent"
@@ -251,7 +243,9 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </Border>
-                        <Border Grid.Column="2"
+                    </presentation:ResponsivePanes.First>
+                    <presentation:ResponsivePanes.Second>
+<Border
                                 BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="10"
@@ -260,25 +254,21 @@
                                 <StackPanel>
                                     <TextBlock x:Name="WorldbookEntryTitleLabel" Text="{StaticResource Worldbook.EntryName}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
-                                    <Grid Margin="0,4,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox AutomationProperties.AutomationId="WorldbookEntryTitle"
+                                    <StackPanel Margin="0,4,0,0">
+<TextBox AutomationProperties.AutomationId="WorldbookEntryTitle"
                                                  IsReadOnly="{Binding IsSavingEntry}"
                                                  AutomationProperties.LabeledBy="{Binding ElementName=WorldbookEntryTitleLabel}"
                                                  Text="{Binding EntryTitle, UpdateSourceTrigger=PropertyChanged}"
                                                  FontSize="{DynamicResource FontSizeSubtitle}"
                                                  FontWeight="SemiBold" />
-                                        <Button Grid.Column="1"
+<Button ContentTemplate="{StaticResource WrappingActionText}"
                                                 Margin="8,0,0,0"
-                                                Height="32"
+
                                                 MinHeight="0"
                                                 Content="{StaticResource Worldbook.SaveEntryName}"
                                                 Command="{Binding SaveEntryTitleCommand}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
-                                    </Grid>
+</StackPanel>
                                     <TextBlock Margin="0,4,0,0"
                                                Text="{StaticResource Worldbook.EntryNameUnsaved}"
                                                Foreground="{DynamicResource AccentBrush}"
@@ -302,8 +292,10 @@
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>
-                    </Grid>
+                    </presentation:ResponsivePanes.Second>
+                </presentation:ResponsivePanes>
                 </Grid>
         </Border>
     </Grid>
+    </presentation:ResponsiveViewport>
 </UserControl>

@@ -1715,4 +1715,5 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Memory.Request.Short">View request</sys:String>
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">Input composition · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">No campaigns yet. Choose a scenario to start an adventure.</sys:String>
+    <sys:String x:Key="Worldbook.Entries">Entries</sys:String>
 </ResourceDictionary>

@@ -44,10 +44,12 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
+    <presentation:ResponsiveViewport x:Name="ChatViewport" Margin="16"
+                                     ReferenceFontSize="{DynamicResource InterfaceFontSize}">
     <Grid x:Name="ChatLayoutRoot"
-          Margin="16"
           Background="{DynamicResource WindowBackgroundBrush}"
           UseLayoutRounding="True">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="ConversationListColumn" Width="240" MinWidth="220" />
             <ColumnDefinition Width="6" />
@@ -56,14 +58,26 @@
             <ColumnDefinition x:Name="RightPanelColumn" Width="360" MinWidth="260" />
         </Grid.ColumnDefinitions>
 
-        <chat:ChatConversationList Grid.Column="0" />
+        <Button x:Name="ConversationListToggle" Grid.ColumnSpan="5" HorizontalAlignment="Left"
+                Visibility="Collapsed" Content="{StaticResource Chat.ToggleConversations}"
+                Click="ConversationListToggle_OnClick" Style="{StaticResource SecondaryButtonStyle}" />
+        <Border x:Name="ConversationListPane" Grid.Row="1" Grid.Column="0"
+                Background="{DynamicResource SurfaceBrush}" PreviewKeyDown="ConversationListPane_OnPreviewKeyDown">
+            <DockPanel>
+                <Button x:Name="ConversationListClose" DockPanel.Dock="Top" Visibility="Collapsed"
+                        Content="{StaticResource Common.Close}" Click="ConversationListToggle_OnClick"
+                        Style="{StaticResource SecondaryButtonStyle}" />
+                <chat:ChatConversationList />
+            </DockPanel>
+        </Border>
 
-        <GridSplitter Grid.Column="1"
+        <GridSplitter x:Name="ConversationListSplitter" Grid.Row="1" Grid.Column="1"
+                      DragCompleted="ConversationListSplitter_OnDragCompleted"
                       Width="6"
                       HorizontalAlignment="Stretch"
                       Background="Transparent" />
 
-        <Border Grid.Column="2"
+        <Border Grid.Row="1" Grid.Column="2"
                 Style="{StaticResource AppicaChatWorkspaceStyle}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -865,13 +879,13 @@
             </Grid>
         </Border>
 
-        <GridSplitter x:Name="RightPanelSplitter"
+        <GridSplitter x:Name="RightPanelSplitter" Grid.Row="1" DragCompleted="RightPanelSplitter_OnDragCompleted"
                       Grid.Column="3"
                       Width="6"
                       HorizontalAlignment="Stretch"
                       Background="Transparent" />
 
-        <Border x:Name="RightPanel"
+        <Border x:Name="RightPanel" Grid.Row="1"
                 Grid.Column="4"
                 PreviewKeyDown="RightPanel_OnPreviewKeyDown"
                 Style="{StaticResource AppicaChatInspectorStyle}">
@@ -913,4 +927,5 @@
 
 
     </Grid>
+    </presentation:ResponsiveViewport>
 </UserControl>

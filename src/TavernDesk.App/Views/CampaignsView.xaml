@@ -10,6 +10,7 @@
             <Setter Property="Padding" Value="8,4" /><Setter Property="MinHeight" Value="28" />
         </Style>
     </UserControl.Resources>
+    <presentation:ResponsiveViewport>
     <Grid Background="{DynamicResource WindowBackgroundBrush}">
         <Grid Visibility="{Binding IsLibrary, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid Margin="30,24,30,28">
@@ -21,27 +22,22 @@
                 </Grid.RowDefinitions>
                 <StackPanel>
                     <TextBlock Text="{StaticResource Campaigns.Title}" Style="{StaticResource PageTitleStyle}" />
-                    <TextBlock Margin="0,4,0,18" Text="{StaticResource Campaigns.Description}"
+                    <TextBlock Margin="0,4,0,18" Text="{StaticResource Campaigns.Description}" TextWrapping="Wrap"
                                Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
-                <Grid Grid.Row="2" Margin="{DynamicResource LabelGap}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition>
-                            <ColumnDefinition.Style><Style TargetType="ColumnDefinition"><Setter Property="Width" Value="1.6*" /><Style.Triggers>
-                                <DataTrigger Binding="{Binding Campaigns.Count}" Value="0"><Setter Property="Width" Value="0" /></DataTrigger>
-                            </Style.Triggers></Style></ColumnDefinition.Style>
-                        </ColumnDefinition>
-                        <ColumnDefinition>
-                            <ColumnDefinition.Style><Style TargetType="ColumnDefinition"><Setter Property="Width" Value="{DynamicResource PaneGapWidth}" /><Style.Triggers>
-                                <DataTrigger Binding="{Binding Campaigns.Count}" Value="0"><Setter Property="Width" Value="0" /></DataTrigger>
-                            </Style.Triggers></Style></ColumnDefinition.Style>
-                        </ColumnDefinition>
-                        <ColumnDefinition Width="1*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0">
-                        <Border.Style><Style TargetType="Border" BasedOn="{StaticResource CardStyle}"><Style.Triggers>
-                            <DataTrigger Binding="{Binding Campaigns.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                        </Style.Triggers></Style></Border.Style>
+                <presentation:ResponsivePanes x:Name="LibraryPanes" Grid.Row="2" Margin="{DynamicResource LabelGap}" ReferenceWidth="860" StackedReferenceHeight="660" FirstWidth="1.6*" FirstHeader="{StaticResource Campaigns.SavedCampaigns}" SecondHeader="{StaticResource Campaigns.ScenarioLibrary}">
+                    <presentation:ResponsivePanes.Style>
+                        <Style TargetType="presentation:ResponsivePanes">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Campaigns.Count}" Value="0">
+                                    <Setter Property="ShowFirstPane" Value="False" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </presentation:ResponsivePanes.Style>
+                    <presentation:ResponsivePanes.First>
+<Border Style="{StaticResource CardStyle}">
+
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -50,7 +46,7 @@
                             </Grid.RowDefinitions>
                             <TextBlock Text="{StaticResource Campaigns.SavedCampaigns}" Style="{StaticResource SectionTitleStyle}" />
                             <WrapPanel Grid.Row="1" Margin="{DynamicResource LabelGap}">
-                                <Button Content="{StaticResource Campaigns.Continue}"
+                                <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.Continue}"
                                         Margin="{DynamicResource NoInset}"
                                         Command="{Binding ContinueCampaignCommand}"
                                         ToolTip="{StaticResource Campaigns.ContinueToolTip}"
@@ -60,6 +56,8 @@
                                      Margin="0,12,0,0"
                                      HorizontalContentAlignment="Stretch"
                                      ItemsSource="{Binding Campaigns}"
+                                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      SelectedItem="{Binding SelectedCampaign}"
                                      ToolTip="{StaticResource Campaigns.SavedCampaignsToolTip}">
                                 <ListBox.ItemTemplate>
@@ -82,7 +80,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
-                                                <TextBlock Text="{Binding Title}" FontWeight="Medium" />
+                                                <TextBlock Text="{Binding Title}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Foreground="{DynamicResource MutedTextBrush}">
                                                     <Run Text="{StaticResource Campaigns.RoundPrefix}" />
                                                     <Run Text="{Binding CurrentRound, Mode=OneWay}" />
@@ -103,7 +101,9 @@
                             </ListBox>
                         </Grid>
                     </Border>
-                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                    </presentation:ResponsivePanes.First>
+                    <presentation:ResponsivePanes.Second>
+<Border Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -121,11 +121,11 @@
                                     </Style.Triggers></Style></TextBlock.Style>
                                 </TextBlock>
                                 <WrapPanel>
-                                <Button Content="{StaticResource Campaigns.NewScenario}"
+                                <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.NewScenario}"
                                         Command="{Binding NewScenarioCommand}"
                                         ToolTip="{StaticResource Campaigns.NewScenarioToolTip}"
                                         Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button Content="{StaticResource Campaigns.ImportScenario}"
+                                <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.ImportScenario}"
                                         Margin="8,0,0,0"
                                         Command="{Binding ImportScenarioCommand}"
                                         ToolTip="{StaticResource Campaigns.ImportScenarioToolTip}"
@@ -136,6 +136,8 @@
                                      Margin="0,12,0,0"
                                      HorizontalContentAlignment="Stretch"
                                      ItemsSource="{Binding Scenarios}"
+                                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      SelectedItem="{Binding SelectedScenario}">
                                 <ListBox.ItemContainerStyle>
                                     <Style TargetType="ListBoxItem"
@@ -186,7 +188,7 @@
                                                            TextTrimming="CharacterEllipsis"
                                                            Foreground="{DynamicResource MutedTextBrush}" />
                                                 <WrapPanel Grid.Row="3" Margin="0,8,0,0">
-                                                    <Button Content="{StaticResource Common.Edit}" CommandParameter="{Binding}"
+                                                    <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Common.Edit}" CommandParameter="{Binding}"
                                                             AutomationProperties.AutomationId="{Binding Id, StringFormat=ScenarioEdit_{0}}"
                                                             Command="{Binding DataContext.EditScenarioCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             Style="{StaticResource ScenarioCardActionStyle}" Margin="0,0,8,4">
@@ -202,7 +204,7 @@
                                                                 <Binding Path="Id" /><Binding Path="DataContext.RecoveryDrafts" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                                                             </MultiBinding>
                                                         </WrapPanel.Visibility>
-                                                        <Button Content="{StaticResource Recovery.RestoreAction}"
+                                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Recovery.RestoreAction}"
                                                                 AutomationProperties.AutomationId="{Binding Id, StringFormat=ScenarioRestore_{0}}"
                                                                 Command="{Binding DataContext.RestoreScenarioDraftCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource ScenarioCardActionStyle}" Margin="0,0,8,4">
@@ -212,7 +214,7 @@
                                                                 </MultiBinding>
                                                             </Button.CommandParameter>
                                                         </Button>
-                                                        <Button Content="{StaticResource Recovery.DiscardAction}"
+                                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Recovery.DiscardAction}"
                                                                 AutomationProperties.AutomationId="{Binding Id, StringFormat=ScenarioDiscard_{0}}"
                                                                 Command="{Binding DataContext.DiscardScenarioDraftCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource ScenarioCardActionStyle}" Margin="0,0,8,4">
@@ -239,11 +241,11 @@
                                                     <TextBlock Text="{Binding Scenario.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding SavedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}}" FontSize="{DynamicResource FontSizeSmall}" />
                                                     <WrapPanel Margin="0,5,0,0">
-                                                        <Button Content="{StaticResource Recovery.RestoreAction}" CommandParameter="{Binding}"
+                                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Recovery.RestoreAction}" CommandParameter="{Binding}"
                                                                 AutomationProperties.AutomationId="{Binding Id, StringFormat=ScenarioRestore_{0}}"
                                                                 Command="{Binding DataContext.RestoreScenarioDraftCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource SecondaryButtonStyle}" />
-                                                        <Button Content="{StaticResource Recovery.DiscardAction}" CommandParameter="{Binding}" Margin="6,0,0,0"
+                                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Recovery.DiscardAction}" CommandParameter="{Binding}" Margin="6,0,0,0"
                                                                 AutomationProperties.AutomationId="{Binding Id, StringFormat=ScenarioDiscard_{0}}"
                                                                 Command="{Binding DataContext.DiscardScenarioDraftCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource SecondaryButtonStyle}" />
@@ -254,7 +256,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
-                                <Button Grid.Row="4" Content="{StaticResource Campaigns.StartNew}"
+                                <Button ContentTemplate="{StaticResource WrappingActionText}" Grid.Row="4" Content="{StaticResource Campaigns.StartNew}"
                                         HorizontalAlignment="Right"
                                         Margin="0,12,0,0"
                                         Command="{Binding OpenScenarioLobbyCommand}"
@@ -263,7 +265,8 @@
 
                         </Grid>
                     </Border>
-                </Grid>
+                    </presentation:ResponsivePanes.Second>
+                </presentation:ResponsivePanes>
                 <TextBlock Grid.Row="3"
                            Margin="0,14,0,0"
                            Text="{Binding StatusText}"
@@ -298,11 +301,11 @@
                         <StackPanel Grid.Column="1"
                                     HorizontalAlignment="Right"
                                     Orientation="Horizontal">
-                            <Button Content="{StaticResource Campaigns.BackToLibrary}"
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.BackToLibrary}"
                                     Command="{Binding BackToLibraryCommand}"
                                     ToolTip="{StaticResource Campaigns.BackDiscardToolTip}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Content="{StaticResource Campaigns.SaveScenario}"
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.SaveScenario}"
                                     Margin="8,0,0,0"
                                     Command="{Binding SaveScenarioCommand}"
                                     ToolTip="{StaticResource Campaigns.SaveScenarioToolTip}"
@@ -536,7 +539,7 @@
                             <TextBlock Text="{StaticResource Campaigns.Lobby.Description}"
                                        Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
-                        <Button HorizontalAlignment="Right"
+                        <Button ContentTemplate="{StaticResource WrappingActionText}" HorizontalAlignment="Right"
                                 Content="{StaticResource Campaigns.BackToLibrary}"
                                 Command="{Binding BackToLibraryCommand}"
                                 ToolTip="{StaticResource Campaigns.Lobby.BackToolTip}"
@@ -637,13 +640,13 @@
                                                  Text="{Binding GmHistoryBudget}" />
                                     </Grid>
                                     <WrapPanel Margin="0,12,0,0">
-                                        <Button Margin="0,0,8,0"
+                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,0,8,0"
                                                 Content="{StaticResource Campaigns.Lobby.EditGmPrompt}"
                                                 Command="{Binding OpenGlobalPromptCommand}"
                                                 CommandParameter="CampaignGmSystem"
                                                 ToolTip="{StaticResource Campaigns.Lobby.EditGmPromptToolTip}"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Content="{StaticResource Campaigns.Lobby.EditPlayerPrompt}"
+                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.Lobby.EditPlayerPrompt}"
                                                 Command="{Binding OpenGlobalPromptCommand}"
                                                 CommandParameter="CampaignPlayerSystem"
                                                 ToolTip="{StaticResource Campaigns.Lobby.EditPlayerPromptToolTip}"
@@ -785,11 +788,11 @@
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource MutedTextBrush}" />
                         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                            <Button Content="{StaticResource Campaigns.Lobby.SaveDraft}"
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.Lobby.SaveDraft}"
                                     Command="{Binding SaveLobbyCommand}"
                                     ToolTip="{StaticResource Campaigns.Lobby.SaveDraftToolTip}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Content="{StaticResource Campaigns.Lobby.Start}"
+                            <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.Lobby.Start}"
                                     Margin="8,0,0,0"
                                     Command="{Binding StartCampaignCommand}"
                                     ToolTip="{StaticResource Campaigns.Lobby.StartToolTip}"
@@ -814,16 +817,16 @@
                         <TextBlock Text="{Binding GamePhaseText}" Foreground="{DynamicResource MutedTextBrush}" />
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="{StaticResource Campaigns.Play.Settings}"
+                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.Play.Settings}"
                                 Click="MemorySettingsButton_OnClick"
                                 ToolTip="{StaticResource Campaigns.Play.SettingsToolTip}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
-                        <Button Content="{StaticResource Campaigns.Play.Refresh}"
+                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.Play.Refresh}"
                                 Margin="8,0,0,0"
                                 Command="{Binding RefreshGameCommand}"
                                 ToolTip="{StaticResource Campaigns.Play.RefreshToolTip}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
-                        <Button Content="{StaticResource Campaigns.BackToLibrary}"
+                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="{StaticResource Campaigns.BackToLibrary}"
                                 Margin="8,0,0,0"
                                 Command="{Binding BackToLibraryCommand}"
                                 ToolTip="{StaticResource Campaigns.Play.BackToolTip}"
@@ -915,7 +918,7 @@
                                                     <TextBlock Margin="0,4,0,7"
                                                                Text="{Binding RoundStatus}"
                                                                Foreground="{DynamicResource AccentBrush}" />
-                                                    <Button Margin="0,6,0,0"
+                                                    <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,6,0,0"
                                                             Content="{Binding ActionButtonText}"
                                                             IsEnabled="{Binding CanGenerateAction}"
                                                             Command="{Binding DataContext.GenerateAiSeatActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -948,7 +951,7 @@
                                                             <ComboBox ItemsSource="{Binding DataContext.ModelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                       SelectedItem="{Binding SelectedRoute}"
                                                                       DisplayMemberPath="DisplayLabel" />
-                                                            <Button Margin="0,6,0,0"
+                                                            <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,6,0,0"
                                                             Content="{StaticResource Campaigns.Play.ApplySeatModel}"
                                                             Command="{Binding DataContext.ApplySeatRouteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
@@ -1047,7 +1050,7 @@
                                                                    Text="{StaticResource Campaigns.Play.GmCandidate}"
                                                                    FontSize="{DynamicResource FontSizeCaption}"
                                                                    Foreground="{DynamicResource MutedTextBrush}" />
-                                                        <Button Content="‹"
+                                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="‹"
                                                                 Command="{Binding DataContext.PreviousGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource CandidateNavigationButtonStyle}"
                                                                 ToolTip="{StaticResource Campaigns.Play.PreviousGmCandidateToolTip}" />
@@ -1057,7 +1060,7 @@
                                                                    Text="{Binding CandidateNavigationLabel}"
                                                                    FontSize="{DynamicResource FontSizeCaption}"
                                                                    Foreground="{DynamicResource MutedTextBrush}" />
-                                                        <Button Content="›"
+                                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Content="›"
                                                                 Command="{Binding DataContext.NextGmCandidateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 Style="{StaticResource CandidateNavigationButtonStyle}"
                                                                 ToolTip="{StaticResource Campaigns.Play.NextGmCandidateToolTip}" />
@@ -1071,7 +1074,7 @@
                                                     <TextBlock Margin="0,7,0,0"
                                                                Text="{Binding DisplayContent}"
                                                                TextWrapping="Wrap" />
-                                                    <Button Margin="0,8,0,0"
+                                                    <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                                             HorizontalAlignment="Left"
                                                             Content="{Binding RetryButtonText}"
                                                             Command="{Binding DataContext.RetryEventCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -1198,7 +1201,7 @@
                                                  AcceptsReturn="True"
                                                  TextWrapping="Wrap"
                                                  Text="{Binding ActionInput, UpdateSourceTrigger=PropertyChanged}" />
-                                        <Button Margin="0,8,0,0"
+                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                                 Content="{StaticResource Campaigns.Play.SubmitUserAction}"
                                                 IsEnabled="{Binding CanSubmitUserAction}"
                                                 Command="{Binding SubmitUserActionCommand}"
@@ -1210,7 +1213,7 @@
                                                 Visibility="{Binding ShowBlindAiAction, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <TextBlock Text="{StaticResource Campaigns.Play.SecretActions}"
                                                    FontWeight="SemiBold" />
-                                        <Button Margin="0,7,0,0"
+                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,7,0,0"
                                                 Content="{StaticResource Campaigns.Play.SubmitSecretActions}"
                                                 IsEnabled="{Binding CanGenerateBlindAiActions}"
                                                 Command="{Binding GenerateAiActionsCommand}"
@@ -1228,7 +1231,7 @@
                                                  TextWrapping="Wrap"
                                                  Text="{Binding GmResolutionInput, UpdateSourceTrigger=PropertyChanged}"
                                                  Visibility="{Binding IsUserGm, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                        <Button Margin="0,8,0,0"
+                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                                 Content="{Binding ResolveButtonText}"
                                                 IsEnabled="{Binding CanResolve}"
                                                 Command="{Binding ResolveRoundCommand}"
@@ -1247,7 +1250,7 @@
                                     <TextBlock Margin="0,7,0,0"
                                                Text="{StaticResource Campaigns.Play.JoinHelp}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
-                                    <Button Margin="0,8,0,0"
+                                    <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                             Content="{Binding ScheduleUserJoinButtonText}"
                                             IsEnabled="{Binding CanScheduleUserJoin}"
                                             Command="{Binding ScheduleUserJoinCommand}"
@@ -1264,7 +1267,7 @@
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}" />
                                         <WrapPanel Margin="0,8,0,0">
-                                            <Button MinWidth="54"
+                                            <Button ContentTemplate="{StaticResource WrappingActionText}" MinWidth="54"
                                                     MinHeight="28"
                                                     Margin="0,0,8,0"
                                                     Padding="10,2"
@@ -1273,7 +1276,7 @@
                                                     CommandParameter="1d20"
                                                     ToolTip="{StaticResource Campaigns.Play.RollExtraDiceToolTip}"
                                                     Style="{StaticResource SecondaryButtonStyle}" />
-                                            <Button MinWidth="54"
+                                            <Button ContentTemplate="{StaticResource WrappingActionText}" MinWidth="54"
                                                     MinHeight="28"
                                                     Margin="0,0,8,0"
                                                     Padding="10,2"
@@ -1282,7 +1285,7 @@
                                                     CommandParameter="2d6"
                                                     ToolTip="{StaticResource Campaigns.Play.RollExtraDiceToolTip}"
                                                     Style="{StaticResource SecondaryButtonStyle}" />
-                                            <Button MinWidth="54"
+                                            <Button ContentTemplate="{StaticResource WrappingActionText}" MinWidth="54"
                                                     MinHeight="28"
                                                     Padding="10,2"
                                                     Content="1d100"
@@ -1297,7 +1300,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <TextBox Text="{Binding DiceExpression, UpdateSourceTrigger=PropertyChanged}" />
-                                            <Button Grid.Column="1" Margin="8,0,0,0"
+                                            <Button ContentTemplate="{StaticResource WrappingActionText}" Grid.Column="1" Margin="8,0,0,0"
                                                     Content="{StaticResource Campaigns.Play.RollExtraDice}"
                                                     Command="{Binding RollDiceCommand}"
                                                     ToolTip="{StaticResource Campaigns.Play.RollExtraDiceToolTip}"
@@ -1330,7 +1333,7 @@
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedTextBrush}"
                                                    Text="{StaticResource Campaigns.Play.GmOutputTokensHelp}" />
-                                        <Button Margin="0,8,0,0"
+                                        <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                                 Content="{StaticResource Campaigns.Play.ApplyGmModel}"
                                                 Command="{Binding ApplyGmRouteCommand}"
                                                 ToolTip="{StaticResource Campaigns.Play.ApplyGmModelToolTip}"
@@ -1347,4 +1350,5 @@
             </Grid>
         </Grid>
     </Grid>
+    </presentation:ResponsiveViewport>
 </UserControl>

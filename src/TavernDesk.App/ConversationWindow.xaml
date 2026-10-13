@@ -1,13 +1,15 @@
 <Window x:Class="TavernDesk.App.ConversationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:presentation="clr-namespace:TavernDesk.App.Presentation"
         xmlns:views="clr-namespace:TavernDesk.App.Views"
         Title="{Binding SelectedConversation.Title, TargetNullValue={StaticResource ConversationWindow.DefaultTitle}}"
         MinWidth="960"
         MinHeight="620"
         ResizeMode="CanResize"
         Background="{DynamicResource AppicaShellCanvasBrush}">
-    <Grid Style="{StaticResource InterfaceScaleRootStyle}">
+    <presentation:ResponsiveViewport Style="{StaticResource InterfaceScaleRootStyle}">
+    <Grid >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -21,4 +23,5 @@
         </Border>
         <views:ChatView Grid.Row="1" />
     </Grid>
+    </presentation:ResponsiveViewport>
 </Window>

@@ -5,6 +5,9 @@
         <ResourceDictionary Source="Tokens.xaml" />
         <ResourceDictionary Source="VisualTokens.xaml" />
     </ResourceDictionary.MergedDictionaries>
+    <DataTemplate x:Key="WrappingActionText">
+        <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" />
+    </DataTemplate>
     <FontFamily x:Key="InterfaceFontFamily">Microsoft YaHei UI</FontFamily>
     <system:Double x:Key="InterfaceFontSize">14</system:Double>
     <system:Double x:Key="ChatFontSize">15</system:Double>

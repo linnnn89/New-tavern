@@ -1,6 +1,7 @@
 <Window x:Class="TavernDesk.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:presentation="clr-namespace:TavernDesk.App.Presentation"
         xmlns:views="clr-namespace:TavernDesk.App.Views"
         xmlns:viewModels="clr-namespace:TavernDesk.App.ViewModels"
         Title="TavernDesk"
@@ -12,8 +13,9 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         Background="{DynamicResource AppicaShellCanvasBrush}">
+    <presentation:ResponsiveViewport Style="{StaticResource InterfaceScaleRootStyle}">
     <Grid Background="{DynamicResource AppicaShellCanvasBrush}"
-          Style="{StaticResource InterfaceScaleRootStyle}">
+          >
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="MainNavigationColumn" Width="196" />
             <ColumnDefinition Width="*" />
@@ -347,4 +349,5 @@
                             Content="{Binding CurrentPage}" />
         </Grid>
     </Grid>
+    </presentation:ResponsiveViewport>
 </Window>
