@@ -338,6 +338,13 @@ internal static class Program
                 Check(panes.LayoutMode == (suffix == "wide" ? "Columns" : "Tabs"), section + " responds to available width");
                 panes.SelectPane(true);
                 await Settle(main);
+                if (section == SettingsPage.Assignments)
+                {
+                    var save = Named<Button>(Find<ProviderSettingsView>(main), "AssignmentSaveButton");
+                    var bounds = save.TransformToAncestor(main).TransformBounds(new Rect(save.RenderSize));
+                    Check(bounds.Bottom <= main.ActualHeight && bounds.Right <= main.ActualWidth,
+                        "Assignment save remains inside the window");
+                }
                 Capture((FrameworkElement)main.Content, $"settings-{section}-{suffix}");
             }
         }

@@ -341,25 +341,21 @@
                     </presentation:ResponsivePanes.First>
                     <presentation:ResponsivePanes.Second>
 <Border Style="{StaticResource CardStyle}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="1.05*" />
-                                    <RowDefinition Height="1.35*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0">
+                            <DockPanel LastChildFill="True">
+<Button x:Name="AssignmentSaveButton" DockPanel.Dock="Bottom" ContentTemplate="{StaticResource WrappingActionText}" MinWidth="160" Margin="0,10,0,0" Padding="12,8"
+                                                    Content="{Binding SaveAssignmentButtonText}" Command="{Binding SaveAssignmentCommand}"
+                                                    AutomationProperties.AutomationId="SaveFunctionAssignment"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+<StackPanel>
+<StackPanel Grid.Row="0">
                                     <TextBlock Text="{StaticResource Settings.Assignments.Overview}" Style="{StaticResource SectionTitleStyle}" />
                                     <TextBlock Margin="0,2,0,6"
                                                Text="{StaticResource Settings.Assignments.Saved}"
                                                FontSize="{DynamicResource FontSizeCaption}"
                                                Foreground="{DynamicResource MutedTextBrush}" />
                                 </StackPanel>
-                                <ScrollViewer Grid.Row="1"
-                                              Margin="0,0,0,10"
-                                              VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Disabled">
-                                    <ItemsControl ItemsSource="{Binding AssignmentOverview}"
+<ItemsControl ItemsSource="{Binding AssignmentOverview}"
                                                   Style="{StaticResource SettingsScrollContentStyle}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -417,12 +413,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                </ScrollViewer>
-
-                                <ScrollViewer Grid.Row="2"
-                                              Margin="0,0,0,0"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <StackPanel Style="{StaticResource SettingsScrollContentStyle}">
+<StackPanel Style="{StaticResource SettingsScrollContentStyle}">
                                     <StackPanel>
                                         <StackPanel.Style>
                                             <Style TargetType="StackPanel">
@@ -508,8 +499,7 @@
                                     </StackPanel>
 
                                     </StackPanel>
-                                </ScrollViewer>
-                                <Border Grid.Row="3" Padding="10" Margin="0,10,0,0"
+<Border Grid.Row="3" Padding="10" Margin="0,10,0,0"
                                         Background="{DynamicResource AccentSoftBrush}" CornerRadius="10">
                                     <StackPanel>
                                         <TextBlock Text="{Binding AssignmentTargetTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -519,14 +509,13 @@
                                                       ItemsSource="{Binding FunctionOptions}" SelectedItem="{Binding SelectedFunction}"
                                                       DisplayMemberPath="Label" AutomationProperties.AutomationId="AssignmentFunction"
                                                       ToolTip="{StaticResource Settings.Assignments.SelectFunctionToolTip}" />
-                                            <Button ContentTemplate="{StaticResource WrappingActionText}" MinWidth="160" Margin="0,0,0,6" Padding="12,8"
-                                                    Content="{Binding SaveAssignmentButtonText}" Command="{Binding SaveAssignmentCommand}"
-                                                    AutomationProperties.AutomationId="SaveFunctionAssignment"
-                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                            
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>
-                            </Grid>
+</StackPanel>
+</ScrollViewer>
+</DockPanel>
                         </Border>
                     </presentation:ResponsivePanes.Second>
                 </presentation:ResponsivePanes>
