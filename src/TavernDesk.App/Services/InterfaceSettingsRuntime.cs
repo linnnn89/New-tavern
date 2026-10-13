@@ -364,8 +364,13 @@ public static class InterfaceSettingsRuntime
         }
     }
 
+    private static string? _appliedThemeName;
+
     private static void ApplyThemeResources(Application application)
     {
+        // Reapplying WPF ThemeMode replaces control templates, including page presenters.
+        // Font and scale changes must only update their own resources so page-local state survives.
+        if (_appliedThemeName == ThemeName) return;
         var isDark = string.Equals(
             ThemeName,
             DarkThemeName,
@@ -391,5 +396,6 @@ public static class InterfaceSettingsRuntime
             brush.Freeze();
             application.Resources[key] = brush;
         }
+        _appliedThemeName = ThemeName;
     }
 }
