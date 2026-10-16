@@ -196,25 +196,25 @@ public sealed class MainWindowViewModel : ViewModelBase
             if (SetProperty(ref _currentPage, value))
             {
                 OnPropertyChanged(nameof(IsSettingsPage));
-                OnPropertyChanged(nameof(PageBreadcrumb));
+                OnPropertyChanged(nameof(PageTitle));
             }
         }
     }
 
     public bool IsSettingsPage => ReferenceEquals(CurrentPage, Settings);
 
-    public string PageBreadcrumb => LanguageRuntime.Format("Shell.WorkspaceBreadcrumbFormat",
+    public string PageTitle =>
         ReferenceEquals(CurrentPage, Chat) ? LanguageRuntime.GetString("Shell.Chat.Label")
         : ReferenceEquals(CurrentPage, Characters) ? LanguageRuntime.GetString("Shell.Characters.Label")
         : ReferenceEquals(CurrentPage, Campaigns) ? LanguageRuntime.GetString("Shell.Campaign.Label")
-        : CurrentSection);
+        : CurrentSection;
 
     public string CurrentSection
     {
         get => _currentSection;
         private set
         {
-            if (SetProperty(ref _currentSection, value)) OnPropertyChanged(nameof(PageBreadcrumb));
+            if (SetProperty(ref _currentSection, value)) OnPropertyChanged(nameof(PageTitle));
         }
     }
 

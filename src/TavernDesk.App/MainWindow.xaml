@@ -338,7 +338,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding PageBreadcrumb}"
+                    <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding PageTitle}"
                                Style="{StaticResource AppicaShellSectionTitleStyle}" />
                     <StackPanel Grid.Column="1" HorizontalAlignment="Right"
                                 VerticalAlignment="Center"

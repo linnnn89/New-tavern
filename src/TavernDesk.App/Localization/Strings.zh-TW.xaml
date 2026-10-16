@@ -1696,7 +1696,6 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.EmptyConversation">開始這段對話</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">在下方輸入訊息。可以傳送並生成，也可以只儲存使用者訊息。</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">展開或收合對話列表</sys:String>
-    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">工作區 › {0}</sys:String>
     <sys:String x:Key="Chat.Tab.Context.Short">語境</sys:String>
     <sys:String x:Key="Chat.Tab.Character.Short">角色</sys:String>
     <sys:String x:Key="Chat.Tab.Persona.Short">人設</sys:String>

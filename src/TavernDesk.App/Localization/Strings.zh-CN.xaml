@@ -1706,7 +1706,6 @@
     <sys:String x:Key="Chat.EmptyConversation">开始这段对话</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">在下方输入消息。可以发送并生成，也可以只保存用户消息。</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">展开或收起会话列表</sys:String>
-    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">工作区 › {0}</sys:String>
     <sys:String x:Key="Chat.Tab.Context.Short">语境</sys:String>
     <sys:String x:Key="Chat.Tab.Character.Short">角色</sys:String>
     <sys:String x:Key="Chat.Tab.Persona.Short">人设</sys:String>
