@@ -1696,7 +1696,6 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.EmptyConversation">会話を始める</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">下の入力欄から返信を生成するか、ユーザーメッセージのみ保存できます。</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">会話一覧を展開・折りたたむ</sys:String>
-    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">ワークスペース › {0}</sys:String>
     <sys:String x:Key="Chat.Tab.Context.Short">文脈</sys:String>
     <sys:String x:Key="Chat.Tab.Character.Short">人物</sys:String>
     <sys:String x:Key="Chat.Tab.Persona.Short">設定</sys:String>

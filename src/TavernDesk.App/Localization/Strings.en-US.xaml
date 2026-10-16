@@ -1696,7 +1696,6 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Chat.EmptyConversation">Start this conversation</sys:String>
     <sys:String x:Key="Chat.EmptyConversationHelp">Type below to send and generate a reply, or save your message only.</sys:String>
     <sys:String x:Key="Chat.ToggleConversations">Expand or collapse conversations</sys:String>
-    <sys:String x:Key="Shell.WorkspaceBreadcrumbFormat">Workspace › {0}</sys:String>
     <sys:String x:Key="Chat.Tab.Context.Short">Context</sys:String>
     <sys:String x:Key="Chat.Tab.Character.Short">Role</sys:String>
     <sys:String x:Key="Chat.Tab.Persona.Short">Persona</sys:String>
