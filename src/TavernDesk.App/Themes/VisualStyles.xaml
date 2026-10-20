@@ -120,8 +120,8 @@
     </Style>
 
     <Style x:Key="CharacterCardActionsStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource SurfaceOverlay}" />
-        <Setter Property="Padding" Value="{DynamicResource CardActionInset}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
         <Setter Property="Opacity" Value="0" />
         <Setter Property="IsHitTestVisible" Value="False" />

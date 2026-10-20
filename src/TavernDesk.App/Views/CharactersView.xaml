@@ -316,19 +316,17 @@
                                         CommandParameter="{Binding}"
                                         Style="{StaticResource CharacterCardOpenButtonStyle}" />
                                 <Border Grid.Row="0" Panel.ZIndex="2" VerticalAlignment="Bottom"
-                                        HorizontalAlignment="Stretch" Margin="{DynamicResource InsetSm}"
+                                        HorizontalAlignment="Left" Margin="6"
                                         Style="{StaticResource CharacterCardActionsStyle}">
-                                    <WrapPanel HorizontalAlignment="Center">
-
-                                        <Button Margin="{DynamicResource TileGap}" Padding="{DynamicResource CardActionInset}"
-                                                ToolTip="{StaticResource Characters.Edit}"
-                                                AutomationProperties.Name="{StaticResource Characters.Edit}"
-                                                AutomationProperties.AutomationId="CharacterCardEdit"
-                                                Command="{Binding DataContext.EditCharacterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" Style="{StaticResource SecondaryButtonStyle}">
-                                            <TextBlock Text="&#xE70F;" Style="{StaticResource IconGlyphStyle}" />
-                                        </Button>
-                                    </WrapPanel>
+                                    <Button Width="28" Height="28" MinHeight="0" Padding="0"
+                                            Background="Transparent" BorderThickness="0"
+                                            ToolTip="{StaticResource Characters.Edit}"
+                                            AutomationProperties.Name="{StaticResource Characters.Edit}"
+                                            AutomationProperties.AutomationId="CharacterCardEdit"
+                                            Command="{Binding DataContext.EditCharacterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" Style="{StaticResource SecondaryButtonStyle}">
+                                        <TextBlock Text="&#xE70F;" FontSize="16" Style="{StaticResource IconGlyphStyle}" />
+                                    </Button>
                                 </Border>
                                 <CheckBox Panel.ZIndex="3" Margin="{DynamicResource InsetSm}" Padding="{DynamicResource InsetSm}"
                                           HorizontalAlignment="Left" VerticalAlignment="Top"
