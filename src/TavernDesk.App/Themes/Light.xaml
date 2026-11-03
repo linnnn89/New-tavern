@@ -132,6 +132,24 @@
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
+    <!-- Keyboard-only focus ring. WPF shows FocusVisualStyle only after keyboard
+         navigation, so mouse clicks do not leave a ring behind. The 1px gap between
+         the control edge and the ring keeps it visible on accent-filled buttons even
+         when a theme sets FocusRingBrush equal to AccentBrush. -->
+    <Style x:Key="ModernFocusVisualStyle">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border Margin="-3"
+                            BorderBrush="{DynamicResource FocusRingBrush}"
+                            BorderThickness="2"
+                            CornerRadius="10"
+                            SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Shared modern control chrome. Local variants inherit these templates so
          keyboard focus, hover, pressed, and disabled states remain consistent. -->
     <Style x:Key="ModernButtonBaseStyle" TargetType="{x:Type Button}">
@@ -144,7 +162,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource ModernFocusVisualStyle}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="ToolTipService.InitialShowDelay" Value="2000" />
@@ -217,7 +235,10 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
-        <Setter Property="SelectionBrush" Value="{DynamicResource AccentSoftBrush}" />
+        <!-- AccentSoftBrush is near-white in light themes; combined with WPF's
+             translucent selection layer it made selected text nearly invisible. -->
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="SelectionOpacity" Value="0.3" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -272,6 +293,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="SelectionOpacity" Value="0.3" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -564,7 +587,9 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <!-- A checked box is already accent-bordered, so the border trigger alone
+             cannot show keyboard focus. -->
+        <Setter Property="FocusVisualStyle" Value="{StaticResource ModernFocusVisualStyle}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type CheckBox}">

@@ -74,6 +74,7 @@
         </Border>
 
         <GridSplitter x:Name="ConversationListSplitter" Grid.Row="1" Grid.Column="1"
+                      Style="{StaticResource PaneColumnSplitterStyle}"
                       DragCompleted="ConversationListSplitter_OnDragCompleted"
                       Width="6"
                       HorizontalAlignment="Stretch"
@@ -819,7 +820,15 @@
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding ComposerText}" Value=""><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding Text, ElementName=ChatComposer}" Value="" />
+                                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=ChatComposer}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
@@ -882,6 +891,7 @@
         </Border>
 
         <GridSplitter x:Name="RightPanelSplitter" Grid.Row="1" DragCompleted="RightPanelSplitter_OnDragCompleted"
+                      Style="{StaticResource PaneColumnSplitterStyle}"
                       Grid.Column="3"
                       Width="6"
                       HorizontalAlignment="Stretch"

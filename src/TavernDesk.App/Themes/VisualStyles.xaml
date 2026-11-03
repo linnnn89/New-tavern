@@ -233,4 +233,46 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!--
+        Column splitter between side-by-side panes. The full control width stays a
+        transparent hit target; only a thin centered line appears on hover, drag or
+        keyboard focus so the resize affordance is discoverable without adding a
+        permanent divider. GridSplitter coerces its own resize cursor.
+    -->
+    <Style x:Key="PaneColumnSplitterStyle" TargetType="GridSplitter">
+        <Setter Property="Width" Value="6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Border x:Name="Grip" Width="2" HorizontalAlignment="Center"
+                                Margin="0,8" CornerRadius="1" Opacity="0"
+                                Background="{DynamicResource FocusRingBrush}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Grip" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Grip" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Grip" Property="Opacity" Value="1" />
+                            <Setter TargetName="Grip" Property="Background" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                        <!-- ChatView disables the right splitter while that pane is collapsed
+                             and paints Background as a static edge; keep the grip hidden then. -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Grip" Property="Opacity" Value="0" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
