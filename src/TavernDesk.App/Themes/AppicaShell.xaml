@@ -176,9 +176,9 @@
     <Style x:Key="AppicaShellTopBarStyle" TargetType="Border">
         <Setter Property="MinHeight" Value="40" />
         <Setter Property="Padding" Value="20,0,8,0" />
-        <Setter Property="Background" Value="{DynamicResource AppicaShellSurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AppicaShellDividerBrush}" />
-        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
     </Style>
 
     <Style x:Key="AppicaCaptionButtonStyle" TargetType="Button">
@@ -254,8 +254,8 @@
     </Style>
 
     <Style x:Key="AppicaMessageHoverButtonStyle" TargetType="Button">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
         <Setter Property="Margin" Value="1,0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
@@ -263,6 +263,7 @@
         <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="500" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -288,6 +289,35 @@
         </Setter>
     </Style>
 
+    <Style x:Key="AppicaMessageHoverDangerButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource AppicaMessageHoverButtonStyle}">
+        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="7">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AppicaShellDangerHoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AppicaShellDangerSurfaceBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="AppicaEmptyStateStyle" TargetType="Border">
         <Setter Property="Padding" Value="{DynamicResource InsetLg}" />
         <Setter Property="Background" Value="{DynamicResource SurfaceBase}" />
@@ -301,8 +331,8 @@
 
     <Style x:Key="AppicaShellSectionTitleStyle" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Foreground" Value="{DynamicResource AppicaShellTextBrush}" />
-        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyLarge}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppicaShellMutedBrush}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
         <Setter Property="FontWeight" Value="Medium" />
     </Style>
 

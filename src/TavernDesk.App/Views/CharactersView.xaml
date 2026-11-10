@@ -30,7 +30,7 @@
             </Setter.Value></Setter>
         </Style>
     </UserControl.Resources>
-    <Grid Margin="26,22,26,26">
+    <Grid Margin="{DynamicResource PageInset}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -320,6 +320,7 @@
                                         Style="{StaticResource CharacterCardActionsStyle}">
                                     <Button Width="28" Height="28" MinHeight="0" Padding="0"
                                             Background="Transparent" BorderThickness="0"
+                                            ToolTipService.InitialShowDelay="500"
                                             ToolTip="{StaticResource Characters.Edit}"
                                             AutomationProperties.Name="{StaticResource Characters.Edit}"
                                             AutomationProperties.AutomationId="CharacterCardEdit"

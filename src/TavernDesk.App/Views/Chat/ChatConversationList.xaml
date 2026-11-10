@@ -81,9 +81,10 @@
                                                        FontSize="{DynamicResource FontSizeSmall}"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                             <TextBlock x:Name="ExpandGlyph"
-                                                       Margin="0,3,0,0"
-                                                       FontSize="18"
-                                                       Text="⌄"
+                                                       Margin="0,5,0,0"
+                                                       FontFamily="{StaticResource AppicaShellIconFont}"
+                                                       FontSize="11"
+                                                       Text="&#xE70D;"
                                                        HorizontalAlignment="Right"
                                                        Foreground="{DynamicResource MutedTextBrush}" />
                                         </StackPanel>
@@ -193,7 +194,7 @@
                                     <Setter TargetName="ConversationAvatarGlyph" Property="Text" Value="&#xE902;" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                    <Setter TargetName="ExpandGlyph" Property="Text" Value="⌃" />
+                                    <Setter TargetName="ExpandGlyph" Property="Text" Value="&#xE70E;" />
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>

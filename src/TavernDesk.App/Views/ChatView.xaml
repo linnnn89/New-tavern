@@ -59,10 +59,15 @@
         </Grid.ColumnDefinitions>
 
         <Button x:Name="ConversationListToggle" Grid.ColumnSpan="5" HorizontalAlignment="Left"
-                Visibility="Collapsed" Content="☰" Width="36" Height="36" FontSize="18" Padding="4"
+                Visibility="Collapsed" Width="36" Height="36" Padding="4"
+                ToolTipService.InitialShowDelay="500"
                 ToolTip="{StaticResource Chat.ToggleConversations}"
                 AutomationProperties.Name="{StaticResource Chat.ToggleConversations}"
-                Click="ConversationListToggle_OnClick" Style="{StaticResource SecondaryButtonStyle}" />
+                Click="ConversationListToggle_OnClick" Style="{StaticResource SecondaryButtonStyle}">
+            <TextBlock Text="&#xE700;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="16"
+                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Button>
         <Border x:Name="ConversationListPane" Grid.Row="1" Grid.Column="0"
                 Background="{DynamicResource SurfaceBrush}" PreviewKeyDown="ConversationListPane_OnPreviewKeyDown">
             <DockPanel>
@@ -163,10 +168,13 @@
                                       SelectedValuePath="Value" SelectedValue="{Binding DisplayMode}" />
                             <Button x:Name="ChatArchiveMenuButton"
                                     Margin="0,0,8,0"
-                                    Content="⋯"
                                     Click="ChatArchiveMenuButton_OnClick"
                                     ToolTip="{StaticResource Chat.ArchiveToolTip}"
-                                    Style="{StaticResource AppicaHeaderIconButtonStyle}" />
+                                    Style="{StaticResource AppicaHeaderIconButtonStyle}">
+                                <TextBlock Text="&#xE712;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="15"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </Button>
                             <Popup x:Name="ChatArchiveMenuPopup"
                                    PlacementTarget="{Binding ElementName=ChatArchiveMenuButton}"
                                    Placement="Bottom"
@@ -388,6 +396,7 @@
                 <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid x:Name="MessageContainer"
+                                  Background="Transparent"
                                   Margin="0,0,20,20"
                                   MaxWidth="760"
                                  HorizontalAlignment="Left">
@@ -444,7 +453,7 @@
                                 <StackPanel x:Name="MessageMetadata"
                                             Grid.Row="0"
                                             Grid.Column="2"
-                                            Margin="3,0,0,7"
+                                            Margin="3,0,0,4"
                                             Orientation="Horizontal">
                                     <TextBlock Text="{Binding SenderLabel}"
                                                Style="{StaticResource AppicaMessageNameStyle}" />
@@ -456,7 +465,7 @@
                                       Grid.Row="1"
                                       Grid.Column="2"
                                       HorizontalAlignment="Left"
-                                      Margin="0,16,0,0">
+                                      Margin="0,2,0,0">
                                     <Border x:Name="MessageBubble"
                                             HorizontalAlignment="Left"
                                             Style="{StaticResource AppicaMessageBubbleStyle}"
@@ -464,16 +473,92 @@
                                         <presentation:MarkdownMessagePresenter MarkdownText="{Binding DisplayContent}"
                                                                                FontSize="{DynamicResource ChatFontSize}" />
                                     </Border>
+                                </Grid>
+
+                                <WrapPanel x:Name="MessageActions"
+                                            Grid.Row="2"
+                                            Grid.Column="2"
+                                            Margin="0,6,0,0"
+                                            HorizontalAlignment="Left"
+                                            Background="Transparent">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border x:Name="CandidateNavigator"
+                                                VerticalAlignment="Center"
+                                                Margin="0,0,8,0"
+                                                Padding="1"
+                                                Panel.ZIndex="2"
+                                                Visibility="Collapsed"
+                                                Background="{DynamicResource SurfaceBrush}"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="‹"
+                                                        Command="{Binding PreviousCandidateCommand}"
+                                                        Style="{StaticResource CandidateNavigationButtonStyle}"
+                                                        ToolTip="{StaticResource Chat.PreviousCandidateToolTip}" />
+                                                <TextBlock MinWidth="28"
+                                                           Margin="1,0"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           Text="{Binding CandidateNavigationLabel}"
+                                                           FontSize="{DynamicResource FontSizeCaption2}"
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                                <Button Content="›"
+                                                        Command="{Binding NextCandidateCommand}"
+                                                        Style="{StaticResource CandidateNavigationButtonStyle}"
+                                                        ToolTip="{StaticResource Chat.NextCandidateToolTip}" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Button Style="{StaticResource MessagePlusButtonStyle}"
+                                                AutomationProperties.Name="{StaticResource Chat.MessageToolsToolTip}"
+                                                ToolTip="{StaticResource Chat.MessageToolsToolTip}"
+                                                PreviewMouseLeftButtonDown="MessagePlus_OnPreviewMouseLeftButtonDown"
+                                                Click="MessagePlus_OnClick"
+                                                MouseLeave="MessagePlus_OnMouseLeave" />
+                                        <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SenderKind}" Value="Character">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <Button Command="{Binding SpeakCommand}"
+                                                    AutomationProperties.AutomationId="SpeakMessage"
+                                                    AutomationProperties.Name="{StaticResource Speech.Speak}"
+                                                    ToolTip="{Binding SpeechToolTip}" ToolTipService.ShowOnDisabled="True"
+                                                    Width="30" Height="28" Padding="3"
+                                                    Style="{StaticResource AppicaMessageHoverButtonStyle}">
+                                                <TextBlock Text="{Binding SpeechGlyph}" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="15" />
+                                            </Button>
+                                            <Button Command="{Binding SpeechSettingsCommand}"
+                                                    AutomationProperties.AutomationId="MessageSpeechSettings"
+                                                    AutomationProperties.Name="{StaticResource Speech.Title}"
+                                                    ToolTip="{StaticResource Speech.Title}"
+                                                    Width="28" Height="28" Padding="3"
+                                                    Style="{StaticResource AppicaMessageHoverButtonStyle}">
+                                                <TextBlock Text="&#xE713;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="12" />
+                                            </Button>
+                                            <TextBlock Text="{Binding SpeechStatus}" MaxWidth="280" TextWrapping="Wrap"
+                                                       Margin="5,0,0,0" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeCaption}"
+                                                       Foreground="{DynamicResource MutedTextBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
                                     <Border x:Name="HoverActions"
-                                            Margin="0,-16,4,0"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Top">
+                                            VerticalAlignment="Center"
+                                            Margin="6,0,0,0">
                                         <Border.Style>
                                             <Style TargetType="Border" BasedOn="{StaticResource AppicaMessageHoverBarStyle}">
                                                 <Setter Property="Opacity" Value="0" />
                                                 <Setter Property="IsHitTestVisible" Value="False" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=MessageHost}" Value="True">
+                                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=MessageContainer}" Value="True">
                                                         <Setter Property="Opacity" Value="1" />
                                                         <Setter Property="IsHitTestVisible" Value="True" />
                                                     </DataTrigger>
@@ -488,111 +573,47 @@
                                             <Button Command="{Binding CopyCommand}"
                                                     ToolTip="{StaticResource Common.Copy}"
                                                     Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                                <TextBlock Text="▣" FontSize="12" />
+                                                <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="13"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                                             </Button>
                                             <Button Command="{Binding EditCommand}"
                                                     ToolTip="{StaticResource Common.Edit}"
                                                     Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                                <TextBlock Text="✎" FontSize="13" />
+                                                <TextBlock Text="&#xE70F;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="13"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                                             </Button>
                                             <Button Command="{Binding ForkCommand}"
                                                     ToolTip="{StaticResource Chat.IndependentBranch}"
                                                     Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                                <TextBlock Text="⑂" FontSize="13" />
+                                                <TextBlock Text="&#xEF90;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="13"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                                             </Button>
                                             <Button Command="{Binding RegenerateCommand}"
                                                     ToolTip="{StaticResource Chat.RegenerateToolTip}"
                                                     Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                                <TextBlock Text="↻" FontSize="13" />
+                                                <TextBlock Text="&#xE72C;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="13"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                                             </Button>
                                             <Button Command="{Binding ContinueCommand}"
                                                     ToolTip="{StaticResource Chat.ContinueGenerationToolTip}"
                                                     Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                                <TextBlock Text="▶" FontSize="11" />
+                                                <TextBlock Text="&#xE768;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="12"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                                             </Button>
+                                            <Border Width="1"
+                                                    Height="16"
+                                                    Margin="4,0"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource BorderBrush}" />
                                             <Button Command="{Binding DeleteCommand}"
                                                     ToolTip="{StaticResource Common.Delete}"
-                                                    Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                                <TextBlock Text="✕" FontSize="12" />
+                                                    Style="{StaticResource AppicaMessageHoverDangerButtonStyle}">
+                                                <TextBlock Text="&#xE74D;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="13"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
                                             </Button>
                                         </StackPanel>
                                     </Border>
-                                </Grid>
-
-                                <StackPanel x:Name="MessageActions"
-                                            Grid.Row="2"
-                                            Grid.Column="2"
-                                            Margin="0,6,0,0"
-                                            HorizontalAlignment="Left"
-                                            Orientation="Horizontal">
-                                    <Border x:Name="CandidateNavigator"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,8,0"
-                                            Padding="1"
-                                            Panel.ZIndex="2"
-                                            Visibility="Collapsed"
-                                            Background="{DynamicResource SurfaceBrush}"
-                                            BorderBrush="{DynamicResource BorderBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="8">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Content="‹"
-                                                    Command="{Binding PreviousCandidateCommand}"
-                                                    Style="{StaticResource CandidateNavigationButtonStyle}"
-                                                    ToolTip="{StaticResource Chat.PreviousCandidateToolTip}" />
-                                            <TextBlock MinWidth="28"
-                                                       Margin="1,0"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       TextAlignment="Center"
-                                                       Text="{Binding CandidateNavigationLabel}"
-                                                       FontSize="{DynamicResource FontSizeCaption2}"
-                                                       Foreground="{DynamicResource MutedTextBrush}" />
-                                            <Button Content="›"
-                                                    Command="{Binding NextCandidateCommand}"
-                                                    Style="{StaticResource CandidateNavigationButtonStyle}"
-                                                    ToolTip="{StaticResource Chat.NextCandidateToolTip}" />
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Button Style="{StaticResource MessagePlusButtonStyle}"
-                                            AutomationProperties.Name="{StaticResource Chat.MessageToolsToolTip}"
-                                            ToolTip="{StaticResource Chat.MessageToolsToolTip}"
-                                            PreviewMouseLeftButtonDown="MessagePlus_OnPreviewMouseLeftButtonDown"
-                                            Click="MessagePlus_OnClick"
-                                            MouseLeave="MessagePlus_OnMouseLeave" />
-                                    <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SenderKind}" Value="Character">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <Button Command="{Binding SpeakCommand}"
-                                                AutomationProperties.AutomationId="SpeakMessage"
-                                                AutomationProperties.Name="{StaticResource Speech.Speak}"
-                                                ToolTip="{Binding SpeechToolTip}" ToolTipService.ShowOnDisabled="True"
-                                                Width="30" Height="28" Padding="3"
-                                                Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                            <TextBlock Text="{Binding SpeechGlyph}" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="15" />
-                                        </Button>
-                                        <Button Command="{Binding SpeechSettingsCommand}"
-                                                AutomationProperties.AutomationId="MessageSpeechSettings"
-                                                AutomationProperties.Name="{StaticResource Speech.Title}"
-                                                ToolTip="{StaticResource Speech.Title}"
-                                                Width="28" Height="28" Padding="3"
-                                                Style="{StaticResource AppicaMessageHoverButtonStyle}">
-                                            <TextBlock Text="&#xE713;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="12" />
-                                        </Button>
-                                        <TextBlock Text="{Binding SpeechStatus}" MaxWidth="280" TextWrapping="Wrap"
-                                                   Margin="5,0,0,0" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeCaption}"
-                                                   Foreground="{DynamicResource MutedTextBrush}" />
-                                    </StackPanel>
-                                </StackPanel>
+                                </WrapPanel>
 
                                 <Popup IsOpen="{Binding IsToolbarOpen, Mode=TwoWay}"
                                        DataContext="{Binding}"
@@ -607,21 +628,21 @@
                                             <Button Command="{Binding EditCommand}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Width="28" Text="✎" FontSize="17" />
+                                                    <TextBlock Width="28" Text="&#xE70F;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="14" VerticalAlignment="Center" />
                                                     <TextBlock Text="{StaticResource Common.Edit}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
                                             <Button Command="{Binding CopyCommand}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Width="28" Text="▣" FontSize="15" />
+                                                    <TextBlock Width="28" Text="&#xE8C8;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="14" VerticalAlignment="Center" />
                                                     <TextBlock Text="{StaticResource Common.Copy}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
                                             <Button Command="{Binding ForkCommand}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Width="28" Text="⑂" FontSize="17" />
+                                                    <TextBlock Width="28" Text="&#xEF90;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="14" VerticalAlignment="Center" />
                                                     <TextBlock Text="{StaticResource Chat.IndependentBranch}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
@@ -629,7 +650,7 @@
                                                     ToolTip="{StaticResource Chat.RegenerateToolTip}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Width="28" Text="↻" FontSize="17" />
+                                                    <TextBlock Width="28" Text="&#xE72C;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="14" VerticalAlignment="Center" />
                                                     <TextBlock Text="{StaticResource Chat.Regenerate}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
@@ -637,7 +658,7 @@
                                                     ToolTip="{StaticResource Chat.ContinueGenerationToolTip}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Width="28" Text="▶" FontSize="15" />
+                                                    <TextBlock Width="28" Text="&#xE768;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="14" VerticalAlignment="Center" />
                                                     <TextBlock Text="{StaticResource Chat.ContinueGeneration}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
@@ -648,7 +669,7 @@
                                                     Foreground="{DynamicResource DangerBrush}"
                                                     Style="{StaticResource MessageToolButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Width="28" Text="⌫" FontSize="17"
+                                                    <TextBlock Width="28" Text="&#xE74D;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="14" VerticalAlignment="Center"
                                                                Foreground="{DynamicResource DangerBrush}" />
                                                     <TextBlock Text="{StaticResource Common.Delete}"
                                                                VerticalAlignment="Center"
@@ -669,36 +690,35 @@
                                             Property="Visibility"
                                             Value="Visible" />
                                 </DataTrigger>
-                                 <DataTrigger Binding="{Binding DataContext.IsNovelMode, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                              Value="True">
-                                    <Setter TargetName="MessageContainer"
-                                            Property="HorizontalAlignment"
-                                            Value="Stretch" />
-                                    <Setter TargetName="MessageContainer"
-                                            Property="MaxWidth"
-                                            Value="1200" />
-                                    <Setter TargetName="MessageBubble"
-                                            Property="Background"
-                                            Value="Transparent" />
-                                    <Setter TargetName="MessageBubble"
-                                            Property="BorderThickness"
-                                            Value="0" />
-                                     <Setter TargetName="MessageBubble"
-                                             Property="Padding"
-                                             Value="4,8,20,8" />
-                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding SenderKind}" Value="{x:Static models:MessageSenderKind.User}">
                                     <Setter TargetName="MessageContainer" Property="HorizontalAlignment" Value="Right" />
                                     <Setter TargetName="MessageAvatar" Property="Grid.Column" Value="4" />
                                     <Setter TargetName="LeftMessageSpacer" Property="Visibility" Value="Collapsed" />
                                     <Setter TargetName="RightMessageSpacer" Property="Visibility" Value="Visible" />
                                     <Setter TargetName="MessageMetadata" Property="HorizontalAlignment" Value="Right" />
-                                    <Setter TargetName="MessageMetadata" Property="Margin" Value="0,0,3,7" />
+                                    <Setter TargetName="MessageMetadata" Property="Margin" Value="0,0,3,4" />
                                     <Setter TargetName="MessageHost" Property="HorizontalAlignment" Value="Right" />
                                     <Setter TargetName="MessageBubble" Property="HorizontalAlignment" Value="Right" />
-                                    <Setter TargetName="HoverActions" Property="HorizontalAlignment" Value="Left" />
-                                    <Setter TargetName="HoverActions" Property="Margin" Value="4,-16,0,0" />
                                     <Setter TargetName="MessageActions" Property="HorizontalAlignment" Value="Right" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding DataContext.IsNovelMode, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                             Value="True">
+                                    <Setter TargetName="MessageContainer"
+                                            Property="HorizontalAlignment"
+                                            Value="Stretch" />
+                                    <Setter TargetName="MessageContainer"
+                                            Property="MaxWidth"
+                                            Value="800" />
+                                    <Setter TargetName="MessageContainer" Property="Margin" Value="0,0,0,20" />
+                                    <Setter TargetName="MessageBubble"
+                                            Property="Background"
+                                            Value="Transparent" />
+                                    <Setter TargetName="MessageBubble"
+                                            Property="BorderThickness"
+                                            Value="0" />
+                                    <Setter TargetName="MessageBubble"
+                                            Property="Padding"
+                                            Value="4,8,20,8" />
                                 </DataTrigger>
                              </DataTemplate.Triggers>
                         </DataTemplate>
@@ -861,9 +881,13 @@
                                     <Button x:Name="ChatSendButton" AutomationProperties.AutomationId="ChatSendButton" Content="{Binding SendButtonText}"
                                             Command="{Binding SendLocalCommand}" Style="{StaticResource ComposerSendPart}" ToolTip="{StaticResource Chat.ComposerToolTip}" />
                                     <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" Margin="0,8" />
-                                    <Button x:Name="SendModeMenu" Grid.Column="2" Content="⌄" Click="SendModeMenu_OnClick"
+                                    <Button x:Name="SendModeMenu" Grid.Column="2" Click="SendModeMenu_OnClick"
+                                            ToolTipService.InitialShowDelay="500"
                                             AutomationProperties.AutomationId="ChatSendModeMenu" AutomationProperties.Name="{StaticResource Chat.SendModeToolTip}"
                                             ToolTip="{StaticResource Chat.SendModeToolTip}" Style="{StaticResource ComposerSendPart}" Padding="3,8">
+                                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="11"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center" />
                                         <Button.ContextMenu>
                                             <ContextMenu StaysOpen="True" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                                 <MenuItem Header="{StaticResource Chat.SendMode.SendAndGenerate}" Command="{Binding SetSendModeCommand}"
@@ -908,13 +932,18 @@
                 </Grid.RowDefinitions>
                 <Border x:Name="RightPanelOverlayHeader" Visibility="Collapsed" Padding="8,4"
                         Background="{DynamicResource SurfaceSunken}">
-                    <Button x:Name="RightPanelOverlayCloseButton" Content="×"
+                    <Button x:Name="RightPanelOverlayCloseButton"
+                            ToolTipService.InitialShowDelay="500"
                             HorizontalAlignment="Right"
                             AutomationProperties.AutomationId="RightPanelOverlayCloseButton"
                             AutomationProperties.Name="{StaticResource Chat.RightPanel.Collapse}"
                             ToolTip="{StaticResource Chat.RightPanel.Collapse}"
                             Style="{StaticResource MessageToolButtonStyle}"
-                            Click="RightPanelOverlayCloseButton_OnClick" />
+                            Click="RightPanelOverlayCloseButton_OnClick">
+                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="12"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    </Button>
                 </Border>
             <TabControl x:Name="InspectorTabs" Grid.Row="1" Style="{StaticResource InspectorActivityControlStyle}">
                 <TabItem Header="{StaticResource Chat.Tab.Context}" Tag="&#xE8A5;" presentation:InspectorNavigation.Label="{StaticResource Chat.Tab.Context.Short}">

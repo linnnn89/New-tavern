@@ -13,7 +13,7 @@
     <presentation:ResponsiveViewport>
     <Grid Background="{DynamicResource WindowBackgroundBrush}">
         <Grid Visibility="{Binding IsLibrary, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Grid Margin="30,24,30,28">
+            <Grid Margin="{DynamicResource PageInset}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -285,7 +285,7 @@
                 </Style>
             </Grid.Style>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="30,22,30,30">
+                <StackPanel Margin="{DynamicResource PageInset}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -525,7 +525,7 @@
 
         <Grid Visibility="{Binding IsLobby, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <Grid Margin="30,22,30,30">
+                <Grid Margin="{DynamicResource PageInset}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -804,7 +804,7 @@
         </Grid>
 
         <Grid Visibility="{Binding IsGame, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Grid Margin="22,18,22,22">
+            <Grid Margin="{DynamicResource PageInset}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />

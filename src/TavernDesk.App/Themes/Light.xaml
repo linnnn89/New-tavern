@@ -1650,6 +1650,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="True" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="500" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -1689,8 +1690,8 @@
     </Style>
 
     <Style x:Key="CandidateNavigationButtonStyle" TargetType="Button">
-        <Setter Property="Width" Value="20" />
-        <Setter Property="Height" Value="20" />
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="26" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
@@ -1698,12 +1699,13 @@
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="500" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="CandidateButton"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="9">
+                            CornerRadius="7">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center" />
                     </Border>
