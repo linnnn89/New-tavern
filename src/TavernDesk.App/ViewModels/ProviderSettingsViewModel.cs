@@ -121,7 +121,7 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
             () => CatalogProvider is not null);
         AddCustomModelCommand = new AsyncRelayCommand(
             AddCustomModelAsync,
-            () => CatalogProvider is not null);
+            () => CatalogProvider is not null && !ProviderProfileIds.IsSubscriptionCatalog(CatalogProvider.Id));
         SaveModelLimitsCommand = new AsyncRelayCommand(
             SaveModelLimitsAsync,
             () => SelectedCatalogModel is not null);
@@ -212,9 +212,13 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
         ? LanguageRuntime.GetString("Settings.Connection.Grok")
         : LanguageRuntime.GetString("Settings.Connection.OpenAi");
 
-    public string CredentialHelpText => IsGrokCliSelected
-        ? LanguageRuntime.GetString("Settings.Credential.Grok")
-        : LanguageRuntime.GetString("Settings.Credential.OpenAi");
+    public string CredentialHelpText => SelectedProfile?.Id switch
+    {
+        ProviderProfileIds.GrokCli => LanguageRuntime.GetString("Settings.Credential.Grok"),
+        ProviderProfileIds.OpenCodeGo => LanguageRuntime.GetString("Settings.Credential.OpenCodeGo"),
+        ProviderProfileIds.CommandCodeGoat => LanguageRuntime.GetString("Settings.Credential.CommandCodeGoat"),
+        _ => LanguageRuntime.GetString("Settings.Credential.OpenAi")
+    };
 
     public ProviderProfile? CatalogProvider
     {
@@ -988,6 +992,11 @@ public sealed class ProviderSettingsViewModel : ViewModelBase
 
     private async Task<bool> SaveCustomModelCoreAsync(string modelId)
     {
+        if (CatalogProvider is { } subscription && ProviderProfileIds.IsSubscriptionCatalog(subscription.Id))
+        {
+            Status = LanguageRuntime.GetString("Settings.Models.SubscriptionRefreshRequired");
+            return false;
+        }
         var provider = CatalogProvider;
         if (provider is null)
         {

@@ -353,7 +353,9 @@ public sealed class ProviderGatewayRouter :
             profile.Name,
             modelId,
             profile.AdapterKind.ToString(),
-            $"{baseUrl}/{relativeEndpoint.TrimStart('/')}");
+            relativeEndpoint == "models" && profile.Id == ProviderProfileIds.OpenCodeGo
+                ? OpenAiCompatibleProviderGateway.ModelsEndpoint(profile).ToString()
+                : $"{baseUrl}/{relativeEndpoint.TrimStart('/')}");
     }
 
     private void LogProviderError(

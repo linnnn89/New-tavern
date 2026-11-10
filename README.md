@@ -93,11 +93,15 @@ Character library, worldbook editor, and personas:
 | Connection | Setup |
 | --- | --- |
 | OpenRouter, SiliconFlow, DeepSeek | API key and model |
+| [OpenCode Go](https://opencode.ai/docs/console/go/) | OpenCode Console API key; refresh the Go catalog to choose subscription or limited-time free models |
+| [Command Code GOAT](https://commandcode.ai/docs/plans/goat) | Command Code Studio API key; models are filtered by the GOAT plan |
 | LM Studio | Local server address; default `http://127.0.0.1:6543` |
 | Grok CLI | Run `grok login` locally for subscription login |
 | Custom provider | OpenAI Chat Completions-compatible address and optional key |
 
 Enter custom addresses at the service root, `/v1`, or `/api/v1`; the app adds the chat path. Chat, group chat relay, and other generation functions have separate model assignments.
+
+Both providers are built in and added automatically on upgrade. Select the provider in **Settings → AI &amp; models → Providers**, enter and save its key, refresh the model catalog, then assign a model to a function. The default base URLs are `https://opencode.ai/inference/go/openai/v1` for OpenCode Go and `https://api.commandcode.ai/provider/v1` for Command Code GOAT. This integration supports Chat Completions models for streaming chat, group chat, and memory generation; Messages-only and Responses-only models are excluded. Access to Go free models depends on server-side account and region permissions.
 
 ## Local data
 

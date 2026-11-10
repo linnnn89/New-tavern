@@ -18,9 +18,15 @@ public static class ProviderProfileIds
     public const string SiliconFlow = "builtin-siliconflow";
     public const string DeepSeek = "builtin-deepseek";
     public const string LmStudio = "builtin-lm-studio";
+    public const string OpenCodeGo = "builtin-opencode-go";
+    public const string CommandCodeGoat = "builtin-commandcode-goat";
+
+    public static bool IsSubscriptionCatalog(string id) =>
+        id is OpenCodeGo or CommandCodeGoat;
 
     public static bool IsSupported(string id) =>
-        id is GrokCli or OpenRouter or SiliconFlow or DeepSeek or LmStudio;
+        id is GrokCli or OpenRouter or SiliconFlow or DeepSeek or LmStudio
+            or OpenCodeGo or CommandCodeGoat;
 
     public static bool IsSupportedAdapter(ProviderAdapterKind adapterKind) =>
         adapterKind is ProviderAdapterKind.OpenAiCompatible

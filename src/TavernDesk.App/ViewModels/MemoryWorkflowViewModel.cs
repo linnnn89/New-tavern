@@ -723,7 +723,8 @@ public sealed class MemoryWorkflowViewModel : ViewModelBase
                 Math.Min(assignment.MaxOutputTokens, plan.TargetTokens + 1024),
                 assignment.Temperature,
                 assignment.TopP,
-                assignment.ReasoningEnabled);
+                assignment.ReasoningEnabled,
+                SessionId: $"memory:{plan.TargetOwnerId}:{plan.SourceConversationId}:{plan.Kind}");
             var preview = RenderPreview(plan, assignment);
             if (IsCurrent(plan))
             {

@@ -1715,4 +1715,7 @@ The current content was not saved.</sys:String>
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">Input composition · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">No campaigns yet. Choose a scenario to start an adventure.</sys:String>
     <sys:String x:Key="Worldbook.Entries">Entries</sys:String>
+    <sys:String x:Key="Settings.Credential.OpenCodeGo">Enter your OpenCode Console API key, save, then refresh models. Only Chat Completions models are listed, including limited-time free models in the catalog. Access depends on account permissions, region, and server restrictions. Keys are encrypted locally with Windows DPAPI.</sys:String>
+    <sys:String x:Key="Settings.Credential.CommandCodeGoat">Enter your Command Code Studio API key, save, then refresh models. Models are filtered by the official GOAT plan and Chat Completions support; Messages-only and Responses-only models are excluded. Credits and access are determined by the server. Keys are encrypted locally with Windows DPAPI.</sys:String>
+    <sys:String x:Key="Settings.Models.SubscriptionRefreshRequired">Use Refresh models to load this subscription provider's compatible catalog. Manual model entry is unavailable.</sys:String>
 </ResourceDictionary>

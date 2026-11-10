@@ -673,7 +673,8 @@ public sealed class GroupMemoryUpdateService : IGroupMemoryUpdateService
             Math.Min(assignment.MaxOutputTokens, targetTokens + 512),
             Math.Min(assignment.Temperature, 0.4),
             assignment.TopP,
-            assignment.ReasoningEnabled);
+            assignment.ReasoningEnabled,
+            SessionId: $"group-memory:{conversationId}:{(int)scope.Scope}:{scope.CharacterId ?? "shared"}");
         var buffer = new StringBuilder();
         var operationId =
             $"group-memory:{conversationId}:{(int)scope.Scope}:{scope.CharacterId ?? "shared"}";

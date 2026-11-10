@@ -20,15 +20,18 @@ public sealed class OpenAiCompatibleProviderGateway :
     private readonly IProviderProfileRepository _profiles;
     private readonly ISecretStore _secrets;
     private readonly HttpClient _httpClient;
+    private readonly IModelCatalogRepository? _models;
 
     public OpenAiCompatibleProviderGateway(
         IProviderProfileRepository profiles,
         ISecretStore secrets,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null,
+        IModelCatalogRepository? models = null)
     {
         _profiles = profiles;
         _secrets = secrets;
         _httpClient = httpClient ?? CreateHttpClient();
+        _models = models;
     }
 
     public Task<IReadOnlyList<ProviderModelDescriptor>> RefreshModelsAsync(
@@ -63,6 +66,10 @@ public sealed class OpenAiCompatibleProviderGateway :
         var profile = await ResolveProfileAsync(
             request.ProviderId,
             cancellationToken);
+        if (ProviderProfileIds.IsSubscriptionCatalog(profile.Id))
+        {
+            throw new NotSupportedException("此订阅接入商仅支持聊天生成，不提供 Embedding 接口。");
+        }
         using var timeout = CreateTimeout(profile, cancellationToken);
         using var message = new HttpRequestMessage(
             HttpMethod.Post,
@@ -104,10 +111,15 @@ public sealed class OpenAiCompatibleProviderGateway :
         CancellationToken cancellationToken)
     {
         var profile = await ResolveProfileAsync(providerId, cancellationToken);
+        if (forcedKind == ModelCatalogKind.Embedding
+            && ProviderProfileIds.IsSubscriptionCatalog(profile.Id))
+        {
+            return [];
+        }
         using var timeout = CreateTimeout(profile, cancellationToken);
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            BuildEndpoint(profile.BaseUrl, endpointPath));
+            endpointPath == "models" ? ModelsEndpoint(profile) : BuildEndpoint(profile.BaseUrl, endpointPath));
         await AddAuthorizationAsync(request, profile, timeout.Token);
         using var response = await SendWithDiagnosticsAsync(
             request,
@@ -146,7 +158,23 @@ public sealed class OpenAiCompatibleProviderGateway :
                 throw new InvalidDataException("模型目录响应缺少 data 数组。");
             }
 
-            return data.EnumerateArray()
+            IReadOnlyList<JsonElement>? goatPlan = null;
+            if (profile.Id == ProviderProfileIds.CommandCodeGoat)
+            {
+                // Never send the provider key to the public documentation host.
+                using var planRequest = new HttpRequestMessage(HttpMethod.Get, CommandCodeGoatCatalog.PlanUrl);
+                planRequest.Headers.UserAgent.ParseAdd("TavernDesk/1.0");
+                using var planResponse = await SendWithDiagnosticsAsync(planRequest, profile, timeout, cancellationToken);
+                await EnsureSuccessAsync(planResponse, timeout.Token);
+                var planBytes = await ExecuteTransportAsync(
+                    token => ReadLimitedAsync(planResponse.Content, MaximumModelsResponseBytes, token),
+                    profile, timeout, cancellationToken);
+                goatPlan = CommandCodeGoatCatalog.ReadPlan(Encoding.UTF8.GetString(planBytes));
+            }
+
+            var models = data.EnumerateArray()
+                .Where(element => SupportsCatalogEntry(profile, element))
+                .Where(element => goatPlan is null || CommandCodeGoatCatalog.Includes(goatPlan, element))
                 .Select(element => ReadModel(element, forcedKind))
                 .Where(model => model is not null)
                 .Cast<ProviderModelDescriptor>()
@@ -154,6 +182,9 @@ public sealed class OpenAiCompatibleProviderGateway :
                 .Select(group => group.First())
                 .OrderBy(model => model.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+            if (ProviderProfileIds.IsSubscriptionCatalog(profile.Id) && models.Length == 0)
+                throw new InvalidDataException("订阅目录中没有可用的 Chat Completions 模型，已保留原模型列表。");
+            return models;
         }
     }
 
@@ -162,11 +193,29 @@ public sealed class OpenAiCompatibleProviderGateway :
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var profile = await ResolveProfileAsync(request.ProviderId, cancellationToken);
+        ProviderModel? subscriptionModel = null;
+        if (ProviderProfileIds.IsSubscriptionCatalog(profile.Id))
+        {
+            subscriptionModel = _models is null ? null
+                : (await _models.ListAsync(profile.Id, ModelCatalogKind.Chat, cancellationToken))
+                    .FirstOrDefault(model => model.ModelId == request.ModelId);
+            if (subscriptionModel is null)
+            {
+                throw new NotSupportedException("请先刷新此接入商的模型目录，并选择支持 Chat Completions 的模型。");
+            }
+        }
         using var timeout = CreateTimeout(profile, cancellationToken);
         using var message = new HttpRequestMessage(
             HttpMethod.Post,
             BuildEndpoint(profile.BaseUrl, "chat/completions"));
         await AddAuthorizationAsync(message, profile, timeout.Token);
+        if (profile.Id == ProviderProfileIds.OpenCodeGo)
+        {
+            // Use the app's conversation identity; never impersonate OpenCode.
+            message.Headers.Add("x-opencode-session", string.IsNullOrWhiteSpace(request.SessionId)
+                ? Guid.NewGuid().ToString("N")
+                : request.SessionId.Trim());
+        }
         var payload = new Dictionary<string, object?>
         {
             ["model"] = request.ModelId,
@@ -184,6 +233,8 @@ public sealed class OpenAiCompatibleProviderGateway :
                 include_usage = true
             }
         };
+        if (subscriptionModel is { SupportsTemperature: false }) payload.Remove("temperature");
+        if (subscriptionModel is { SupportsTopP: false }) payload.Remove("top_p");
         if (request.ReasoningEnabled is { } reasoningEnabled
             && ModelFeatureSupport.SupportsOpenRouterDeepSeekReasoning(
                 profile,
@@ -393,6 +444,10 @@ public sealed class OpenAiCompatibleProviderGateway :
         ProviderProfile profile,
         CancellationToken cancellationToken)
     {
+        if (ProviderProfileIds.IsSubscriptionCatalog(profile.Id))
+        {
+            request.Headers.UserAgent.ParseAdd("TavernDesk/1.0");
+        }
         if (string.IsNullOrWhiteSpace(profile.SecretReference))
         {
             return;
@@ -441,12 +496,58 @@ public sealed class OpenAiCompatibleProviderGateway :
 
         maxOutputTokens ??=
             ReadPositiveInt32(element, "max_completion_tokens");
+        if (element.TryGetProperty("limit", out var limit) && limit.ValueKind == JsonValueKind.Object)
+        {
+            contextLimit ??= ReadPositiveInt32(limit, "context");
+            maxOutputTokens ??= ReadPositiveInt32(limit, "output");
+        }
+        var supportsTemperature = true;
+        var supportsTopP = true;
+        if (element.TryGetProperty("capabilities", out var capabilities)
+            && capabilities.ValueKind == JsonValueKind.Object)
+        {
+            supportsTemperature = !capabilities.TryGetProperty("temperature", out var temperature)
+                                  || temperature.ValueKind != JsonValueKind.False;
+            supportsTopP = !capabilities.TryGetProperty("top_p", out var topP)
+                          || topP.ValueKind != JsonValueKind.False;
+        }
         return new ProviderModelDescriptor(
             id,
             string.IsNullOrWhiteSpace(displayName) ? id : displayName,
             contextLimit,
             maxOutputTokens,
-            ModelKind: forcedKind ?? ModelCatalogKind.Chat);
+            ModelKind: forcedKind ?? ModelCatalogKind.Chat,
+            SupportsTemperature: supportsTemperature,
+            SupportsTopP: supportsTopP);
+    }
+
+    internal static Uri ModelsEndpoint(ProviderProfile profile)
+    {
+        var baseUrl = profile.BaseUrl.Trim().TrimEnd('/');
+        // Go publishes its catalog beside the OpenAI API family, not under it.
+        if (profile.Id == ProviderProfileIds.OpenCodeGo
+            && baseUrl.EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase))
+        {
+            baseUrl = baseUrl[..^"/openai/v1".Length] + "/v1";
+        }
+        return BuildEndpoint(baseUrl, "models");
+    }
+
+    private static bool SupportsCatalogEntry(ProviderProfile profile, JsonElement element)
+    {
+        if (!ProviderProfileIds.IsSubscriptionCatalog(profile.Id)) return true;
+        if (element.ValueKind != JsonValueKind.Object) return false;
+        if (profile.Id == ProviderProfileIds.OpenCodeGo)
+        {
+            return ReadString(element, "type") == "chat"
+                   && element.TryGetProperty("api", out var api)
+                   && api.ValueKind == JsonValueKind.Object
+                   && api.TryGetProperty("chat-completions", out _);
+        }
+        return element.TryGetProperty("supported_endpoints", out var endpoints)
+               && endpoints.ValueKind == JsonValueKind.Array
+               && endpoints.EnumerateArray().Any(endpoint => endpoint.ValueKind == JsonValueKind.String
+                   && endpoint.GetString()?.Trim('/') == "chat/completions");
     }
 
     private static int? ReadPositiveInt32(

@@ -8,6 +8,8 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
 {
     private const string DefaultsInitializedKey =
         "providers.catalog_v2_initialized";
+    private const string SubscriptionDefaultsInitializedKey =
+        "providers.subscription_catalog_v1_initialized";
     private readonly SqliteDatabase _database;
 
     public SqliteProviderProfileRepository(SqliteDatabase database)
@@ -120,7 +122,9 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
     public async Task EnsureDefaultsAsync(CancellationToken cancellationToken = default)
     {
         await NormalizeAdapterContractsAsync(cancellationToken);
-        if (await DefaultsWereInitializedAsync(cancellationToken))
+        var defaultsInitialized = await DefaultsWereInitializedAsync(DefaultsInitializedKey, cancellationToken);
+        var subscriptionsInitialized = await DefaultsWereInitializedAsync(SubscriptionDefaultsInitializedKey, cancellationToken);
+        if (defaultsInitialized && subscriptionsInitialized)
         {
             return;
         }
@@ -175,15 +179,33 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
                 Name = "LM Studio（本地）",
                 AdapterKind = ProviderAdapterKind.OpenAiCompatible,
                 BaseUrl = "http://127.0.0.1:6543"
+            },
+            new ProviderProfile
+            {
+                Id = ProviderProfileIds.OpenCodeGo,
+                Name = "OpenCode Go",
+                BaseUrl = "https://opencode.ai/inference/go/openai/v1"
+            },
+            new ProviderProfile
+            {
+                Id = ProviderProfileIds.CommandCodeGoat,
+                Name = "Command Code GOAT",
+                BaseUrl = "https://api.commandcode.ai/provider/v1"
             }
         };
 
-        foreach (var profile in defaults.Where(profile => !existingIds.Contains(profile.Id)))
+        // A separate marker adds new built-ins once, without restoring providers
+        // the user deliberately deleted after a previous initialization.
+        foreach (var profile in defaults.Where(profile => !existingIds.Contains(profile.Id)
+                     && (ProviderProfileIds.IsSubscriptionCatalog(profile.Id)
+                         ? !subscriptionsInitialized
+                         : !defaultsInitialized)))
         {
             await UpsertAsync(profile, cancellationToken);
         }
 
-        await MarkDefaultsInitializedAsync(cancellationToken);
+        await MarkDefaultsInitializedAsync(DefaultsInitializedKey, cancellationToken);
+        await MarkDefaultsInitializedAsync(SubscriptionDefaultsInitializedKey, cancellationToken);
     }
 
     private async Task NormalizeAdapterContractsAsync(
@@ -270,6 +292,8 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
             ProviderProfileIds.SiliconFlow => "https://api.siliconflow.cn/v1",
             ProviderProfileIds.DeepSeek => "https://api.deepseek.com",
             ProviderProfileIds.LmStudio => "http://127.0.0.1:6543",
+            ProviderProfileIds.OpenCodeGo => "https://opencode.ai/inference/go/openai/v1",
+            ProviderProfileIds.CommandCodeGoat => "https://api.commandcode.ai/provider/v1",
             _ => null
         };
 
@@ -283,6 +307,7 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
     }
 
     private async Task<bool> DefaultsWereInitializedAsync(
+        string key,
         CancellationToken cancellationToken)
     {
         await using var connection = _database.CreateConnection();
@@ -290,11 +315,12 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
         await using var command = connection.CreateCommand();
         command.CommandText =
             "SELECT 1 FROM app_settings WHERE key = $key LIMIT 1;";
-        command.Parameters.AddWithValue("$key", DefaultsInitializedKey);
+        command.Parameters.AddWithValue("$key", key);
         return await command.ExecuteScalarAsync(cancellationToken) is not null;
     }
 
     private async Task MarkDefaultsInitializedAsync(
+        string key,
         CancellationToken cancellationToken)
     {
         await using var connection = _database.CreateConnection();
@@ -307,7 +333,7 @@ public sealed class SqliteProviderProfileRepository : IProviderProfileRepository
                 value = excluded.value,
                 updated_at = excluded.updated_at;
             """;
-        command.Parameters.AddWithValue("$key", DefaultsInitializedKey);
+        command.Parameters.AddWithValue("$key", key);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

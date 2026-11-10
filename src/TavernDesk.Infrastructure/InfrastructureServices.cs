@@ -70,7 +70,7 @@ public sealed class InfrastructureServices
         SpeechSettings = new SpeechSettingsService(Settings, Secrets, Diagnostics, audioCache: speechAudioCache);
         SpeechSynthesizer = new FishAudioSpeechSynthesizer(Secrets, diagnostics: Diagnostics);
         var openAiCompatibleGateway =
-            new OpenAiCompatibleProviderGateway(Providers, Secrets);
+            new OpenAiCompatibleProviderGateway(Providers, Secrets, models: Models);
         var grokCliGateway = new GrokCliProviderGateway(Providers, Paths);
         ProviderGateway = new ProviderGatewayRouter(
             Providers,

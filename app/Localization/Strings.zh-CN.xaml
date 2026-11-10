@@ -1725,4 +1725,7 @@
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">输入组成 · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">尚未开始跑团。选择剧本，开一局新的冒险。</sys:String>
     <sys:String x:Key="Worldbook.Entries">词条列表</sys:String>
+    <sys:String x:Key="Settings.Credential.OpenCodeGo">填写 OpenCode Console API Key，保存后刷新模型目录。仅显示 Chat Completions 模型，包含目录中的限时免费模型；能否调用取决于账户权限、地区及服务端限制。密钥使用 Windows DPAPI 加密保存在本机。</sys:String>
+    <sys:String x:Key="Settings.Credential.CommandCodeGoat">填写 Command Code Studio API Key，保存后刷新模型目录。按官方 GOAT 套餐与 Chat Completions 接口筛选；不显示仅支持 Messages 或 Responses 的模型。实际额度及权限由服务端决定。密钥使用 Windows DPAPI 加密保存在本机。</sys:String>
+    <sys:String x:Key="Settings.Models.SubscriptionRefreshRequired">此订阅接入商请使用“刷新模型”读取兼容目录，不支持手动添加模型。</sys:String>
 </ResourceDictionary>

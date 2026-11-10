@@ -8,7 +8,9 @@ public sealed record ProviderModelDescriptor(
     int? ContextLimit = null,
     int? MaxOutputTokens = null,
     bool SupportsStreaming = true,
-    ModelCatalogKind ModelKind = ModelCatalogKind.Chat);
+    ModelCatalogKind ModelKind = ModelCatalogKind.Chat,
+    bool SupportsTemperature = true,
+    bool SupportsTopP = true);
 
 public sealed record ProviderChatMessage(
     string Role,

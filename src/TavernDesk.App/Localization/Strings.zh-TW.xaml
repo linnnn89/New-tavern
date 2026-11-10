@@ -1715,4 +1715,7 @@ TavernDesk の表示言語を選択してください。</sys:String>
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">輸入組成 · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">尚未開始跑團。選擇劇本，展開新的冒險。</sys:String>
     <sys:String x:Key="Worldbook.Entries">詞條清單</sys:String>
+    <sys:String x:Key="Settings.Credential.OpenCodeGo">填入 OpenCode Console API Key，儲存後重新整理模型目錄。僅顯示 Chat Completions 模型，包含目錄中的限時免費模型；能否呼叫取決於帳戶權限、地區及伺服器限制。金鑰以 Windows DPAPI 加密儲存在本機。</sys:String>
+    <sys:String x:Key="Settings.Credential.CommandCodeGoat">填入 Command Code Studio API Key，儲存後重新整理模型目錄。依官方 GOAT 方案與 Chat Completions 介面篩選；不顯示僅支援 Messages 或 Responses 的模型。實際額度及權限由伺服器決定。金鑰以 Windows DPAPI 加密儲存在本機。</sys:String>
+    <sys:String x:Key="Settings.Models.SubscriptionRefreshRequired">此訂閱接入商請使用「重新整理模型」讀取相容目錄，不支援手動新增模型。</sys:String>
 </ResourceDictionary>

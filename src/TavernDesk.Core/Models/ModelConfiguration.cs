@@ -26,6 +26,8 @@ public sealed class ProviderModel
     public int ContextLimit { get; set; } = 32768;
     public int MaxOutputTokens { get; set; } = 4096;
     public bool SupportsStreaming { get; set; } = true;
+    public bool SupportsTemperature { get; set; } = true;
+    public bool SupportsTopP { get; set; } = true;
     public ModelCatalogKind ModelKind { get; set; } = ModelCatalogKind.Chat;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 

@@ -93,11 +93,15 @@ TavernDesk 是 Windows 上的角色 AI 聊天与跑团客户端。导入角色�
 | 接入方式 | 配置 |
 | --- | --- |
 | OpenRouter、硅基流动、DeepSeek | API Key 与模型 |
+| [OpenCode Go](https://opencode.ai/docs/console/go/) | OpenCode Console API Key；刷新 Go 目录，选择订阅模型或目录中的限时免费模型 |
+| [Command Code GOAT](https://commandcode.ai/docs/plans/goat) | Command Code Studio API Key；刷新后按 GOAT 套餐筛选模型 |
 | LM Studio | 本地服务地址，默认 `http://127.0.0.1:6543` |
 | Grok CLI | 在本机运行 `grok login` 完成订阅登录 |
 | 自定义接入商 | OpenAI Chat Completions 兼容地址与可选密钥 |
 
 自定义地址填到服务根、`/v1` 或 `/api/v1`，聊天路径由软件补齐。聊天、群聊接力和其他生成功能分别分配模型。
+
+这两个接入商已内置，升级后也会自动加入：在 **设置 → AI 与模型 → 接入商** 选择对应入口，填写并保存密钥，再到模型目录刷新，在功能分配页选择模型。OpenCode Go 默认地址为 `https://opencode.ai/inference/go/openai/v1`，Command Code GOAT 为 `https://api.commandcode.ai/provider/v1`。目前接入 Chat Completions 模型，支持流式聊天、群聊和记忆生成；仅提供 Messages 或 Responses 接口的模型不列入目录。Go 免费模型是否可用取决于服务端账户与地区权限。
 
 ## 本地资料
 

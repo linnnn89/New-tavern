@@ -93,11 +93,15 @@ TavernDesk は、キャラクターとの AI チャットと TRPG を楽しむ W
 | 接続先 | 設定 |
 | --- | --- |
 | OpenRouter、SiliconFlow、DeepSeek | API キーとモデル |
+| [OpenCode Go](https://opencode.ai/docs/console/go/) | OpenCode Console の API キー。Go 一覧を更新して、サブスクリプションまたは期間限定無料モデルを選択 |
+| [Command Code GOAT](https://commandcode.ai/docs/plans/goat) | Command Code Studio の API キー。GOAT プランのモデルに絞り込み |
 | LM Studio | ローカルサーバーのアドレス。既定は `http://127.0.0.1:6543` |
 | Grok CLI | ローカルで `grok login` を実行してサブスクリプションにログイン |
 | カスタムプロバイダー | OpenAI Chat Completions 互換アドレスと任意のキー |
 
 カスタムアドレスはサービスのルート、`/v1`、`/api/v1` まで入力します。チャットのパスはアプリが追加します。チャット、グループチャットのリレーなど、機能ごとにモデルを割り当てます。
+
+両プロバイダーは組み込み済みで、更新時にも自動追加されます。**設定 → AI とモデル → プロバイダー** で接続先を選び、キーを入力して保存し、モデル一覧を更新して機能に割り当ててください。既定の URL は OpenCode Go が `https://opencode.ai/inference/go/openai/v1`、Command Code GOAT が `https://api.commandcode.ai/provider/v1` です。Chat Completions 対応モデルでストリーミングチャット、グループチャット、記憶生成を利用できます。Messages または Responses 専用モデルは一覧に含みません。Go の無料モデルはサーバー側のアカウントと地域の権限により利用可否が決まります。
 
 ## ローカルデータ
 

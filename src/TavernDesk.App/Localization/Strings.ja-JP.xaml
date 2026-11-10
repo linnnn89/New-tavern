@@ -1715,4 +1715,7 @@ null、undefined、NaN、constructor、prototype、__proto__ は使わないで�
     <sys:String x:Key="Chat.Budget.InputCompositionFormat">入力の内訳 · {0:N0} tokens</sys:String>
     <sys:String x:Key="Campaigns.EmptyHistory">まだセッションがありません。シナリオを選んで冒険を始めましょう。</sys:String>
     <sys:String x:Key="Worldbook.Entries">項目一覧</sys:String>
+    <sys:String x:Key="Settings.Credential.OpenCodeGo">OpenCode Console の API キーを入力して保存し、モデル一覧を更新してください。Chat Completions 対応モデルのみ表示し、一覧内の期間限定無料モデルも含みます。利用可否はアカウント権限、地域、サーバーの制限によります。キーは Windows DPAPI で暗号化してローカルに保存します。</sys:String>
+    <sys:String x:Key="Settings.Credential.CommandCodeGoat">Command Code Studio の API キーを入力して保存し、モデル一覧を更新してください。公式 GOAT プランと Chat Completions 対応で絞り込み、Messages または Responses 専用モデルは表示しません。利用枠と権限はサーバーが判断します。キーは Windows DPAPI で暗号化してローカルに保存します。</sys:String>
+    <sys:String x:Key="Settings.Models.SubscriptionRefreshRequired">このサブスクリプション接続先ではモデル一覧を更新してください。モデルの手動追加には対応していません。</sys:String>
 </ResourceDictionary>
