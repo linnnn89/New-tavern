@@ -2,9 +2,9 @@ name: Responsive WPF layout
 on:
   push:
     branches: [ui/responsive-layout, 跑团记忆升级版]
-    paths: ['src/**', 'scripts/**', '.github/workflows/responsive-layout.yml']
+    paths: ['src/**', 'scripts/**', 'global.json', 'Directory.Build.props', 'NuGet.Config', '.github/workflows/responsive-layout.yml']
   pull_request:
-    paths: ['src/**', 'scripts/**', '.github/workflows/responsive-layout.yml']
+    paths: ['src/**', 'scripts/**', 'global.json', 'Directory.Build.props', 'NuGet.Config', '.github/workflows/responsive-layout.yml']
   workflow_dispatch:
 permissions:
   contents: read

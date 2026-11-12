@@ -41,14 +41,20 @@ dotnet run --project scripts/GroupContextHistoryTdd -c Release
 dotnet run --project scripts/ResponsiveLayoutWindowsChecks -c Release
 ```
 
-Linux 交叉编译需 `-p:EnableWindowsTargeting=true`；它不能证明 WPF 运行时布局正确。仓库 `tests/` 是未跟踪的私有测试，此工作区没有该测试集。新的公共检查放在 `scripts/`，不声称重跑历史 359 项测试。
+Linux 交叉编译需 `-p:EnableWindowsTargeting=true`；它不能证明 WPF 运行时布局正确。仓库 `tests/` 是未跟踪的私有测试，不随克隆分发；本地存在时需直接指定其测试项目运行，解决方案构建和公共 CI 不包含它。新的公共检查放在 `scripts/`，不声称重跑历史 359 项测试。
 
 - 纯尺寸检查：84 项，含宽高断点、非法/无限空间、反复越界、100/125/150/200% 系统 DPI 的数学坐标约定、80/100/125/150% 应用缩放、10/14/20/30 字号。DPI 数学测试不等于真实显示器 DPI 验收。
 - Windows WPF 检查：真实 Measure/Arrange、超大子控件与滚动 extent、LayoutTransform 单次换算、反复切换时控件身份/草稿/选择、列表虚拟化标志及实际滚动位置；使用隔离虚构资料创建实际 MainWindow 和 ConversationWindow，检查自动折叠、浮层关闭、用户栏宽与手动关闭状态；四语言标签边界与最小窗口发送按钮边界；接入商、模型目录、功能分配的宽窄切换。
 - Windows 证据图：由实际窗口的 WPF 视觉树通过 RenderTargetBitmap 导出，记录代表性宽窄布局；不是整屏抓取，也不证明硬件 DPI、抗锯齿和多显示器移动效果。GitHub workflow 上传 `responsive-layout-evidence` artifact。
 - 不连接真实 Provider，不测试付费请求。真实长对话流式上翻、人工鼠标来回拖动、实际多显示器 DPI 和全部长文本视觉组合仍需桌面人工验收。
 
-## 本次执行结果
+## HEAD 交互回归维护
+
+2026-11-12，基于 `ca21c52` 核对后，Windows harness 增加三个交互场景：搜索清空与 Esc 保持双向绑定、清空后恢复焦点；聊天占位提示随输入和焦点变化；只读 API 请求预览在长文本下横纵滚动且不修改正文。均使用真实 WPF 窗口、控件事件和隔离资料，不连接 Provider。图像仍是 WPF 视觉树渲染，不等同于硬件屏幕截图。
+
+本地包含这三个场景的 Windows WPF 检查共 130 项，全部通过；修改后的 harness 将与原布局检查一起进入现有 CI，尚未提交触发远端运行。工作流路径同时覆盖 `global.json`、`Directory.Build.props` 和 `NuGet.Config`；安装包脚本变更仍不等于安装流程已被该布局工作流验证。
+
+## 2026-10-13 历史执行结果
 
 逐页 Linux Release 交叉构建通过，均为 0 警告、0 错误。纯尺寸 84 项通过；已有群聊离线上下文测试通过（8 阶段，API 禁用）。本地化检查四语言 1665 键通过；脚本的 bin/obj 排除规则已兼容 Windows 和 Linux 路径。
 

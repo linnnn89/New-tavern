@@ -45,6 +45,8 @@ internal static class Program
             {
                 CheckMeasureBoundary();
                 CheckPersistentPanes();
+                await CheckSearchInteraction();
+                await CheckContextPreviewScrolling();
                 await CheckWindows();
                 if (Failures.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, Failures));
                 Console.WriteLine($"Windows WPF layout: {_checks} checks passed. Rendered evidence: {_output}");
@@ -226,6 +228,7 @@ internal static class Program
         await Settle(independent);
         var chat = Find<ChatView>(main);
         var otherChat = Find<ChatView>(independent);
+        await CheckComposerPlaceholder(main, independent, chat, vm.Chat);
         var panel = Named<Border>(chat, "RightPanel");
         var column = Named<ColumnDefinition>(chat, "RightPanelColumn");
         var inspector = Named<TabControl>(chat, "InspectorTabs");
@@ -356,6 +359,93 @@ internal static class Program
         await Settle(independent);
         Capture((FrameworkElement)independent.Content, "independent-chat-wide");
         // MainWindow owns application shutdown; do not close it while assertions are running.
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+    {
+        if (root is T item) yield return item;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            foreach (var child in Descendants<T>(VisualTreeHelper.GetChild(root, i)))
+                yield return child;
+    }
+
+    private static async Task CheckSearchInteraction()
+    {
+        var source = new TextBox { Text = "initial search" };
+        var search = new TavernDesk.App.Views.Shared.SearchBox { Placeholder = "Search placeholder" };
+        search.SetBinding(TavernDesk.App.Views.Shared.SearchBox.TextProperty,
+            new System.Windows.Data.Binding(nameof(TextBox.Text))
+            { Source = source, Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged });
+        var window = new Window { Content = search, Width = 500, Height = 160 };
+        window.Show();
+        await Settle(window);
+        var input = Named<TextBox>(search, "SearchInput");
+        Click(Find<Button>(search));
+        await Settle(window);
+        Check(source.Text == "" && input.Text == "", "Search clear updates the bound source");
+        Check(input.IsKeyboardFocusWithin, "Search clear restores keyboard focus");
+        var placeholder = Descendants<TextBlock>(search).Single(text => text.Text == "Search placeholder");
+        Check(placeholder.Visibility == Visibility.Visible, "Cleared search retains its placeholder");
+        source.Text = "next search";
+        await Settle(window);
+        Check(input.Text == "next search", "Search binding survives clear");
+        var escape = new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+            PresentationSource.FromVisual(input), 0, System.Windows.Input.Key.Escape)
+            { RoutedEvent = System.Windows.Input.Keyboard.KeyDownEvent };
+        input.RaiseEvent(escape);
+        await Settle(window);
+        Check(escape.Handled && source.Text == "", "Escape clears the bound search");
+        Capture((FrameworkElement)window.Content, "search-cleared-focused");
+        window.Close();
+    }
+
+    private static async Task CheckContextPreviewScrolling()
+    {
+        var text = string.Join("\n", Enumerable.Repeat(new string('X', 400), 100));
+        var panel = new TavernDesk.App.Views.Chat.ChatContextPanel
+            { DataContext = new { ApiRequestPreview = text } };
+        var window = new Window { Content = panel, Width = 480, Height = 650 };
+        window.Show();
+        await Settle(window);
+        // Expand the real nested inspector controls so the preview is reachable.
+        for (var pass = 0; pass < 3; pass++)
+        {
+            foreach (var expander in Descendants<Expander>(panel).ToArray()) expander.IsExpanded = true;
+            await Settle(window);
+        }
+        var preview = Descendants<TextBox>(panel).Single(box => box.IsReadOnly);
+        var scroll = Find<ScrollViewer>(preview);
+        Check(preview.Text == text && preview.ActualHeight <= 240, "Context preview retains text within its height limit");
+        Check(scroll.ScrollableHeight > 0 && scroll.ScrollableWidth > 0, "Long context preview has both scroll ranges");
+        scroll.ScrollToBottom();
+        scroll.ScrollToRightEnd();
+        await Settle(window);
+        Check(scroll.VerticalOffset > 0 && scroll.HorizontalOffset > 0 && preview.Text == text,
+            "Context preview scrolls in both directions without changing text");
+        Capture((FrameworkElement)window.Content, "context-preview-scrolled");
+        window.Close();
+    }
+
+    private static async Task CheckComposerPlaceholder(Window main, Window other, ChatView chat, ChatViewModel model)
+    {
+        var composer = Named<TextBox>(chat, "ChatComposer");
+        var placeholder = Descendants<TextBlock>(chat).Single(text =>
+            text.Text == LanguageRuntime.GetString("Chat.ComposerPlaceholder"));
+        model.ComposerText = "";
+        main.Activate();
+        composer.Focus();
+        await Settle(main);
+        Check(composer.IsKeyboardFocusWithin && placeholder.Visibility == Visibility.Collapsed,
+            "Focused empty composer hides its placeholder");
+        other.Activate();
+        await Settle(main);
+        Check(!composer.IsKeyboardFocusWithin && placeholder.Visibility == Visibility.Visible,
+            "Empty composer shows its placeholder after losing focus");
+        model.ComposerText = "unsaved placeholder check";
+        await Settle(main);
+        Check(composer.Text == model.ComposerText && placeholder.Visibility == Visibility.Collapsed,
+            "Composer text binding and placeholder remain consistent");
     }
 
     private static void Capture(FrameworkElement visual, string name)
