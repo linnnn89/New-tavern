@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace TavernDesk.App.Views.Shared;
 
@@ -26,6 +27,18 @@ public partial class SearchBox : UserControl
 
     public SearchBox() => InitializeComponent();
 
-    private void Clear_OnClick(object sender, RoutedEventArgs e) =>
+    private void Clear_OnClick(object sender, RoutedEventArgs e)
+    {
         SearchInput.SetCurrentValue(TextBox.TextProperty, string.Empty);
+        SearchInput.Focus();
+    }
+
+    private void SearchInput_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && !string.IsNullOrEmpty(SearchInput.Text))
+        {
+            SearchInput.SetCurrentValue(TextBox.TextProperty, string.Empty);
+            e.Handled = true;
+        }
+    }
 }

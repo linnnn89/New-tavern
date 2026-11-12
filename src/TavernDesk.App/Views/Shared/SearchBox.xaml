@@ -21,11 +21,12 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+            <TextBlock Text="&#xE721;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="15"
                        Margin="0,0,8,0" VerticalAlignment="Center"
                        Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False" />
             <TextBox x:Name="SearchInput" Grid.Column="1"
                      Text="{Binding Text, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     KeyDown="SearchInput_OnKeyDown"
                      AutomationProperties.Name="{Binding ToolTip, ElementName=Root}"
                      VerticalContentAlignment="Center" FontSize="{DynamicResource FontSizeBodySmall}">
                 <TextBox.Style>
@@ -58,11 +59,11 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
-            <Button Grid.Column="2" Content="×" MinWidth="28" Padding="4,0" Margin="4,0,-4,0"
+            <Button Grid.Column="2" Width="26" Height="26" Padding="0" Margin="4,0,-4,0"
                     Click="Clear_OnClick" ToolTip="{StaticResource Common.Clear}"
                     AutomationProperties.Name="{StaticResource Common.Clear}">
                 <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource MessageToolButtonStyle}">
+                    <Style TargetType="Button" BasedOn="{StaticResource AppicaMessageHoverButtonStyle}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Text, ElementName=SearchInput}" Value="">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -70,6 +71,9 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
+                <TextBlock Text="&#xE711;" FontFamily="{StaticResource AppicaShellIconFont}" FontSize="11"
+                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" />
             </Button>
         </Grid>
     </Border>
