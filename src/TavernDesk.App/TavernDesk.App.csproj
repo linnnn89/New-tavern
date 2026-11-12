@@ -12,6 +12,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Keep self-contained releases identical across packaging machines. -->
+    <RuntimeFrameworkVersion Condition="'$(SelfContained)' == 'true'">10.0.11</RuntimeFrameworkVersion>
     <ApplicationIcon>Assets\Icons\TavernDesk.ico</ApplicationIcon>
   </PropertyGroup>
 

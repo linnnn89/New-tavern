@@ -710,6 +710,14 @@
                                             Property="MaxWidth"
                                             Value="800" />
                                     <Setter TargetName="MessageContainer" Property="Margin" Value="0,0,0,20" />
+                                    <Setter TargetName="MessageAvatar" Property="Grid.Column" Value="0" />
+                                    <Setter TargetName="LeftMessageSpacer" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="RightMessageSpacer" Property="Visibility" Value="Collapsed" />
+                                    <Setter TargetName="MessageMetadata" Property="HorizontalAlignment" Value="Left" />
+                                    <Setter TargetName="MessageMetadata" Property="Margin" Value="3,0,0,4" />
+                                    <Setter TargetName="MessageHost" Property="HorizontalAlignment" Value="Left" />
+                                    <Setter TargetName="MessageBubble" Property="HorizontalAlignment" Value="Left" />
+                                    <Setter TargetName="MessageActions" Property="HorizontalAlignment" Value="Left" />
                                     <Setter TargetName="MessageBubble"
                                             Property="Background"
                                             Value="Transparent" />
@@ -725,83 +733,88 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <Button x:Name="ScrollToBottomButton" Grid.Row="2" Panel.ZIndex="5"
-                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"
-                    Content="{DynamicResource Chat.ScrollToBottom}" Visibility="Collapsed"
-                    AutomationProperties.Name="{Binding Content, RelativeSource={RelativeSource Self}}"
-                    Click="ScrollToBottomButton_OnClick" Style="{StaticResource SecondaryButtonStyle}" />
-
-            <!-- A reasoning stream is a transient progress signal. A whole-string
-                 pulse works for every supported language without per-character assumptions. -->
-            <TextBlock Grid.Row="2"
-                       Margin="0,0,0,12"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Bottom"
-                       Text="{StaticResource Chat.Thinking}"
-                       FontSize="{DynamicResource FontSizeSmall}"
-                       Foreground="{DynamicResource MutedTextBrush}"
-                       IsHitTestVisible="False"
-                       Visibility="{Binding IsModelThinking, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TextBlock.RenderTransform>
-                    <TranslateTransform />
-                </TextBlock.RenderTransform>
-                <TextBlock.Triggers>
-                    <EventTrigger RoutedEvent="Loaded">
-                        <BeginStoryboard>
-                            <Storyboard RepeatBehavior="Forever">
-                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                 From="0.45"
-                                                 To="0.9"
-                                                 Duration="0:0:0.65"
-                                                 AutoReverse="True" />
-                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                                 From="1"
-                                                 To="-2"
-                                                 Duration="0:0:0.65"
-                                                 AutoReverse="True" />
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </EventTrigger>
-                </TextBlock.Triggers>
-            </TextBlock>
-
             <StackPanel Grid.Row="2"
-                        Margin="0,0,0,8"
+                        Margin="0,0,0,10"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Bottom"
-                        Panel.ZIndex="4"
-                        Orientation="Horizontal"
-                        Visibility="{Binding IsGroupAutoRelayCountdownVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TextBlock VerticalAlignment="Center"
-                           Text="{Binding GroupAutoRelayCountdownText}"
-                           FontSize="{DynamicResource FontSizeCaption}"
-                           Opacity="0.68"
+                        Panel.ZIndex="5">
+                <Button x:Name="ScrollToBottomButton"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,6"
+                        Padding="14,6"
+                        Effect="{StaticResource AppicaPopupShadowEffect}"
+                        Content="{DynamicResource Chat.ScrollToBottom}"
+                        Visibility="Collapsed"
+                        AutomationProperties.Name="{Binding Content, RelativeSource={RelativeSource Self}}"
+                        Click="ScrollToBottomButton_OnClick"
+                        Style="{StaticResource SecondaryButtonStyle}" />
+
+                <!-- A reasoning stream is a transient progress signal. A whole-string
+                     pulse works for every supported language without per-character assumptions. -->
+                <TextBlock Margin="0,0,0,4"
+                           HorizontalAlignment="Center"
+                           Text="{StaticResource Chat.Thinking}"
+                           FontSize="{DynamicResource FontSizeSmall}"
                            Foreground="{DynamicResource MutedTextBrush}"
-                           AutomationProperties.LiveSetting="Polite">
+                           IsHitTestVisible="False"
+                           Visibility="{Binding IsModelThinking, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock.RenderTransform>
+                        <TranslateTransform />
+                    </TextBlock.RenderTransform>
                     <TextBlock.Triggers>
                         <EventTrigger RoutedEvent="Loaded">
                             <BeginStoryboard>
                                 <Storyboard RepeatBehavior="Forever">
                                     <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                     From="0.38"
-                                                     To="0.78"
-                                                     Duration="0:0:0.8"
+                                                     From="0.45"
+                                                     To="0.9"
+                                                     Duration="0:0:0.65"
+                                                     AutoReverse="True" />
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                     From="1"
+                                                     To="-2"
+                                                     Duration="0:0:0.65"
                                                      AutoReverse="True" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
                     </TextBlock.Triggers>
                 </TextBlock>
-                <Button Margin="8,0,0,0"
-                        Height="22"
-                        MinWidth="54"
-                        Padding="5,1"
-                        FontSize="{DynamicResource FontSizeCaption}"
-                        Content="{StaticResource Chat.Group.StopAutoRelay}"
-                        Command="{Binding StopGroupAutoRelayCommand}"
-                        ToolTip="{StaticResource Chat.Group.StopAutoRelayToolTip}"
-                        AutomationProperties.Name="{StaticResource Chat.Group.StopAutoRelayToolTip}"
-                        Style="{StaticResource SecondaryButtonStyle}" />
+
+                <StackPanel HorizontalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsGroupAutoRelayCountdownVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock VerticalAlignment="Center"
+                               Text="{Binding GroupAutoRelayCountdownText}"
+                               FontSize="{DynamicResource FontSizeCaption}"
+                               Opacity="0.68"
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               AutomationProperties.LiveSetting="Polite">
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="0.38"
+                                                         To="0.78"
+                                                         Duration="0:0:0.8"
+                                                         AutoReverse="True" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
+                    <Button Margin="8,0,0,0"
+                            Height="22"
+                            MinWidth="54"
+                            Padding="5,1"
+                            FontSize="{DynamicResource FontSizeCaption}"
+                            Content="{StaticResource Chat.Group.StopAutoRelay}"
+                            Command="{Binding StopGroupAutoRelayCommand}"
+                            ToolTip="{StaticResource Chat.Group.StopAutoRelayToolTip}"
+                            AutomationProperties.Name="{StaticResource Chat.Group.StopAutoRelayToolTip}"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                </StackPanel>
             </StackPanel>
 
             <Border x:Name="ComposerPanel" Grid.Row="3" Style="{StaticResource AppicaChatComposerStyle}">

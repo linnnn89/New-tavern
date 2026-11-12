@@ -224,6 +224,11 @@ public partial class ChatView : UserControl
     {
         if (!_hasListSpace && e.Key == Key.Escape)
         {
+            if (e.OriginalSource is TextBox { Text.Length: > 0 })
+            {
+                return;
+            }
+
             ConversationListPane.Visibility = Visibility.Hidden;
             ConversationListToggle.Focus();
             e.Handled = true;
