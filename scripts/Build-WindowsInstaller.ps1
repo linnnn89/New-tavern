@@ -161,7 +161,7 @@ try {
     [IO.Directory]::CreateDirectory($packageSource) | Out-Null
     $legacyManagedFiles = @(Get-LegacyManagedFiles)
 
-    & dotnet restore $projectPath -r win-x64
+    & dotnet restore $projectPath -r win-x64 -p:SelfContained=true
     if ($LASTEXITCODE -ne 0) { throw 'dotnet restore failed.' }
     & dotnet publish $projectPath `
         -c Release `

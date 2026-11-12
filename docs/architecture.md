@@ -357,6 +357,8 @@ PR #29、#30 的交付记录报告 Release 构建成功、359/359 本机私有�
 
 普通 `dotnet build` 不更新根目录发布快照。需要重新交付时，在仓库根目录运行 `& .\scripts\Build-WindowsInstaller.ps1 -Force`，再验证最终 `app/TavernDesk.App.exe` 的隔离启动及本次改动的实际行为；仅根启动器 `--probe` 成功不足以证明应用可用。安装包按原有规则留在本机，`app/` 与根启动器继续由 Git 跟踪。
 
+自包含发布的 .NET 与 Windows Desktop 运行时统一固定为 `10.0.11`，由应用项目的 `RuntimeFrameworkVersion` 指定；打包脚本在还原阶段也设置 `SelfContained=true`，确保还原与发布使用相同版本。SDK 继续遵循 `global.json`。运行时包通过 NuGet 进入项目缓存，无需在打包机上另行安装对应的系统运行时。
+
 仍缺少等价证据的范围：
 
 - 简体中文、台湾繁中和日语的完整首次启动、长文本换行与高 DPI 人工验收；
