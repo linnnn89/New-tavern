@@ -28,6 +28,7 @@
         <TextBox x:Name="RequirementEditor"
                  Grid.Row="1"
                  Padding="10,8"
+                 PreviewKeyDown="RequirementEditor_OnPreviewKeyDown"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
                  VerticalContentAlignment="Top"

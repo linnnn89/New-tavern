@@ -20,6 +20,7 @@
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource MutedTextBrush}" />
             </StackPanel>
 <WrapPanel
+                        Margin="0,6,0,0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         >
@@ -270,8 +271,8 @@
                                                  FontSize="{DynamicResource FontSizeSubtitle}"
                                                  FontWeight="SemiBold" />
 <Button ContentTemplate="{StaticResource WrappingActionText}"
-                                                Margin="8,0,0,0"
-
+                                                Margin="0,8,0,0"
+                                                HorizontalAlignment="Left"
                                                 MinHeight="0"
                                                 Content="{StaticResource Worldbook.SaveEntryName}"
                                                 Command="{Binding SaveEntryTitleCommand}"

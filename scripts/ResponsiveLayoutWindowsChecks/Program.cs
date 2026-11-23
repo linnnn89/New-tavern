@@ -15,7 +15,7 @@ using TavernDesk.Core.Models;
 using TavernDesk.Infrastructure;
 using TavernDesk.Infrastructure.Storage;
 
-internal static class Program
+internal static partial class Program
 {
     private static int _checks;
     private static readonly List<string> Failures = [];
@@ -358,6 +358,9 @@ internal static class Program
         independent.Width = 1500; independent.Height = 850;
         await Settle(independent);
         Capture((FrameworkElement)independent.Content, "independent-chat-wide");
+        await CheckGroupMemberFocus();
+        await CheckAvatarPlaceholders(services, vm.Characters);
+        await CheckCampaignShortcuts(services, vm.Campaigns).WaitAsync(TimeSpan.FromSeconds(45));
         // MainWindow owns application shutdown; do not close it while assertions are running.
     }
 

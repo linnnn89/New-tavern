@@ -71,8 +71,9 @@
                 <Button Content="{StaticResource Characters.ImportCard}" Command="{Binding ImportCommand}" Margin="12,0,0,0"
                         Style="{StaticResource PrimaryButtonStyle}" />
             </WrapPanel>
-<Button
-                    Content="{StaticResource Characters.BackToShelf}"
+<Button HorizontalAlignment="Left"
+                    Margin="0,4,0,10"
+                    AutomationProperties.Name="{StaticResource Characters.BackToShelf}"
                     Command="{Binding CloseCharacterToolsCommand}">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
@@ -84,6 +85,17 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72B;"
+                               FontFamily="{StaticResource AppicaShellIconFont}"
+                               FontSize="12"
+                               Margin="0,0,6,0"
+                               VerticalAlignment="Center"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                    <TextBlock Text="{StaticResource Characters.BackToShelf}"
+                               VerticalAlignment="Center"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                </StackPanel>
             </Button>
 </StackPanel>
 
@@ -136,7 +148,7 @@
                             </Style>
                         </ListBox.ItemContainerStyle>
                     </ListBox>
-                    <StackPanel Grid.Row="2">
+                    <StackPanel Grid.Row="2" Margin="0,8,0,0">
                         <Button Content="{StaticResource Characters.NewShelf}"
                                 Command="{Binding CreateShelfCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}" />
@@ -203,8 +215,7 @@
                                        Margin="0,3,12,0"
                                        Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
-<WrapPanel
-
+<WrapPanel Margin="0,8,0,0"
                                     VerticalAlignment="Center">
                             <TextBlock Margin="0,0,12,0"
                                        VerticalAlignment="Center">
@@ -292,11 +303,13 @@
                                 </Grid.RowDefinitions>
                                 <Border Background="{Binding Name, Converter={StaticResource CharacterPlaceholderConverter}}" IsHitTestVisible="False">
                                     <Grid>
-                                        <TextBlock Text="{Binding Name, Converter={StaticResource CharacterPlaceholderConverter}, ConverterParameter=Initial}" Margin="{DynamicResource InsetMd}"
+                                        <TextBlock Style="{StaticResource AvatarPlaceholderTextStyle}"
+                                                   Text="{Binding Name, Converter={StaticResource CharacterPlaceholderConverter}, ConverterParameter=Initial}" Margin="{DynamicResource InsetMd}"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                    TextAlignment="Center" FontSize="36"
                                                    FontWeight="Medium" Foreground="#33405C" />
-                                        <Image Source="{Binding AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=240}"
+                                        <Image x:Name="AvatarImage"
+                                               Source="{Binding AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=240}"
                                                Stretch="UniformToFill" />
                                     </Grid>
                                 </Border>
@@ -425,9 +438,21 @@
                                         HorizontalAlignment="Left"
                                         ClipToBounds="True"
                                         CornerRadius="12"
-                                        Background="{DynamicResource AccentSoftBrush}">
-                                    <Image Source="{Binding ActiveCharacter.AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=120}"
-                                           Stretch="UniformToFill" />
+                                        Background="{Binding ActiveCharacter.Name, Converter={StaticResource CharacterPlaceholderConverter}}">
+                                    <Grid>
+                                        <TextBlock Style="{StaticResource AvatarPlaceholderTextStyle}"
+                                                   Text="{Binding ActiveCharacter.Name, Converter={StaticResource CharacterPlaceholderConverter}, ConverterParameter=Initial}"
+                                                   Margin="{DynamicResource InsetMd}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="40"
+                                                   FontWeight="Medium"
+                                                   Foreground="#33405C" />
+                                        <Image x:Name="AvatarImage"
+                                               Source="{Binding ActiveCharacter.AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=120}"
+                                               Stretch="UniformToFill" />
+                                    </Grid>
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="4,2,0,0">
                                     <TextBlock Text="{Binding ActiveCharacter.Name}"

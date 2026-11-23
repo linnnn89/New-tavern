@@ -38,33 +38,89 @@
             <ListBox x:Name="CharacterList"
                      ItemsSource="{Binding Choices}"
                      BorderThickness="0"
+                     Background="Transparent"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Margin" Value="0,2" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="RowChrome"
+                                            Background="Transparent"
+                                            BorderBrush="Transparent"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            SnapsToDevicePixels="True">
+                                        <ContentPresenter HorizontalAlignment="Stretch"
+                                                          VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                            <Setter TargetName="RowChrome" Property="BorderBrush" Value="{DynamicResource AppicaSelectedBorderBrush}" />
+                                        </DataTrigger>
+                                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                            <Setter TargetName="RowChrome" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <CheckBox Margin="8,6"
+                        <CheckBox Padding="10,8"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
                                   IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                   VerticalContentAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
                                 <Border Width="40"
                                         Height="40"
                                         CornerRadius="20"
-                                        Background="{DynamicResource AccentSoftBrush}">
-                                    <Image Source="{Binding Character.AvatarPath}"
-                                           Stretch="UniformToFill">
-                                        <Image.Clip>
-                                            <EllipseGeometry Center="20,20"
-                                                             RadiusX="20"
-                                                             RadiusY="20" />
-                                        </Image.Clip>
-                                    </Image>
+                                        Background="{DynamicResource AccentSoftBrush}"
+                                        ClipToBounds="True">
+                                    <Grid>
+                                        <TextBlock Style="{StaticResource AvatarPlaceholderTextStyle}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource AppicaShellIconFont}"
+                                                   FontSize="17"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   Text="&#xE77B;" />
+                                        <Image x:Name="AvatarImage"
+                                               Source="{Binding Character.AvatarPath, Converter={StaticResource AvatarImageConverter}, ConverterParameter=48}"
+                                               Stretch="UniformToFill">
+                                            <Image.Clip>
+                                                <EllipseGeometry Center="20,20"
+                                                                 RadiusX="20"
+                                                                 RadiusY="20" />
+                                            </Image.Clip>
+                                        </Image>
+                                    </Grid>
                                 </Border>
-                                <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Character.Name}"
                                                FontWeight="SemiBold"
-                                               MaxWidth="420"
+                                               TextWrapping="NoWrap"
                                                TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="{Binding DescriptionPreview}"
-                                               MaxWidth="420"
+                                               Margin="0,2,0,0"
+                                               FontSize="{DynamicResource FontSizeSmall}"
                                                Foreground="{DynamicResource MutedTextBrush}"
                                                TextWrapping="NoWrap"
                                                TextTrimming="CharacterEllipsis">
@@ -81,7 +137,7 @@
                                         </TextBlock.Style>
                                     </TextBlock>
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
                         </CheckBox>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

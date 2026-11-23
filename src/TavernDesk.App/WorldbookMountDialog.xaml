@@ -49,8 +49,10 @@
                                     Command="{Binding ClearCharacterBindingsCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
-                        <TextBlock VerticalAlignment="Center"
+                        <TextBlock Margin="0,0,12,0"
+                                   VerticalAlignment="Center"
                                    Text="{StaticResource WorldbookMount.CharactersHelp}"
+                                   TextWrapping="Wrap"
                                    Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
 
@@ -117,8 +119,10 @@
                                     Command="{Binding ClearCampaignBindingsCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </StackPanel>
-                        <TextBlock VerticalAlignment="Center"
+                        <TextBlock Margin="0,0,12,0"
+                                   VerticalAlignment="Center"
                                    Text="{StaticResource WorldbookMount.CampaignsHelp}"
+                                   TextWrapping="Wrap"
                                    Foreground="{DynamicResource MutedTextBrush}" />
                     </DockPanel>
 

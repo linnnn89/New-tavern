@@ -179,11 +179,11 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         SaveLobbyCommand = new AsyncRelayCommand(SaveLobbyAsync);
         StartCampaignCommand = new AsyncRelayCommand(StartCampaignAsync);
         RefreshGameCommand = new AsyncRelayCommand(RefreshGameAsync);
-        SubmitUserActionCommand = new AsyncRelayCommand(SubmitUserActionAsync);
+        SubmitUserActionCommand = new AsyncRelayCommand(SubmitUserActionAsync, () => CanSubmitUserAction);
         GenerateAiActionsCommand = new AsyncRelayCommand(GenerateAiActionsAsync);
         GenerateAiSeatActionCommand = new AsyncRelayCommand(
             GenerateAiSeatActionAsync);
-        ResolveRoundCommand = new AsyncRelayCommand(ResolveRoundAsync);
+        ResolveRoundCommand = new AsyncRelayCommand(ResolveRoundAsync, () => CanResolve);
         PreviousGmCandidateCommand = new AsyncRelayCommand(
             () => MoveGmCandidateAsync(-1),
             () => CanMoveGmCandidate(-1));
@@ -218,6 +218,7 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanGenerateBlindAiActions));
         OnPropertyChanged(nameof(BlindAiActionHelpText));
         OnPropertyChanged(nameof(CanResolve));
+        ResolveRoundCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(ResolveHelpText));
     }
     public Task OfferScenarioRecoveryAsync() => RefreshRecoveryDraftsAsync();
@@ -657,6 +658,7 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _actionInput, value))
             {
                 OnPropertyChanged(nameof(CanSubmitUserAction));
+                SubmitUserActionCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(UserActionHelpText));
             }
         }
@@ -670,6 +672,7 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _gmResolutionInput, value))
             {
                 OnPropertyChanged(nameof(CanResolve));
+                ResolveRoundCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(ResolveHelpText));
             }
         }
@@ -2019,6 +2022,8 @@ public sealed class CampaignsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ScheduleUserJoinButtonText));
         OnPropertyChanged(nameof(ScheduleUserJoinHelpText));
         SettingsPanel.NotifyGameStateChanged();
+        SubmitUserActionCommand.RaiseCanExecuteChanged();
+        ResolveRoundCommand.RaiseCanExecuteChanged();
         PreviousGmCandidateCommand.RaiseCanExecuteChanged();
         NextGmCandidateCommand.RaiseCanExecuteChanged();
     }

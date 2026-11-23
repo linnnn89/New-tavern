@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using TavernDesk.App.Localization;
 using TavernDesk.App.Presentation;
 
@@ -18,6 +19,15 @@ public partial class TextEditorDialog : Window
     }
 
     public string ResultText => Editor.Text;
+
+    private void Editor_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            SaveButton_OnClick(sender, e);
+        }
+    }
 
     private void SaveButton_OnClick(object sender, RoutedEventArgs e)
     {

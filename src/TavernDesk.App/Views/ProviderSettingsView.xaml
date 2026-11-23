@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:TavernDesk.App.ViewModels"
              xmlns:presentation="clr-namespace:TavernDesk.App.Presentation"
+             xmlns:shared="clr-namespace:TavernDesk.App.Views.Shared"
              xmlns:views="clr-namespace:TavernDesk.App.Views">
     <UserControl.Resources>
         <!-- Fluent scrollbars overlay the viewport; keep settings cards clear of the track. -->
@@ -172,7 +173,8 @@
                                                        TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
                                         </StackPanel>
                                     </Border>
-                                <Border HorizontalAlignment="Left"
+                                <Border Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
                                             VerticalAlignment="Center"
                                             Background="{DynamicResource SurfaceBrush}"
                                             BorderBrush="{DynamicResource BorderBrush}"
@@ -191,7 +193,8 @@
                                                        VerticalAlignment="Center" />
                                         </DockPanel>
                                     </Border>
-<Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,0,8,0"
+<Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
                                                 Content="{StaticResource Settings.Providers.ClearKey}"
                                                 Command="{Binding ClearKeyCommand}"
                                                 Style="{StaticResource DestructiveButtonStyle}" />
@@ -228,10 +231,10 @@
                                       SelectedItem="{Binding CatalogProvider}"
                                       DisplayMemberPath="Name"
                                       ToolTip="{StaticResource Settings.Models.SelectProviderToolTip}" />
-<TextBox
- Width="220"                                     Margin="12,0"
-                                     Text="{Binding CatalogSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="{StaticResource Settings.Models.SearchToolTip}" />
+<shared:SearchBox Width="240" Margin="12,0"
+                  Text="{Binding CatalogSearchText, UpdateSourceTrigger=PropertyChanged}"
+                  Placeholder="{StaticResource Settings.Models.SearchToolTip}"
+                  ToolTip="{StaticResource Settings.Models.SearchToolTip}" />
 <Button ContentTemplate="{StaticResource WrappingActionText}"
                                     Margin="0,0,10,0"
                                     Content="{Binding CustomModelButtonText}"
@@ -302,10 +305,10 @@
                                       SelectedItem="{Binding AssignmentProvider}"
                                       DisplayMemberPath="Name"
                                       ToolTip="{StaticResource Settings.Assignments.SelectProviderToolTip}" />
-<TextBox
- Width="220"                                     Margin="12,0,0,0"
-                                     Text="{Binding AssignmentSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="{StaticResource Settings.Assignments.SearchModelToolTip}" />
+<shared:SearchBox Width="240" Margin="12,0,0,0"
+                  Text="{Binding AssignmentSearchText, UpdateSourceTrigger=PropertyChanged}"
+                  Placeholder="{StaticResource Settings.Assignments.SearchModelToolTip}"
+                  ToolTip="{StaticResource Settings.Assignments.SearchModelToolTip}" />
 </WrapPanel>
                     </Border>
                     <Border Grid.Row="1"
@@ -431,45 +434,45 @@
                                         <TextBlock Text="{Binding SelectedAssignmentModel.ModelId, TargetNullValue={StaticResource Settings.Assignments.SelectModelFirst}}"
                                                    TextWrapping="Wrap" />
 
-                                        <StackPanel Margin="0,10,0,0" HorizontalAlignment="Left">
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
 
+                                            <StackPanel Grid.Row="0" Grid.Column="0">
+                                                <TextBlock Text="{StaticResource Settings.Models.ContextLimit}" />
+                                                <TextBox Margin="0,4,0,0"
+                                                         MinHeight="32"
+                                                         Text="{Binding AssignmentContextLimit, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
 
+                                            <StackPanel Grid.Row="0" Grid.Column="2">
+                                                <TextBlock Text="{StaticResource Settings.Models.OutputLimit}" />
+                                                <TextBox Margin="0,4,0,0"
+                                                         MinHeight="32"
+                                                         Text="{Binding AssignmentMaxOutputTokens, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
 
-                                            <TextBlock VerticalAlignment="Center" Text="{StaticResource Settings.Models.ContextLimit}" />
-                                            <TextBox
-                                                     MinHeight="32"
-                                                     Text="{Binding AssignmentContextLimit, UpdateSourceTrigger=PropertyChanged}" />
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,10,0,0">
+                                                <TextBlock Text="{StaticResource Settings.Assignments.Temperature}" />
+                                                <TextBox Margin="0,4,0,0"
+                                                         MinHeight="32"
+                                                         Text="{Binding AssignmentTemperature, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
 
-                                            <TextBlock
-                                                       Margin="0,8,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Text="{StaticResource Settings.Models.OutputLimit}" />
-                                            <TextBox
-
-                                                     Margin="0,8,0,0"
-                                                     MinHeight="32"
-                                                     Text="{Binding AssignmentMaxOutputTokens, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock
-                                                       Margin="0,8,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Text="{StaticResource Settings.Assignments.Temperature}" />
-                                            <TextBox
-
-                                                     Margin="0,8,0,0"
-                                                     MinHeight="32"
-                                                     Text="{Binding AssignmentTemperature, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock
-                                                       Margin="0,8,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Text="{StaticResource Settings.Assignments.TopP}" />
-                                            <TextBox
-
-                                                     Margin="0,8,0,0"
-                                                     MinHeight="32"
-                                                     Text="{Binding AssignmentTopP, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,10,0,0">
+                                                <TextBlock Text="{StaticResource Settings.Assignments.TopP}" />
+                                                <TextBox Margin="0,4,0,0"
+                                                         MinHeight="32"
+                                                         Text="{Binding AssignmentTopP, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
 
                                     <StackPanel>

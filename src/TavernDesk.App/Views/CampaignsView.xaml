@@ -1200,10 +1200,13 @@
                                                  MinHeight="88"
                                                  AcceptsReturn="True"
                                                  TextWrapping="Wrap"
-                                                 Text="{Binding ActionInput, UpdateSourceTrigger=PropertyChanged}" />
+                                                 Text="{Binding ActionInput, UpdateSourceTrigger=PropertyChanged}">
+                                            <TextBox.InputBindings>
+                                                <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding SubmitUserActionCommand}" />
+                                            </TextBox.InputBindings>
+                                        </TextBox>
                                         <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                                 Content="{StaticResource Campaigns.Play.SubmitUserAction}"
-                                                IsEnabled="{Binding CanSubmitUserAction}"
                                                 Command="{Binding SubmitUserActionCommand}"
                                                 ToolTip="{Binding UserActionHelpText}"
                                                 Style="{StaticResource PrimaryButtonStyle}" />
@@ -1230,10 +1233,13 @@
                                                  AcceptsReturn="True"
                                                  TextWrapping="Wrap"
                                                  Text="{Binding GmResolutionInput, UpdateSourceTrigger=PropertyChanged}"
-                                                 Visibility="{Binding IsUserGm, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                 Visibility="{Binding IsUserGm, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBox.InputBindings>
+                                                <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding ResolveRoundCommand}" />
+                                            </TextBox.InputBindings>
+                                        </TextBox>
                                         <Button ContentTemplate="{StaticResource WrappingActionText}" Margin="0,8,0,0"
                                                 Content="{Binding ResolveButtonText}"
-                                                IsEnabled="{Binding CanResolve}"
                                                 Command="{Binding ResolveRoundCommand}"
                                                 ToolTip="{Binding ResolveHelpText}"
                                                 Style="{StaticResource PrimaryButtonStyle}" />

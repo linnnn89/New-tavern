@@ -117,6 +117,16 @@
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
     </Style>
 
+    <Style x:Key="AvatarPlaceholderTextStyle" TargetType="TextBlock"
+           BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="Visibility" Value="Collapsed" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Source, ElementName=AvatarImage}" Value="{x:Null}">
+                <Setter Property="Visibility" Value="Visible" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- Application-scope implicit TextBlock styles also reach the TextBlock a
          ContentPresenter generates for plain-string content inside templates, and
          its Foreground setter outranks the inherited control foreground. Templates

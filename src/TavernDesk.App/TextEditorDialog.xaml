@@ -51,6 +51,7 @@
                  FontSize="{DynamicResource InterfaceFontSize}"
                  Background="{DynamicResource SurfaceSolidBrush}"
                  AutomationProperties.Name="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                 PreviewKeyDown="Editor_OnPreviewKeyDown"
                  AcceptsReturn="True"
                  AcceptsTab="True"
                  TextWrapping="Wrap"
